@@ -1,0 +1,29 @@
+{
+  "name": "@flintpay/cli",
+  "version": "0.0.0-development",
+  "description": "Flint Pay command-line interface",
+  "mcpName": "com.withflintpay/cli",
+  "license": "Apache-2.0",
+  "bin": {
+    "flint": "bin/flint.js"
+  },
+  "files": [
+    "bin/flint.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {
+    "@flintpay/cli-darwin-arm64": "0.0.0-development",
+    "@flintpay/cli-darwin-amd64": "0.0.0-development",
+    "@flintpay/cli-linux-arm64": "0.0.0-development",
+    "@flintpay/cli-linux-amd64": "0.0.0-development",
+    "@flintpay/cli-windows-amd64": "0.0.0-development"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/flint-pay/flint-cli.git"
+  }
+}

@@ -1,0 +1,2984 @@
+[
+  {
+    "method": "GET",
+    "path": "/v1/analytics/overview",
+    "operation_id": "getAnalyticsOverview",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/analytics/payment-volume-timeseries",
+    "operation_id": "getPaymentVolumeTimeseries",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/analytics/subscriptions",
+    "operation_id": "getSubscriptionAnalytics",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/api-keys",
+    "operation_id": "listAPIKeys",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/api-keys",
+    "operation_id": "createAPIKey",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/api-keys/{api_key_id}",
+    "operation_id": "getAPIKey",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/api-keys/{api_key_id}",
+    "operation_id": "updateAPIKey",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/api-keys/{api_key_id}/revoke",
+    "operation_id": "revokeAPIKey",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/balance-transactions",
+    "operation_id": "listBalanceTransactions",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/balance-transactions/{balance_transaction_id}",
+    "operation_id": "getBalanceTransaction",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/balances",
+    "operation_id": "listBalances",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/bundles",
+    "operation_id": "listBundles",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/bundles",
+    "operation_id": "createBundle",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/bundles/{bundle_id}",
+    "operation_id": "deleteBundle",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/bundles/{bundle_id}",
+    "operation_id": "getBundle",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/bundles/{bundle_id}",
+    "operation_id": "updateBundle",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/bundles/{bundle_id}/components",
+    "operation_id": "listBundleComponents",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/capabilities",
+    "operation_id": "listCapabilities",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/categories",
+    "operation_id": "listCategories",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/categories",
+    "operation_id": "createCategory",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/categories/{category_id}",
+    "operation_id": "deleteCategory",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/categories/{category_id}",
+    "operation_id": "getCategory",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/categories/{category_id}",
+    "operation_id": "updateCategory",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/checkout-sessions",
+    "operation_id": "listCheckoutSessions",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/checkout-sessions",
+    "operation_id": "createCheckoutSession",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/checkout-sessions/{checkout_session_id}",
+    "operation_id": "getCheckoutSession",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/checkout-sessions/{checkout_session_id}",
+    "operation_id": "updateCheckoutSession",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/close",
+    "operation_id": "closeCheckoutSession",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-quotes",
+    "operation_id": "createCheckoutSessionDeliveryQuote",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-quotes/{delivery_quote_id}",
+    "operation_id": "getCheckoutSessionDeliveryQuote",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections",
+    "operation_id": "createCheckoutSessionDeliverySelection",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections/{delivery_selection_id}",
+    "operation_id": "getCheckoutSessionDeliverySelectionHistory",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections/current",
+    "operation_id": "deleteCheckoutSessionCurrentDeliverySelection",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections/current",
+    "operation_id": "getCheckoutSessionCurrentDeliverySelection",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/query-pickup-availability",
+    "operation_id": "queryCheckoutSessionPickupAvailability",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customer-deletion-requests",
+    "operation_id": "listCustomerDeletionRequests",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customer-deletion-requests/{customer_deletion_request_id}/resolve",
+    "operation_id": "resolveCustomerDeletionRequest",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customer-sessions",
+    "operation_id": "createCustomerSession",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customer-sessions/{customer_session_id}/revoke",
+    "operation_id": "revokeCustomerSession",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customer-sessions/refresh",
+    "operation_id": "refreshCustomerSession",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/credit-notes",
+    "operation_id": "listCreditNotes",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/credit-notes",
+    "operation_id": "createCreditNote",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/credit-notes/{credit_note_id}",
+    "operation_id": "getCreditNote",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/credit-notes/{credit_note_id}",
+    "operation_id": "updateCreditNote",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/credit-notes/{credit_note_id}/allocations",
+    "operation_id": "listCreditNoteAllocations",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/credit-notes/{credit_note_id}/allocations",
+    "operation_id": "createCreditNoteAllocation",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/credit-notes/{credit_note_id}/allocations/{credit_note_allocation_id}",
+    "operation_id": "getCreditNoteAllocation",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/credit-notes/{credit_note_id}/allocations/{credit_note_allocation_id}/reverse",
+    "operation_id": "reverseCreditNoteAllocation",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/credit-notes/{credit_note_id}/issue",
+    "operation_id": "issueCreditNote",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/credit-notes/{credit_note_id}/pdf",
+    "operation_id": "getCreditNotePDF",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/credit-notes/{credit_note_id}/void",
+    "operation_id": "voidCreditNote",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customers",
+    "operation_id": "listCustomers",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers",
+    "operation_id": "createCustomer",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customers/{customer_id}",
+    "operation_id": "getCustomer",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/customers/{customer_id}",
+    "operation_id": "updateCustomer",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customers/{customer_id}/addresses",
+    "operation_id": "listCustomerAddresses",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/addresses",
+    "operation_id": "createCustomerAddress",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/customers/{customer_id}/addresses/{customer_address_id}",
+    "operation_id": "deleteCustomerAddress",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customers/{customer_id}/addresses/{customer_address_id}",
+    "operation_id": "getCustomerAddress",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/customers/{customer_id}/addresses/{customer_address_id}",
+    "operation_id": "updateCustomerAddress",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/addresses/{customer_address_id}/set-default",
+    "operation_id": "setDefaultCustomerAddress",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/deletion-requests",
+    "operation_id": "createCustomerDeletionRequest",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customers/{customer_id}/deletion-requests/{customer_deletion_request_id}",
+    "operation_id": "getCustomerDeletionRequest",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/sessions/revoke",
+    "operation_id": "revokeCustomerSessions",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-location-sets",
+    "operation_id": "listDeliveryLocationSets",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-location-sets",
+    "operation_id": "createDeliveryLocationSet",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-location-sets/{delivery_location_set_id}",
+    "operation_id": "getDeliveryLocationSet",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/delivery-location-sets/{delivery_location_set_id}",
+    "operation_id": "updateDeliveryLocationSet",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/delivery-location-sets/{delivery_location_set_id}",
+    "operation_id": "deleteDeliveryLocationSet",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-methods",
+    "operation_id": "listDeliveryMethods",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-methods",
+    "operation_id": "createDeliveryMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-methods/{delivery_method_id}",
+    "operation_id": "getDeliveryMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/delivery-methods/{delivery_method_id}",
+    "operation_id": "updateDeliveryMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/delivery-methods/{delivery_method_id}",
+    "operation_id": "deleteDeliveryMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-previews",
+    "operation_id": "createDeliveryPreview",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-profiles",
+    "operation_id": "listDeliveryProfiles",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-profiles",
+    "operation_id": "createDeliveryProfile",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-profiles/{delivery_profile_id}",
+    "operation_id": "getDeliveryProfile",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/delivery-profiles/{delivery_profile_id}",
+    "operation_id": "updateDeliveryProfile",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/delivery-profiles/{delivery_profile_id}",
+    "operation_id": "deleteDeliveryProfile",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-profiles/{delivery_profile_id}/assign-to-unconfigured",
+    "operation_id": "assignToUnconfiguredDeliveryProfile",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-quotes",
+    "operation_id": "listDeliveryQuotes",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-rate-callbacks",
+    "operation_id": "listDeliveryRateCallbacks",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-rate-callbacks",
+    "operation_id": "createDeliveryRateCallback",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-rate-callbacks/{delivery_rate_callback_id}",
+    "operation_id": "getDeliveryRateCallback",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/delivery-rate-callbacks/{delivery_rate_callback_id}",
+    "operation_id": "updateDeliveryRateCallback",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/delivery-rate-callbacks/{delivery_rate_callback_id}",
+    "operation_id": "deleteDeliveryRateCallback",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-rate-callbacks/{delivery_rate_callback_id}/check-connection",
+    "operation_id": "checkDeliveryRateCallbackConnection",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-rate-callbacks/{delivery_rate_callback_id}/rotate-secret",
+    "operation_id": "rotateDeliveryRateCallbackSigningKey",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-rate-callbacks/{delivery_rate_callback_id}/test-deliveries",
+    "operation_id": "createDeliveryRateCallbackTestDelivery",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-revocations",
+    "operation_id": "revokeDeliveryDependency",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-revocations/{delivery_revocation_id}",
+    "operation_id": "getDeliveryRevocation",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-zones",
+    "operation_id": "listDeliveryZones",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-zones",
+    "operation_id": "createDeliveryZone",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-zones/{delivery_zone_id}",
+    "operation_id": "getDeliveryZone",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/delivery-zones/{delivery_zone_id}",
+    "operation_id": "updateDeliveryZone",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/delivery-zones/{delivery_zone_id}",
+    "operation_id": "deleteDeliveryZone",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/demo-sessions",
+    "operation_id": "createDemoSession",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/demo-sessions/reset",
+    "operation_id": "resetDemoSession",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/auth-context",
+    "operation_id": "getDeveloperAuthContext",
+    "classification": "workflow"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/partner/apps",
+    "operation_id": "listDeveloperPartnerApps",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/developer/partner/apps",
+    "operation_id": "createDeveloperPartnerApp",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/partner/apps/{partner_app_id}",
+    "operation_id": "getDeveloperPartnerApp",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/developer/partner/apps/{partner_app_id}",
+    "operation_id": "updateDeveloperPartnerApp",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/partner/apps/{partner_app_id}/installs",
+    "operation_id": "listDeveloperPartnerAppInstalls",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/partner/apps/{partner_app_id}/installs/{partner_app_install_id}",
+    "operation_id": "getDeveloperPartnerAppInstall",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/developer/partner/apps/{partner_app_id}/installs/{partner_app_install_id}/environment-grants/{environment_grant_id}/revoke",
+    "operation_id": "revokeDeveloperPartnerEnvironmentGrant",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/developer/partner/apps/{partner_app_id}/installs/{partner_app_install_id}/revoke",
+    "operation_id": "revokeDeveloperPartnerAppInstall",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/developer/partner/apps/{partner_app_id}/rotate-secret",
+    "operation_id": "rotateDeveloperPartnerAppSecret",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/request-logs",
+    "operation_id": "listCurrentAPIKeyRequestLogs",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/request-logs/{api_request_log_id}",
+    "operation_id": "getCurrentAPIKeyRequestLog",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/resource-timelines/{resource_id}",
+    "operation_id": "getResourceTimeline",
+    "classification": "workflow"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/sandboxes",
+    "operation_id": "listDeveloperSandboxes",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/developer/sandboxes",
+    "operation_id": "createDeveloperSandbox",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/sandboxes/{sandbox_id}",
+    "operation_id": "getDeveloperSandbox",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/developer/sandboxes/{sandbox_id}",
+    "operation_id": "deleteDeveloperSandbox",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/developer/sandboxes/{sandbox_id}/reset",
+    "operation_id": "resetDeveloperSandbox",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/developer/sandboxes/{sandbox_id}/test-key",
+    "operation_id": "issueDeveloperSandboxTestKey",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/devices",
+    "operation_id": "listDevices",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/devices",
+    "operation_id": "createDevice",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/devices/{device_id}",
+    "operation_id": "deleteDevice",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/devices/{device_id}",
+    "operation_id": "getDevice",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/devices/{device_id}",
+    "operation_id": "updateDevice",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/disputes",
+    "operation_id": "listDisputes",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/disputes/{dispute_id}",
+    "operation_id": "getDispute",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/feedback-reports",
+    "operation_id": "listFeedbackReports",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/feedback-reports",
+    "operation_id": "createFeedbackReport",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/feedback-reports/{feedback_report_id}",
+    "operation_id": "getFeedbackReport",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/fraud-warnings",
+    "operation_id": "listFraudWarnings",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/fraud-warnings/{fraud_warning_id}",
+    "operation_id": "getFraudWarning",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/fulfillment-events",
+    "operation_id": "listFulfillmentEvents",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/fulfillment-events/{fulfillment_event_id}",
+    "operation_id": "getFulfillmentEvent",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/fulfillment-notifications",
+    "operation_id": "listFulfillmentNotifications",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/fulfillment-notifications/{fulfillment_notification_id}",
+    "operation_id": "getFulfillmentNotification",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/fulfillments",
+    "operation_id": "listFulfillments",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/fulfillments/{fulfillment_id}",
+    "operation_id": "getFulfillment",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/fulfillments/{fulfillment_id}",
+    "operation_id": "updateFulfillment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/transitions",
+    "operation_id": "transitionFulfillment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/events",
+    "operation_id": "createFulfillmentEvent",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/shipments",
+    "operation_id": "createShipment",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-adjustments",
+    "operation_id": "listInventoryAdjustments",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-adjustments",
+    "operation_id": "createInventoryAdjustment",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-allocation-policies",
+    "operation_id": "listInventoryAllocationPolicies",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-allocation-policies",
+    "operation_id": "createInventoryAllocationPolicy",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/inventory-allocation-policies/{inventory_allocation_policy_id}",
+    "operation_id": "updateInventoryAllocationPolicy",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/inventory-allocation-policies/{inventory_allocation_policy_id}",
+    "operation_id": "deleteInventoryAllocationPolicy",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-counts",
+    "operation_id": "listInventoryCounts",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-counts",
+    "operation_id": "createInventoryCount",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/inventory-counts/{inventory_count_id}",
+    "operation_id": "updateInventoryCount",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-counts/{inventory_count_id}/apply",
+    "operation_id": "applyInventoryCount",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-counts/{inventory_count_id}/cancel",
+    "operation_id": "cancelInventoryCount",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-items",
+    "operation_id": "listInventoryItems",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-items",
+    "operation_id": "createInventoryItem",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/inventory-items/{inventory_item_id}",
+    "operation_id": "updateInventoryItem",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/inventory-items/{inventory_item_id}",
+    "operation_id": "deleteInventoryItem",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-levels",
+    "operation_id": "listInventoryLevels",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/inventory-levels/{inventory_level_id}",
+    "operation_id": "updateInventoryLevel",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-movements",
+    "operation_id": "listInventoryMovements",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-reservations",
+    "operation_id": "listInventoryReservations",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-reservations",
+    "operation_id": "createInventoryReservation",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-reservations/{inventory_reservation_id}/commit",
+    "operation_id": "commitInventoryReservation",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-reservations/{inventory_reservation_id}/consume",
+    "operation_id": "consumeInventoryReservation",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-reservations/{inventory_reservation_id}/release",
+    "operation_id": "releaseInventoryReservation",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-receipts",
+    "operation_id": "listInventoryReceipts",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-receipts",
+    "operation_id": "createInventoryReceipt",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-transfers",
+    "operation_id": "listInventoryTransfers",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-transfers",
+    "operation_id": "createInventoryTransfer",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/inventory-transfers/{inventory_transfer_id}",
+    "operation_id": "updateInventoryTransfer",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-transfers/{inventory_transfer_id}/transitions",
+    "operation_id": "transitionInventoryTransfer",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoice-payment-terms",
+    "operation_id": "listInvoicePaymentTerms",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoice-payment-terms",
+    "operation_id": "createInvoicePaymentTerm",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoice-payment-terms/{invoice_payment_term_id}",
+    "operation_id": "getInvoicePaymentTerm",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/invoice-payment-terms/{invoice_payment_term_id}",
+    "operation_id": "updateInvoicePaymentTerm",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/invoice-payment-terms/{invoice_payment_term_id}",
+    "operation_id": "deleteInvoicePaymentTerm",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices",
+    "operation_id": "listInvoices",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices",
+    "operation_id": "createInvoice",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}",
+    "operation_id": "getInvoice",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/invoices/{invoice_id}",
+    "operation_id": "updateInvoice",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/checkout-session",
+    "operation_id": "getOrCreateInvoiceCheckoutSession",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/collect",
+    "operation_id": "collectInvoice",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/delivery-attempts",
+    "operation_id": "listInvoiceDeliveryAttempts",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/events",
+    "operation_id": "listInvoiceEvents",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/issue",
+    "operation_id": "issueInvoice",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/manual-payments",
+    "operation_id": "recordManualInvoicePayment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/manual-payments/reverse",
+    "operation_id": "reverseManualInvoicePayment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/mark-uncollectible",
+    "operation_id": "markInvoiceUncollectible",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/pause-reminders",
+    "operation_id": "pauseInvoiceReminders",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/payment-attempts",
+    "operation_id": "listInvoicePaymentAttempts",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/payment-attempts/{invoice_payment_attempt_id}",
+    "operation_id": "getInvoicePaymentAttempt",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/payment-attempts/{invoice_payment_attempt_id}/cancel",
+    "operation_id": "cancelInvoicePaymentAttempt",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/pdf",
+    "operation_id": "getInvoicePDF",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/regenerate-public-link",
+    "operation_id": "regenerateInvoicePublicLink",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/resume-reminders",
+    "operation_id": "resumeInvoiceReminders",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/send-reminder",
+    "operation_id": "sendInvoiceReminder",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/void",
+    "operation_id": "voidInvoice",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/locations",
+    "operation_id": "listLocations",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/locations",
+    "operation_id": "createLocation",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/locations/{location_id}",
+    "operation_id": "getLocation",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/locations/{location_id}",
+    "operation_id": "updateLocation",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/locations/{location_id}",
+    "operation_id": "deleteLocation",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/locations/{location_id}/geography",
+    "operation_id": "publishLocationGeography",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/locations/{location_id}/inventory",
+    "operation_id": "updateLocationInventory",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me",
+    "operation_id": "getMe",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/me",
+    "operation_id": "updateMe",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/addresses",
+    "operation_id": "listMeAddresses",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/addresses",
+    "operation_id": "createMeAddress",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/me/addresses/{customer_address_id}",
+    "operation_id": "deleteMeAddress",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/addresses/{customer_address_id}",
+    "operation_id": "getMeAddress",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/me/addresses/{customer_address_id}",
+    "operation_id": "updateMeAddress",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/addresses/{customer_address_id}/set-default",
+    "operation_id": "setDefaultMeAddress",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/deletion-requests",
+    "operation_id": "createMeDeletionRequest",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/deletion-requests/{customer_deletion_request_id}",
+    "operation_id": "getMeDeletionRequest",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/email-change-requests",
+    "operation_id": "createMeEmailChangeRequest",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/email-change-requests/{email_change_request_id}/confirm",
+    "operation_id": "confirmMeEmailChangeRequest",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/fulfillments",
+    "operation_id": "listMeFulfillments",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/invoices",
+    "operation_id": "listMeInvoices",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/invoices/{invoice_id}",
+    "operation_id": "getMeInvoice",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/invoices/{invoice_id}/checkout-session",
+    "operation_id": "createMeInvoiceCheckoutSession",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/invoices/{invoice_id}/credit-notes",
+    "operation_id": "listMeCreditNotes",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/invoices/{invoice_id}/credit-notes/{credit_note_id}",
+    "operation_id": "getMeCreditNote",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/invoices/{invoice_id}/credit-notes/{credit_note_id}/pdf",
+    "operation_id": "getMeCreditNotePDF",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/invoices/{invoice_id}/pdf",
+    "operation_id": "getMeInvoicePDF",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/orders",
+    "operation_id": "listMeOrders",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/orders/{order_id}",
+    "operation_id": "getMeOrder",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/orders/{order_id}/activities",
+    "operation_id": "listMeOrderActivities",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/orders/{order_id}/receipt",
+    "operation_id": "resendMeOrderReceipt",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/packages",
+    "operation_id": "listMePackages",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/payment-methods",
+    "operation_id": "listMePaymentMethods",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/payment-methods",
+    "operation_id": "saveMePaymentMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/me/payment-methods/{payment_method_id}",
+    "operation_id": "removeMePaymentMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/payment-methods/{payment_method_id}/set-default",
+    "operation_id": "setDefaultMePaymentMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/payments",
+    "operation_id": "listMePayments",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/refunds",
+    "operation_id": "listMeRefunds",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/return-previews",
+    "operation_id": "createMeReturnPreview",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/return-resolutions/{resolution_id}/checkout-session",
+    "operation_id": "createMeReturnResolutionCheckoutSession",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/returns",
+    "operation_id": "listMeReturns",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/returns",
+    "operation_id": "createMeReturn",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/returns/{return_id}",
+    "operation_id": "getMeReturn",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/returns/{return_id}/cancel",
+    "operation_id": "cancelMeReturn",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/shipments",
+    "operation_id": "listMeShipments",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/subscriptions",
+    "operation_id": "listMeSubscriptions",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/subscriptions/{subscription_id}",
+    "operation_id": "getMeSubscription",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/cancel",
+    "operation_id": "cancelMeSubscription",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/pause",
+    "operation_id": "pauseMeSubscription",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/payment-method",
+    "operation_id": "changeMeSubscriptionPaymentMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/reactivate",
+    "operation_id": "reactivateMeSubscription",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/resume",
+    "operation_id": "resumeMeSubscription",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/merchant-account-sessions",
+    "operation_id": "createMerchantAccountSession",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/merchant-account-sessions/refresh",
+    "operation_id": "refreshMerchantAccountSession",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/merchant-billing-balances",
+    "operation_id": "listMerchantBillingBalances",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/merchant-billing-balances/{merchant_billing_balance_id}",
+    "operation_id": "getMerchantBillingBalance",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/merchant-subscription-invoices",
+    "operation_id": "listMerchantSubscriptionInvoices",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/merchant-subscription-invoices/{merchant_subscription_invoice_id}",
+    "operation_id": "getMerchantSubscriptionInvoice",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/merchants/{merchant_id}",
+    "operation_id": "getMerchant",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/merchants/{merchant_id}",
+    "operation_id": "updateMerchant",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/modifier-groups",
+    "operation_id": "listModifierGroups",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/modifier-groups",
+    "operation_id": "createModifierGroup",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/modifier-groups/{modifier_group_id}",
+    "operation_id": "getModifierGroup",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/modifier-groups/{modifier_group_id}",
+    "operation_id": "updateModifierGroup",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/modifier-groups/{modifier_group_id}",
+    "operation_id": "deleteModifierGroup",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/modifier-sets",
+    "operation_id": "listModifierSets",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/modifier-sets",
+    "operation_id": "createModifierSet",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/modifier-sets/{modifier_set_id}",
+    "operation_id": "getModifierSet",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/modifier-sets/{modifier_set_id}",
+    "operation_id": "updateModifierSet",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/modifier-sets/{modifier_set_id}",
+    "operation_id": "deleteModifierSet",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/oauth/authorize",
+    "operation_id": "authorizePartnerInstall",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/oauth/authorize/preview",
+    "operation_id": "previewPartnerInstallAuthorization",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/oauth/token",
+    "operation_id": "exchangePartnerInstallToken",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/onboarding/advance",
+    "operation_id": "advanceOnboarding",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/onboarding/api-key",
+    "operation_id": "createOnboardingAPIKey",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/onboarding/start",
+    "operation_id": "startOnboarding",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/onboarding/state",
+    "operation_id": "getOnboardingState",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/onboarding/verify-email",
+    "operation_id": "verifyOnboardingEmail",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/openapi.json",
+    "operation_id": "getOpenAPISpec",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders",
+    "operation_id": "listOrders",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders",
+    "operation_id": "createOrder",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders/{order_id}",
+    "operation_id": "getOrder",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/orders/{order_id}",
+    "operation_id": "updateOrder",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders/{order_id}/activities",
+    "operation_id": "listOrderActivities",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/charges",
+    "operation_id": "addOrderCharge",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/orders/{order_id}/charges/{order_charge_id}",
+    "operation_id": "deleteOrderCharge",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/orders/{order_id}/charges/{order_charge_id}",
+    "operation_id": "updateOrderCharge",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/close",
+    "operation_id": "closeOrder",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders/{order_id}/delivery-selections/current",
+    "operation_id": "getOrderCurrentDeliverySelection",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/discounts",
+    "operation_id": "applyOrderDiscount",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/discounts/preview",
+    "operation_id": "previewOrderDiscounts",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/discounts/remove",
+    "operation_id": "removeOrderDiscounts",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/discounts/reprice",
+    "operation_id": "repriceOrderDiscounts",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/fulfillments",
+    "operation_id": "createFulfillment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/inventory-exception/resolve",
+    "operation_id": "resolveOrderInventoryException",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/line-items",
+    "operation_id": "addOrderLineItems",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/orders/{order_id}/line-items/{order_line_item_id}",
+    "operation_id": "deleteOrderLineItem",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/orders/{order_id}/line-items/{order_line_item_id}",
+    "operation_id": "updateOrderLineItem",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/pay",
+    "operation_id": "payOrder",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders/{order_id}/payment-attempts",
+    "operation_id": "listOrderPaymentAttempts",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders/{order_id}/payment-attempts/{payment_attempt_id}",
+    "operation_id": "getOrderPaymentAttempt",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/payment-attempts/{payment_attempt_id}/cancel",
+    "operation_id": "cancelOrderPaymentAttempt",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/payment-intents",
+    "operation_id": "createOrderPaymentIntent",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/payment-intents/{payment_intent_id}/cancel",
+    "operation_id": "cancelOrderPayment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/payment-intents/{payment_intent_id}/capture",
+    "operation_id": "captureOrderPayment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/receipt",
+    "operation_id": "resendOrderReceipt",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/organizations",
+    "operation_id": "listOrganizations",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/organizations",
+    "operation_id": "createOrganization",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/organizations/{organization_id}",
+    "operation_id": "deleteOrganization",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/organizations/{organization_id}",
+    "operation_id": "getOrganization",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/organizations/{organization_id}",
+    "operation_id": "updateOrganization",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/organizations/{organization_id}/memberships",
+    "operation_id": "listOrganizationMemberships",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/organizations/{organization_id}/memberships",
+    "operation_id": "grantOrganizationMembership",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/organizations/{organization_id}/memberships/{user_id}",
+    "operation_id": "revokeOrganizationMembership",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/organizations/{organization_id}/transfer-ownership",
+    "operation_id": "transferOrganizationOwnership",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/packages",
+    "operation_id": "listPackages",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/packages/{package_id}",
+    "operation_id": "getPackage",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/packages/{package_id}",
+    "operation_id": "updatePackage",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/packages/{package_id}/transitions",
+    "operation_id": "transitionPackage",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/packages/{package_id}/items",
+    "operation_id": "listPackageItems",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/packages/{package_id}/items",
+    "operation_id": "createPackageItem",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/packages/{package_id}/items/{package_item_id}",
+    "operation_id": "deletePackageItem",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/packages/{package_id}/items/{package_item_id}",
+    "operation_id": "getPackageItem",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/packages/{package_id}/items/{package_item_id}",
+    "operation_id": "updatePackageItem",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/packages/{package_id}/void",
+    "operation_id": "voidPackage",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-intents",
+    "operation_id": "listPaymentIntents",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-intents",
+    "operation_id": "createPaymentIntent",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-intents/{payment_intent_id}",
+    "operation_id": "getPaymentIntent",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/payment-intents/{payment_intent_id}",
+    "operation_id": "updatePaymentIntent",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-intents/{payment_intent_id}/cancel",
+    "operation_id": "cancelPaymentIntent",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-intents/{payment_intent_id}/capture",
+    "operation_id": "capturePaymentIntent",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-intents/{payment_intent_id}/confirm",
+    "operation_id": "confirmPaymentIntent",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-links",
+    "operation_id": "listPaymentLinks",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-links",
+    "operation_id": "createPaymentLink",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-links/{payment_link_id}",
+    "operation_id": "getPaymentLink",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/payment-links/{payment_link_id}",
+    "operation_id": "updatePaymentLink",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-links/{payment_link_id}/public",
+    "operation_id": "getPaymentLinkPublic",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-links/{payment_link_id}/resolve",
+    "operation_id": "resolvePaymentLink",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-method-domains",
+    "operation_id": "listPaymentMethodDomains",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-method-domains",
+    "operation_id": "createPaymentMethodDomain",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-method-domains/{payment_method_domain_id}",
+    "operation_id": "getPaymentMethodDomain",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/payment-method-domains/{payment_method_domain_id}",
+    "operation_id": "updatePaymentMethodDomain",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-methods",
+    "operation_id": "listPaymentMethods",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-methods",
+    "operation_id": "savePaymentMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/payment-methods/{payment_method_id}",
+    "operation_id": "removePaymentMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-methods/{payment_method_id}",
+    "operation_id": "getPaymentMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-methods/{payment_method_id}/set-default",
+    "operation_id": "setDefaultPaymentMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payout-settings",
+    "operation_id": "getPayoutSettings",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/payout-settings",
+    "operation_id": "updatePayoutSettings",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payout-settings/destinations",
+    "operation_id": "listPayoutDestinations",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/payout-settings/destinations/{payout_destination_id}",
+    "operation_id": "deletePayoutDestination",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payout-settings/destinations/{payout_destination_id}",
+    "operation_id": "getPayoutDestination",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/payout-settings/destinations/{payout_destination_id}",
+    "operation_id": "updatePayoutDestination",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payouts",
+    "operation_id": "listPayouts",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payouts",
+    "operation_id": "createPayout",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payouts/{payout_id}",
+    "operation_id": "getPayout",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payouts/{payout_id}/cancel",
+    "operation_id": "cancelPayout",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payouts/{payout_id}/entries",
+    "operation_id": "listPayoutEntries",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/products",
+    "operation_id": "listProducts",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/products",
+    "operation_id": "createProduct",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/products/{product_id}",
+    "operation_id": "deleteProduct",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/products/{product_id}",
+    "operation_id": "getProduct",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/products/{product_id}",
+    "operation_id": "updateProduct",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/products/{product_id}/options",
+    "operation_id": "listProductOptions",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/products/{product_id}/options/{option_id}",
+    "operation_id": "getProductOption",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/products/{product_id}/variants",
+    "operation_id": "listProductVariants",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/products/{product_id}/variants",
+    "operation_id": "createProductVariant",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/products/{product_id}/variants/{variant_id}",
+    "operation_id": "deleteProductVariant",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/products/{product_id}/variants/{variant_id}",
+    "operation_id": "getProductVariant",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/products/{product_id}/variants/{variant_id}",
+    "operation_id": "updateProductVariant",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/promotions",
+    "operation_id": "listPromotions",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/promotions",
+    "operation_id": "createPromotion",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/promotions/{promotion_id}",
+    "operation_id": "deletePromotion",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/promotions/{promotion_id}",
+    "operation_id": "getPromotion",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/promotions/{promotion_id}",
+    "operation_id": "updatePromotion",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/promotions/{promotion_id}/codes",
+    "operation_id": "listPromotionCodes",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/promotions/{promotion_id}/codes",
+    "operation_id": "createPromotionCode",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/promotions/{promotion_id}/codes/{promotion_code_id}",
+    "operation_id": "deletePromotionCode",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/promotions/{promotion_id}/codes/{promotion_code_id}",
+    "operation_id": "updatePromotionCode",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/promotions/by-code/{code}",
+    "operation_id": "resolvePromotionCode",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/refunds",
+    "operation_id": "listRefunds",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/refunds",
+    "operation_id": "createRefund",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/refunds/{refund_id}",
+    "operation_id": "getRefund",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/refunds/{refund_id}",
+    "operation_id": "updateRefund",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/report-downloads/{report_download_id}",
+    "operation_id": "getReportDownload",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/reports",
+    "operation_id": "listReports",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/reports",
+    "operation_id": "createReport",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/reports/{report_id}",
+    "operation_id": "getReport",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-dispositions",
+    "operation_id": "listReturnDispositions",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-dispositions/{return_disposition_id}",
+    "operation_id": "getReturnDisposition",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-dispositions/{return_disposition_id}/cancel",
+    "operation_id": "cancelReturnDisposition",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-dispositions/{return_disposition_id}/retry",
+    "operation_id": "retryReturnDisposition",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-previews",
+    "operation_id": "createReturnPreview",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-inspections",
+    "operation_id": "listReturnInspections",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-inspections/{return_inspection_id}",
+    "operation_id": "getReturnInspection",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-inspections/{return_inspection_id}/line-items/{return_inspection_line_item_id}/decide",
+    "operation_id": "decideReturnInspectionLineItem",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-policies",
+    "operation_id": "listReturnPolicies",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-policies",
+    "operation_id": "createReturnPolicy",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-policies/{return_policy_id}",
+    "operation_id": "getReturnPolicy",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/return-policies/{return_policy_id}",
+    "operation_id": "updateReturnPolicy",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/return-policies/{return_policy_id}",
+    "operation_id": "deleteReturnPolicy",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-policies/{return_policy_id}/revisions",
+    "operation_id": "listReturnPolicyRevisions",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-policies/{return_policy_id}/revisions",
+    "operation_id": "publishReturnPolicyRevision",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-policies/{return_policy_id}/revisions/{return_policy_revision_id}",
+    "operation_id": "getReturnPolicyRevision",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-reasons",
+    "operation_id": "listReturnReasons",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-reasons",
+    "operation_id": "createReturnReason",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-reasons/{return_reason_id}",
+    "operation_id": "getReturnReason",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/return-reasons/{return_reason_id}",
+    "operation_id": "updateReturnReason",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/return-reasons/{return_reason_id}",
+    "operation_id": "deleteReturnReason",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-receipts",
+    "operation_id": "listReturnReceipts",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-receipts/{return_receipt_id}",
+    "operation_id": "getReturnReceipt",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-receipts/{return_receipt_id}/line-items/{return_receipt_line_item_id}/verify",
+    "operation_id": "verifyReturnReceiptLineItem",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-resolutions",
+    "operation_id": "listReturnResolutions",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-resolutions/{return_resolution_id}",
+    "operation_id": "getReturnResolution",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/return-resolutions/{return_resolution_id}",
+    "operation_id": "updateReturnResolution",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-resolutions/{return_resolution_id}/cancel",
+    "operation_id": "cancelReturnResolution",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-resolutions/{return_resolution_id}/checkout-session",
+    "operation_id": "getOrCreateReturnResolutionCheckoutSession",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-resolutions/{return_resolution_id}/confirm",
+    "operation_id": "confirmReturnResolution",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-resolutions/{return_resolution_id}/release",
+    "operation_id": "releaseReturnResolution",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-resolutions/{return_resolution_id}/retry",
+    "operation_id": "retryReturnResolution",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/returns",
+    "operation_id": "listReturns",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns",
+    "operation_id": "createReturn",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/returns/{return_id}",
+    "operation_id": "getReturn",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/returns/{return_id}",
+    "operation_id": "updateReturn",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/cancel",
+    "operation_id": "cancelReturn",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/complete",
+    "operation_id": "completeReturn",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/decide",
+    "operation_id": "decideReturn",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/dispositions",
+    "operation_id": "createReturnDisposition",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/inspections",
+    "operation_id": "createReturnInspection",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/returns/{return_id}/line-items",
+    "operation_id": "listReturnLineItems",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/line-items",
+    "operation_id": "addReturnLineItem",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/returns/{return_id}/line-items/{return_line_item_id}",
+    "operation_id": "deleteReturnLineItem",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/returns/{return_id}/line-items/{return_line_item_id}",
+    "operation_id": "getReturnLineItem",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/returns/{return_id}/line-items/{return_line_item_id}",
+    "operation_id": "updateReturnLineItem",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/line-items/{return_line_item_id}/cancel",
+    "operation_id": "cancelReturnLineItem",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/line-items/{return_line_item_id}/waive-inspection",
+    "operation_id": "waiveReturnLineInspection",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/process",
+    "operation_id": "processExistingReturn",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/receipts",
+    "operation_id": "createReturnReceipt",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/reopen",
+    "operation_id": "reopenReturn",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/resolutions",
+    "operation_id": "createReturnResolution",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/reviews",
+    "operation_id": "listReviews",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/reviews/{review_id}",
+    "operation_id": "getReview",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/reviews/{review_id}/approve",
+    "operation_id": "approveReview",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/reviews/{review_id}/decline",
+    "operation_id": "declineReview",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/risk-lists",
+    "operation_id": "listRiskLists",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/risk-lists",
+    "operation_id": "createRiskList",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/risk-lists/{risk_list_id}",
+    "operation_id": "getRiskList",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/risk-lists/{risk_list_id}",
+    "operation_id": "updateRiskList",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/risk-lists/{risk_list_id}",
+    "operation_id": "deleteRiskList",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/risk-lists/{risk_list_id}/items",
+    "operation_id": "listRiskListItems",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/risk-lists/{risk_list_id}/items",
+    "operation_id": "addRiskListItems",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/risk-lists/{risk_list_id}/items/{risk_list_item_id}",
+    "operation_id": "deleteRiskListItem",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/risk-lists/{risk_list_id}/items/{risk_list_item_id}",
+    "operation_id": "getRiskListItem",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/risk-rules",
+    "operation_id": "listRiskRules",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/risk-rules",
+    "operation_id": "createRiskRule",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/risk-rules/{risk_rule_id}",
+    "operation_id": "getRiskRule",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/risk-rules/{risk_rule_id}",
+    "operation_id": "updateRiskRule",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/risk-rules/{risk_rule_id}",
+    "operation_id": "deleteRiskRule",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/risk-rules/attributes",
+    "operation_id": "getRiskRuleAttributeRegistry",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/risk-previews",
+    "operation_id": "createRiskPreview",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/settings",
+    "operation_id": "getSettings",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/settings",
+    "operation_id": "updateSettings",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/settings/effective",
+    "operation_id": "getEffectiveSettings",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/shipments",
+    "operation_id": "listShipments",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/shipments/{shipment_id}",
+    "operation_id": "getShipment",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/shipments/{shipment_id}",
+    "operation_id": "updateShipment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/shipments/{shipment_id}/packages",
+    "operation_id": "createPackage",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/shipments/{shipment_id}/void",
+    "operation_id": "voidShipment",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscription-plans",
+    "operation_id": "listSubscriptionPlans",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscription-plans",
+    "operation_id": "createSubscriptionPlan",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscription-plans/{plan_id}",
+    "operation_id": "getSubscriptionPlan",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/subscription-plans/{plan_id}",
+    "operation_id": "updateSubscriptionPlan",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/subscription-plans/{plan_id}",
+    "operation_id": "deleteSubscriptionPlan",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscriptions",
+    "operation_id": "listSubscriptions",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions",
+    "operation_id": "createSubscription",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscriptions/{subscription_id}",
+    "operation_id": "getSubscription",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/subscriptions/{subscription_id}",
+    "operation_id": "updateSubscription",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/subscriptions/{subscription_id}/billing-schedule",
+    "operation_id": "updateSubscriptionBillingSchedule",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/cancel",
+    "operation_id": "cancelSubscription",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/pause",
+    "operation_id": "pauseSubscription",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/payment-method",
+    "operation_id": "changeSubscriptionPaymentMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscriptions/{subscription_id}/payment-retries",
+    "operation_id": "listSubscriptionPaymentRetries",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/payment-retries",
+    "operation_id": "createSubscriptionPaymentRetry",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscriptions/{subscription_id}/payment-retries/{subscription_payment_retry_id}",
+    "operation_id": "getSubscriptionPaymentRetry",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/reactivate",
+    "operation_id": "reactivateSubscription",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/resume",
+    "operation_id": "resumeSubscription",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/skip-cycle",
+    "operation_id": "skipSubscriptionCycle",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-deliveries/{webhook_delivery_id}",
+    "operation_id": "getWebhookDelivery",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-deliveries/{webhook_delivery_id}/attempts",
+    "operation_id": "listWebhookDeliveryAttempts",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/webhook-deliveries/{webhook_delivery_id}/resend",
+    "operation_id": "resendWebhookDelivery",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-endpoints",
+    "operation_id": "listWebhookEndpoints",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/webhook-endpoints",
+    "operation_id": "createWebhookEndpoint",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/webhook-endpoints/{webhook_endpoint_id}",
+    "operation_id": "deleteWebhookEndpoint",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-endpoints/{webhook_endpoint_id}",
+    "operation_id": "getWebhookEndpoint",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/webhook-endpoints/{webhook_endpoint_id}",
+    "operation_id": "updateWebhookEndpoint",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/webhook-endpoints/{webhook_endpoint_id}/rotate-secret",
+    "operation_id": "rotateWebhookSecret",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/webhook-endpoints/{webhook_endpoint_id}/test-events",
+    "operation_id": "createWebhookTestEvent",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-event-types",
+    "operation_id": "listWebhookEventTypes",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-events",
+    "operation_id": "listWebhookEvents",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-events/{webhook_event_id}",
+    "operation_id": "getWebhookEvent",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-events/{webhook_event_id}/deliveries",
+    "operation_id": "listWebhookDeliveries",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-events/stream",
+    "operation_id": "streamWebhookEvents",
+    "classification": "workflow"
+  }
+]

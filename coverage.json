@@ -1,0 +1,4475 @@
+[
+  {
+    "method": "GET",
+    "path": "/v1/analytics/overview",
+    "operation_id": "getAnalyticsOverview",
+    "classification": "resource",
+    "commands": [
+      "analytics.overview.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/analytics/payment-volume-timeseries",
+    "operation_id": "getPaymentVolumeTimeseries",
+    "classification": "resource",
+    "commands": [
+      "analytics.payment-volume-timeseries.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/analytics/subscriptions",
+    "operation_id": "getSubscriptionAnalytics",
+    "classification": "resource",
+    "commands": [
+      "analytics.subscriptions.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/api-keys",
+    "operation_id": "listAPIKeys",
+    "classification": "resource",
+    "commands": [
+      "api-keys.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/api-keys",
+    "operation_id": "createAPIKey",
+    "classification": "resource",
+    "commands": [
+      "api-keys.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/api-keys/{api_key_id}",
+    "operation_id": "getAPIKey",
+    "classification": "resource",
+    "commands": [
+      "api-keys.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/api-keys/{api_key_id}",
+    "operation_id": "updateAPIKey",
+    "classification": "resource",
+    "commands": [
+      "api-keys.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/api-keys/{api_key_id}/revoke",
+    "operation_id": "revokeAPIKey",
+    "classification": "resource",
+    "commands": [
+      "api-keys.revoke"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/balance-transactions",
+    "operation_id": "listBalanceTransactions",
+    "classification": "resource",
+    "commands": [
+      "balance-transactions.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/balance-transactions/{balance_transaction_id}",
+    "operation_id": "getBalanceTransaction",
+    "classification": "resource",
+    "commands": [
+      "balance-transactions.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/balances",
+    "operation_id": "listBalances",
+    "classification": "resource",
+    "commands": [
+      "balances.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/bundles",
+    "operation_id": "listBundles",
+    "classification": "resource",
+    "commands": [
+      "bundles.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/bundles",
+    "operation_id": "createBundle",
+    "classification": "resource",
+    "commands": [
+      "bundles.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/bundles/{bundle_id}",
+    "operation_id": "deleteBundle",
+    "classification": "resource",
+    "commands": [
+      "bundles.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/bundles/{bundle_id}",
+    "operation_id": "getBundle",
+    "classification": "resource",
+    "commands": [
+      "bundles.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/bundles/{bundle_id}",
+    "operation_id": "updateBundle",
+    "classification": "resource",
+    "commands": [
+      "bundles.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/bundles/{bundle_id}/components",
+    "operation_id": "listBundleComponents",
+    "classification": "resource",
+    "commands": [
+      "bundles.components.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/capabilities",
+    "operation_id": "listCapabilities",
+    "classification": "resource",
+    "commands": [
+      "capabilities.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/categories",
+    "operation_id": "listCategories",
+    "classification": "resource",
+    "commands": [
+      "categories.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/categories",
+    "operation_id": "createCategory",
+    "classification": "resource",
+    "commands": [
+      "categories.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/categories/{category_id}",
+    "operation_id": "deleteCategory",
+    "classification": "resource",
+    "commands": [
+      "categories.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/categories/{category_id}",
+    "operation_id": "getCategory",
+    "classification": "resource",
+    "commands": [
+      "categories.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/categories/{category_id}",
+    "operation_id": "updateCategory",
+    "classification": "resource",
+    "commands": [
+      "categories.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/checkout-sessions",
+    "operation_id": "listCheckoutSessions",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/checkout-sessions",
+    "operation_id": "createCheckoutSession",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/checkout-sessions/{checkout_session_id}",
+    "operation_id": "getCheckoutSession",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/checkout-sessions/{checkout_session_id}",
+    "operation_id": "updateCheckoutSession",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/close",
+    "operation_id": "closeCheckoutSession",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.close"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-quotes",
+    "operation_id": "createCheckoutSessionDeliveryQuote",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.delivery-quotes.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-quotes/{delivery_quote_id}",
+    "operation_id": "getCheckoutSessionDeliveryQuote",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.delivery-quotes.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections",
+    "operation_id": "createCheckoutSessionDeliverySelection",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.delivery-selections.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections/current",
+    "operation_id": "deleteCheckoutSessionCurrentDeliverySelection",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.delivery-selections.current.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections/current",
+    "operation_id": "getCheckoutSessionCurrentDeliverySelection",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.delivery-selections.current.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections/{delivery_selection_id}",
+    "operation_id": "getCheckoutSessionDeliverySelectionHistory",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.delivery-selections.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/query-pickup-availability",
+    "operation_id": "queryCheckoutSessionPickupAvailability",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.query-pickup-availability"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/credit-notes",
+    "operation_id": "listCreditNotes",
+    "classification": "resource",
+    "commands": [
+      "credit-notes.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/credit-notes",
+    "operation_id": "createCreditNote",
+    "classification": "resource",
+    "commands": [
+      "credit-notes.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/credit-notes/{credit_note_id}",
+    "operation_id": "getCreditNote",
+    "classification": "resource",
+    "commands": [
+      "credit-notes.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/credit-notes/{credit_note_id}",
+    "operation_id": "updateCreditNote",
+    "classification": "resource",
+    "commands": [
+      "credit-notes.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/credit-notes/{credit_note_id}/allocations",
+    "operation_id": "listCreditNoteAllocations",
+    "classification": "resource",
+    "commands": [
+      "credit-notes.allocations.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/credit-notes/{credit_note_id}/allocations",
+    "operation_id": "createCreditNoteAllocation",
+    "classification": "resource",
+    "commands": [
+      "credit-notes.allocations.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/credit-notes/{credit_note_id}/allocations/{credit_note_allocation_id}",
+    "operation_id": "getCreditNoteAllocation",
+    "classification": "resource",
+    "commands": [
+      "credit-notes.allocations.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/credit-notes/{credit_note_id}/allocations/{credit_note_allocation_id}/reverse",
+    "operation_id": "reverseCreditNoteAllocation",
+    "classification": "resource",
+    "commands": [
+      "credit-notes.allocations.reverse"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/credit-notes/{credit_note_id}/issue",
+    "operation_id": "issueCreditNote",
+    "classification": "resource",
+    "commands": [
+      "credit-notes.issue"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/credit-notes/{credit_note_id}/pdf",
+    "operation_id": "getCreditNotePDF",
+    "classification": "resource",
+    "commands": [
+      "credit-notes.pdf.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/credit-notes/{credit_note_id}/void",
+    "operation_id": "voidCreditNote",
+    "classification": "resource",
+    "commands": [
+      "credit-notes.void"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customer-deletion-requests",
+    "operation_id": "listCustomerDeletionRequests",
+    "classification": "resource",
+    "commands": [
+      "customer-deletion-requests.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customer-deletion-requests/{customer_deletion_request_id}/resolve",
+    "operation_id": "resolveCustomerDeletionRequest",
+    "classification": "resource",
+    "commands": [
+      "customer-deletion-requests.resolve"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customer-sessions",
+    "operation_id": "createCustomerSession",
+    "classification": "resource",
+    "commands": [
+      "customer-sessions.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customer-sessions/refresh",
+    "operation_id": "refreshCustomerSession",
+    "classification": "resource",
+    "commands": [
+      "customer-sessions.refresh"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customer-sessions/{customer_session_id}/revoke",
+    "operation_id": "revokeCustomerSession",
+    "classification": "resource",
+    "commands": [
+      "customer-sessions.revoke"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customers",
+    "operation_id": "listCustomers",
+    "classification": "resource",
+    "commands": [
+      "customers.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers",
+    "operation_id": "createCustomer",
+    "classification": "resource",
+    "commands": [
+      "customers.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customers/{customer_id}",
+    "operation_id": "getCustomer",
+    "classification": "resource",
+    "commands": [
+      "customers.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/customers/{customer_id}",
+    "operation_id": "updateCustomer",
+    "classification": "resource",
+    "commands": [
+      "customers.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customers/{customer_id}/addresses",
+    "operation_id": "listCustomerAddresses",
+    "classification": "resource",
+    "commands": [
+      "customers.addresses.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/addresses",
+    "operation_id": "createCustomerAddress",
+    "classification": "resource",
+    "commands": [
+      "customers.addresses.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/customers/{customer_id}/addresses/{customer_address_id}",
+    "operation_id": "deleteCustomerAddress",
+    "classification": "resource",
+    "commands": [
+      "customers.addresses.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customers/{customer_id}/addresses/{customer_address_id}",
+    "operation_id": "getCustomerAddress",
+    "classification": "resource",
+    "commands": [
+      "customers.addresses.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/customers/{customer_id}/addresses/{customer_address_id}",
+    "operation_id": "updateCustomerAddress",
+    "classification": "resource",
+    "commands": [
+      "customers.addresses.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/addresses/{customer_address_id}/set-default",
+    "operation_id": "setDefaultCustomerAddress",
+    "classification": "resource",
+    "commands": [
+      "customers.addresses.set-default"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/deletion-requests",
+    "operation_id": "createCustomerDeletionRequest",
+    "classification": "resource",
+    "commands": [
+      "customers.deletion-requests.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customers/{customer_id}/deletion-requests/{customer_deletion_request_id}",
+    "operation_id": "getCustomerDeletionRequest",
+    "classification": "resource",
+    "commands": [
+      "customers.deletion-requests.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/sessions/revoke",
+    "operation_id": "revokeCustomerSessions",
+    "classification": "resource",
+    "commands": [
+      "customers.sessions.revoke"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-location-sets",
+    "operation_id": "listDeliveryLocationSets",
+    "classification": "resource",
+    "commands": [
+      "delivery-location-sets.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-location-sets",
+    "operation_id": "createDeliveryLocationSet",
+    "classification": "resource",
+    "commands": [
+      "delivery-location-sets.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/delivery-location-sets/{delivery_location_set_id}",
+    "operation_id": "deleteDeliveryLocationSet",
+    "classification": "resource",
+    "commands": [
+      "delivery-location-sets.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-location-sets/{delivery_location_set_id}",
+    "operation_id": "getDeliveryLocationSet",
+    "classification": "resource",
+    "commands": [
+      "delivery-location-sets.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/delivery-location-sets/{delivery_location_set_id}",
+    "operation_id": "updateDeliveryLocationSet",
+    "classification": "resource",
+    "commands": [
+      "delivery-location-sets.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-methods",
+    "operation_id": "listDeliveryMethods",
+    "classification": "resource",
+    "commands": [
+      "delivery-methods.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-methods",
+    "operation_id": "createDeliveryMethod",
+    "classification": "resource",
+    "commands": [
+      "delivery-methods.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/delivery-methods/{delivery_method_id}",
+    "operation_id": "deleteDeliveryMethod",
+    "classification": "resource",
+    "commands": [
+      "delivery-methods.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-methods/{delivery_method_id}",
+    "operation_id": "getDeliveryMethod",
+    "classification": "resource",
+    "commands": [
+      "delivery-methods.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/delivery-methods/{delivery_method_id}",
+    "operation_id": "updateDeliveryMethod",
+    "classification": "resource",
+    "commands": [
+      "delivery-methods.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-previews",
+    "operation_id": "createDeliveryPreview",
+    "classification": "resource",
+    "commands": [
+      "delivery-previews.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-profiles",
+    "operation_id": "listDeliveryProfiles",
+    "classification": "resource",
+    "commands": [
+      "delivery-profiles.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-profiles",
+    "operation_id": "createDeliveryProfile",
+    "classification": "resource",
+    "commands": [
+      "delivery-profiles.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/delivery-profiles/{delivery_profile_id}",
+    "operation_id": "deleteDeliveryProfile",
+    "classification": "resource",
+    "commands": [
+      "delivery-profiles.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-profiles/{delivery_profile_id}",
+    "operation_id": "getDeliveryProfile",
+    "classification": "resource",
+    "commands": [
+      "delivery-profiles.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/delivery-profiles/{delivery_profile_id}",
+    "operation_id": "updateDeliveryProfile",
+    "classification": "resource",
+    "commands": [
+      "delivery-profiles.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-profiles/{delivery_profile_id}/assign-to-unconfigured",
+    "operation_id": "assignToUnconfiguredDeliveryProfile",
+    "classification": "resource",
+    "commands": [
+      "delivery-profiles.assign-to-unconfigured.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-quotes",
+    "operation_id": "listDeliveryQuotes",
+    "classification": "resource",
+    "commands": [
+      "delivery-quotes.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-rate-callbacks",
+    "operation_id": "listDeliveryRateCallbacks",
+    "classification": "resource",
+    "commands": [
+      "delivery-rate-callbacks.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-rate-callbacks",
+    "operation_id": "createDeliveryRateCallback",
+    "classification": "resource",
+    "commands": [
+      "delivery-rate-callbacks.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/delivery-rate-callbacks/{delivery_rate_callback_id}",
+    "operation_id": "deleteDeliveryRateCallback",
+    "classification": "resource",
+    "commands": [
+      "delivery-rate-callbacks.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-rate-callbacks/{delivery_rate_callback_id}",
+    "operation_id": "getDeliveryRateCallback",
+    "classification": "resource",
+    "commands": [
+      "delivery-rate-callbacks.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/delivery-rate-callbacks/{delivery_rate_callback_id}",
+    "operation_id": "updateDeliveryRateCallback",
+    "classification": "resource",
+    "commands": [
+      "delivery-rate-callbacks.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-rate-callbacks/{delivery_rate_callback_id}/check-connection",
+    "operation_id": "checkDeliveryRateCallbackConnection",
+    "classification": "resource",
+    "commands": [
+      "delivery-rate-callbacks.check-connection"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-rate-callbacks/{delivery_rate_callback_id}/rotate-secret",
+    "operation_id": "rotateDeliveryRateCallbackSigningKey",
+    "classification": "resource",
+    "commands": [
+      "delivery-rate-callbacks.rotate-secret"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-rate-callbacks/{delivery_rate_callback_id}/test-deliveries",
+    "operation_id": "createDeliveryRateCallbackTestDelivery",
+    "classification": "resource",
+    "commands": [
+      "delivery-rate-callbacks.test-deliveries"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-revocations",
+    "operation_id": "revokeDeliveryDependency",
+    "classification": "resource",
+    "commands": [
+      "delivery-revocations.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-revocations/{delivery_revocation_id}",
+    "operation_id": "getDeliveryRevocation",
+    "classification": "resource",
+    "commands": [
+      "delivery-revocations.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-zones",
+    "operation_id": "listDeliveryZones",
+    "classification": "resource",
+    "commands": [
+      "delivery-zones.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-zones",
+    "operation_id": "createDeliveryZone",
+    "classification": "resource",
+    "commands": [
+      "delivery-zones.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/delivery-zones/{delivery_zone_id}",
+    "operation_id": "deleteDeliveryZone",
+    "classification": "resource",
+    "commands": [
+      "delivery-zones.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-zones/{delivery_zone_id}",
+    "operation_id": "getDeliveryZone",
+    "classification": "resource",
+    "commands": [
+      "delivery-zones.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/delivery-zones/{delivery_zone_id}",
+    "operation_id": "updateDeliveryZone",
+    "classification": "resource",
+    "commands": [
+      "delivery-zones.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/demo-sessions",
+    "operation_id": "createDemoSession",
+    "classification": "resource",
+    "commands": [
+      "demo-sessions.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/demo-sessions/reset",
+    "operation_id": "resetDemoSession",
+    "classification": "resource",
+    "commands": [
+      "demo-sessions.reset"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/auth-context",
+    "operation_id": "getDeveloperAuthContext",
+    "classification": "workflow",
+    "commands": [
+      "auth.status"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/partner/apps",
+    "operation_id": "listDeveloperPartnerApps",
+    "classification": "resource",
+    "commands": [
+      "developer.partner.apps.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/developer/partner/apps",
+    "operation_id": "createDeveloperPartnerApp",
+    "classification": "resource",
+    "commands": [
+      "developer.partner.apps.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/partner/apps/{partner_app_id}",
+    "operation_id": "getDeveloperPartnerApp",
+    "classification": "resource",
+    "commands": [
+      "developer.partner.apps.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/developer/partner/apps/{partner_app_id}",
+    "operation_id": "updateDeveloperPartnerApp",
+    "classification": "resource",
+    "commands": [
+      "developer.partner.apps.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/partner/apps/{partner_app_id}/installs",
+    "operation_id": "listDeveloperPartnerAppInstalls",
+    "classification": "resource",
+    "commands": [
+      "developer.partner.apps.installs.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/partner/apps/{partner_app_id}/installs/{partner_app_install_id}",
+    "operation_id": "getDeveloperPartnerAppInstall",
+    "classification": "resource",
+    "commands": [
+      "developer.partner.apps.installs.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/developer/partner/apps/{partner_app_id}/installs/{partner_app_install_id}/environment-grants/{environment_grant_id}/revoke",
+    "operation_id": "revokeDeveloperPartnerEnvironmentGrant",
+    "classification": "resource",
+    "commands": [
+      "developer.partner.apps.installs.environment-grants.revoke"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/developer/partner/apps/{partner_app_id}/installs/{partner_app_install_id}/revoke",
+    "operation_id": "revokeDeveloperPartnerAppInstall",
+    "classification": "resource",
+    "commands": [
+      "developer.partner.apps.installs.revoke"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/developer/partner/apps/{partner_app_id}/rotate-secret",
+    "operation_id": "rotateDeveloperPartnerAppSecret",
+    "classification": "resource",
+    "commands": [
+      "developer.partner.apps.rotate-secret"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/request-logs",
+    "operation_id": "listCurrentAPIKeyRequestLogs",
+    "classification": "resource",
+    "commands": [
+      "request-logs.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/request-logs/{api_request_log_id}",
+    "operation_id": "getCurrentAPIKeyRequestLog",
+    "classification": "resource",
+    "commands": [
+      "request-logs.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/resource-timelines/{resource_id}",
+    "operation_id": "getResourceTimeline",
+    "classification": "workflow",
+    "commands": [
+      "timeline"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/sandboxes",
+    "operation_id": "listDeveloperSandboxes",
+    "classification": "resource",
+    "commands": [
+      "sandboxes.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/developer/sandboxes",
+    "operation_id": "createDeveloperSandbox",
+    "classification": "resource",
+    "commands": [
+      "sandboxes.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/developer/sandboxes/{sandbox_id}",
+    "operation_id": "deleteDeveloperSandbox",
+    "classification": "resource",
+    "commands": [
+      "sandboxes.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/sandboxes/{sandbox_id}",
+    "operation_id": "getDeveloperSandbox",
+    "classification": "resource",
+    "commands": [
+      "sandboxes.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/developer/sandboxes/{sandbox_id}/reset",
+    "operation_id": "resetDeveloperSandbox",
+    "classification": "resource",
+    "commands": [
+      "sandboxes.reset"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/developer/sandboxes/{sandbox_id}/test-key",
+    "operation_id": "issueDeveloperSandboxTestKey",
+    "classification": "resource",
+    "commands": [
+      "sandboxes.test-key"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/devices",
+    "operation_id": "listDevices",
+    "classification": "resource",
+    "commands": [
+      "devices.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/devices",
+    "operation_id": "createDevice",
+    "classification": "resource",
+    "commands": [
+      "devices.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/devices/{device_id}",
+    "operation_id": "deleteDevice",
+    "classification": "resource",
+    "commands": [
+      "devices.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/devices/{device_id}",
+    "operation_id": "getDevice",
+    "classification": "resource",
+    "commands": [
+      "devices.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/devices/{device_id}",
+    "operation_id": "updateDevice",
+    "classification": "resource",
+    "commands": [
+      "devices.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/disputes",
+    "operation_id": "listDisputes",
+    "classification": "resource",
+    "commands": [
+      "disputes.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/disputes/{dispute_id}",
+    "operation_id": "getDispute",
+    "classification": "resource",
+    "commands": [
+      "disputes.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/feedback-reports",
+    "operation_id": "listFeedbackReports",
+    "classification": "resource",
+    "commands": [
+      "feedback-reports.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/feedback-reports",
+    "operation_id": "createFeedbackReport",
+    "classification": "resource",
+    "commands": [
+      "feedback-reports.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/feedback-reports/{feedback_report_id}",
+    "operation_id": "getFeedbackReport",
+    "classification": "resource",
+    "commands": [
+      "feedback-reports.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/fraud-warnings",
+    "operation_id": "listFraudWarnings",
+    "classification": "resource",
+    "commands": [
+      "fraud-warnings.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/fraud-warnings/{fraud_warning_id}",
+    "operation_id": "getFraudWarning",
+    "classification": "resource",
+    "commands": [
+      "fraud-warnings.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/fulfillment-events",
+    "operation_id": "listFulfillmentEvents",
+    "classification": "resource",
+    "commands": [
+      "fulfillment-events.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/fulfillment-events/{fulfillment_event_id}",
+    "operation_id": "getFulfillmentEvent",
+    "classification": "resource",
+    "commands": [
+      "fulfillment-events.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/fulfillment-notifications",
+    "operation_id": "listFulfillmentNotifications",
+    "classification": "resource",
+    "commands": [
+      "fulfillment-notifications.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/fulfillment-notifications/{fulfillment_notification_id}",
+    "operation_id": "getFulfillmentNotification",
+    "classification": "resource",
+    "commands": [
+      "fulfillment-notifications.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/fulfillments",
+    "operation_id": "listFulfillments",
+    "classification": "resource",
+    "commands": [
+      "fulfillments.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/fulfillments/{fulfillment_id}",
+    "operation_id": "getFulfillment",
+    "classification": "resource",
+    "commands": [
+      "fulfillments.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/fulfillments/{fulfillment_id}",
+    "operation_id": "updateFulfillment",
+    "classification": "resource",
+    "commands": [
+      "fulfillments.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/events",
+    "operation_id": "createFulfillmentEvent",
+    "classification": "resource",
+    "commands": [
+      "fulfillments.events.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/shipments",
+    "operation_id": "createShipment",
+    "classification": "resource",
+    "commands": [
+      "fulfillments.shipments.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/transitions",
+    "operation_id": "transitionFulfillment",
+    "classification": "resource",
+    "commands": [
+      "fulfillments.transitions.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-adjustments",
+    "operation_id": "listInventoryAdjustments",
+    "classification": "resource",
+    "commands": [
+      "inventory-adjustments.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-adjustments",
+    "operation_id": "createInventoryAdjustment",
+    "classification": "resource",
+    "commands": [
+      "inventory-adjustments.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-allocation-policies",
+    "operation_id": "listInventoryAllocationPolicies",
+    "classification": "resource",
+    "commands": [
+      "inventory-allocation-policies.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-allocation-policies",
+    "operation_id": "createInventoryAllocationPolicy",
+    "classification": "resource",
+    "commands": [
+      "inventory-allocation-policies.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/inventory-allocation-policies/{inventory_allocation_policy_id}",
+    "operation_id": "deleteInventoryAllocationPolicy",
+    "classification": "resource",
+    "commands": [
+      "inventory-allocation-policies.delete"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/inventory-allocation-policies/{inventory_allocation_policy_id}",
+    "operation_id": "updateInventoryAllocationPolicy",
+    "classification": "resource",
+    "commands": [
+      "inventory-allocation-policies.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-counts",
+    "operation_id": "listInventoryCounts",
+    "classification": "resource",
+    "commands": [
+      "inventory-counts.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-counts",
+    "operation_id": "createInventoryCount",
+    "classification": "resource",
+    "commands": [
+      "inventory-counts.create"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/inventory-counts/{inventory_count_id}",
+    "operation_id": "updateInventoryCount",
+    "classification": "resource",
+    "commands": [
+      "inventory-counts.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-counts/{inventory_count_id}/apply",
+    "operation_id": "applyInventoryCount",
+    "classification": "resource",
+    "commands": [
+      "inventory-counts.apply"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-counts/{inventory_count_id}/cancel",
+    "operation_id": "cancelInventoryCount",
+    "classification": "resource",
+    "commands": [
+      "inventory-counts.cancel"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-items",
+    "operation_id": "listInventoryItems",
+    "classification": "resource",
+    "commands": [
+      "inventory-items.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-items",
+    "operation_id": "createInventoryItem",
+    "classification": "resource",
+    "commands": [
+      "inventory-items.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/inventory-items/{inventory_item_id}",
+    "operation_id": "deleteInventoryItem",
+    "classification": "resource",
+    "commands": [
+      "inventory-items.delete"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/inventory-items/{inventory_item_id}",
+    "operation_id": "updateInventoryItem",
+    "classification": "resource",
+    "commands": [
+      "inventory-items.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-levels",
+    "operation_id": "listInventoryLevels",
+    "classification": "resource",
+    "commands": [
+      "inventory-levels.list"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/inventory-levels/{inventory_level_id}",
+    "operation_id": "updateInventoryLevel",
+    "classification": "resource",
+    "commands": [
+      "inventory-levels.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-movements",
+    "operation_id": "listInventoryMovements",
+    "classification": "resource",
+    "commands": [
+      "inventory-movements.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-receipts",
+    "operation_id": "listInventoryReceipts",
+    "classification": "resource",
+    "commands": [
+      "inventory-receipts.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-receipts",
+    "operation_id": "createInventoryReceipt",
+    "classification": "resource",
+    "commands": [
+      "inventory-receipts.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-reservations",
+    "operation_id": "listInventoryReservations",
+    "classification": "resource",
+    "commands": [
+      "inventory-reservations.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-reservations",
+    "operation_id": "createInventoryReservation",
+    "classification": "resource",
+    "commands": [
+      "inventory-reservations.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-reservations/{inventory_reservation_id}/commit",
+    "operation_id": "commitInventoryReservation",
+    "classification": "resource",
+    "commands": [
+      "inventory-reservations.commit"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-reservations/{inventory_reservation_id}/consume",
+    "operation_id": "consumeInventoryReservation",
+    "classification": "resource",
+    "commands": [
+      "inventory-reservations.consume"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-reservations/{inventory_reservation_id}/release",
+    "operation_id": "releaseInventoryReservation",
+    "classification": "resource",
+    "commands": [
+      "inventory-reservations.release"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-transfers",
+    "operation_id": "listInventoryTransfers",
+    "classification": "resource",
+    "commands": [
+      "inventory-transfers.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-transfers",
+    "operation_id": "createInventoryTransfer",
+    "classification": "resource",
+    "commands": [
+      "inventory-transfers.create"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/inventory-transfers/{inventory_transfer_id}",
+    "operation_id": "updateInventoryTransfer",
+    "classification": "resource",
+    "commands": [
+      "inventory-transfers.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-transfers/{inventory_transfer_id}/transitions",
+    "operation_id": "transitionInventoryTransfer",
+    "classification": "resource",
+    "commands": [
+      "inventory-transfers.transitions"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoice-payment-terms",
+    "operation_id": "listInvoicePaymentTerms",
+    "classification": "resource",
+    "commands": [
+      "invoice-payment-terms.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoice-payment-terms",
+    "operation_id": "createInvoicePaymentTerm",
+    "classification": "resource",
+    "commands": [
+      "invoice-payment-terms.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/invoice-payment-terms/{invoice_payment_term_id}",
+    "operation_id": "deleteInvoicePaymentTerm",
+    "classification": "resource",
+    "commands": [
+      "invoice-payment-terms.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoice-payment-terms/{invoice_payment_term_id}",
+    "operation_id": "getInvoicePaymentTerm",
+    "classification": "resource",
+    "commands": [
+      "invoice-payment-terms.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/invoice-payment-terms/{invoice_payment_term_id}",
+    "operation_id": "updateInvoicePaymentTerm",
+    "classification": "resource",
+    "commands": [
+      "invoice-payment-terms.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices",
+    "operation_id": "listInvoices",
+    "classification": "resource",
+    "commands": [
+      "invoices.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices",
+    "operation_id": "createInvoice",
+    "classification": "resource",
+    "commands": [
+      "invoices.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}",
+    "operation_id": "getInvoice",
+    "classification": "resource",
+    "commands": [
+      "invoices.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/invoices/{invoice_id}",
+    "operation_id": "updateInvoice",
+    "classification": "resource",
+    "commands": [
+      "invoices.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/checkout-session",
+    "operation_id": "getOrCreateInvoiceCheckoutSession",
+    "classification": "resource",
+    "commands": [
+      "invoices.checkout-session"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/collect",
+    "operation_id": "collectInvoice",
+    "classification": "resource",
+    "commands": [
+      "invoices.collect"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/delivery-attempts",
+    "operation_id": "listInvoiceDeliveryAttempts",
+    "classification": "resource",
+    "commands": [
+      "invoices.delivery-attempts.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/events",
+    "operation_id": "listInvoiceEvents",
+    "classification": "resource",
+    "commands": [
+      "invoices.events.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/issue",
+    "operation_id": "issueInvoice",
+    "classification": "resource",
+    "commands": [
+      "invoices.issue"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/manual-payments",
+    "operation_id": "recordManualInvoicePayment",
+    "classification": "resource",
+    "commands": [
+      "invoices.manual-payments"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/manual-payments/reverse",
+    "operation_id": "reverseManualInvoicePayment",
+    "classification": "resource",
+    "commands": [
+      "invoices.manual-payments.reverse"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/mark-uncollectible",
+    "operation_id": "markInvoiceUncollectible",
+    "classification": "resource",
+    "commands": [
+      "invoices.mark-uncollectible"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/pause-reminders",
+    "operation_id": "pauseInvoiceReminders",
+    "classification": "resource",
+    "commands": [
+      "invoices.pause-reminders"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/payment-attempts",
+    "operation_id": "listInvoicePaymentAttempts",
+    "classification": "resource",
+    "commands": [
+      "invoices.payment-attempts.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/payment-attempts/{invoice_payment_attempt_id}",
+    "operation_id": "getInvoicePaymentAttempt",
+    "classification": "resource",
+    "commands": [
+      "invoices.payment-attempts.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/payment-attempts/{invoice_payment_attempt_id}/cancel",
+    "operation_id": "cancelInvoicePaymentAttempt",
+    "classification": "resource",
+    "commands": [
+      "invoices.payment-attempts.cancel"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/pdf",
+    "operation_id": "getInvoicePDF",
+    "classification": "resource",
+    "commands": [
+      "invoices.pdf.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/regenerate-public-link",
+    "operation_id": "regenerateInvoicePublicLink",
+    "classification": "resource",
+    "commands": [
+      "invoices.regenerate-public-link"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/resume-reminders",
+    "operation_id": "resumeInvoiceReminders",
+    "classification": "resource",
+    "commands": [
+      "invoices.resume-reminders"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/send-reminder",
+    "operation_id": "sendInvoiceReminder",
+    "classification": "resource",
+    "commands": [
+      "invoices.send-reminder"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/void",
+    "operation_id": "voidInvoice",
+    "classification": "resource",
+    "commands": [
+      "invoices.void"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/locations",
+    "operation_id": "listLocations",
+    "classification": "resource",
+    "commands": [
+      "locations.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/locations",
+    "operation_id": "createLocation",
+    "classification": "resource",
+    "commands": [
+      "locations.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/locations/{location_id}",
+    "operation_id": "deleteLocation",
+    "classification": "resource",
+    "commands": [
+      "locations.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/locations/{location_id}",
+    "operation_id": "getLocation",
+    "classification": "resource",
+    "commands": [
+      "locations.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/locations/{location_id}",
+    "operation_id": "updateLocation",
+    "classification": "resource",
+    "commands": [
+      "locations.update"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/locations/{location_id}/geography",
+    "operation_id": "publishLocationGeography",
+    "classification": "resource",
+    "commands": [
+      "locations.geography.update"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/locations/{location_id}/inventory",
+    "operation_id": "updateLocationInventory",
+    "classification": "resource",
+    "commands": [
+      "locations.inventory.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me",
+    "operation_id": "getMe",
+    "classification": "resource",
+    "commands": [
+      "me.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/me",
+    "operation_id": "updateMe",
+    "classification": "resource",
+    "commands": [
+      "me.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/addresses",
+    "operation_id": "listMeAddresses",
+    "classification": "resource",
+    "commands": [
+      "me.addresses.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/addresses",
+    "operation_id": "createMeAddress",
+    "classification": "resource",
+    "commands": [
+      "me.addresses.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/me/addresses/{customer_address_id}",
+    "operation_id": "deleteMeAddress",
+    "classification": "resource",
+    "commands": [
+      "me.addresses.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/addresses/{customer_address_id}",
+    "operation_id": "getMeAddress",
+    "classification": "resource",
+    "commands": [
+      "me.addresses.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/me/addresses/{customer_address_id}",
+    "operation_id": "updateMeAddress",
+    "classification": "resource",
+    "commands": [
+      "me.addresses.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/addresses/{customer_address_id}/set-default",
+    "operation_id": "setDefaultMeAddress",
+    "classification": "resource",
+    "commands": [
+      "me.addresses.set-default"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/deletion-requests",
+    "operation_id": "createMeDeletionRequest",
+    "classification": "resource",
+    "commands": [
+      "me.deletion-requests.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/deletion-requests/{customer_deletion_request_id}",
+    "operation_id": "getMeDeletionRequest",
+    "classification": "resource",
+    "commands": [
+      "me.deletion-requests.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/email-change-requests",
+    "operation_id": "createMeEmailChangeRequest",
+    "classification": "resource",
+    "commands": [
+      "me.email-change-requests.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/email-change-requests/{email_change_request_id}/confirm",
+    "operation_id": "confirmMeEmailChangeRequest",
+    "classification": "resource",
+    "commands": [
+      "me.email-change-requests.confirm"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/fulfillments",
+    "operation_id": "listMeFulfillments",
+    "classification": "resource",
+    "commands": [
+      "me.fulfillments.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/invoices",
+    "operation_id": "listMeInvoices",
+    "classification": "resource",
+    "commands": [
+      "me.invoices.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/invoices/{invoice_id}",
+    "operation_id": "getMeInvoice",
+    "classification": "resource",
+    "commands": [
+      "me.invoices.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/invoices/{invoice_id}/checkout-session",
+    "operation_id": "createMeInvoiceCheckoutSession",
+    "classification": "resource",
+    "commands": [
+      "me.invoices.checkout-session.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/invoices/{invoice_id}/credit-notes",
+    "operation_id": "listMeCreditNotes",
+    "classification": "resource",
+    "commands": [
+      "me.invoices.credit-notes.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/invoices/{invoice_id}/credit-notes/{credit_note_id}",
+    "operation_id": "getMeCreditNote",
+    "classification": "resource",
+    "commands": [
+      "me.invoices.credit-notes.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/invoices/{invoice_id}/credit-notes/{credit_note_id}/pdf",
+    "operation_id": "getMeCreditNotePDF",
+    "classification": "resource",
+    "commands": [
+      "me.invoices.credit-notes.pdf.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/invoices/{invoice_id}/pdf",
+    "operation_id": "getMeInvoicePDF",
+    "classification": "resource",
+    "commands": [
+      "me.invoices.pdf.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/orders",
+    "operation_id": "listMeOrders",
+    "classification": "resource",
+    "commands": [
+      "me.orders.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/orders/{order_id}",
+    "operation_id": "getMeOrder",
+    "classification": "resource",
+    "commands": [
+      "me.orders.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/orders/{order_id}/activities",
+    "operation_id": "listMeOrderActivities",
+    "classification": "resource",
+    "commands": [
+      "me.orders.activities.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/orders/{order_id}/receipt",
+    "operation_id": "resendMeOrderReceipt",
+    "classification": "resource",
+    "commands": [
+      "me.orders.receipt"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/packages",
+    "operation_id": "listMePackages",
+    "classification": "resource",
+    "commands": [
+      "me.packages.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/payment-methods",
+    "operation_id": "listMePaymentMethods",
+    "classification": "resource",
+    "commands": [
+      "me.payment-methods.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/payment-methods",
+    "operation_id": "saveMePaymentMethod",
+    "classification": "resource",
+    "commands": [
+      "me.payment-methods"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/me/payment-methods/{payment_method_id}",
+    "operation_id": "removeMePaymentMethod",
+    "classification": "resource",
+    "commands": [
+      "me.payment-methods.delete"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/payment-methods/{payment_method_id}/set-default",
+    "operation_id": "setDefaultMePaymentMethod",
+    "classification": "resource",
+    "commands": [
+      "me.payment-methods.set-default"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/payments",
+    "operation_id": "listMePayments",
+    "classification": "resource",
+    "commands": [
+      "me.payments.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/refunds",
+    "operation_id": "listMeRefunds",
+    "classification": "resource",
+    "commands": [
+      "me.refunds.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/return-previews",
+    "operation_id": "createMeReturnPreview",
+    "classification": "resource",
+    "commands": [
+      "me.return-previews.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/return-resolutions/{resolution_id}/checkout-session",
+    "operation_id": "createMeReturnResolutionCheckoutSession",
+    "classification": "resource",
+    "commands": [
+      "me.return-resolutions.checkout-session.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/returns",
+    "operation_id": "listMeReturns",
+    "classification": "resource",
+    "commands": [
+      "me.returns.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/returns",
+    "operation_id": "createMeReturn",
+    "classification": "resource",
+    "commands": [
+      "me.returns.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/returns/{return_id}",
+    "operation_id": "getMeReturn",
+    "classification": "resource",
+    "commands": [
+      "me.returns.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/returns/{return_id}/cancel",
+    "operation_id": "cancelMeReturn",
+    "classification": "resource",
+    "commands": [
+      "me.returns.cancel"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/shipments",
+    "operation_id": "listMeShipments",
+    "classification": "resource",
+    "commands": [
+      "me.shipments.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/subscriptions",
+    "operation_id": "listMeSubscriptions",
+    "classification": "resource",
+    "commands": [
+      "me.subscriptions.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/subscriptions/{subscription_id}",
+    "operation_id": "getMeSubscription",
+    "classification": "resource",
+    "commands": [
+      "me.subscriptions.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/cancel",
+    "operation_id": "cancelMeSubscription",
+    "classification": "resource",
+    "commands": [
+      "me.subscriptions.cancel"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/pause",
+    "operation_id": "pauseMeSubscription",
+    "classification": "resource",
+    "commands": [
+      "me.subscriptions.pause"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/payment-method",
+    "operation_id": "changeMeSubscriptionPaymentMethod",
+    "classification": "resource",
+    "commands": [
+      "me.subscriptions.payment-method"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/reactivate",
+    "operation_id": "reactivateMeSubscription",
+    "classification": "resource",
+    "commands": [
+      "me.subscriptions.reactivate"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/resume",
+    "operation_id": "resumeMeSubscription",
+    "classification": "resource",
+    "commands": [
+      "me.subscriptions.resume"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/merchant-account-sessions",
+    "operation_id": "createMerchantAccountSession",
+    "classification": "resource",
+    "commands": [
+      "merchant-account-sessions.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/merchant-account-sessions/refresh",
+    "operation_id": "refreshMerchantAccountSession",
+    "classification": "resource",
+    "commands": [
+      "merchant-account-sessions.refresh"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/merchant-billing-balances",
+    "operation_id": "listMerchantBillingBalances",
+    "classification": "resource",
+    "commands": [
+      "merchant-billing-balances.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/merchant-billing-balances/{merchant_billing_balance_id}",
+    "operation_id": "getMerchantBillingBalance",
+    "classification": "resource",
+    "commands": [
+      "merchant-billing-balances.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/merchant-subscription-invoices",
+    "operation_id": "listMerchantSubscriptionInvoices",
+    "classification": "resource",
+    "commands": [
+      "merchant-subscription-invoices.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/merchant-subscription-invoices/{merchant_subscription_invoice_id}",
+    "operation_id": "getMerchantSubscriptionInvoice",
+    "classification": "resource",
+    "commands": [
+      "merchant-subscription-invoices.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/merchants/{merchant_id}",
+    "operation_id": "getMerchant",
+    "classification": "resource",
+    "commands": [
+      "merchants.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/merchants/{merchant_id}",
+    "operation_id": "updateMerchant",
+    "classification": "resource",
+    "commands": [
+      "merchants.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/modifier-groups",
+    "operation_id": "listModifierGroups",
+    "classification": "resource",
+    "commands": [
+      "modifier-groups.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/modifier-groups",
+    "operation_id": "createModifierGroup",
+    "classification": "resource",
+    "commands": [
+      "modifier-groups.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/modifier-groups/{modifier_group_id}",
+    "operation_id": "deleteModifierGroup",
+    "classification": "resource",
+    "commands": [
+      "modifier-groups.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/modifier-groups/{modifier_group_id}",
+    "operation_id": "getModifierGroup",
+    "classification": "resource",
+    "commands": [
+      "modifier-groups.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/modifier-groups/{modifier_group_id}",
+    "operation_id": "updateModifierGroup",
+    "classification": "resource",
+    "commands": [
+      "modifier-groups.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/modifier-sets",
+    "operation_id": "listModifierSets",
+    "classification": "resource",
+    "commands": [
+      "modifier-sets.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/modifier-sets",
+    "operation_id": "createModifierSet",
+    "classification": "resource",
+    "commands": [
+      "modifier-sets.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/modifier-sets/{modifier_set_id}",
+    "operation_id": "deleteModifierSet",
+    "classification": "resource",
+    "commands": [
+      "modifier-sets.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/modifier-sets/{modifier_set_id}",
+    "operation_id": "getModifierSet",
+    "classification": "resource",
+    "commands": [
+      "modifier-sets.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/modifier-sets/{modifier_set_id}",
+    "operation_id": "updateModifierSet",
+    "classification": "resource",
+    "commands": [
+      "modifier-sets.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/oauth/authorize",
+    "operation_id": "authorizePartnerInstall",
+    "classification": "resource",
+    "commands": [
+      "oauth.authorize"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/oauth/authorize/preview",
+    "operation_id": "previewPartnerInstallAuthorization",
+    "classification": "resource",
+    "commands": [
+      "oauth.authorize.preview.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/oauth/token",
+    "operation_id": "exchangePartnerInstallToken",
+    "classification": "resource",
+    "commands": [
+      "oauth.token"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/onboarding/advance",
+    "operation_id": "advanceOnboarding",
+    "classification": "resource",
+    "commands": [
+      "onboarding.advance"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/onboarding/api-key",
+    "operation_id": "createOnboardingAPIKey",
+    "classification": "resource",
+    "commands": [
+      "onboarding.api-key.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/onboarding/start",
+    "operation_id": "startOnboarding",
+    "classification": "resource",
+    "commands": [
+      "onboarding.start"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/onboarding/state",
+    "operation_id": "getOnboardingState",
+    "classification": "resource",
+    "commands": [
+      "onboarding.state.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/onboarding/verify-email",
+    "operation_id": "verifyOnboardingEmail",
+    "classification": "resource",
+    "commands": [
+      "onboarding.verify-email"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/openapi.json",
+    "operation_id": "getOpenAPISpec",
+    "classification": "resource",
+    "commands": [
+      "openapi.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders",
+    "operation_id": "listOrders",
+    "classification": "resource",
+    "commands": [
+      "orders.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders",
+    "operation_id": "createOrder",
+    "classification": "resource",
+    "commands": [
+      "orders.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders/{order_id}",
+    "operation_id": "getOrder",
+    "classification": "resource",
+    "commands": [
+      "orders.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/orders/{order_id}",
+    "operation_id": "updateOrder",
+    "classification": "resource",
+    "commands": [
+      "orders.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders/{order_id}/activities",
+    "operation_id": "listOrderActivities",
+    "classification": "resource",
+    "commands": [
+      "orders.activities.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/charges",
+    "operation_id": "addOrderCharge",
+    "classification": "resource",
+    "commands": [
+      "orders.charges"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/orders/{order_id}/charges/{order_charge_id}",
+    "operation_id": "deleteOrderCharge",
+    "classification": "resource",
+    "commands": [
+      "orders.charges.delete"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/orders/{order_id}/charges/{order_charge_id}",
+    "operation_id": "updateOrderCharge",
+    "classification": "resource",
+    "commands": [
+      "orders.charges.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/close",
+    "operation_id": "closeOrder",
+    "classification": "resource",
+    "commands": [
+      "orders.close"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders/{order_id}/delivery-selections/current",
+    "operation_id": "getOrderCurrentDeliverySelection",
+    "classification": "resource",
+    "commands": [
+      "orders.delivery-selections.current.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/discounts",
+    "operation_id": "applyOrderDiscount",
+    "classification": "resource",
+    "commands": [
+      "orders.discounts"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/discounts/preview",
+    "operation_id": "previewOrderDiscounts",
+    "classification": "resource",
+    "commands": [
+      "orders.discounts.preview"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/discounts/remove",
+    "operation_id": "removeOrderDiscounts",
+    "classification": "resource",
+    "commands": [
+      "orders.discounts.remove"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/discounts/reprice",
+    "operation_id": "repriceOrderDiscounts",
+    "classification": "resource",
+    "commands": [
+      "orders.discounts.reprice"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/fulfillments",
+    "operation_id": "createFulfillment",
+    "classification": "resource",
+    "commands": [
+      "orders.fulfillments.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/inventory-exception/resolve",
+    "operation_id": "resolveOrderInventoryException",
+    "classification": "resource",
+    "commands": [
+      "orders.inventory-exception.resolve"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/line-items",
+    "operation_id": "addOrderLineItems",
+    "classification": "resource",
+    "commands": [
+      "orders.line-items"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/orders/{order_id}/line-items/{order_line_item_id}",
+    "operation_id": "deleteOrderLineItem",
+    "classification": "resource",
+    "commands": [
+      "orders.line-items.delete"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/orders/{order_id}/line-items/{order_line_item_id}",
+    "operation_id": "updateOrderLineItem",
+    "classification": "resource",
+    "commands": [
+      "orders.line-items.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/pay",
+    "operation_id": "payOrder",
+    "classification": "resource",
+    "commands": [
+      "orders.pay"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders/{order_id}/payment-attempts",
+    "operation_id": "listOrderPaymentAttempts",
+    "classification": "resource",
+    "commands": [
+      "orders.payment-attempts.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders/{order_id}/payment-attempts/{payment_attempt_id}",
+    "operation_id": "getOrderPaymentAttempt",
+    "classification": "resource",
+    "commands": [
+      "orders.payment-attempts.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/payment-attempts/{payment_attempt_id}/cancel",
+    "operation_id": "cancelOrderPaymentAttempt",
+    "classification": "resource",
+    "commands": [
+      "orders.payment-attempts.cancel"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/payment-intents",
+    "operation_id": "createOrderPaymentIntent",
+    "classification": "resource",
+    "commands": [
+      "orders.payment-intents.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/payment-intents/{payment_intent_id}/cancel",
+    "operation_id": "cancelOrderPayment",
+    "classification": "resource",
+    "commands": [
+      "orders.payment-intents.cancel"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/payment-intents/{payment_intent_id}/capture",
+    "operation_id": "captureOrderPayment",
+    "classification": "resource",
+    "commands": [
+      "orders.payment-intents.capture"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/receipt",
+    "operation_id": "resendOrderReceipt",
+    "classification": "resource",
+    "commands": [
+      "orders.receipt"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/organizations",
+    "operation_id": "listOrganizations",
+    "classification": "resource",
+    "commands": [
+      "organizations.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/organizations",
+    "operation_id": "createOrganization",
+    "classification": "resource",
+    "commands": [
+      "organizations.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/organizations/{organization_id}",
+    "operation_id": "deleteOrganization",
+    "classification": "resource",
+    "commands": [
+      "organizations.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/organizations/{organization_id}",
+    "operation_id": "getOrganization",
+    "classification": "resource",
+    "commands": [
+      "organizations.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/organizations/{organization_id}",
+    "operation_id": "updateOrganization",
+    "classification": "resource",
+    "commands": [
+      "organizations.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/organizations/{organization_id}/memberships",
+    "operation_id": "listOrganizationMemberships",
+    "classification": "resource",
+    "commands": [
+      "organizations.memberships.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/organizations/{organization_id}/memberships",
+    "operation_id": "grantOrganizationMembership",
+    "classification": "resource",
+    "commands": [
+      "organizations.memberships"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/organizations/{organization_id}/memberships/{user_id}",
+    "operation_id": "revokeOrganizationMembership",
+    "classification": "resource",
+    "commands": [
+      "organizations.memberships.delete"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/organizations/{organization_id}/transfer-ownership",
+    "operation_id": "transferOrganizationOwnership",
+    "classification": "resource",
+    "commands": [
+      "organizations.transfer-ownership"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/packages",
+    "operation_id": "listPackages",
+    "classification": "resource",
+    "commands": [
+      "packages.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/packages/{package_id}",
+    "operation_id": "getPackage",
+    "classification": "resource",
+    "commands": [
+      "packages.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/packages/{package_id}",
+    "operation_id": "updatePackage",
+    "classification": "resource",
+    "commands": [
+      "packages.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/packages/{package_id}/items",
+    "operation_id": "listPackageItems",
+    "classification": "resource",
+    "commands": [
+      "packages.items.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/packages/{package_id}/items",
+    "operation_id": "createPackageItem",
+    "classification": "resource",
+    "commands": [
+      "packages.items.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/packages/{package_id}/items/{package_item_id}",
+    "operation_id": "deletePackageItem",
+    "classification": "resource",
+    "commands": [
+      "packages.items.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/packages/{package_id}/items/{package_item_id}",
+    "operation_id": "getPackageItem",
+    "classification": "resource",
+    "commands": [
+      "packages.items.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/packages/{package_id}/items/{package_item_id}",
+    "operation_id": "updatePackageItem",
+    "classification": "resource",
+    "commands": [
+      "packages.items.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/packages/{package_id}/transitions",
+    "operation_id": "transitionPackage",
+    "classification": "resource",
+    "commands": [
+      "packages.transitions.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/packages/{package_id}/void",
+    "operation_id": "voidPackage",
+    "classification": "resource",
+    "commands": [
+      "packages.void"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-intents",
+    "operation_id": "listPaymentIntents",
+    "classification": "resource",
+    "commands": [
+      "payment-intents.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-intents",
+    "operation_id": "createPaymentIntent",
+    "classification": "resource",
+    "commands": [
+      "payment-intents.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-intents/{payment_intent_id}",
+    "operation_id": "getPaymentIntent",
+    "classification": "resource",
+    "commands": [
+      "payment-intents.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/payment-intents/{payment_intent_id}",
+    "operation_id": "updatePaymentIntent",
+    "classification": "resource",
+    "commands": [
+      "payment-intents.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-intents/{payment_intent_id}/cancel",
+    "operation_id": "cancelPaymentIntent",
+    "classification": "resource",
+    "commands": [
+      "payment-intents.cancel"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-intents/{payment_intent_id}/capture",
+    "operation_id": "capturePaymentIntent",
+    "classification": "resource",
+    "commands": [
+      "payment-intents.capture"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-intents/{payment_intent_id}/confirm",
+    "operation_id": "confirmPaymentIntent",
+    "classification": "resource",
+    "commands": [
+      "payment-intents.confirm"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-links",
+    "operation_id": "listPaymentLinks",
+    "classification": "resource",
+    "commands": [
+      "payment-links.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-links",
+    "operation_id": "createPaymentLink",
+    "classification": "resource",
+    "commands": [
+      "payment-links.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-links/{payment_link_id}",
+    "operation_id": "getPaymentLink",
+    "classification": "resource",
+    "commands": [
+      "payment-links.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/payment-links/{payment_link_id}",
+    "operation_id": "updatePaymentLink",
+    "classification": "resource",
+    "commands": [
+      "payment-links.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-links/{payment_link_id}/public",
+    "operation_id": "getPaymentLinkPublic",
+    "classification": "resource",
+    "commands": [
+      "payment-links.public.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-links/{payment_link_id}/resolve",
+    "operation_id": "resolvePaymentLink",
+    "classification": "resource",
+    "commands": [
+      "payment-links.resolve"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-method-domains",
+    "operation_id": "listPaymentMethodDomains",
+    "classification": "resource",
+    "commands": [
+      "payment-method-domains.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-method-domains",
+    "operation_id": "createPaymentMethodDomain",
+    "classification": "resource",
+    "commands": [
+      "payment-method-domains.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-method-domains/{payment_method_domain_id}",
+    "operation_id": "getPaymentMethodDomain",
+    "classification": "resource",
+    "commands": [
+      "payment-method-domains.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/payment-method-domains/{payment_method_domain_id}",
+    "operation_id": "updatePaymentMethodDomain",
+    "classification": "resource",
+    "commands": [
+      "payment-method-domains.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-methods",
+    "operation_id": "listPaymentMethods",
+    "classification": "resource",
+    "commands": [
+      "payment-methods.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-methods",
+    "operation_id": "savePaymentMethod",
+    "classification": "resource",
+    "commands": [
+      "payment-methods.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/payment-methods/{payment_method_id}",
+    "operation_id": "removePaymentMethod",
+    "classification": "resource",
+    "commands": [
+      "payment-methods.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-methods/{payment_method_id}",
+    "operation_id": "getPaymentMethod",
+    "classification": "resource",
+    "commands": [
+      "payment-methods.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-methods/{payment_method_id}/set-default",
+    "operation_id": "setDefaultPaymentMethod",
+    "classification": "resource",
+    "commands": [
+      "payment-methods.set-default"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payout-settings",
+    "operation_id": "getPayoutSettings",
+    "classification": "resource",
+    "commands": [
+      "payout-settings.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/payout-settings",
+    "operation_id": "updatePayoutSettings",
+    "classification": "resource",
+    "commands": [
+      "payout-settings.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payout-settings/destinations",
+    "operation_id": "listPayoutDestinations",
+    "classification": "resource",
+    "commands": [
+      "payout-settings.destinations.list"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/payout-settings/destinations/{payout_destination_id}",
+    "operation_id": "deletePayoutDestination",
+    "classification": "resource",
+    "commands": [
+      "payout-settings.destinations.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payout-settings/destinations/{payout_destination_id}",
+    "operation_id": "getPayoutDestination",
+    "classification": "resource",
+    "commands": [
+      "payout-settings.destinations.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/payout-settings/destinations/{payout_destination_id}",
+    "operation_id": "updatePayoutDestination",
+    "classification": "resource",
+    "commands": [
+      "payout-settings.destinations.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payouts",
+    "operation_id": "listPayouts",
+    "classification": "resource",
+    "commands": [
+      "payouts.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payouts",
+    "operation_id": "createPayout",
+    "classification": "resource",
+    "commands": [
+      "payouts.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payouts/{payout_id}",
+    "operation_id": "getPayout",
+    "classification": "resource",
+    "commands": [
+      "payouts.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payouts/{payout_id}/cancel",
+    "operation_id": "cancelPayout",
+    "classification": "resource",
+    "commands": [
+      "payouts.cancel"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payouts/{payout_id}/entries",
+    "operation_id": "listPayoutEntries",
+    "classification": "resource",
+    "commands": [
+      "payouts.entries.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/products",
+    "operation_id": "listProducts",
+    "classification": "resource",
+    "commands": [
+      "products.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/products",
+    "operation_id": "createProduct",
+    "classification": "resource",
+    "commands": [
+      "products.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/products/{product_id}",
+    "operation_id": "deleteProduct",
+    "classification": "resource",
+    "commands": [
+      "products.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/products/{product_id}",
+    "operation_id": "getProduct",
+    "classification": "resource",
+    "commands": [
+      "products.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/products/{product_id}",
+    "operation_id": "updateProduct",
+    "classification": "resource",
+    "commands": [
+      "products.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/products/{product_id}/options",
+    "operation_id": "listProductOptions",
+    "classification": "resource",
+    "commands": [
+      "products.options.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/products/{product_id}/options/{option_id}",
+    "operation_id": "getProductOption",
+    "classification": "resource",
+    "commands": [
+      "products.options.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/products/{product_id}/variants",
+    "operation_id": "listProductVariants",
+    "classification": "resource",
+    "commands": [
+      "products.variants.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/products/{product_id}/variants",
+    "operation_id": "createProductVariant",
+    "classification": "resource",
+    "commands": [
+      "products.variants.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/products/{product_id}/variants/{variant_id}",
+    "operation_id": "deleteProductVariant",
+    "classification": "resource",
+    "commands": [
+      "products.variants.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/products/{product_id}/variants/{variant_id}",
+    "operation_id": "getProductVariant",
+    "classification": "resource",
+    "commands": [
+      "products.variants.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/products/{product_id}/variants/{variant_id}",
+    "operation_id": "updateProductVariant",
+    "classification": "resource",
+    "commands": [
+      "products.variants.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/promotions",
+    "operation_id": "listPromotions",
+    "classification": "resource",
+    "commands": [
+      "promotions.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/promotions",
+    "operation_id": "createPromotion",
+    "classification": "resource",
+    "commands": [
+      "promotions.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/promotions/by-code/{code}",
+    "operation_id": "resolvePromotionCode",
+    "classification": "resource",
+    "commands": [
+      "promotions.by-code.get"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/promotions/{promotion_id}",
+    "operation_id": "deletePromotion",
+    "classification": "resource",
+    "commands": [
+      "promotions.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/promotions/{promotion_id}",
+    "operation_id": "getPromotion",
+    "classification": "resource",
+    "commands": [
+      "promotions.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/promotions/{promotion_id}",
+    "operation_id": "updatePromotion",
+    "classification": "resource",
+    "commands": [
+      "promotions.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/promotions/{promotion_id}/codes",
+    "operation_id": "listPromotionCodes",
+    "classification": "resource",
+    "commands": [
+      "promotions.codes.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/promotions/{promotion_id}/codes",
+    "operation_id": "createPromotionCode",
+    "classification": "resource",
+    "commands": [
+      "promotions.codes.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/promotions/{promotion_id}/codes/{promotion_code_id}",
+    "operation_id": "deletePromotionCode",
+    "classification": "resource",
+    "commands": [
+      "promotions.codes.delete"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/promotions/{promotion_id}/codes/{promotion_code_id}",
+    "operation_id": "updatePromotionCode",
+    "classification": "resource",
+    "commands": [
+      "promotions.codes.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/refunds",
+    "operation_id": "listRefunds",
+    "classification": "resource",
+    "commands": [
+      "refunds.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/refunds",
+    "operation_id": "createRefund",
+    "classification": "resource",
+    "commands": [
+      "refunds.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/refunds/{refund_id}",
+    "operation_id": "getRefund",
+    "classification": "resource",
+    "commands": [
+      "refunds.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/refunds/{refund_id}",
+    "operation_id": "updateRefund",
+    "classification": "resource",
+    "commands": [
+      "refunds.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/report-downloads/{report_download_id}",
+    "operation_id": "getReportDownload",
+    "classification": "resource",
+    "commands": [
+      "report-downloads.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/reports",
+    "operation_id": "listReports",
+    "classification": "resource",
+    "commands": [
+      "reports.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/reports",
+    "operation_id": "createReport",
+    "classification": "resource",
+    "commands": [
+      "reports.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/reports/{report_id}",
+    "operation_id": "getReport",
+    "classification": "resource",
+    "commands": [
+      "reports.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-dispositions",
+    "operation_id": "listReturnDispositions",
+    "classification": "resource",
+    "commands": [
+      "return-dispositions.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-dispositions/{return_disposition_id}",
+    "operation_id": "getReturnDisposition",
+    "classification": "resource",
+    "commands": [
+      "return-dispositions.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-dispositions/{return_disposition_id}/cancel",
+    "operation_id": "cancelReturnDisposition",
+    "classification": "resource",
+    "commands": [
+      "return-dispositions.cancel"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-dispositions/{return_disposition_id}/retry",
+    "operation_id": "retryReturnDisposition",
+    "classification": "resource",
+    "commands": [
+      "return-dispositions.retry"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-inspections",
+    "operation_id": "listReturnInspections",
+    "classification": "resource",
+    "commands": [
+      "return-inspections.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-inspections/{return_inspection_id}",
+    "operation_id": "getReturnInspection",
+    "classification": "resource",
+    "commands": [
+      "return-inspections.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-inspections/{return_inspection_id}/line-items/{return_inspection_line_item_id}/decide",
+    "operation_id": "decideReturnInspectionLineItem",
+    "classification": "resource",
+    "commands": [
+      "return-inspections.line-items.decide"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-policies",
+    "operation_id": "listReturnPolicies",
+    "classification": "resource",
+    "commands": [
+      "return-policies.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-policies",
+    "operation_id": "createReturnPolicy",
+    "classification": "resource",
+    "commands": [
+      "return-policies.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/return-policies/{return_policy_id}",
+    "operation_id": "deleteReturnPolicy",
+    "classification": "resource",
+    "commands": [
+      "return-policies.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-policies/{return_policy_id}",
+    "operation_id": "getReturnPolicy",
+    "classification": "resource",
+    "commands": [
+      "return-policies.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/return-policies/{return_policy_id}",
+    "operation_id": "updateReturnPolicy",
+    "classification": "resource",
+    "commands": [
+      "return-policies.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-policies/{return_policy_id}/revisions",
+    "operation_id": "listReturnPolicyRevisions",
+    "classification": "resource",
+    "commands": [
+      "return-policies.revisions.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-policies/{return_policy_id}/revisions",
+    "operation_id": "publishReturnPolicyRevision",
+    "classification": "resource",
+    "commands": [
+      "return-policies.revisions"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-policies/{return_policy_id}/revisions/{return_policy_revision_id}",
+    "operation_id": "getReturnPolicyRevision",
+    "classification": "resource",
+    "commands": [
+      "return-policies.revisions.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-previews",
+    "operation_id": "createReturnPreview",
+    "classification": "resource",
+    "commands": [
+      "return-previews.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-reasons",
+    "operation_id": "listReturnReasons",
+    "classification": "resource",
+    "commands": [
+      "return-reasons.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-reasons",
+    "operation_id": "createReturnReason",
+    "classification": "resource",
+    "commands": [
+      "return-reasons.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/return-reasons/{return_reason_id}",
+    "operation_id": "deleteReturnReason",
+    "classification": "resource",
+    "commands": [
+      "return-reasons.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-reasons/{return_reason_id}",
+    "operation_id": "getReturnReason",
+    "classification": "resource",
+    "commands": [
+      "return-reasons.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/return-reasons/{return_reason_id}",
+    "operation_id": "updateReturnReason",
+    "classification": "resource",
+    "commands": [
+      "return-reasons.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-receipts",
+    "operation_id": "listReturnReceipts",
+    "classification": "resource",
+    "commands": [
+      "return-receipts.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-receipts/{return_receipt_id}",
+    "operation_id": "getReturnReceipt",
+    "classification": "resource",
+    "commands": [
+      "return-receipts.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-receipts/{return_receipt_id}/line-items/{return_receipt_line_item_id}/verify",
+    "operation_id": "verifyReturnReceiptLineItem",
+    "classification": "resource",
+    "commands": [
+      "return-receipts.line-items.verify"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-resolutions",
+    "operation_id": "listReturnResolutions",
+    "classification": "resource",
+    "commands": [
+      "return-resolutions.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/return-resolutions/{return_resolution_id}",
+    "operation_id": "getReturnResolution",
+    "classification": "resource",
+    "commands": [
+      "return-resolutions.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/return-resolutions/{return_resolution_id}",
+    "operation_id": "updateReturnResolution",
+    "classification": "resource",
+    "commands": [
+      "return-resolutions.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-resolutions/{return_resolution_id}/cancel",
+    "operation_id": "cancelReturnResolution",
+    "classification": "resource",
+    "commands": [
+      "return-resolutions.cancel"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-resolutions/{return_resolution_id}/checkout-session",
+    "operation_id": "getOrCreateReturnResolutionCheckoutSession",
+    "classification": "resource",
+    "commands": [
+      "return-resolutions.checkout-session"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-resolutions/{return_resolution_id}/confirm",
+    "operation_id": "confirmReturnResolution",
+    "classification": "resource",
+    "commands": [
+      "return-resolutions.confirm"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-resolutions/{return_resolution_id}/release",
+    "operation_id": "releaseReturnResolution",
+    "classification": "resource",
+    "commands": [
+      "return-resolutions.release"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-resolutions/{return_resolution_id}/retry",
+    "operation_id": "retryReturnResolution",
+    "classification": "resource",
+    "commands": [
+      "return-resolutions.retry"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/returns",
+    "operation_id": "listReturns",
+    "classification": "resource",
+    "commands": [
+      "returns.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns",
+    "operation_id": "createReturn",
+    "classification": "resource",
+    "commands": [
+      "returns.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/returns/{return_id}",
+    "operation_id": "getReturn",
+    "classification": "resource",
+    "commands": [
+      "returns.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/returns/{return_id}",
+    "operation_id": "updateReturn",
+    "classification": "resource",
+    "commands": [
+      "returns.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/cancel",
+    "operation_id": "cancelReturn",
+    "classification": "resource",
+    "commands": [
+      "returns.cancel"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/complete",
+    "operation_id": "completeReturn",
+    "classification": "resource",
+    "commands": [
+      "returns.complete"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/decide",
+    "operation_id": "decideReturn",
+    "classification": "resource",
+    "commands": [
+      "returns.decide"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/dispositions",
+    "operation_id": "createReturnDisposition",
+    "classification": "resource",
+    "commands": [
+      "returns.dispositions.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/inspections",
+    "operation_id": "createReturnInspection",
+    "classification": "resource",
+    "commands": [
+      "returns.inspections.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/returns/{return_id}/line-items",
+    "operation_id": "listReturnLineItems",
+    "classification": "resource",
+    "commands": [
+      "returns.line-items.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/line-items",
+    "operation_id": "addReturnLineItem",
+    "classification": "resource",
+    "commands": [
+      "returns.line-items"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/returns/{return_id}/line-items/{return_line_item_id}",
+    "operation_id": "deleteReturnLineItem",
+    "classification": "resource",
+    "commands": [
+      "returns.line-items.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/returns/{return_id}/line-items/{return_line_item_id}",
+    "operation_id": "getReturnLineItem",
+    "classification": "resource",
+    "commands": [
+      "returns.line-items.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/returns/{return_id}/line-items/{return_line_item_id}",
+    "operation_id": "updateReturnLineItem",
+    "classification": "resource",
+    "commands": [
+      "returns.line-items.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/line-items/{return_line_item_id}/cancel",
+    "operation_id": "cancelReturnLineItem",
+    "classification": "resource",
+    "commands": [
+      "returns.line-items.cancel"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/line-items/{return_line_item_id}/waive-inspection",
+    "operation_id": "waiveReturnLineInspection",
+    "classification": "resource",
+    "commands": [
+      "returns.line-items.waive-inspection"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/process",
+    "operation_id": "processExistingReturn",
+    "classification": "resource",
+    "commands": [
+      "returns.process"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/receipts",
+    "operation_id": "createReturnReceipt",
+    "classification": "resource",
+    "commands": [
+      "returns.receipts.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/reopen",
+    "operation_id": "reopenReturn",
+    "classification": "resource",
+    "commands": [
+      "returns.reopen"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/resolutions",
+    "operation_id": "createReturnResolution",
+    "classification": "resource",
+    "commands": [
+      "returns.resolutions.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/reviews",
+    "operation_id": "listReviews",
+    "classification": "resource",
+    "commands": [
+      "reviews.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/reviews/{review_id}",
+    "operation_id": "getReview",
+    "classification": "resource",
+    "commands": [
+      "reviews.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/reviews/{review_id}/approve",
+    "operation_id": "approveReview",
+    "classification": "resource",
+    "commands": [
+      "reviews.approve"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/reviews/{review_id}/decline",
+    "operation_id": "declineReview",
+    "classification": "resource",
+    "commands": [
+      "reviews.decline"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/risk-lists",
+    "operation_id": "listRiskLists",
+    "classification": "resource",
+    "commands": [
+      "risk-lists.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/risk-lists",
+    "operation_id": "createRiskList",
+    "classification": "resource",
+    "commands": [
+      "risk-lists.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/risk-lists/{risk_list_id}",
+    "operation_id": "deleteRiskList",
+    "classification": "resource",
+    "commands": [
+      "risk-lists.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/risk-lists/{risk_list_id}",
+    "operation_id": "getRiskList",
+    "classification": "resource",
+    "commands": [
+      "risk-lists.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/risk-lists/{risk_list_id}",
+    "operation_id": "updateRiskList",
+    "classification": "resource",
+    "commands": [
+      "risk-lists.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/risk-lists/{risk_list_id}/items",
+    "operation_id": "listRiskListItems",
+    "classification": "resource",
+    "commands": [
+      "risk-lists.items.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/risk-lists/{risk_list_id}/items",
+    "operation_id": "addRiskListItems",
+    "classification": "resource",
+    "commands": [
+      "risk-lists.items"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/risk-lists/{risk_list_id}/items/{risk_list_item_id}",
+    "operation_id": "deleteRiskListItem",
+    "classification": "resource",
+    "commands": [
+      "risk-lists.items.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/risk-lists/{risk_list_id}/items/{risk_list_item_id}",
+    "operation_id": "getRiskListItem",
+    "classification": "resource",
+    "commands": [
+      "risk-lists.items.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/risk-previews",
+    "operation_id": "createRiskPreview",
+    "classification": "resource",
+    "commands": [
+      "risk-previews.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/risk-rules",
+    "operation_id": "listRiskRules",
+    "classification": "resource",
+    "commands": [
+      "risk-rules.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/risk-rules",
+    "operation_id": "createRiskRule",
+    "classification": "resource",
+    "commands": [
+      "risk-rules.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/risk-rules/attributes",
+    "operation_id": "getRiskRuleAttributeRegistry",
+    "classification": "resource",
+    "commands": [
+      "risk-rules.attributes.get"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/risk-rules/{risk_rule_id}",
+    "operation_id": "deleteRiskRule",
+    "classification": "resource",
+    "commands": [
+      "risk-rules.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/risk-rules/{risk_rule_id}",
+    "operation_id": "getRiskRule",
+    "classification": "resource",
+    "commands": [
+      "risk-rules.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/risk-rules/{risk_rule_id}",
+    "operation_id": "updateRiskRule",
+    "classification": "resource",
+    "commands": [
+      "risk-rules.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/settings",
+    "operation_id": "getSettings",
+    "classification": "resource",
+    "commands": [
+      "settings.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/settings",
+    "operation_id": "updateSettings",
+    "classification": "resource",
+    "commands": [
+      "settings.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/settings/effective",
+    "operation_id": "getEffectiveSettings",
+    "classification": "resource",
+    "commands": [
+      "settings.effective.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/shipments",
+    "operation_id": "listShipments",
+    "classification": "resource",
+    "commands": [
+      "shipments.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/shipments/{shipment_id}",
+    "operation_id": "getShipment",
+    "classification": "resource",
+    "commands": [
+      "shipments.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/shipments/{shipment_id}",
+    "operation_id": "updateShipment",
+    "classification": "resource",
+    "commands": [
+      "shipments.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/shipments/{shipment_id}/packages",
+    "operation_id": "createPackage",
+    "classification": "resource",
+    "commands": [
+      "shipments.packages.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/shipments/{shipment_id}/void",
+    "operation_id": "voidShipment",
+    "classification": "resource",
+    "commands": [
+      "shipments.void"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscription-plans",
+    "operation_id": "listSubscriptionPlans",
+    "classification": "resource",
+    "commands": [
+      "subscription-plans.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscription-plans",
+    "operation_id": "createSubscriptionPlan",
+    "classification": "resource",
+    "commands": [
+      "subscription-plans.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/subscription-plans/{plan_id}",
+    "operation_id": "deleteSubscriptionPlan",
+    "classification": "resource",
+    "commands": [
+      "subscription-plans.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscription-plans/{plan_id}",
+    "operation_id": "getSubscriptionPlan",
+    "classification": "resource",
+    "commands": [
+      "subscription-plans.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/subscription-plans/{plan_id}",
+    "operation_id": "updateSubscriptionPlan",
+    "classification": "resource",
+    "commands": [
+      "subscription-plans.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscriptions",
+    "operation_id": "listSubscriptions",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions",
+    "operation_id": "createSubscription",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscriptions/{subscription_id}",
+    "operation_id": "getSubscription",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/subscriptions/{subscription_id}",
+    "operation_id": "updateSubscription",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.update"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/subscriptions/{subscription_id}/billing-schedule",
+    "operation_id": "updateSubscriptionBillingSchedule",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.billing-schedule.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/cancel",
+    "operation_id": "cancelSubscription",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.cancel"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/pause",
+    "operation_id": "pauseSubscription",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.pause"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/payment-method",
+    "operation_id": "changeSubscriptionPaymentMethod",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.payment-method"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscriptions/{subscription_id}/payment-retries",
+    "operation_id": "listSubscriptionPaymentRetries",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.payment-retries.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/payment-retries",
+    "operation_id": "createSubscriptionPaymentRetry",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.payment-retries.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscriptions/{subscription_id}/payment-retries/{subscription_payment_retry_id}",
+    "operation_id": "getSubscriptionPaymentRetry",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.payment-retries.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/reactivate",
+    "operation_id": "reactivateSubscription",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.reactivate"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/resume",
+    "operation_id": "resumeSubscription",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.resume"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/skip-cycle",
+    "operation_id": "skipSubscriptionCycle",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.skip-cycle"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-deliveries/{webhook_delivery_id}",
+    "operation_id": "getWebhookDelivery",
+    "classification": "resource",
+    "commands": [
+      "webhook-deliveries.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-deliveries/{webhook_delivery_id}/attempts",
+    "operation_id": "listWebhookDeliveryAttempts",
+    "classification": "resource",
+    "commands": [
+      "webhook-deliveries.attempts"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/webhook-deliveries/{webhook_delivery_id}/resend",
+    "operation_id": "resendWebhookDelivery",
+    "classification": "resource",
+    "commands": [
+      "webhook-deliveries.resend"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-endpoints",
+    "operation_id": "listWebhookEndpoints",
+    "classification": "resource",
+    "commands": [
+      "webhook-endpoints.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/webhook-endpoints",
+    "operation_id": "createWebhookEndpoint",
+    "classification": "resource",
+    "commands": [
+      "webhook-endpoints.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/webhook-endpoints/{webhook_endpoint_id}",
+    "operation_id": "deleteWebhookEndpoint",
+    "classification": "resource",
+    "commands": [
+      "webhook-endpoints.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-endpoints/{webhook_endpoint_id}",
+    "operation_id": "getWebhookEndpoint",
+    "classification": "resource",
+    "commands": [
+      "webhook-endpoints.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/webhook-endpoints/{webhook_endpoint_id}",
+    "operation_id": "updateWebhookEndpoint",
+    "classification": "resource",
+    "commands": [
+      "webhook-endpoints.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/webhook-endpoints/{webhook_endpoint_id}/rotate-secret",
+    "operation_id": "rotateWebhookSecret",
+    "classification": "resource",
+    "commands": [
+      "webhook-endpoints.rotate-secret"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/webhook-endpoints/{webhook_endpoint_id}/test-events",
+    "operation_id": "createWebhookTestEvent",
+    "classification": "resource",
+    "commands": [
+      "webhook-endpoints.test"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-event-types",
+    "operation_id": "listWebhookEventTypes",
+    "classification": "resource",
+    "commands": [
+      "webhook-event-types.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-events",
+    "operation_id": "listWebhookEvents",
+    "classification": "resource",
+    "commands": [
+      "webhook-events.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-events/stream",
+    "operation_id": "streamWebhookEvents",
+    "classification": "workflow",
+    "commands": [
+      "listen"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-events/{webhook_event_id}",
+    "operation_id": "getWebhookEvent",
+    "classification": "resource",
+    "commands": [
+      "webhook-events.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/webhook-events/{webhook_event_id}/deliveries",
+    "operation_id": "listWebhookDeliveries",
+    "classification": "resource",
+    "commands": [
+      "webhook-events.deliveries"
+    ]
+  }
+]

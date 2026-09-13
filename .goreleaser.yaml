@@ -1,0 +1,51 @@
+version: 2
+
+project_name: flint
+
+builds:
+  - id: flint
+    main: ./cmd/flint
+    binary: flint
+    flags:
+      - -trimpath
+      - -buildvcs=false
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Env.CLI_VERSION}}
+      - -X main.commit={{.Commit}}
+      - -X main.buildDate={{.Env.BUILD_DATE}}
+      - -X main.schemaHash={{.Env.FLINT_SCHEMA_HASH}}
+
+archives:
+  - id: binaries
+    files:
+      - LICENSE
+      - README.md
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Env.CLI_VERSION }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  use: git
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

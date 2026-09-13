@@ -1,0 +1,28 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "com.withflintpay/cli",
+  "description": "Every Flint CLI command as an MCP tool, acting on your account behind live and confirmation gates.",
+  "version": "0.0.0-development",
+  "websiteUrl": "https://withflintpay.com/mcp",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@flintpay/cli",
+      "version": "0.0.0-development",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        },
+        {
+          "type": "positional",
+          "value": "serve"
+        }
+      ]
+    }
+  ]
+}

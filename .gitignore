@@ -1,0 +1,10 @@
+/bin/
+/dist/
+.context/
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+.DS_Store
