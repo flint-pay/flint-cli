@@ -1,0 +1,2 @@
+# Keep embedded schemas, generated reports, and scripts identical across platforms.
+* text=auto eol=lf
