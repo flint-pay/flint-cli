@@ -380,7 +380,7 @@ jobs:
             set -e
             if [ "$view_status" -eq 0 ]; then
               published_integrity="$view_output"
-              local_integrity="$(npm pack "./${package_dir}" --dry-run --json | node -e 'let value=""; process.stdin.on("data", chunk => value += chunk); process.stdin.on("end", () => process.stdout.write(JSON.parse(value)[0].integrity))')"
+              local_integrity="$(npm pack "./${package_dir}" --dry-run --json | node "$GITHUB_WORKSPACE/scripts/npm-pack-result.mjs")"
               if [ "$published_integrity" != "$local_integrity" ]; then
                 echo "Published ${package_name}@${package_version} does not match the local package" >&2
                 exit 1
