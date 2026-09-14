@@ -7,8 +7,9 @@ import (
 )
 
 // publicAPICommands derives commands from the same contract used by callers.
-// Existing commands provide curated shortcuts; every other operation receives
-// a route-shaped command with its complete request schema and query arguments.
+// Existing commands provide curated shortcuts; other operations receive
+// route-shaped commands unless explicitly excluded below. Generated commands
+// include the complete request schema and query arguments.
 func publicAPICommands(existing []*Command) []*Command {
 	doc, err := loadOpenAPI()
 	if err != nil {
@@ -20,6 +21,10 @@ func publicAPICommands(existing []*Command) []*Command {
 	}
 	var commands []*Command
 	for apiPath, methods := range doc.Paths {
+		// Feedback is handled through Flint Help, not dedicated CLI commands.
+		if apiPath == "/v1/feedback-reports" || strings.HasPrefix(apiPath, "/v1/feedback-reports/") {
+			continue
+		}
 		for method, operation := range methods {
 			upper := strings.ToUpper(method)
 			if !strings.Contains(" GET POST PUT PATCH DELETE ", " "+upper+" ") || covered[operation.OperationID] {
@@ -269,7 +274,6 @@ var publicResourceIDPrefixes = map[string]string{
 	"dispute_id":                         "du_",
 	"environment_id":                     "menv_",
 	"expected_delivery_selection_id":     "dsel_",
-	"feedback_report_id":                 "fbr_",
 	"fraud_warning_id":                   "fw_",
 	"fulfillment_event_id":               "fev_",
 	"fulfillment_id":                     "ful_",

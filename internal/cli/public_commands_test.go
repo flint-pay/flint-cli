@@ -71,6 +71,14 @@ func TestEveryPublicOperationHasCompleteCommandContract(t *testing.T) {
 		}
 	}
 	for path, methods := range doc.Paths {
+		if path == "/v1/feedback-reports" || strings.HasPrefix(path, "/v1/feedback-reports/") {
+			for _, operation := range methods {
+				if command := byOperation[operation.OperationID]; command != nil {
+					t.Errorf("removed feedback operation still exposes %s", command.Name)
+				}
+			}
+			continue
+		}
 		for method, operation := range methods {
 			if operation.OperationID == "" {
 				continue

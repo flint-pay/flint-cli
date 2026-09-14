@@ -10,8 +10,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	"golang.org/x/term"
 )
 
 func (a *App) runLocal(cmd *Command, opts Options) int {
@@ -24,8 +22,6 @@ func (a *App) runLocal(cmd *Command, opts Options) int {
 		return a.localConfigSet(cmd, opts)
 	case "config.validate":
 		return a.localConfigValidate(cmd, opts)
-	case "feedback.configure":
-		return a.localFeedbackConfigure(cmd, opts)
 	case "history":
 		return a.localHistory(cmd, opts)
 	case "auth.import":
@@ -45,92 +41,12 @@ func (a *App) runLocal(cmd *Command, opts Options) int {
 	case "support.open":
 		return a.localSupportOpen(cmd, opts)
 	case "mcp.serve":
-		if exit := a.prepareMCPFeedbackConsent(opts); exit != ExitOK {
-			return exit
-		}
 		return a.serveMCP(opts)
 	case "signup":
 		return a.localSignup(cmd, opts)
 	default:
 		return a.fail(cliError(ExitUsage, "usage_error", "NOT_IMPLEMENTED", "Local command is not implemented: "+cmd.Name), opts)
 	}
-}
-
-const agentFeedbackConsentText = `Allow connected AI agents to send feedback to Flint using this profile? [y/N]
-
-Agents can report a Flint bug or point of friction with text they provide. A report may include request IDs, resource IDs, and code locations.
-
-Flint does not automatically add files, command output, API responses, environment variables, or shell history. The CLI blocks recognized secrets before sending, and Flint scans the report again before storage.
-
-This allows submission only when this profile has the feedback write scope. It never lets agents read existing feedback.`
-
-func (a *App) localFeedbackConfigure(cmd *Command, opts Options) int {
-	state := strings.TrimSpace(opts.Positionals[0])
-	if state != "enabled" && state != "disabled" {
-		return a.fail(usageError("INVALID_FEEDBACK_SETTING", "Feedback submission state must be enabled or disabled.", "state"), opts)
-	}
-	resolved, _, err := a.resolveConfig(opts)
-	if err != nil {
-		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
-	}
-	if state == "enabled" {
-		if opts.NoInput || !a.IsTTY() {
-			return a.fail(configError("INTERACTIVE_CONSENT_REQUIRED", "Enabling agent feedback requires an interactive terminal. Run flint feedback configure enabled in a terminal.", nil), opts)
-		}
-		fmt.Fprintln(a.Stderr, agentFeedbackConsentText)
-		line, readErr := bufio.NewReader(a.Stdin).ReadString('\n')
-		if readErr != nil && !errors.Is(readErr, io.EOF) {
-			return a.fail(configError("CONSENT_READ_FAILED", "Could not read feedback consent.", readErr), opts)
-		}
-		answer := strings.ToLower(strings.TrimSpace(line))
-		if answer != "y" && answer != "yes" {
-			return a.fail(&CLIError{ExitCode: ExitConfirmation, Type: "confirmation_required", Code: "CONSENT_DECLINED", Message: "Agent feedback remains disabled."}, opts)
-		}
-	}
-	if err := a.updateConfig(func(cfg *Config) error {
-		if cfg.Profiles == nil {
-			cfg.Profiles = map[string]Profile{}
-		}
-		profile := cfg.Profiles[resolved.ProfileName]
-		profile.AgentFeedbackSubmission = state
-		cfg.Profiles[resolved.ProfileName] = profile
-		return nil
-	}); err != nil {
-		return a.fail(configError("CONFIG_WRITE_FAILED", err.Error(), err), opts)
-	}
-	return a.outputLocal(map[string]any{"data": map[string]any{"profile": resolved.ProfileName, "agent_feedback_submission": state}}, cmd, opts)
-}
-
-func (a *App) prepareMCPFeedbackConsent(opts Options) int {
-	resolved, _, err := a.resolveConfig(opts)
-	if err != nil {
-		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
-	}
-	if resolved.AgentFeedbackSubmission != "" || opts.NoInput || !a.IsTTY() {
-		return ExitOK
-	}
-	fmt.Fprintln(a.Stderr, agentFeedbackConsentText)
-	line, readErr := bufio.NewReader(a.Stdin).ReadString('\n')
-	if readErr != nil && !errors.Is(readErr, io.EOF) {
-		return a.fail(configError("CONSENT_READ_FAILED", "Could not read feedback consent.", readErr), opts)
-	}
-	state := "disabled"
-	answer := strings.ToLower(strings.TrimSpace(line))
-	if answer == "y" || answer == "yes" {
-		state = "enabled"
-	}
-	if err := a.updateConfig(func(cfg *Config) error {
-		if cfg.Profiles == nil {
-			cfg.Profiles = map[string]Profile{}
-		}
-		profile := cfg.Profiles[resolved.ProfileName]
-		profile.AgentFeedbackSubmission = state
-		cfg.Profiles[resolved.ProfileName] = profile
-		return nil
-	}); err != nil {
-		return a.fail(configError("CONFIG_WRITE_FAILED", err.Error(), err), opts)
-	}
-	return ExitOK
 }
 
 func (a *App) outputLocal(value any, cmd *Command, opts Options) int {
@@ -244,7 +160,18 @@ func (a *App) localHistory(cmd *Command, opts Options) int {
 		}
 		return a.outputLocal(map[string]any{"data": []any{}}, cmd, opts)
 	}
-	if resolved.Environment == "" {
+	if key := credentialFromEnvironment(); key != "" {
+		environment, err := credentialEnvironment(key)
+		if err != nil {
+			return a.fail(configError("INVALID_CREDENTIAL", err.Error(), err), opts)
+		}
+		// History is an offline view. An environment key supersedes the saved
+		// key's context, whose merchant and sandbox may belong to another key.
+		// Retain explicit guards, but do not guess the override key's identity.
+		resolved.Environment = environment
+		resolved.MerchantID = resolved.MerchantGuard
+		resolved.SandboxID = resolved.SandboxGuard
+	} else if resolved.Environment == "" {
 		if credential, _, credentialErr := a.resolveCredential(resolved.ProfileName); credentialErr == nil && credential != "" {
 			resolved.Environment, _ = credentialEnvironment(credential)
 		}
@@ -275,7 +202,7 @@ func (a *App) localAuthImport(cmd *Command, opts Options) int {
 	}
 	var key string
 	if opts.Stdin {
-		raw, err := io.ReadAll(io.LimitReader(a.Stdin, 16<<10))
+		raw, err := io.ReadAll(io.LimitReader(&contextInputReader{ctx: a.commandContext(), reader: a.Stdin}, 16<<10))
 		if err != nil {
 			return a.fail(configError("CREDENTIAL_READ_FAILED", "Could not read the credential from stdin.", err), opts)
 		}
@@ -286,7 +213,7 @@ func (a *App) localAuthImport(cmd *Command, opts Options) int {
 		}
 		fmt.Fprint(a.Stderr, "Flint API key: ")
 		if f, ok := a.Stdin.(*os.File); ok {
-			raw, err := term.ReadPassword(int(f.Fd()))
+			raw, err := a.readPassword(f)
 			fmt.Fprintln(a.Stderr)
 			if err != nil {
 				return a.fail(configError("CREDENTIAL_READ_FAILED", "Could not read the credential.", err), opts)
@@ -429,7 +356,7 @@ func (a *App) confirmLocal(message string, opts Options) *CLIError {
 		return &CLIError{ExitCode: ExitConfirmation, Type: "confirmation_required", Code: "CONFIRMATION_REQUIRED", Message: message + " Re-run with --confirm."}
 	}
 	fmt.Fprint(a.Stderr, message+" [y/N] ")
-	line, err := bufio.NewReader(a.Stdin).ReadString('\n')
+	line, err := bufio.NewReader(&contextInputReader{ctx: a.commandContext(), reader: a.Stdin}).ReadString('\n')
 	if err != nil && !errors.Is(err, io.EOF) {
 		return configError("CONFIRMATION_READ_FAILED", "Could not read confirmation.", err)
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -236,6 +237,45 @@ func TestSupportOpenPrintsTheComposerLinkWithoutOpeningABrowser(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "The CLI does not create the thread.") {
 		t.Errorf("stdout does not say posting happens in the composer: %s", stdout)
+	}
+}
+
+func TestSupportOpenPrefillsTitleAndBody(t *testing.T) {
+	for _, fields := range []struct{ title, body string }{
+		{title: "Webhook failure & retries?"},
+		{body: "First line\n\nSecond line: + & # = café"},
+		{title: "Payment failed", body: "  Keep indentation\nand trailing whitespace  "},
+	} {
+		t.Run(fields.title+fields.body, func(t *testing.T) {
+			app, stdout, stderr := testApp(t, "")
+			exit := app.Run([]string{"support", "open", "--title", fields.title, "--body", fields.body, "--no-open", "--output", "json"})
+			if exit != ExitOK || stderr.Len() != 0 {
+				t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
+			}
+			var envelope struct {
+				Data struct {
+					URL, Title, Body string
+					Opened           bool
+				} `json:"data"`
+			}
+			if err := json.Unmarshal(stdout.Bytes(), &envelope); err != nil {
+				t.Fatal(err)
+			}
+			target, err := url.Parse(envelope.Data.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			query := target.Query()
+			if query.Get("title") != fields.title || query.Get("body") != fields.body {
+				t.Fatalf("prefill did not round-trip: %s", target)
+			}
+			if query.Has("title") != (fields.title != "") || query.Has("body") != (fields.body != "") {
+				t.Fatalf("empty prefill should be omitted: %s", target)
+			}
+			if envelope.Data.Title != fields.title || envelope.Data.Body != fields.body || envelope.Data.Opened {
+				t.Fatalf("unexpected output: %s", stdout)
+			}
+		})
 	}
 }
 

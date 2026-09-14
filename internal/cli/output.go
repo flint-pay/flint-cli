@@ -176,9 +176,10 @@ func (a *App) writeResult(value any, cmd *Command, opts Options) *CLIError {
 	}
 	if opts.Field != "" {
 		if value == nil {
-			fmt.Fprintln(a.Stdout, "null")
-		} else {
-			fmt.Fprintln(a.Stdout, value)
+			value = "null"
+		}
+		if _, err := fmt.Fprintln(a.Stdout, value); err != nil {
+			return networkError("OUTPUT_WRITE_FAILED", "Could not write command output.", err)
 		}
 		return nil
 	}
@@ -193,8 +194,31 @@ func (a *App) writeResult(value any, cmd *Command, opts Options) *CLIError {
 	if opts.JQ != "" || len(opts.Select) > 0 {
 		cmd = nil
 	}
-	renderHuman(a.Stdout, value, cmd, a.Now())
+	output := &outputErrorWriter{writer: a.Stdout}
+	renderHuman(output, value, cmd, a.Now())
+	if output.err != nil {
+		return networkError("OUTPUT_WRITE_FAILED", "Could not write command output.", output.err)
+	}
 	return nil
+}
+
+// Human renderers make several writes. Preserve the first failure and stop
+// writing so a later successful write cannot hide a truncated result.
+type outputErrorWriter struct {
+	writer io.Writer
+	err    error
+}
+
+func (w *outputErrorWriter) Write(p []byte) (int, error) {
+	if w.err != nil {
+		return 0, w.err
+	}
+	n, err := w.writer.Write(p)
+	if err == nil && n != len(p) {
+		err = io.ErrShortWrite
+	}
+	w.err = err
+	return n, err
 }
 
 func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) {

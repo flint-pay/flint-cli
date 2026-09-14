@@ -118,7 +118,7 @@ func (a *App) executeAllPages(ctx context.Context, cmd *Command, opts Options, r
 	combined := make([]any, 0)
 	var last, collection map[string]any
 	collectionField := "data"
-	if cmd.OutputSchema == "ResourceTimelineResponse" {
+	if cmd.OperationID == "getResourceTimeline" {
 		collectionField = "entries"
 	}
 	path := req.Path

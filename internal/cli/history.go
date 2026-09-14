@@ -32,7 +32,6 @@ func buildResourcePrefixes() map[string]string {
 	prefixes := map[string]string{
 		"pi_": "payment_intent", "ord_": "order", "cus_": "customer", "ref_": "refund", "cs_": "checkout_session",
 		"whep_": "webhook_endpoint", "whev_": "webhook_event", "wdel_": "webhook_delivery", "rlog_": "request_log", "inv_": "invoice", "org_": "organization",
-		"fbr_": "feedback_report",
 		"mer_": "merchant", "test_": "sandbox", "key_": "api_key", "pl_": "payment_link", "pm_": "payment_method",
 		"dls_": "delivery_location_set", "dlsr_": "delivery_location_set_revision", "dmet_": "delivery_method", "dmetr_": "delivery_method_revision",
 		"dprof_": "delivery_profile", "dprofr_": "delivery_profile_revision", "dqt_": "delivery_quote", "dcb_": "delivery_rate_callback",
@@ -115,7 +114,7 @@ func (a *App) saveHistory(h History) error {
 	if err != nil {
 		return err
 	}
-	return withLocalFileLock(path, func() error {
+	return withLocalFileLock(a.commandContext(), path, func() error {
 		return a.saveHistoryUnlocked(h)
 	})
 }
@@ -162,7 +161,7 @@ func (a *App) updateHistory(update func(*History) error) error {
 	if err != nil {
 		return err
 	}
-	return withLocalFileLock(path, func() error {
+	return withLocalFileLock(a.commandContext(), path, func() error {
 		history, err := a.loadHistory()
 		if err != nil {
 			return err
@@ -241,8 +240,7 @@ func historyPrefixForCommand(command string) string {
 		"payment-intents": "pi_", "orders": "ord_", "customers": "cus_", "refunds": "ref_",
 		"checkout-sessions": "cs_", "webhook-endpoints": "whep_", "webhook-events": "whev_", "webhook-deliveries": "wdel_",
 		"request-logs": "rlog_", "invoices": "inv_", "organizations": "org_", "merchants": "mer_",
-		"feedback-reports": "fbr_",
-		"sandboxes":        "test_", "api-keys": "key_", "payment-links": "pl_",
+		"sandboxes": "test_", "api-keys": "key_", "payment-links": "pl_",
 		"packages": "pkg_", "shipments": "shp_",
 	}[namespace]
 }

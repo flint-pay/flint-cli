@@ -12,12 +12,15 @@ import (
 
 const localFileLockTimeout = 10 * time.Second
 
-func withLocalFileLock(path string, action func() error) error {
+func withLocalFileLock(parent context.Context, path string, action func() error) error {
+	if err := parent.Err(); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return err
 	}
 	lock := flock.New(path+".lock", flock.SetPermissions(0600))
-	ctx, cancel := context.WithTimeout(context.Background(), localFileLockTimeout)
+	ctx, cancel := context.WithTimeout(parent, localFileLockTimeout)
 	defer cancel()
 	locked, err := lock.TryLockContext(ctx, 25*time.Millisecond)
 	if err != nil {
@@ -26,7 +29,12 @@ func withLocalFileLock(path string, action func() error) error {
 	if !locked {
 		return fmt.Errorf("lock %s: timed out", path)
 	}
-	actionErr := action()
+	// A lock becoming available can race cancellation. Once the transaction
+	// starts, let it finish (including any rollback) before releasing the lock.
+	actionErr := ctx.Err()
+	if actionErr == nil {
+		actionErr = action()
+	}
 	unlockErr := lock.Unlock()
 	if actionErr != nil {
 		return actionErr

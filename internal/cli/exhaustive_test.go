@@ -105,8 +105,6 @@ func TestEveryResourceIDArgumentDeclaresHistoryReference(t *testing.T) {
 		"payment_link_id":                    "pl_",
 		"payment_method":                     "pm_",
 		"refund_id":                          "ref_",
-		"feedback_report_id":                 "fbr_",
-		"related_resource_id":                "",
 		"package_id":                         "pkg_",
 		"package_item_id":                    "pki_",
 		"return_id":                          "ret_",
@@ -953,16 +951,6 @@ func TestEveryRemoteCommandBuildsAndExecutesARequest(t *testing.T) {
 			defer server.Close()
 
 			app, stdout, stderr := testApp(t, server.URL)
-			if command.CanonicalName == "feedback-reports.create" {
-				if err := app.updateConfig(func(cfg *Config) error {
-					profile := cfg.Profiles["default"]
-					profile.AgentFeedbackSubmission = "enabled"
-					cfg.Profiles["default"] = profile
-					return nil
-				}); err != nil {
-					t.Fatal(err)
-				}
-			}
 			app.Now = func() time.Time { return fixedNow }
 			app.Stdin = strings.NewReader(`{"input_marker":"present"}`)
 			argv := exhaustiveRemoteInvocation(command)
@@ -1289,8 +1277,6 @@ func TestEveryLocalCommandExecutes(t *testing.T) {
 				}()
 			case "config.set":
 				argv = append(argv, "profile", "exhaustive")
-			case "feedback.configure":
-				argv = append(argv, "disabled")
 			case "doctor":
 				argv = append(argv, "--fix")
 			case "history":

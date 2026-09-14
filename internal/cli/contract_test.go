@@ -175,12 +175,6 @@ func TestInitialCLIScopesCoverBootstrapWorkflow(t *testing.T) {
 		if !bootstrap[cmd.CanonicalName] {
 			continue
 		}
-		// Feedback scopes are intentionally absent from the signup key. Agent
-		// submission grants write only after local consent, and read is always a
-		// separate explicit key choice.
-		if strings.HasPrefix(cmd.CanonicalName, "feedback-reports.") {
-			continue
-		}
 		operation, ok := openAPIOperationByID(cmd.OperationID)
 		if !ok || len(operation.FlintRequiredScopes) == 0 {
 			continue
@@ -215,12 +209,6 @@ func TestCommandEnvironmentAffinityIsExplicitAndValid(t *testing.T) {
 		}
 		if !valid[command.EnvironmentAffinity] {
 			t.Errorf("%s has invalid environment affinity %q", command.CanonicalName, command.EnvironmentAffinity)
-		}
-	}
-	for _, name := range []string{"feedback-reports.create", "feedback-reports.get", "feedback-reports.list"} {
-		feedback, ok := registry.ByName(name)
-		if !ok || feedback.EnvironmentAffinity != EnvironmentAffinityNeutral {
-			t.Fatalf("%s affinity=%q", name, feedback.EnvironmentAffinity)
 		}
 	}
 }
@@ -477,131 +465,6 @@ func TestClientDryRunPerformsNoNetworkRequest(t *testing.T) {
 	}
 }
 
-func TestFeedbackCreateUsesLiveCredentialWithoutLiveAcknowledgementAfterConsent(t *testing.T) {
-	resourceCalls := 0
-	var submitted map[string]any
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
-			fmt.Fprint(w, authContextJSON("live"))
-			return
-		}
-		resourceCalls++
-		if r.URL.Path != "/v1/feedback-reports" || r.Method != http.MethodPost {
-			t.Errorf("request=%s %s", r.Method, r.URL.Path)
-		}
-		if err := json.NewDecoder(r.Body).Decode(&submitted); err != nil {
-			t.Error(err)
-		}
-		fmt.Fprint(w, `{"data":{"feedback_report_id":"fbr_01ARZ3NDEKTSV4RRFFQ69G5FAV","kind":"bug","surface":"cli","summary":"Specific feedback","created_at":"2026-08-21T12:00:00Z"}}`)
-	}))
-	defer server.Close()
-	app, stdout, stderr := testApp(t, server.URL)
-	t.Setenv("FLINT_API_KEY", "flint_live_test")
-	if err := app.setAgentFeedbackSubmission(defaultOptions(), "enabled"); err != nil {
-		t.Fatal(err)
-	}
-	exit := app.Run([]string{"feedback", "report", "--kind", "bug", "--surface", "cli", "--summary", "Specific feedback", "--output", "json"})
-	if exit != ExitOK || resourceCalls != 1 {
-		t.Fatalf("exit=%d calls=%d stdout=%s stderr=%s", exit, resourceCalls, stdout, stderr)
-	}
-	if submitted["reporter_kind"] != "ai_agent" {
-		t.Fatalf("submitted reporter_kind=%#v", submitted["reporter_kind"])
-	}
-	client, _ := submitted["reporting_client"].(map[string]any)
-	if client["name"] != "flint-cli" || client["platform"] == "" {
-		t.Fatalf("reporting_client=%#v", client)
-	}
-	history, err := app.loadHistory()
-	if err != nil || len(history.Entries) == 0 || history.Entries[0].ID != "fbr_01ARZ3NDEKTSV4RRFFQ69G5FAV" {
-		t.Fatalf("history=%#v error=%v", history, err)
-	}
-}
-
-func TestFeedbackConsentAndSecretChecksFailBeforeTransport(t *testing.T) {
-	resourceCalls := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
-			fmt.Fprint(w, authContextJSON("sandbox"))
-			return
-		}
-		resourceCalls++
-	}))
-	defer server.Close()
-	app, stdout, stderr := testApp(t, server.URL)
-	args := []string{"feedback", "report", "--kind", "bug", "--surface", "cli", "--summary", "Specific feedback", "--output", "json"}
-	if exit := app.Run(args); exit != ExitAuth || !strings.Contains(stdout.String(), "AGENT_FEEDBACK_DISABLED") || resourceCalls != 0 {
-		t.Fatalf("disabled exit=%d calls=%d stdout=%s stderr=%s", exit, resourceCalls, stdout, stderr)
-	}
-	stdout.Reset()
-	stderr.Reset()
-	app.Stdin = strings.NewReader(`{"kind":"bug","surface":"cli","summary":"Specific feedback"}`)
-	rawArgs := []string{"api", "post", "/v1/feedback-reports", "--input", "-", "--no-input", "--output", "json"}
-	if exit := app.Run(rawArgs); exit != ExitAuth || !strings.Contains(stdout.String(), "AGENT_FEEDBACK_DISABLED") || resourceCalls != 0 {
-		t.Fatalf("raw disabled exit=%d calls=%d stdout=%s stderr=%s", exit, resourceCalls, stdout, stderr)
-	}
-	stdout.Reset()
-	stderr.Reset()
-	if err := app.setAgentFeedbackSubmission(defaultOptions(), "enabled"); err != nil {
-		t.Fatal(err)
-	}
-	args = append(args[:len(args)-2], "--description", "Authorization: Bearer abcdefghijklmnop", "--output", "json")
-	if exit := app.Run(args); exit != ExitUsage || !strings.Contains(stdout.String(), "UNSAFE_FEEDBACK_CONTENT") || resourceCalls != 0 {
-		t.Fatalf("secret exit=%d calls=%d stdout=%s stderr=%s", exit, resourceCalls, stdout, stderr)
-	}
-	stdout.Reset()
-	stderr.Reset()
-	unsafeKeyArgs := []string{"feedback", "report", "--kind", "bug", "--surface", "cli", "--summary", "Specific feedback", "--idempotency-key", "flint_live_abcdefghijklmnop", "--output", "json"}
-	if exit := app.Run(unsafeKeyArgs); exit != ExitUsage || !strings.Contains(stdout.String(), "INVALID_IDEMPOTENCY_KEY") || resourceCalls != 0 {
-		t.Fatalf("unsafe idempotency key exit=%d calls=%d stdout=%s stderr=%s", exit, resourceCalls, stdout, stderr)
-	}
-	stdout.Reset()
-	stderr.Reset()
-	app.Stdin = strings.NewReader(`{"kind":"bug","surface":"cli","summary":"Specific feedback","description":"Authorization: Bearer abcdefghijklmnop"}`)
-	if exit := app.Run(rawArgs); exit != ExitUsage || !strings.Contains(stdout.String(), "UNSAFE_FEEDBACK_CONTENT") || resourceCalls != 0 {
-		t.Fatalf("raw secret exit=%d calls=%d stdout=%s stderr=%s", exit, resourceCalls, stdout, stderr)
-	}
-}
-
-func TestFeedbackInputReporterKindRequiresConsentAndSecretChecks(t *testing.T) {
-	resourceCalls := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
-			fmt.Fprint(w, authContextJSON("sandbox"))
-			return
-		}
-		resourceCalls++
-	}))
-	defer server.Close()
-
-	app, _, stderr := testApp(t, server.URL)
-	app.IsTTY = func() bool { return true }
-	input := `{"kind":"bug","surface":"cli","summary":"Specific feedback","reporter_kind":"ai_agent","description":"Authorization: Bearer abcdefghijklmnop"}`
-	app.Stdin = strings.NewReader(input)
-	if exit := app.Run([]string{"feedback", "report", "--input", "-"}); exit != ExitAuth || !strings.Contains(stderr.String(), "Agent feedback submission is disabled") || resourceCalls != 0 {
-		t.Fatalf("disabled exit=%d calls=%d stderr=%s", exit, resourceCalls, stderr)
-	}
-
-	stderr.Reset()
-	if err := app.setAgentFeedbackSubmission(defaultOptions(), "enabled"); err != nil {
-		t.Fatal(err)
-	}
-	app.Stdin = strings.NewReader(input)
-	if exit := app.Run([]string{"feedback", "report", "--input", "-"}); exit != ExitUsage || !strings.Contains(stderr.String(), "Remove the recognized secret from description") || resourceCalls != 0 {
-		t.Fatalf("secret exit=%d calls=%d stderr=%s", exit, resourceCalls, stderr)
-	}
-}
-
-func TestFeedbackConfigureRejectsNonInteractiveEnable(t *testing.T) {
-	app, stdout, stderr := testApp(t, "http://127.0.0.1:1")
-	exit := app.Run([]string{"feedback", "configure", "enabled", "--no-input", "--output", "json"})
-	if exit != ExitAuth || !strings.Contains(stdout.String(), "INTERACTIVE_CONSENT_REQUIRED") {
-		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
-	}
-}
-
 func TestHistoryReferenceResolvesBeforeRequest(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -686,12 +549,7 @@ func TestUnknownCommandReturnsCanonicalSuggestions(t *testing.T) {
 }
 
 func TestMCPToolsMatchCanonicalRegistryAndInputSchemas(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"data":{"auth_type":"api_key","api_key_id":"key_test","environment":"sandbox","merchant_id":"mer_test","sandbox_id":"test_test","scopes":["developer.feedback_reports.read"]}}`)
-	}))
-	defer server.Close()
-	app, _, _ := testApp(t, server.URL)
+	app, _, _ := testApp(t, "")
 	response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/list"}, defaultOptions())
 	result := response["result"].(map[string]any)
 	tools := result["tools"].([]map[string]any)

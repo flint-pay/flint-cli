@@ -24,7 +24,7 @@ func (a *App) runSignup(opts Options) int {
 	if previousErr != nil {
 		return a.fail(configError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before signup.", previousErr), opts)
 	}
-	reader := bufio.NewReader(a.Stdin)
+	reader := bufio.NewReader(&contextInputReader{ctx: a.commandContext(), reader: a.Stdin})
 	email, e := a.signupValue(reader, opts, "email", "Email")
 	if e != nil {
 		return a.fail(e, opts)

@@ -127,8 +127,6 @@ type Options struct {
 	Fix            bool
 	Raw            map[string][]string
 	Positionals    []string
-	inputBody      map[string]any
-	inputLoaded    bool
 	outputLimit    int // MCP transform output budget; zero leaves CLI output unbounded.
 }
 

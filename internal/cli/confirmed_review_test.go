@@ -85,8 +85,10 @@ func TestMCPPreviewResultsMatchAdvertisedSchemas(t *testing.T) {
 }
 
 func TestTimelineAllPreservesEnvelopeAndCollectsEntries(t *testing.T) {
-	for _, viaMCP := range []bool{false, true} {
-		t.Run(fmt.Sprintf("mcp=%t", viaMCP), func(t *testing.T) {
+	for _, mode := range []string{"cli", "mcp", "raw-cli", "raw-mcp"} {
+		t.Run(mode, func(t *testing.T) {
+			viaMCP := strings.Contains(mode, "mcp")
+			raw := strings.HasPrefix(mode, "raw")
 			var tokens []string
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
@@ -109,8 +111,14 @@ func TestTimelineAllPreservesEnvelopeAndCollectsEntries(t *testing.T) {
 			app, out, _ := testApp(t, server.URL)
 			var result any
 			if viaMCP {
+				name := "timeline"
+				arguments := map[string]any{"resource_id": "pi_test", "page_size": float64(1), "_flint": map[string]any{"all": true}}
+				if raw {
+					name = "api"
+					arguments = map[string]any{"method": "GET", "path": "/v1/developer/resource-timelines/pi_test", "_flint": map[string]any{"all": true, "page_size": float64(1)}}
+				}
 				response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{
-					"name": "timeline", "arguments": map[string]any{"resource_id": "pi_test", "page_size": float64(1), "_flint": map[string]any{"all": true}},
+					"name": name, "arguments": arguments,
 				}}, defaultOptions())
 				var ok bool
 				result, ok = lookupPath(response, "result.structuredContent")
@@ -118,7 +126,12 @@ func TestTimelineAllPreservesEnvelopeAndCollectsEntries(t *testing.T) {
 					t.Fatalf("timeline tool failed: %#v", response)
 				}
 			} else {
-				if exit := app.Run([]string{"timeline", "pi_test", "--all", "--page-size", "1", "--output", "json"}); exit != ExitOK {
+				argv := []string{"timeline", "pi_test"}
+				if raw {
+					argv = []string{"api", "get", "/v1/developer/resource-timelines/pi_test"}
+				}
+				argv = append(argv, "--all", "--page-size", "1", "--output", "json")
+				if exit := app.Run(argv); exit != ExitOK {
 					t.Fatalf("exit=%d: %s", exit, out)
 				}
 				if err := json.Unmarshal(out.Bytes(), &result); err != nil {

@@ -34,8 +34,6 @@ type jsonRPCRequest struct {
 	ID      any            `json:"id,omitempty"`
 	Method  string         `json:"method"`
 	Params  map[string]any `json:"params,omitempty"`
-	Result  any            `json:"result,omitempty"`
-	Error   map[string]any `json:"error,omitempty"`
 }
 
 func mcpRequestKey(id any) string {
@@ -107,14 +105,6 @@ func (a *App) serveMCP(opts Options) int {
 	var inFlightMu sync.Mutex
 	inFlight := map[string]context.CancelFunc{}
 	var workers sync.WaitGroup
-	type pendingFeedbackConsent struct {
-		toolCall      jsonRPCRequest
-		elicitationID string
-		cancelled     bool
-	}
-	pendingConsent := map[string]pendingFeedbackConsent{}
-	consentCancelled := false
-	clientSupportsElicitation := false
 	startToolCall := func(req jsonRPCRequest, negotiatedVersion string) {
 		key := mcpRequestKey(req.ID)
 		inFlightMu.Lock()
@@ -187,39 +177,6 @@ func (a *App) serveMCP(opts Options) int {
 			}
 			continue
 		}
-		if req.JSONRPC == "2.0" && req.Method == "" && req.ID != nil {
-			key := mcpRequestKey(req.ID)
-			pending, ok := pendingConsent[key]
-			if !ok {
-				_ = writeResponse(rpcError(req.ID, -32600, "Unexpected JSON-RPC response"))
-				continue
-			}
-			delete(pendingConsent, key)
-			if pending.cancelled {
-				continue
-			}
-			action, content := feedbackElicitationResult(req.Result)
-			switch action {
-			case "accept":
-				if enabled, _ := content["enable_agent_feedback"].(bool); enabled {
-					if err := a.setAgentFeedbackSubmission(opts, "enabled"); err != nil {
-						_ = writeResponse(rpcResult(pending.toolCall.ID, mcpToolError("Could not save feedback consent.", map[string]any{"code": "CONFIG_WRITE_FAILED"})))
-						continue
-					}
-					startToolCall(pending.toolCall, protocolVersion)
-					continue
-				}
-				_ = a.setAgentFeedbackSubmission(opts, "disabled")
-				_ = writeResponse(rpcResult(pending.toolCall.ID, mcpToolError("Agent feedback submission is disabled.", map[string]any{"code": "AGENT_FEEDBACK_DISABLED"})))
-			case "decline":
-				_ = a.setAgentFeedbackSubmission(opts, "disabled")
-				_ = writeResponse(rpcResult(pending.toolCall.ID, mcpToolError("Agent feedback submission is disabled.", map[string]any{"code": "AGENT_FEEDBACK_DISABLED"})))
-			default:
-				consentCancelled = true
-				_ = writeResponse(rpcResult(pending.toolCall.ID, mcpToolError("Agent feedback submission was not enabled.", map[string]any{"code": "AGENT_FEEDBACK_DISABLED"})))
-			}
-			continue
-		}
 		if req.JSONRPC != "2.0" || req.Method == "" {
 			if err := writeResponse(rpcError(req.ID, -32600, "Invalid Request")); err != nil {
 				fmt.Fprintln(a.Stderr, "MCP output failed: "+err.Error())
@@ -234,22 +191,6 @@ func (a *App) serveMCP(opts Options) int {
 			if req.Method == "notifications/cancelled" {
 				if requestID, ok := req.Params["requestId"]; ok {
 					key := mcpRequestKey(requestID)
-					for consentID, pending := range pendingConsent {
-						if mcpRequestKey(pending.toolCall.ID) != key || pending.cancelled {
-							continue
-						}
-						pending.cancelled = true
-						pendingConsent[consentID] = pending
-						_ = writeResponse(rpcError(pending.toolCall.ID, -32800, "Request canceled"))
-						_ = writeResponse(map[string]any{
-							"jsonrpc": "2.0",
-							"method":  "notifications/cancelled",
-							"params": map[string]any{
-								"requestId": pending.elicitationID,
-								"reason":    "Parent request canceled",
-							},
-						})
-					}
 					inFlightMu.Lock()
 					cancel := inFlight[key]
 					inFlightMu.Unlock()
@@ -289,26 +230,6 @@ func (a *App) serveMCP(opts Options) int {
 			continue
 		}
 		if req.Method == "tools/call" {
-			if mcpToolCallTargetsFeedbackCreate(req) {
-				state := a.agentFeedbackSubmission(opts)
-				if state == "disabled" || (state == "" && consentCancelled) {
-					_ = writeResponse(rpcResult(req.ID, mcpToolError("Agent feedback submission is disabled.", map[string]any{"code": "AGENT_FEEDBACK_DISABLED"})))
-					continue
-				}
-				if state == "" && clientSupportsElicitation {
-					serverID := "flint-feedback-consent-" + mcpRequestKey(req.ID)
-					pendingConsent[mcpRequestKey(serverID)] = pendingFeedbackConsent{toolCall: req, elicitationID: serverID}
-					if err := writeResponse(feedbackConsentElicitation(serverID)); err != nil {
-						return ExitNetwork
-					}
-					continue
-				}
-				if state == "" && !clientSupportsElicitation {
-					message := strings.ReplaceAll(agentFeedbackConsentText, " [y/N]", "") + "\n\nRun flint feedback configure enabled in a terminal to enable it."
-					_ = writeResponse(rpcResult(req.ID, mcpToolError(message, map[string]any{"code": "AGENT_FEEDBACK_DISABLED"})))
-					continue
-				}
-			}
 			startToolCall(req, protocolVersion)
 			continue
 		}
@@ -320,7 +241,6 @@ func (a *App) serveMCP(opts Options) int {
 				if negotiated, ok := lookupPath(response, "result.protocolVersion"); ok {
 					protocolVersion, _ = negotiated.(string)
 				}
-				clientSupportsElicitation = mcpClientSupportsElicitation(req.Params)
 			}
 		}
 		if req.ID != nil {
@@ -330,59 +250,6 @@ func (a *App) serveMCP(opts Options) int {
 			}
 		}
 	}
-}
-
-func mcpClientSupportsElicitation(params map[string]any) bool {
-	capabilities, _ := params["capabilities"].(map[string]any)
-	elicitation, ok := capabilities["elicitation"].(map[string]any)
-	if !ok {
-		return false
-	}
-	_, form := elicitation["form"]
-	return form || len(elicitation) == 0
-}
-
-func feedbackConsentElicitation(id any) map[string]any {
-	return map[string]any{"jsonrpc": "2.0", "id": id, "method": "elicitation/create", "params": map[string]any{
-		"mode":    "form",
-		"message": strings.ReplaceAll(agentFeedbackConsentText, " [y/N]", ""),
-		"requestedSchema": map[string]any{
-			"type": "object", "additionalProperties": false,
-			"properties": map[string]any{"enable_agent_feedback": map[string]any{"type": "boolean", "title": "Enable agent feedback", "default": false}},
-			"required":   []string{"enable_agent_feedback"},
-		},
-	}}
-}
-
-func feedbackElicitationResult(value any) (string, map[string]any) {
-	result, _ := value.(map[string]any)
-	action, _ := result["action"].(string)
-	content, _ := result["content"].(map[string]any)
-	return action, content
-}
-
-func (a *App) agentFeedbackSubmission(opts Options) string {
-	resolved, _, err := a.resolveConfig(opts)
-	if err != nil {
-		return "disabled"
-	}
-	return resolved.AgentFeedbackSubmission
-}
-
-func (a *App) setAgentFeedbackSubmission(opts Options, state string) error {
-	resolved, _, err := a.resolveConfig(opts)
-	if err != nil {
-		return err
-	}
-	return a.updateConfig(func(cfg *Config) error {
-		if cfg.Profiles == nil {
-			cfg.Profiles = map[string]Profile{}
-		}
-		profile := cfg.Profiles[resolved.ProfileName]
-		profile.AgentFeedbackSubmission = state
-		cfg.Profiles[resolved.ProfileName] = profile
-		return nil
-	})
 }
 
 func (a *App) handleMCP(req jsonRPCRequest, opts Options) map[string]any {
@@ -425,21 +292,9 @@ func (a *App) handleMCPVersionContext(ctx context.Context, req jsonRPCRequest, o
 		return rpcResult(req.ID, map[string]any{})
 	case "tools/list":
 		tools := []map[string]any{}
-		feedbackScopes := a.mcpFeedbackScopes(ctx, opts)
-		feedbackState := a.agentFeedbackSubmission(opts)
 		for _, cmd := range a.Registry.Commands {
 			if !mcpCommandExposed(cmd) {
 				continue
-			}
-			switch cmd.CanonicalName {
-			case "feedback-reports.create":
-				if feedbackState == "disabled" || (feedbackState == "enabled" && !feedbackScopes["developer.feedback_reports.write"]) {
-					continue
-				}
-			case "feedback-reports.get", "feedback-reports.list":
-				if !feedbackScopes["developer.feedback_reports.read"] {
-					continue
-				}
 			}
 			schema, e := schemaForMCPCommand(cmd)
 			if e != nil {
@@ -477,18 +332,6 @@ func (a *App) handleMCPVersionContext(ctx context.Context, req jsonRPCRequest, o
 		if err := validateMCPArguments(cmd, arguments); err != nil {
 			return rpcResult(req.ID, mcpToolError("Tool arguments do not match the advertised input schema: "+err.Error(), nil))
 		}
-		if mcpCommandTargetsFeedbackCreate(cmd, arguments) {
-			state := a.agentFeedbackSubmission(opts)
-			if state == "disabled" {
-				return rpcResult(req.ID, mcpToolError("Agent feedback submission is disabled.", map[string]any{"code": "AGENT_FEEDBACK_DISABLED"}))
-			}
-			if state == "enabled" && !a.mcpFeedbackScopes(ctx, opts)["developer.feedback_reports.write"] {
-				return rpcResult(req.ID, mcpToolError("The active credential does not have developer.feedback_reports.write. Create or import a credential with that scope, then restart the MCP server.", map[string]any{"code": "INSUFFICIENT_SCOPE"}))
-			}
-		}
-		if (cmd.CanonicalName == "feedback-reports.get" || cmd.CanonicalName == "feedback-reports.list") && !a.mcpFeedbackScopes(ctx, opts)["developer.feedback_reports.read"] {
-			return rpcResult(req.ID, mcpToolError("The active credential does not have developer.feedback_reports.read.", map[string]any{"code": "INSUFFICIENT_SCOPE"}))
-		}
 		result, transformed, exit := a.callMCPCommand(ctx, cmd, arguments, opts)
 		if exit != 0 {
 			return rpcResult(req.ID, mcpToolError(fmt.Sprintf("Flint command exited %d", exit), result))
@@ -497,63 +340,6 @@ func (a *App) handleMCPVersionContext(ctx context.Context, req jsonRPCRequest, o
 	default:
 		return rpcError(req.ID, -32601, "Method not found")
 	}
-}
-
-func mcpToolCallTargetsFeedbackCreate(req jsonRPCRequest) bool {
-	name, _ := req.Params["name"].(string)
-	if name == "feedback-reports.create" {
-		return true
-	}
-	if name != "api" {
-		return false
-	}
-	arguments, _ := req.Params["arguments"].(map[string]any)
-	return mcpCommandTargetsFeedbackCreate(&Command{CanonicalName: "api"}, arguments)
-}
-
-func mcpCommandTargetsFeedbackCreate(cmd *Command, arguments map[string]any) bool {
-	if cmd == nil {
-		return false
-	}
-	if cmd.CanonicalName == "feedback-reports.create" {
-		return true
-	}
-	if cmd.CanonicalName != "api" {
-		return false
-	}
-	method, _ := arguments["method"].(string)
-	path, _ := arguments["path"].(string)
-	return isFeedbackCreateRequest(method, path)
-}
-
-func (a *App) mcpFeedbackScopes(ctx context.Context, opts Options) map[string]bool {
-	result := map[string]bool{}
-	resolved, _, err := a.resolveConfig(opts)
-	if err != nil {
-		return result
-	}
-	key, _, err := a.resolveCredential(resolved.ProfileName)
-	if err != nil || key == "" {
-		return result
-	}
-	baseURL, err := a.baseURLForCredential(key)
-	if err != nil {
-		return result
-	}
-	timeout := opts.Timeout
-	if timeout <= 0 || timeout > 10*time.Second {
-		timeout = 5 * time.Second
-	}
-	lookupCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	auth, lookupErr := a.fetchAuthContext(lookupCtx, baseURL, key, opts.Debug)
-	if lookupErr != nil {
-		return result
-	}
-	for _, scope := range auth.Scopes {
-		result[strings.TrimSpace(scope)] = true
-	}
-	return result
 }
 
 func mcpCommandExposed(cmd *Command) bool {

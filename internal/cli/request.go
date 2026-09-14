@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"regexp"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -36,13 +34,9 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 			return req, e
 		}
 	}
-	body := opts.inputBody
-	if !opts.inputLoaded {
-		var err *CLIError
-		body, err = a.readInput(opts.Input)
-		if err != nil {
-			return req, err
-		}
+	body, inputErr := a.readInput(opts.Input)
+	if inputErr != nil {
+		return req, inputErr
 	}
 	for _, arg := range cmd.Arguments {
 		var values []string
@@ -160,25 +154,6 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 			return req, e
 		}
 	}
-	if isFeedbackCreateCommand(cmd) {
-		agentSubmission := feedbackInvocationIsAgent(opts, a.IsTTY(), body)
-		if _, ok := body["reporter_kind"]; !ok {
-			kind := "human"
-			if agentSubmission {
-				kind = "ai_agent"
-			}
-			body["reporter_kind"] = kind
-		}
-		body["reporting_client"] = map[string]any{"name": "flint-cli", "version": a.Info.Version, "schema_version": a.Info.APIVersion, "platform": feedbackPlatform()}
-		if agentSubmission {
-			if param, matched := feedbackSecretField(body, ""); matched {
-				return req, usageError("UNSAFE_FEEDBACK_CONTENT", "Remove the recognized secret from "+param+" before sending feedback.", param)
-			}
-		}
-		if opts.IdempotencyKey != "" && feedbackUnsafeIdempotencyKey(opts.IdempotencyKey) {
-			return req, usageError("INVALID_IDEMPOTENCY_KEY", "Idempotency-Key must not contain control characters, personal information, or recognized secrets.", "idempotency_key")
-		}
-	}
 	if len(query) > 0 {
 		parsed, err := url.Parse(req.Path)
 		if err != nil {
@@ -215,69 +190,6 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 	return req, nil
 }
 
-var feedbackSecretPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`\bflint_(?:test|live)_[A-Za-z0-9_-]{12,}\b`),
-	regexp.MustCompile(`\b(?:sk_live|sk_test|rk_live|rk_test)_[A-Za-z0-9]{12,}\b`),
-	regexp.MustCompile(`\bwhsec_[A-Za-z0-9]{12,}\b`),
-	regexp.MustCompile(`(?i)\bauthorization\s*:\s*(?:bearer|basic)\s+[^\s,;]+`),
-	regexp.MustCompile(`-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----`),
-	regexp.MustCompile(`(?i)\b(?:api[_-]?key|access[_-]?token|client[_-]?secret|password)\s*[:=]\s*["']?[A-Za-z0-9_./+\-=]{12,}`),
-}
-
-var feedbackIdempotencyEmailPattern = regexp.MustCompile(`(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b`)
-
-func feedbackUnsafeIdempotencyKey(value string) bool {
-	if feedbackIdempotencyEmailPattern.MatchString(value) {
-		return true
-	}
-	for _, r := range value {
-		if r < 0x20 || r == 0x7f || (r >= 0x202a && r <= 0x202e) || (r >= 0x2066 && r <= 0x2069) {
-			return true
-		}
-	}
-	for _, pattern := range feedbackSecretPatterns {
-		if pattern.MatchString(value) {
-			return true
-		}
-	}
-	return false
-}
-
-func feedbackSecretField(value any, path string) (string, bool) {
-	switch typed := value.(type) {
-	case string:
-		for _, pattern := range feedbackSecretPatterns {
-			if pattern.MatchString(typed) {
-				return strings.TrimPrefix(path, "."), true
-			}
-		}
-	case map[string]any:
-		for key, child := range typed {
-			if found, ok := feedbackSecretField(child, path+"."+key); ok {
-				return found, true
-			}
-		}
-	case []any:
-		for i, child := range typed {
-			if found, ok := feedbackSecretField(child, fmt.Sprintf("%s[%d]", path, i)); ok {
-				return strings.TrimPrefix(found, "."), true
-			}
-		}
-	}
-	return "", false
-}
-
-func feedbackPlatform() string {
-	if runtime.GOOS == "darwin" {
-		return "macos"
-	}
-	switch runtime.GOOS {
-	case "linux", "windows":
-		return runtime.GOOS
-	}
-	return "other"
-}
-
 func (a *App) readInput(path string) (map[string]any, *CLIError) {
 	if path == "" {
 		return map[string]any{}, nil
@@ -293,8 +205,12 @@ func (a *App) readInput(path string) (map[string]any, *CLIError) {
 		defer f.Close()
 		reader = f
 	}
-	raw, err := io.ReadAll(io.LimitReader(reader, (8<<20)+1))
+	input := &contextInputReader{ctx: a.commandContext(), reader: reader}
+	raw, err := io.ReadAll(io.LimitReader(input, (8<<20)+1))
 	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return nil, networkError("REQUEST_CANCELED", "JSON input reading was canceled.", err)
+		}
 		return nil, usageError("INPUT_READ_FAILED", err.Error(), "input")
 	}
 	if len(raw) > 8<<20 {

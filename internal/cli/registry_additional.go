@@ -5,39 +5,6 @@ import "strings"
 func additionalCommands(page []Arg, input Arg) []*Command {
 	with := func(base []Arg, extra ...Arg) []Arg { out := append([]Arg(nil), base...); return append(out, extra...) }
 	return []*Command{
-		alias(&Command{
-			Name: "feedback-reports.create", CanonicalName: "feedback-reports.create", Path: pathWithFlint("feedback-reports", "create"),
-			Description: "Report Flint-caused friction with concrete evidence, one report per root cause. Do not report expected authorization failures, missing prerequisites, agent mistakes, or speculative preferences.",
-			Method:      "POST", APIPath: "/v1/feedback-reports", OperationID: "createFeedbackReport", InputSchema: "CreateFeedbackReportRequest", OutputSchema: "FeedbackReportResponse",
-			Arguments: []Arg{
-				flag("kind", "string", "kind", "", "papercut, bug, feature_request, rating, praise, or other", true),
-				flag("surface", "string", "surface", "", "Flint surface where the behavior occurred", true),
-				flag("component", "string", "component", "", "Narrower Flint component", false),
-				flag("sentiment", "string", "sentiment", "", "positive, negative, or neutral", false),
-				flag("summary", "string", "summary", "", "One-sentence summary", false),
-				flag("description", "string", "description", "", "Minimum evidence needed to describe the behavior", false),
-				flag("expected_behavior", "string", "expected_behavior", "", "Expected Flint behavior", false),
-				flag("actual_behavior", "string", "actual_behavior", "", "Observed Flint behavior", false),
-				{Name: "reproduction_step", Flag: "--reproduction-step", Type: "string", BodyPath: "reproduction_steps", Repeat: true, Description: "One reproduction step; repeat for more"},
-				flag("reporter_kind", "string", "reporter_kind", "", "human or ai_agent", false),
-				flag("related_request_id", "string", "related_request_id", "", "Related Flint request ID", false),
-				{Name: "related_resource_id", Flag: "--related-resource-id", Type: "string", BodyPath: "related_resource_ids", Repeat: true, AcceptsHistoryRef: true, Description: "Related Flint resource ID; repeat for more"},
-				flag("surface_route", "string", "surface_route", "", "Canonical Flint route template", false),
-				flag("canonical_command", "string", "canonical_command", "", "Canonical Flint CLI command", false),
-				flag("code_location", "string", "code_location", "", "Repository-relative file and optional line", false),
-				input,
-			},
-			Mutation: true, AuthRequired: true, EnvironmentAffinity: EnvironmentAffinityNeutral,
-			Examples: ex("flint feedback report --kind papercut --surface cli --summary missing-error-remediation --output json --no-input"),
-		}, "feedback.report"),
-		{
-			Name: "feedback.configure", CanonicalName: "feedback.configure", Path: pathWithFlint("feedback", "configure"),
-			Description: "Enable or disable agent feedback submission for the active profile.", Local: true, MCPHidden: true,
-			Arguments: []Arg{{Name: "state", Type: "string", Positional: 1, Required: true, Description: "enabled or disabled"}},
-			Examples:  ex("flint feedback configure enabled", "flint feedback configure disabled --output json"),
-		},
-		withEnvironmentAffinity(apiCommand("feedback-reports.get", "Get a submitted feedback report", "GET", "/v1/feedback-reports/{feedback_report_id}", "getFeedbackReport", "", "FeedbackReportResponse", []Arg{pos("feedback_report_id", "fbr_", "Flint feedback report ID")}, false, false, false, true, "flint feedback-reports get fbr_123"), EnvironmentAffinityNeutral),
-		withEnvironmentAffinity(apiCommand("feedback-reports.list", "List submitted feedback reports", "GET", "/v1/feedback-reports", "listFeedbackReports", "", "FeedbackReportListResponse", page, false, false, false, false, "flint feedback-reports list --page-size 25"), EnvironmentAffinityNeutral),
 		apiCommand("payment-links.create", "Create a payment link", "POST", "/v1/payment-links", "createPaymentLink", "CreatePaymentLinkRequest", "PaymentLinkResponse", []Arg{flag("name", "string", "name", "", "Payment link name", true), flag("item_name", "string", "line_items.0.name", "", "Item name", false), flag("amount", "integer", "line_items.0.unit_price_money.amount", "", "Item price in minor units", false), flag("currency", "string", "line_items.0.unit_price_money.currency", "", "ISO currency code", false), input}, true, false, false, false, "flint payment-links create --name T-shirt --item-name T-shirt --amount 2500 --currency USD"),
 		apiCommand("payment-links.list", "List payment links", "GET", "/v1/payment-links", "listPaymentLinks", "", "PaymentLinkListResponse", page, false, false, false, false, "flint payment-links list --page-size 25"),
 		apiCommand("invoices.create", "Create an invoice", "POST", "/v1/invoices", "createInvoice", "CreateInvoiceRequest", "InvoiceResponse", []Arg{idFlag("order", "ord_", "order_id", "", "Order ID", false), flag("recipient_email", "string", "recipient_email", "", "Invoice recipient email", false), input}, true, false, false, false, "flint invoices create --order ord_123 --recipient-email jane@example.com"),
@@ -97,6 +64,8 @@ func additionalCommands(page []Arg, input Arg) []*Command {
 			// An agent cannot see or use a browser window, so this stays out of MCP.
 			MCPHidden: true,
 			Arguments: []Arg{
+				flag("title", "string", "", "", "Thread title to prefill", false),
+				flag("body", "string", "", "", "Thread body to prefill", false),
 				flag("request_id", "string", "", "", "Flint request ID from the failing call", false),
 				flag("resource", "string", "", "", "Flint resource ID the question is about", false),
 				flag("area", "string", "", "", "Product area: "+strings.Join(supportProductAreas, ", "), false),
@@ -105,6 +74,7 @@ func additionalCommands(page []Arg, input Arg) []*Command {
 			},
 			Examples: ex(
 				"flint support open --request-id req_123",
+				"flint support open --title Webhook-failure --body Endpoint-returned-500 --area webhooks --private",
 				"flint support open --area webhooks --resource whep_123 --private",
 			),
 		},

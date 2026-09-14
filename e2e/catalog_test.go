@@ -139,17 +139,6 @@ func TestBuiltCLISchemaContainsEveryRegisteredCommand(t *testing.T) {
 func runBuiltCLI(t *testing.T, bin string, argv []string, credential, baseURL string) (int, string, string) {
 	t.Helper()
 	configHome := t.TempDir()
-	for _, configDir := range []string{
-		filepath.Join(configHome, "flint"),
-		filepath.Join(configHome, "Library", "Application Support", "flint"),
-	} {
-		if err := os.MkdirAll(configDir, 0o700); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(configDir, "config.json"), []byte(`{"default_profile":"default","profiles":{"default":{"agent_feedback_submission":"enabled"}}}`), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
 	process := exec.Command(bin, argv...)
 	process.Env = append(
 		os.Environ(),

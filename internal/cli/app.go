@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -86,20 +85,6 @@ func (a *App) Run(argv []string) int {
 	if e := a.confirmCommand(effective, authContext, opts); e != nil {
 		return a.fail(e, opts)
 	}
-	if isFeedbackCreateCommand(effective) {
-		if opts.Input != "" {
-			body, inputErr := a.readInput(opts.Input)
-			if inputErr != nil {
-				return a.fail(inputErr, opts)
-			}
-			opts.inputBody = body
-			opts.inputLoaded = true
-		}
-		if !opts.DryRunClient() && feedbackInvocationIsAgent(opts, a.IsTTY(), opts.inputBody) && resolved.AgentFeedbackSubmission != "enabled" {
-			e := configError("AGENT_FEEDBACK_DISABLED", "Agent feedback submission is disabled for this profile. Run flint feedback configure enabled in a terminal to enable it.", nil)
-			return a.fail(e, opts)
-		}
-	}
 	value, runErr := a.executeAPI(ctx, effective, opts, resolved, authContext, key, baseURL)
 	if runErr != nil {
 		if runErr.ExitCode == ExitWait && value != nil {
@@ -123,38 +108,6 @@ func (a *App) Run(argv []string) int {
 		return a.fail(e, opts)
 	}
 	return ExitOK
-}
-
-func isFeedbackCreateCommand(cmd *Command) bool {
-	if cmd == nil {
-		return false
-	}
-	if cmd.CanonicalName == "feedback-reports.create" {
-		return true
-	}
-	if cmd.CanonicalName != "api" {
-		return false
-	}
-	return isFeedbackCreateRequest(cmd.Method, cmd.APIPath)
-}
-
-func isFeedbackCreateRequest(method, path string) bool {
-	if !strings.EqualFold(method, "POST") {
-		return false
-	}
-	parsed, err := url.Parse(path)
-	return err == nil && !parsed.IsAbs() && parsed.Host == "" && parsed.Path == "/v1/feedback-reports"
-}
-
-func feedbackInvocationIsAgent(opts Options, isTTY bool, body map[string]any) bool {
-	if opts.NoInput || !isTTY {
-		return true
-	}
-	if reporterKinds := opts.Raw["reporter-kind"]; len(reporterKinds) > 0 {
-		return strings.TrimSpace(reporterKinds[len(reporterKinds)-1]) == "ai_agent"
-	}
-	reporterKind, _ := body["reporter_kind"].(string)
-	return strings.TrimSpace(reporterKind) == "ai_agent"
 }
 
 func (o Options) DryRunClient() bool { return o.DryRun == "client" || o.Preview }
@@ -235,7 +188,7 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 		return &CLIError{ExitCode: ExitConfirmation, Type: "confirmation_required", Code: code, Message: message + " Re-run with --confirm."}
 	}
 	fmt.Fprintf(a.Stderr, "%s Continue? [y/N] ", message)
-	line, err := bufio.NewReader(a.Stdin).ReadString('\n')
+	line, err := bufio.NewReader(&contextInputReader{ctx: a.commandContext(), reader: a.Stdin}).ReadString('\n')
 	if err != nil && !errors.Is(err, io.EOF) {
 		return configError("CONFIRMATION_READ_FAILED", "Could not read confirmation.", err)
 	}
@@ -247,6 +200,9 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 }
 
 func configError(code, message string, cause error) *CLIError {
+	if errors.Is(cause, context.Canceled) {
+		return networkError("REQUEST_CANCELED", "The command was canceled.", cause)
+	}
 	return &CLIError{ExitCode: ExitAuth, Type: "configuration_error", Code: code, Message: message, Cause: cause}
 }
 func (a *App) fail(err *CLIError, opts Options) int { a.writeError(err, opts); return err.ExitCode }
