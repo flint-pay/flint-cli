@@ -36,6 +36,14 @@ flint listen --forward-to http://localhost:8080/webhooks/flint
 
 `flint help` lists the starting points and `flint <command> --help` documents any single command. `flint schema commands --output json` returns the whole catalog as data.
 
+`flint support open` opens the Flint Help composer; you review and post in the browser. Use `--private` for a private thread or `--no-open` to print the link only.
+
+```bash
+flint support open --title "Webhook delivery failed" --body "My endpoint returned 500." --area webhooks --private
+```
+
+The CLI includes `--title` and `--body` as URL parameters, preserving multiline text. Browser prefilling requires the Help web app to accept these parameters; its existing link schema needs a corresponding update.
+
 Live OAuth installs require `--mode live --live` and confirmation (`--confirm` for scripts), including when using `flint api get /v1/oauth/authorize`. Raw API pagination (`--all` or `--paginate`) accepts only read-only GET operations.
 
 ## Develop
@@ -60,7 +68,7 @@ Layout:
 
 Test and live requests both use `https://api.withflintpay.com`. Your API key selects the environment. Set `FLINT_BASE_URL` explicitly when testing against a different server.
 
-`internal/spec/openapi.json` is the public API snapshot used to build the command catalog. When updating it, replace it with a reviewed public OpenAPI export, run `make coverage`, and run `make contract`. The coverage report checks that every public operation has a dedicated command.
+`internal/spec/openapi.json` is the public API snapshot used to build the command catalog. When updating it, replace it with a reviewed public OpenAPI export, run `make coverage`, and run `make contract`. The coverage report checks that every public operation has a dedicated command or an explicit exclusion with a reason. Feedback commands are retired; use `flint support open` to start a thread on Flint Help.
 
 Tests use local HTTP servers and synthetic credentials. They do not require an API key or write to a Flint account.
 

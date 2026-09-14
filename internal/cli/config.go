@@ -20,12 +20,26 @@ type Config struct {
 }
 
 type Profile struct {
-	MerchantGuard           string `json:"merchant_guard,omitempty"`
-	Environment             string `json:"environment,omitempty"`
-	APIKeyID                string `json:"api_key_id,omitempty"`
-	MerchantID              string `json:"merchant_id,omitempty"`
-	SandboxID               string `json:"sandbox_id,omitempty"`
-	AgentFeedbackSubmission string `json:"agent_feedback_submission,omitempty"`
+	MerchantGuard string `json:"merchant_guard,omitempty"`
+	Environment   string `json:"environment,omitempty"`
+	APIKeyID      string `json:"api_key_id,omitempty"`
+	MerchantID    string `json:"merchant_id,omitempty"`
+	SandboxID     string `json:"sandbox_id,omitempty"`
+}
+
+// UnmarshalJSON accepts the retired feedback setting so existing profiles keep
+// loading. It is discarded and will disappear the next time the config is saved.
+func (p *Profile) UnmarshalJSON(data []byte) error {
+	type profileFields Profile
+	var decoded struct {
+		profileFields
+		LegacyFeedback json.RawMessage `json:"agent_feedback_submission"`
+	}
+	if err := strictJSON(data, &decoded); err != nil {
+		return err
+	}
+	*p = Profile(decoded.profileFields)
+	return nil
 }
 
 type ProjectConfig struct {
@@ -35,18 +49,17 @@ type ProjectConfig struct {
 }
 
 type ResolvedConfig struct {
-	CredentialScope         string            `json:"-"`
-	ProfileName             string            `json:"profile"`
-	MerchantGuard           string            `json:"merchant_guard,omitempty"`
-	SandboxGuard            string            `json:"sandbox_guard,omitempty"`
-	Environment             string            `json:"environment,omitempty"`
-	APIKeyID                string            `json:"api_key_id,omitempty"`
-	MerchantID              string            `json:"merchant_id,omitempty"`
-	SandboxID               string            `json:"sandbox_id,omitempty"`
-	AgentFeedbackSubmission string            `json:"agent_feedback_submission,omitempty"`
-	ProjectConfigPath       string            `json:"project_config_path,omitempty"`
-	GlobalConfigPath        string            `json:"global_config_path"`
-	Sources                 map[string]string `json:"sources"`
+	CredentialScope   string            `json:"-"`
+	ProfileName       string            `json:"profile"`
+	MerchantGuard     string            `json:"merchant_guard,omitempty"`
+	SandboxGuard      string            `json:"sandbox_guard,omitempty"`
+	Environment       string            `json:"environment,omitempty"`
+	APIKeyID          string            `json:"api_key_id,omitempty"`
+	MerchantID        string            `json:"merchant_id,omitempty"`
+	SandboxID         string            `json:"sandbox_id,omitempty"`
+	ProjectConfigPath string            `json:"project_config_path,omitempty"`
+	GlobalConfigPath  string            `json:"global_config_path"`
+	Sources           map[string]string `json:"sources"`
 }
 
 func (a *App) configDirectory() (string, error) {
@@ -114,7 +127,7 @@ func (a *App) saveConfig(cfg Config) error {
 	if err != nil {
 		return err
 	}
-	return withLocalFileLock(path, func() error {
+	return withLocalFileLock(a.commandContext(), path, func() error {
 		return a.saveConfigUnlocked(cfg)
 	})
 }
@@ -161,7 +174,7 @@ func (a *App) updateConfig(update func(*Config) error) error {
 	if err != nil {
 		return err
 	}
-	return withLocalFileLock(path, func() error {
+	return withLocalFileLock(a.commandContext(), path, func() error {
 		cfg, err := a.loadConfig()
 		if err != nil {
 			return err
@@ -178,7 +191,7 @@ func (a *App) withConfigLock(action func() error) error {
 	if err != nil {
 		return err
 	}
-	return withLocalFileLock(path, action)
+	return withLocalFileLock(a.commandContext(), path, action)
 }
 
 func (a *App) findProjectConfig() (ProjectConfig, string, error) {
@@ -241,9 +254,6 @@ func (a *App) resolveConfig(opts Options) (ResolvedConfig, Config, error) {
 	if !ok && profile != "default" {
 		return ResolvedConfig{}, cfg, fmt.Errorf("unknown profile %q", profile)
 	}
-	if p.AgentFeedbackSubmission != "" && p.AgentFeedbackSubmission != "enabled" && p.AgentFeedbackSubmission != "disabled" {
-		return ResolvedConfig{}, cfg, fmt.Errorf("profile %q agent_feedback_submission must be enabled or disabled", profile)
-	}
 	merchant := p.MerchantGuard
 	if merchant != "" {
 		sources["merchant_guard"] = "profile"
@@ -271,7 +281,7 @@ func (a *App) resolveConfig(opts Options) (ResolvedConfig, Config, error) {
 		sources["sandbox_guard"] = "project"
 	}
 	path, _ := a.configPath()
-	return ResolvedConfig{ProfileName: profile, MerchantGuard: merchant, SandboxGuard: sandboxGuard, Environment: p.Environment, APIKeyID: p.APIKeyID, MerchantID: p.MerchantID, SandboxID: p.SandboxID, AgentFeedbackSubmission: p.AgentFeedbackSubmission, ProjectConfigPath: projectPath, GlobalConfigPath: path, Sources: sources}, cfg, nil
+	return ResolvedConfig{ProfileName: profile, MerchantGuard: merchant, SandboxGuard: sandboxGuard, Environment: p.Environment, APIKeyID: p.APIKeyID, MerchantID: p.MerchantID, SandboxID: p.SandboxID, ProjectConfigPath: projectPath, GlobalConfigPath: path, Sources: sources}, cfg, nil
 }
 
 func credentialFromEnvironment() string { return strings.TrimSpace(os.Getenv("FLINT_API_KEY")) }

@@ -32,6 +32,12 @@ func run(argv []string) (exitCode int) {
 	}()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	go func() {
+		<-ctx.Done()
+		// The first signal requests graceful cancellation. Restore default
+		// handling so another signal can stop a command stuck during cleanup.
+		stop()
+	}()
 	app := cli.New(cli.BuildInfo{
 		Version:    version,
 		Commit:     commit,

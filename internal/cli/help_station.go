@@ -222,6 +222,8 @@ func pluralizeReplies(value any) string {
 // supportComposerContext is the terminal-side context the composer prefills.
 // Nothing here is posted: the CLI only builds and opens the link.
 type supportComposerContext struct {
+	Title       string
+	Body        string
 	Area        string
 	Private     bool
 	RequestID   string
@@ -229,9 +231,8 @@ type supportComposerContext struct {
 	Environment string
 }
 
-// buildSupportComposerURL emits the parameters in the order buildHelpLink uses
-// in web/libs/utils/src/helpLink.ts, so a CLI link is byte-identical to the same
-// link from the dashboard or the docs and caches the same way.
+// buildSupportComposerURL preserves the context parameter order from
+// web/libs/utils/src/helpLink.ts, with optional title and body before source.
 func buildSupportComposerURL(base string, composer supportComposerContext) string {
 	pairs := [][2]string{{"kind", "question"}}
 	if composer.Area != "" {
@@ -248,6 +249,12 @@ func buildSupportComposerURL(base string, composer supportComposerContext) strin
 	}
 	if composer.RequestID != "" {
 		pairs = append(pairs, [2]string{"request_id", composer.RequestID})
+	}
+	if composer.Title != "" {
+		pairs = append(pairs, [2]string{"title", composer.Title})
+	}
+	if composer.Body != "" {
+		pairs = append(pairs, [2]string{"body", composer.Body})
 	}
 	pairs = append(pairs, [2]string{"source", "cli.support"})
 	encoded := make([]string, 0, len(pairs))
@@ -270,7 +277,17 @@ func (a *App) localSupportOpen(cmd *Command, opts Options) int {
 			"area",
 		), opts)
 	}
+	// Preserve whitespace in prose, including Markdown indentation and newlines.
+	textOption := func(name string) string {
+		values := opts.Raw[name]
+		if len(values) == 0 {
+			return ""
+		}
+		return values[len(values)-1]
+	}
 	composer := supportComposerContext{
+		Title:       textOption("title"),
+		Body:        textOption("body"),
 		Area:        area,
 		Private:     booleanRawOption(opts, "private"),
 		RequestID:   lastRawOption(opts, "request-id"),
@@ -294,6 +311,8 @@ func (a *App) localSupportOpen(cmd *Command, opts Options) int {
 		"url":         target,
 		"opened":      opened,
 		"kind":        "question",
+		"title":       composer.Title,
+		"body":        composer.Body,
 		"area":        composer.Area,
 		"visibility":  supportVisibility(composer.Private),
 		"request_id":  composer.RequestID,

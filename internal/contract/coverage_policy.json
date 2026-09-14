@@ -753,19 +753,22 @@
     "method": "GET",
     "path": "/v1/feedback-reports",
     "operation_id": "listFeedbackReports",
-    "classification": "resource"
+    "classification": "raw-api-only",
+    "reason": "Feedback CLI feature removed; use flint support open for Flint Help."
   },
   {
     "method": "POST",
     "path": "/v1/feedback-reports",
     "operation_id": "createFeedbackReport",
-    "classification": "resource"
+    "classification": "raw-api-only",
+    "reason": "Feedback CLI feature removed; use flint support open for Flint Help."
   },
   {
     "method": "GET",
     "path": "/v1/feedback-reports/{feedback_report_id}",
     "operation_id": "getFeedbackReport",
-    "classification": "resource"
+    "classification": "raw-api-only",
+    "reason": "Feedback CLI feature removed; use flint support open for Flint Help."
   },
   {
     "method": "GET",

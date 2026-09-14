@@ -25,7 +25,7 @@ func TestCoverageManifestMatchesPublicOpenAPI(t *testing.T) {
 	}
 	for _, entry := range checkedIn {
 		switch entry.Classification {
-		case "workflow", "resource":
+		case "workflow", "resource", "raw-api-only", "deferred":
 		default:
 			t.Errorf("%s %s has invalid classification %q", entry.Method, entry.Path, entry.Classification)
 		}
