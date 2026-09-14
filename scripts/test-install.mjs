@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { releaseVersion } from "./release-version.mjs";
+import { singlePackResult } from "./npm-pack-result.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const dist = join(root, "dist");
@@ -42,7 +43,7 @@ try {
   const packs = join(temp, "packs");
   mkdirSync(packs);
   const tarballs = [target, "wrapper"].map(name => {
-    const [packed] = JSON.parse(npm(["pack", join(dist, "npm", name), "--pack-destination", packs, "--json"]));
+    const packed = singlePackResult(npm(["pack", join(dist, "npm", name), "--pack-destination", packs, "--json"]));
     return join(packs, packed.filename);
   });
   const consumer = join(temp, "consumer");

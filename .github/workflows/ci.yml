@@ -19,6 +19,43 @@ jobs:
           node-version: "24"
       - run: node --test scripts/*.test.mjs
 
+  package-snapshot:
+    if: ${{ !startsWith(github.ref, 'refs/tags/cli/v') }}
+    runs-on: ubuntu-latest
+    env:
+      CLI_VERSION: 0.0.0
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+      - name: Set reproducible build metadata
+        run: |
+          echo "BUILD_DATE=$(git show -s --format=%cI HEAD)" >> "$GITHUB_ENV"
+          echo "FLINT_SCHEMA_HASH=$(sha256sum internal/spec/openapi.json | awk '{print $1}')" >> "$GITHUB_ENV"
+      - uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
+        with:
+          distribution: goreleaser
+          version: v2.17.0
+          args: release --snapshot --clean
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cli-install-snapshot
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+          if-no-files-found: error
+
+  installation:
+    needs: package-snapshot
+    uses: ./.github/workflows/install-checks.yml
+    with:
+      version: 0.0.0
+      artifact: cli-install-snapshot
+
   test:
     strategy:
       fail-fast: false

@@ -50,6 +50,8 @@ References: [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/)
    ```
 
    This builds but does not publish. The installation test checks the native archive checksum and version, installs actual npm tarballs into a clean consumer without registry access, and tests the Unix installer with local download fixtures, including rejection of a bad checksum. The Homebrew test creates a temporary tap and installs the generated formula using local archives, then removes the installation and tap.
+PR and main-branch CI also build snapshot archives and run the same macOS, Linux, Windows, and Homebrew installation checks used by the release workflow; no sandbox key or publication is needed.
+
 5. Review and merge after CI passes. Tag the exact reviewed commit on `main`, never the current feature branch by accident.
 
 ## Publish the reviewed commit
@@ -103,6 +105,6 @@ Channels publish independently. Check the actual GitHub release, npm versions/di
 
 For a transient failure, rerun the failed jobs of the original workflow run. GitHub and npm publication verify existing content before accepting a rerun. The workflow pins build tools and derives build metadata from the source commit. If a rebuilt artifact differs, stop and investigate; do not bypass the integrity check. A partially uploaded GitHub Release may require carefully adding only the missing original artifacts before rerunning.
 
-npm can take several minutes to expose accepted versions. Verification retries installation; if it still fails, wait and rerun only the failed verification job. Do not bump or republish solely to work around registry propagation. When retrying an older release after a newer release has shipped, inspect the channel pointers first: publishing an older stable version can move `latest` or the Homebrew formula backward. The automatic dist-tag verification deliberately fails if the expected pointer does not match.
+npm can take several minutes to expose accepted versions. Verification retries installation, CLI execution, and the npm dist-tag check in a fresh directory each time; if it still fails, wait and rerun only the failed verification job. Do not bump or republish solely to work around registry propagation. When retrying an older release after a newer release has shipped, inspect the channel pointers first: publishing an older stable version can move `latest` or the Homebrew formula backward. The automatic dist-tag verification deliberately fails if the expected pointer does not match.
 
 For npm OIDC failures, check the exact repository/workflow/environment fields, direct publishing permission, the public repository URL in the package, and `id-token: write`. `npm whoami` does not test OIDC. For tap failures, check token expiry, organization authorization, Contents write access, and the tap's branch rules. Do not paste credentials into issues, PRs, or release notes.
