@@ -253,7 +253,9 @@ func TestJSONMutationRetriesWithOneIdempotencyKey(t *testing.T) {
 	}))
 	defer server.Close()
 	app, stdout, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"payment-intents", "create", "--amount", "2500", "--currency", "USD", "--payment-option", "card", "--output", "json", "--timeout", "3s"})
+	// This checks retry identity, so use the normal request timeout to tolerate
+	// race instrumentation and contention on busy build runners.
+	exit := app.Run([]string{"payment-intents", "create", "--amount", "2500", "--currency", "USD", "--payment-option", "card", "--output", "json"})
 	if exit != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
@@ -696,6 +698,11 @@ func TestMCPToolsMatchCanonicalRegistryAndInputSchemas(t *testing.T) {
 	byName := map[string]map[string]any{}
 	for _, tool := range tools {
 		byName[tool["name"].(string)] = tool
+		// MCP requires an explicit object root, even when anyOf is used.
+		outputSchema, ok := tool["outputSchema"].(map[string]any)
+		if !ok || outputSchema["type"] != "object" {
+			t.Errorf("MCP tool %s must advertise outputSchema.type object", tool["name"])
+		}
 		inputSchema, ok := tool["inputSchema"].(map[string]any)
 		if !ok || inputSchema["type"] != "object" {
 			t.Errorf("MCP tool %s must advertise inputSchema.type object, got %#v", tool["name"], inputSchema["type"])
@@ -809,7 +816,7 @@ func TestMCPOrderLinkedPaymentIntentUsesTypedAlternateInput(t *testing.T) {
 
 func TestOutputProjectionPreservesListEnvelopeAndFieldIsRaw(t *testing.T) {
 	value := map[string]any{"data": []any{map[string]any{"payment_intent_id": "pi_123", "status": "succeeded", "amount": 2500.0}}, "next_page_token": "page_2", "request_id": "req_1"}
-	projected, e := applyOutputTransforms(value, Options{Select: []string{"payment_intent_id", "status"}})
+	projected, e := applyOutputTransforms(t.Context(), value, Options{Select: []string{"payment_intent_id", "status"}})
 	if e != nil {
 		t.Fatal(e)
 	}

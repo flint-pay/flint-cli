@@ -189,15 +189,8 @@ func listenStreamPath(path string) (string, string, *CLIError) {
 func (a *App) openListenStream(ctx context.Context, baseURL, key, path, cursor string, timeout time.Duration, debug bool) (*http.Response, bool, *CLIError) {
 	client := a.HTTPClient
 	if client == nil {
-		client = &http.Client{
-			Transport: &http.Transport{
-				Proxy:                 http.ProxyFromEnvironment,
-				DialContext:           (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
-				TLSHandshakeTimeout:   10 * time.Second,
-				ResponseHeaderTimeout: timeout,
-			},
-			CheckRedirect: rejectAPIRedirect,
-		}
+		// The opening timer below enforces this stream's header timeout.
+		client = defaultAPIHTTPClient
 	} else if client.CheckRedirect == nil {
 		clone := *client
 		clone.CheckRedirect = rejectAPIRedirect
@@ -232,6 +225,7 @@ func (a *App) openListenStream(ctx context.Context, baseURL, key, path, cursor s
 			}
 		}
 	}()
+	openDeadline := time.Now().Add(timeout)
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 	var open listenOpenResult
@@ -255,10 +249,18 @@ func (a *App) openListenStream(ctx context.Context, baseURL, key, path, cursor s
 		return nil, true, networkError("NETWORK_ERROR", "Could not connect to the webhook event stream.", err)
 	}
 	if resp.StatusCode != http.StatusOK {
+		// Failed responses are not streams. Keep their body reads within the
+		// opening deadline, including time already spent waiting for headers.
+		bodyTimer := time.AfterFunc(time.Until(openDeadline), cancelRequest)
 		raw, readErr := io.ReadAll(io.LimitReader(resp.Body, (1<<20)+1))
+		bodyTimer.Stop()
 		resp.Body.Close()
+		requestErr := requestCtx.Err()
 		cancelRequest()
 		if readErr != nil {
+			if requestErr != nil {
+				return nil, retryableStatus(resp.StatusCode), networkError("REQUEST_TIMEOUT", "Timed out reading the webhook stream error response.", requestErr)
+			}
 			return nil, retryableStatus(resp.StatusCode), networkError("RESPONSE_READ_FAILED", "The Flint response could not be read.", readErr)
 		}
 		var value any
@@ -481,6 +483,9 @@ func (a *App) forwardListenPayload(ctx context.Context, timeout time.Duration, f
 	client := a.ForwardHTTPClient
 	if client == nil {
 		client = newLocalForwardHTTPClient(timeout)
+		// This transport pins a loopback destination for one delivery. Close
+		// its idle connection after the response body has been closed.
+		defer client.CloseIdleConnections()
 	} else if client.CheckRedirect == nil {
 		clone := *client
 		clone.CheckRedirect = rejectLocalForwardRedirect

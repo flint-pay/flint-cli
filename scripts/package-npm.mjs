@@ -1,14 +1,14 @@
-import { cpSync, chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { releaseVersion } from "./release-version.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const cliDir = resolve(scriptDir, "..");
 const distDir = resolve(cliDir, "dist");
 const outputDir = resolve(distDir, "npm");
-const version = process.env.FLINT_CLI_VERSION?.replace(/^v/, "");
-if (!version) throw new Error("FLINT_CLI_VERSION is required");
+const version = releaseVersion(`cli/v${process.env.FLINT_CLI_VERSION?.replace(/^v/, "")}`);
 
 const targets = [
   ["darwin", "arm64", "tar.gz"],
@@ -18,6 +18,9 @@ const targets = [
   ["windows", "amd64", "zip"],
 ];
 
+// This directory contains generated packages only. Start clean so repeated
+// preparation cannot retain files from another version or prompt during unzip.
+rmSync(outputDir, { recursive: true, force: true });
 mkdirSync(outputDir, { recursive: true });
 const wrapperDir = join(outputDir, "wrapper");
 cpSync(resolve(cliDir, "npm"), wrapperDir, { recursive: true });
@@ -36,7 +39,11 @@ for (const [os, arch, format] of targets) {
   mkdirSync(binDir, { recursive: true });
   const archive = join(distDir, `flint_${version}_${os}_${arch}.${format}`);
   if (format === "zip") {
-    execFileSync("unzip", ["-q", archive, "-d", binDir]);
+    if (process.platform === "win32") {
+      execFileSync("tar", ["-xf", archive, "-C", binDir]);
+    } else {
+      execFileSync("unzip", ["-q", archive, "-d", binDir]);
+    }
   } else {
     execFileSync("tar", ["-xzf", archive, "-C", binDir]);
   }

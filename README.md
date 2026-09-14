@@ -15,6 +15,16 @@ brew install flint-pay/tap/flint   # macOS and Linux
 
 Prebuilt archives for macOS, Linux, and Windows are attached to each `cli/v*` [release](https://github.com/flint-pay/flint-cli/releases) with a `checksums.txt`. [`scripts/install.sh`](scripts/install.sh) downloads and verifies the right one. The release workflow also publishes a container image to `ghcr.io/flint-pay/flint-cli`.
 
+For manual installation on macOS or Linux:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/flint-pay/flint-cli/main/scripts/install.sh -o /tmp/flint-install.sh
+FLINT_INSTALL_DIR="$HOME/.local/bin" sh /tmp/flint-install.sh
+"$HOME/.local/bin/flint" version
+```
+
+Add `$HOME/.local/bin` to your `PATH` if needed. Set `FLINT_CLI_VERSION=X.Y.Z` to install a specific version. On Windows, download the ZIP and `checksums.txt` from the same release, verify the ZIP with `Get-FileHash -Algorithm SHA256`, and extract `flint.exe` into a directory on `PATH`.
+
 ## Use
 
 ```bash
@@ -25,6 +35,8 @@ flint listen --forward-to http://localhost:8080/webhooks/flint
 ```
 
 `flint help` lists the starting points and `flint <command> --help` documents any single command. `flint schema commands --output json` returns the whole catalog as data.
+
+Live OAuth installs require `--mode live --live` and confirmation (`--confirm` for scripts), including when using `flint api get /v1/oauth/authorize`. Raw API pagination (`--all` or `--paginate`) accepts only read-only GET operations.
 
 ## Develop
 
@@ -54,11 +66,15 @@ Tests use local HTTP servers and synthetic credentials. They do not require an A
 
 ## Release
 
+Follow [RELEASING.md](RELEASING.md) for one-time publishing setup, release PRs, tagging a reviewed commit on `main`, installation verification, and recovery from partial publication.
+
 Push a `cli/vX.Y.Z` tag. [`.github/workflows/cli-release.yml`](.github/workflows/cli-release.yml) runs the tests and a sandbox listener check, builds every platform with GoReleaser, then publishes the GitHub release with build provenance, the npm platform packages plus the `@flintpay/cli` wrapper, the container image, and the Homebrew formula in `flint-pay/homebrew-tap`. A tag with a prerelease suffix publishes to the npm `next` tag and skips Homebrew.
 
 GitHub and npm publication verify the contents of an existing release before accepting a rerun.
 
 Before tagging a release, create `flint-pay/homebrew-tap` and configure `FLINT_TEST_API_KEY` in the `cli-release-sandbox` GitHub environment, npm trusted publishing for the six packages, and `HOMEBREW_TAP_TOKEN` for the tap. Use a disposable sandbox for the listener check, which creates a customer. Configure the environment to require release approval.
+
+The npm trusted publisher must name the `npm` GitHub environment and the `cli-release.yml` workflow. Release installation tests run before publication; public npm, manual, and stable Homebrew installations are verified afterward.
 
 ## License
 

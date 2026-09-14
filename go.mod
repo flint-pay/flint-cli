@@ -1,6 +1,6 @@
 module github.com/flint-pay/flint-cli
 
-go 1.25.11
+go 1.25.14
 
 require (
 	github.com/gofrs/flock v0.13.0

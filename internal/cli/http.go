@@ -49,6 +49,20 @@ type apiResponse struct {
 
 const defaultAPIBaseURL = "https://api.withflintpay.com"
 
+// App copies (including concurrent MCP tools) share the connection pool. Idle
+// connections expire even in a long-running process with no further requests.
+var defaultAPIHTTPClient = &http.Client{
+	Transport: &http.Transport{
+		Proxy:               http.ProxyFromEnvironment,
+		DialContext:         (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+		TLSHandshakeTimeout: 10 * time.Second,
+		IdleConnTimeout:     90 * time.Second,
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 10,
+	},
+	CheckRedirect: rejectAPIRedirect,
+}
+
 func (a *App) baseURLForCredential(key string) (string, error) {
 	if a.BaseURL != "" {
 		return validateBaseURL(a.BaseURL)
@@ -130,10 +144,7 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 	}
 	client := a.HTTPClient
 	if client == nil {
-		client = &http.Client{
-			Transport:     &http.Transport{Proxy: http.ProxyFromEnvironment, DialContext: (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext, TLSHandshakeTimeout: 10 * time.Second},
-			CheckRedirect: rejectAPIRedirect,
-		}
+		client = defaultAPIHTTPClient
 	} else if client.CheckRedirect == nil {
 		clone := *client
 		clone.CheckRedirect = rejectAPIRedirect
@@ -273,7 +284,7 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		}
 		var value any
 		if len(bytes.TrimSpace(raw)) > 0 {
-			if err := json.Unmarshal(raw, &value); err != nil {
+			if err := decodeJSONNumbers(raw, &value); err != nil {
 				if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 					e := apiErrorFromResponse(&apiResponse{Status: resp.StatusCode, Headers: resp.Header.Clone()})
 					e.Cause = err

@@ -207,7 +207,7 @@ func (a *App) localConfigValidate(cmd *Command, opts Options) int {
 		if baseURLErr != nil {
 			return a.fail(configError("INVALID_CREDENTIAL", baseURLErr.Error(), baseURLErr), opts)
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), opts.Timeout)
+		ctx, cancel := context.WithTimeout(a.commandContext(), opts.Timeout)
 		defer cancel()
 		authContext, authErr := a.fetchAuthContext(ctx, baseURL, key, opts.Debug)
 		if authErr != nil {
@@ -303,7 +303,7 @@ func (a *App) localAuthImport(cmd *Command, opts Options) int {
 	if err != nil {
 		return a.fail(configError("INVALID_CREDENTIAL", err.Error(), err), opts)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), opts.Timeout)
+	ctx, cancel := context.WithTimeout(a.commandContext(), opts.Timeout)
 	defer cancel()
 	authContext, e := a.fetchAuthContext(ctx, baseURL, key, opts.Debug)
 	if e != nil {
@@ -314,6 +314,10 @@ func (a *App) localAuthImport(cmd *Command, opts Options) int {
 	}
 	var persistenceErr *CLIError
 	lockErr := a.withConfigLock(func() error {
+		if err := a.commandContext().Err(); err != nil {
+			persistenceErr = networkError("REQUEST_CANCELED", "Import was canceled before the credential was stored.", err)
+			return persistenceErr
+		}
 		cfg, loadErr := a.loadConfig()
 		if loadErr != nil {
 			persistenceErr = configError("CONFIG_INVALID", loadErr.Error(), loadErr)
@@ -357,8 +361,10 @@ func (a *App) localAuthImport(cmd *Command, opts Options) int {
 }
 
 func (a *App) localLogout(cmd *Command, opts Options) int {
-	if credentialFromEnvironment() != "" {
-		return a.fail(configError("ENVIRONMENT_CREDENTIAL_ACTIVE", "FLINT_API_KEY is active and cannot be removed by flint auth logout. Unset it in the calling environment.", nil), opts)
+	for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_CHECKOUT_SESSION_SECRET"} {
+		if strings.TrimSpace(os.Getenv(name)) != "" {
+			return a.fail(configError("ENVIRONMENT_CREDENTIAL_ACTIVE", name+" is active and cannot be removed by flint auth logout. Unset it in the calling environment.", nil), opts)
+		}
 	}
 	resolved, _, err := a.resolveConfig(opts)
 	if err != nil {
@@ -480,6 +486,9 @@ func (a *App) localHelp(cmd *Command, opts Options) int {
 		return ExitOK
 	}
 	if target, ok := a.Registry.ByName(topic); ok {
+		if opts.Output == "json" {
+			return a.outputLocal(map[string]any{"data": commandDocument(target, topic)}, cmd, opts)
+		}
 		a.printCommandHelp(target)
 		return ExitOK
 	}
@@ -568,7 +577,7 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": err.Error()})
 		return checks, ExitAuth
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), opts.Timeout)
+	ctx, cancel := context.WithTimeout(a.commandContext(), opts.Timeout)
 	defer cancel()
 	authResponse, e := a.fetchAuthContextResponse(ctx, baseURL, key, opts.Debug)
 	if e != nil {

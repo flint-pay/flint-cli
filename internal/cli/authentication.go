@@ -46,6 +46,56 @@ func matchPublicOperation(method, path string) (openAPIOperation, bool) {
 	return best, bestScore >= 0
 }
 
+// Resolve raw API safety metadata before both flag validation and execution.
+// OAuth authorization creates a grant even though its HTTP method is GET.
+func resolveAPICommand(command *Command, opts Options) *Command {
+	if command.CanonicalName != "api" || len(opts.Positionals) < 2 {
+		return command
+	}
+	resolved := *command
+	resolved.Method = strings.ToUpper(opts.Positionals[0])
+	resolved.APIPath = opts.Positionals[1]
+	resolved.Mutation = resolved.Method != "GET" && resolved.Method != "HEAD"
+	resolved.Destructive = resolved.Method == "DELETE"
+	if operation, ok := matchPublicOperation(resolved.Method, resolved.APIPath); ok {
+		resolved.OperationID = operation.OperationID
+		resolved.Security = operation.Security
+		resolved.AuthRequired = len(operation.Security) > 0
+		resolved.Mutation = resolved.Mutation || operation.OperationID == "authorizePartnerInstall"
+		resolved.Destructive = resolved.Destructive || operation.FlintDestructive
+		metadata := &Command{OperationID: operation.OperationID}
+		applyPublicOperationMetadata(metadata)
+		resolved.ResponseMediaType = metadata.ResponseMediaType
+	}
+	// Raw writes retain their conservative confirmation policy.
+	resolved.Sensitive = resolved.Mutation
+	return &resolved
+}
+
+func oauthAuthorizationEnvironment(command *Command, opts Options) string {
+	if command.OperationID != "authorizePartnerInstall" {
+		return ""
+	}
+	modes := opts.Raw["mode"]
+	if command.CanonicalName == "api" {
+		if parsed, err := url.Parse(command.APIPath); err == nil {
+			modes = parsed.Query()["mode"]
+		}
+	}
+	environment := ""
+	for _, mode := range modes {
+		// Repeated query parameters must not hide a live request behind a
+		// later test value; API validation decides whether duplicates are valid.
+		if mode == "live" {
+			return "live"
+		}
+		if mode == "test" {
+			environment = "sandbox"
+		}
+	}
+	return environment
+}
+
 func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Options, resolved ResolvedConfig) (string, string, authContextEnvelope, *CLIError) {
 	envelope := authContextEnvelope{}
 	token := strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN"))
@@ -65,6 +115,9 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 		mode := "sandbox"
 		if opts.Live {
 			mode = "live"
+		}
+		if requested := oauthAuthorizationEnvironment(command, opts); requested != "" {
+			mode = requested
 		}
 		baseKey := "flint_test_"
 		if opts.Live {

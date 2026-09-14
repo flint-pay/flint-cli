@@ -158,6 +158,7 @@ func runBuiltCLI(t *testing.T, bin string, argv []string, credential, baseURL st
 		"FLINT_NO_INPUT=1",
 		"XDG_CONFIG_HOME="+configHome,
 		"HOME="+configHome,
+		"AppData="+configHome,
 	)
 	process.Stdin = strings.NewReader(`{"input_marker":"present"}`)
 	var stdout, stderr bytes.Buffer

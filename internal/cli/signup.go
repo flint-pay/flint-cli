@@ -110,6 +110,10 @@ func (a *App) runSignup(opts Options) int {
 	}
 	var persistenceErr *CLIError
 	lockErr := a.withConfigLock(func() error {
+		if a.Context != nil && a.Context.Err() != nil {
+			persistenceErr = networkError("REQUEST_CANCELED", "Signup was canceled before the credential was stored.", a.Context.Err())
+			return persistenceErr
+		}
 		cfg, loadErr := a.loadConfig()
 		if loadErr != nil {
 			persistenceErr = configError("CONFIG_INVALID", loadErr.Error(), loadErr)
@@ -340,9 +344,13 @@ func (a *App) compensateIssuedSignupKey(baseURL, secret, apiKeyID string, primar
 }
 
 func (a *App) revokeIssuedSignupKey(baseURL, secret, apiKeyID string, opts Options) *CLIError {
+	// Revocation must still be attempted when the signup was canceled after
+	// issuing a key. Each cleanup request retains its bounded retry timeout.
+	cleanup := *a
+	cleanup.Context = context.Background()
 	apiKeyID = strings.TrimSpace(apiKeyID)
 	if apiKeyID == "" {
-		authContext, err := a.doSignupRequest(baseURL, secret, http.MethodGet, "/v1/developer/auth-context", nil, "", opts)
+		authContext, err := cleanup.doSignupRequest(baseURL, secret, http.MethodGet, "/v1/developer/auth-context", nil, "", opts)
 		if err != nil {
 			return err
 		}
@@ -355,7 +363,7 @@ func (a *App) revokeIssuedSignupKey(baseURL, secret, apiKeyID string, opts Optio
 	if err != nil {
 		return networkError("IDEMPOTENCY_KEY_GENERATION_FAILED", "Could not generate an idempotency key for signup cleanup.", err)
 	}
-	_, cliErr := a.doSignupRequest(
+	_, cliErr := cleanup.doSignupRequest(
 		baseURL,
 		secret,
 		http.MethodPost,
@@ -394,7 +402,11 @@ func (a *App) doSignupRequest(baseURL, token, method, path string, body []byte, 
 	// The verification-code prompt can legitimately take minutes. Give each
 	// network operation its own retry budget so time spent by the human does not
 	// consume the next request's transport timeout.
-	ctx, cancel := context.WithTimeout(context.Background(), opts.Timeout)
+	parent := a.Context
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(parent, opts.Timeout)
 	defer cancel()
 	return a.doRequest(ctx, baseURL, token, method, path, body, idempotencyKey, opts.Debug)
 }

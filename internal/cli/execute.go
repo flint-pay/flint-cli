@@ -115,8 +115,12 @@ func permissionPreview(cmd *Command, authContext AuthContext) map[string]any {
 }
 
 func (a *App) executeAllPages(ctx context.Context, cmd *Command, opts Options, req preparedRequest, key, baseURL string) (any, *CLIError) {
-	var combined []any
-	var last map[string]any
+	combined := make([]any, 0)
+	var last, collection map[string]any
+	collectionField := "data"
+	if cmd.OutputSchema == "ResourceTimelineResponse" {
+		collectionField = "entries"
+	}
 	path := req.Path
 	pages := 0
 	seenPageTokens := map[string]bool{}
@@ -136,10 +140,14 @@ func (a *App) executeAllPages(ctx context.Context, cmd *Command, opts Options, r
 			return nil, invalidResponseError("INVALID_PAGINATION_RESPONSE", "List response is not an object.", nil)
 		}
 		pages++
-		if data, ok := m["data"].([]any); ok {
+		collection = m
+		if collectionField == "entries" {
+			collection, _ = m["data"].(map[string]any)
+		}
+		if data, ok := collection[collectionField].([]any); ok {
 			combined = append(combined, data...)
 		} else {
-			return nil, invalidResponseError("INVALID_PAGINATION_RESPONSE", "List response data is not an array.", nil)
+			return nil, invalidResponseError("INVALID_PAGINATION_RESPONSE", "List response collection is not an array.", nil)
 		}
 		last = m
 		token, tokenErr := nextPageToken(m)
@@ -157,7 +165,7 @@ func (a *App) executeAllPages(ctx context.Context, cmd *Command, opts Options, r
 			return nil, e
 		}
 	}
-	last["data"] = combined
+	collection[collectionField] = combined
 	last["next_page_token"] = ""
 	return last, nil
 }
