@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -93,7 +94,7 @@ func writeJSON(w io.Writer, value any) error {
 	return enc.Encode(value)
 }
 
-func applyOutputTransforms(value any, opts Options) (any, *CLIError) {
+func applyOutputTransforms(ctx context.Context, value any, opts Options) (any, *CLIError) {
 	if len(opts.Select) > 0 || opts.Field != "" || opts.JQ != "" {
 		// Commands may build envelopes with typed Go values. Normalize through
 		// JSON first so every transform sees the same shape users receive.
@@ -103,7 +104,7 @@ func applyOutputTransforms(value any, opts Options) (any, *CLIError) {
 			outputErr.Cause = err
 			return nil, outputErr
 		}
-		if err := json.Unmarshal(raw, &value); err != nil {
+		if err := decodeJSONNumbers(raw, &value); err != nil {
 			outputErr := cliError(ExitSoftware, "internal_error", "OUTPUT_ENCODING_FAILED", "Could not decode command output for client-side transforms.")
 			outputErr.Cause = err
 			return nil, outputErr
@@ -133,15 +134,29 @@ func applyOutputTransforms(value any, opts Options) (any, *CLIError) {
 		if err != nil {
 			return nil, usageError("INVALID_JQ", err.Error(), "jq")
 		}
-		iter := query.Run(value)
+		iter := query.RunWithContext(ctx, value)
 		var values []any
+		outputBytes := 2 // JSON array delimiters.
 		for {
 			v, ok := iter.Next()
 			if !ok {
 				break
 			}
+			if err := ctx.Err(); err != nil {
+				return nil, networkError("REQUEST_CANCELED", "Output transformation was canceled.", err)
+			}
 			if err, ok := v.(error); ok {
 				return nil, usageError("JQ_EVALUATION_FAILED", err.Error(), "jq")
+			}
+			if opts.outputLimit > 0 {
+				raw, err := json.Marshal(v)
+				if err != nil {
+					return nil, usageError("JQ_EVALUATION_FAILED", err.Error(), "jq")
+				}
+				outputBytes += len(raw) + 1
+				if outputBytes > opts.outputLimit {
+					return nil, networkError("OUTPUT_LIMIT_EXCEEDED", "Output transformation exceeded the MCP output limit.", nil)
+				}
 			}
 			values = append(values, v)
 		}
@@ -155,7 +170,7 @@ func applyOutputTransforms(value any, opts Options) (any, *CLIError) {
 }
 
 func (a *App) writeResult(value any, cmd *Command, opts Options) *CLIError {
-	value, err := applyOutputTransforms(value, opts)
+	value, err := applyOutputTransforms(a.commandContext(), value, opts)
 	if err != nil {
 		return err
 	}
@@ -172,6 +187,11 @@ func (a *App) writeResult(value any, cmd *Command, opts Options) *CLIError {
 			return networkError("OUTPUT_WRITE_FAILED", "Could not write command output.", err)
 		}
 		return nil
+	}
+	// A projection can replace the response envelope with a scalar or a new
+	// object. Specialized renderers only understand the original envelope.
+	if opts.JQ != "" || len(opts.Select) > 0 {
+		cmd = nil
 	}
 	renderHuman(a.Stdout, value, cmd, a.Now())
 	return nil
@@ -273,6 +293,12 @@ func renderHumanValue(w io.Writer, value any, prefix string, now time.Time, dept
 func humanLabel(path string) string {
 	parts := strings.Split(path, ".")
 	s := strings.ReplaceAll(parts[len(parts)-1], "_", " ")
+	if s == "" {
+		if path != "" {
+			return path
+		}
+		return "(empty key)"
+	}
 	label := strings.ToUpper(s[:1]) + s[1:]
 	if label == "Id" {
 		return "ID"

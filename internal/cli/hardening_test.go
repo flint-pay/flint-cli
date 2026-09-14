@@ -754,7 +754,7 @@ func TestMCPFlagsSerializeBooleansAndInheritServerContext(t *testing.T) {
 	opts.Raw["timeout"] = []string{"45s"}
 	argv = appendInheritedMCPOptions(nil, opts)
 	joined := strings.Join(argv, " ")
-	for _, expected := range []string{"--profile staging", "--merchant mer_guard", "--live=true", "--timeout 45s"} {
+	for _, expected := range []string{"--profile=staging", "--merchant=mer_guard", "--live=true", "--timeout 45s"} {
 		if !strings.Contains(joined, expected) {
 			t.Fatalf("inherited argv %q is missing %q", joined, expected)
 		}

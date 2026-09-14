@@ -16,6 +16,13 @@ import (
 
 const dashboardAPIKeysURL = "https://app.withflintpay.com/developers/api-keys"
 
+func (a *App) commandContext() context.Context {
+	if a.Context != nil {
+		return a.Context
+	}
+	return context.Background()
+}
+
 func New(info BuildInfo) *App {
 	return &App{
 		Info:             info,
@@ -56,24 +63,7 @@ func (a *App) Run(argv []string) int {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	effective := cmd
-	if cmd.CanonicalName == "api" {
-		copy := *cmd
-		copy.Method = strings.ToUpper(opts.Positionals[0])
-		copy.APIPath = opts.Positionals[1]
-		copy.Mutation = copy.Method != "GET" && copy.Method != "HEAD"
-		copy.Sensitive = copy.Mutation
-		copy.Destructive = copy.Method == "DELETE"
-		if operation, ok := matchPublicOperation(copy.Method, copy.APIPath); ok {
-			copy.OperationID = operation.OperationID
-			copy.Security = operation.Security
-			copy.AuthRequired = len(operation.Security) > 0
-			metadata := &Command{OperationID: operation.OperationID}
-			applyPublicOperationMetadata(metadata)
-			copy.ResponseMediaType = metadata.ResponseMediaType
-		}
-		effective = &copy
-	}
+	effective := resolveAPICommand(cmd, opts)
 	key, baseURL, authEnvelope, authErr := a.authenticateCommand(ctx, effective, opts, resolved)
 	if authErr != nil {
 		return a.fail(authErr, opts)

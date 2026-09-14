@@ -13,7 +13,23 @@ permissions:
   contents: read
 
 jobs:
+  release-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Require a release commit from main
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor HEAD origin/main
+      - name: Validate release version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node scripts/release-version.mjs "$RELEASE_TAG"
+
   verify:
+    needs: release-policy
     uses: ./.github/workflows/ci.yml
 
   sandbox-listener-e2e:
@@ -28,7 +44,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: "1.25.11"
+          go-version-file: go.mod
           cache-dependency-path: go.sum
       - name: Require protected sandbox credentials
         run: test -n "$FLINT_API_KEY"
@@ -100,6 +116,7 @@ jobs:
           grep -q '"type":"ready"' "$LISTENER_OUTPUT"
           "$RUNNER_TEMP/flint" customers create \
             --name "CLI release ${GITHUB_REF_NAME}" \
+            --email "cli-release-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}@example.com" \
             --idempotency-key "cli-listener-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
             --output json >/dev/null
           wait "$listener_pid"
@@ -126,20 +143,16 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: "1.25.11"
+          go-version-file: go.mod
           cache-dependency-path: go.sum
       - name: Compute API schema hash
         id: metadata
         run: |
-          cli_version="${GITHUB_REF_NAME#cli/v}"
+          cli_version="$(node scripts/release-version.mjs "$GITHUB_REF_NAME")"
           # Derive build metadata from the immutable source commit so rerunning
           # the same release tag produces byte-identical channel artifacts.
           build_date="$(git show -s --format=%cI "$GITHUB_SHA")"
           schema_hash="$(sha256sum internal/spec/openapi.json | awk '{print $1}')"
-          if [[ ! "$cli_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-            echo "Invalid CLI release version: $cli_version" >&2
-            exit 2
-          fi
           {
             echo "FLINT_SCHEMA_HASH=$schema_hash"
             echo "CLI_VERSION=$cli_version"
@@ -231,8 +244,34 @@ jobs:
             --build-arg SCHEMA_HASH="${{ needs.release.outputs.schema_hash }}" \
             .
 
+  install-preflight:
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      FLINT_CLI_VERSION: ${{ needs.release.outputs.cli_version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "26.7.0"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: flint-cli-release
+          path: dist
+      - name: Match the publication npm version
+        run: npm install --global npm@12.0.1
+      - name: Install archives and npm packages in clean directories
+        run: node scripts/test-install.mjs
+      - name: Install and test the Homebrew formula
+        if: runner.os == 'macOS'
+        run: bash scripts/test-homebrew.sh
+
   publish-github:
-    needs: [release, channel-preflight]
+    needs: [release, channel-preflight, install-preflight]
     if: ${{ startsWith(github.ref, 'refs/tags/cli/v') }}
     runs-on: ubuntu-latest
     permissions:
@@ -323,8 +362,9 @@ jobs:
           fi
 
   npm:
-    needs: [release, channel-preflight]
+    needs: [release, channel-preflight, install-preflight]
     runs-on: ubuntu-latest
+    environment: npm
     permissions:
       contents: read
       id-token: write
@@ -379,7 +419,7 @@ jobs:
           publish_if_missing wrapper
 
   docker:
-    needs: [release, channel-preflight]
+    needs: [release, channel-preflight, install-preflight]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -407,3 +447,51 @@ jobs:
             COMMIT=${{ github.sha }}
             BUILD_DATE=${{ needs.release.outputs.build_date }}
             SCHEMA_HASH=${{ needs.release.outputs.schema_hash }}
+
+  verify-published:
+    needs: [release, publish-github, npm, homebrew]
+    if: >-
+      ${{ !cancelled() && needs.release.result == 'success' &&
+          needs.publish-github.result == 'success' && needs.npm.result == 'success' &&
+          (needs.homebrew.result == 'success' || needs.homebrew.result == 'skipped') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CLI_VERSION: ${{ needs.release.outputs.cli_version }}
+      NPM_TAG: ${{ needs.release.outputs.npm_tag }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "26.7.0"
+          registry-url: https://registry.npmjs.org
+      - name: Install the published npm package
+        shell: bash
+        run: |
+          # npm can return E404/ETARGET briefly after accepting publication.
+          for attempt in 1 2 3 4 5 6; do
+            if npm install --prefix "$RUNNER_TEMP/flint-npm" --no-audit --no-fund "@flintpay/cli@$CLI_VERSION"; then
+              break
+            fi
+            if [ "$attempt" -eq 6 ]; then exit 1; fi
+            sleep 20
+          done
+          "$RUNNER_TEMP/flint-npm/node_modules/.bin/flint" version --output json | \
+            jq -e --arg version "$CLI_VERSION" '.data.cli_version == $version'
+          test "$(npm view "@flintpay/cli@$NPM_TAG" version)" = "$CLI_VERSION"
+      - name: Install from the public release downloads
+        shell: bash
+        run: |
+          FLINT_CLI_VERSION="$CLI_VERSION" FLINT_INSTALL_DIR="$RUNNER_TEMP/flint-manual" sh scripts/install.sh
+          "$RUNNER_TEMP/flint-manual/flint" version --output json | \
+            jq -e --arg version "$CLI_VERSION" '.data.cli_version == $version'
+      - name: Install from the public Homebrew tap
+        if: runner.os == 'macOS' && needs.release.outputs.is_prerelease == 'false'
+        run: |
+          brew install flint-pay/tap/flint
+          brew test flint-pay/tap/flint
+          "$(brew --prefix flint-pay/tap/flint)/bin/flint" version --output json | \
+            jq -e --arg version "$CLI_VERSION" '.data.cli_version == $version'

@@ -1,10 +1,8 @@
 import { readFileSync } from "node:fs";
+import { releaseVersion } from "./release-version.mjs";
 
 const [version, tag, checksumPath] = process.argv.slice(2);
-if (!version || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
-  throw new Error("A semantic CLI version is required");
-}
-if (!tag || tag !== `cli/v${version}`) {
+if (releaseVersion(tag) !== version) {
   throw new Error(`Expected release tag cli/v${version}`);
 }
 if (!checksumPath) {

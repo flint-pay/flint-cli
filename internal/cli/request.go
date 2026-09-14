@@ -180,7 +180,16 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		}
 	}
 	if len(query) > 0 {
-		req.Path += "?" + query.Encode()
+		parsed, err := url.Parse(req.Path)
+		if err != nil {
+			return req, usageError("INVALID_REQUEST_URL", err.Error(), "path")
+		}
+		merged := parsed.Query()
+		for name, values := range query {
+			merged[name] = values
+		}
+		parsed.RawQuery = merged.Encode()
+		req.Path = parsed.String()
 	}
 	if cmd.Mutation {
 		req.IdempotencyKey = opts.IdempotencyKey
@@ -482,7 +491,7 @@ func (a *App) resolveSingleOrderPaymentIntent(ctx context.Context, payPath, key,
 }
 
 func validateRawPublicRoute(method, path string) *CLIError {
-	doc, err := loadOpenAPI()
+	_, err := loadOpenAPI()
 	if err != nil {
 		return cliError(ExitUsage, "internal_error", "SCHEMA_SNAPSHOT_INVALID", err.Error())
 	}
@@ -490,28 +499,10 @@ func validateRawPublicRoute(method, path string) *CLIError {
 	if err != nil || u.IsAbs() || u.Host != "" || u.Fragment != "" || !strings.HasPrefix(u.Path, "/v1/") {
 		return usageError("NON_PUBLIC_API_PATH", "flint api only accepts documented /v1 public API paths.", "path")
 	}
-	for template, methods := range doc.Paths {
-		if pathMatchesTemplate(u.Path, template) {
-			if _, ok := methods[strings.ToLower(method)]; ok {
-				return nil
-			}
-		}
+	// Validation and safety classification must recognize exactly the same
+	// routes, including escaped paths and trailing slashes.
+	if _, ok := matchPublicOperation(method, path); ok {
+		return nil
 	}
 	return usageError("UNDOCUMENTED_API_OPERATION", fmt.Sprintf("%s %s is not present in Flint's public OpenAPI contract.", method, u.Path), "path")
-}
-
-func pathMatchesTemplate(actual, template string) bool {
-	a, t := strings.Split(strings.Trim(actual, "/"), "/"), strings.Split(strings.Trim(template, "/"), "/")
-	if len(a) != len(t) {
-		return false
-	}
-	for i := range a {
-		if strings.HasPrefix(t[i], "{") && strings.HasSuffix(t[i], "}") {
-			continue
-		}
-		if a[i] != t[i] {
-			return false
-		}
-	}
-	return true
 }

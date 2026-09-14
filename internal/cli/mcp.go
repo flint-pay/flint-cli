@@ -61,8 +61,41 @@ func (b *mcpCappedBuffer) Write(value []byte) (int, error) {
 }
 
 func (a *App) serveMCP(opts Options) int {
+	ctx, cancelInput := context.WithCancel(a.commandContext())
+	defer cancelInput()
 	scanner := bufio.NewScanner(a.Stdin)
 	scanner.Buffer(make([]byte, 64<<10), 8<<20)
+	type inputRecord struct {
+		line []byte
+		err  error
+	}
+	input := make(chan inputRecord)
+	go func() {
+		defer close(input)
+		for ctx.Err() == nil && scanner.Scan() {
+			record := inputRecord{line: append([]byte(nil), scanner.Bytes()...)}
+			select {
+			case input <- record:
+			case <-ctx.Done():
+				return
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			select {
+			case input <- inputRecord{err: err}:
+			case <-ctx.Done():
+			}
+		}
+	}()
+	defer func() {
+		cancelInput()
+		// Close owned input asynchronously: inherited blocking OS descriptors
+		// can make Close wait for Read. Shutdown must not wait on either; the
+		// scanner only sends to input, and exits if its pending read returns.
+		if closer, ok := a.Stdin.(io.Closer); ok {
+			go func() { _ = closer.Close() }()
+		}
+	}()
 	encoder := json.NewEncoder(a.Stdout)
 	encoder.SetEscapeHTML(false)
 	var encoderMu sync.Mutex
@@ -128,9 +161,26 @@ func (a *App) serveMCP(opts Options) int {
 	initializeSeen := false
 	initialized := false
 	protocolVersion := latestMCPProtocolVersion
-	for scanner.Scan() {
+	for {
+		var record inputRecord
+		select {
+		case <-ctx.Done():
+			return ExitOK
+		case next, ok := <-input:
+			if !ok {
+				return ExitOK
+			}
+			record = next
+		}
+		if ctx.Err() != nil {
+			return ExitOK
+		}
+		if record.err != nil {
+			fmt.Fprintln(a.Stderr, "MCP input failed: "+record.err.Error())
+			return ExitNetwork
+		}
 		var req jsonRPCRequest
-		if err := json.Unmarshal(scanner.Bytes(), &req); err != nil {
+		if err := decodeJSONNumbers(record.line, &req); err != nil {
 			if err := writeResponse(rpcError(nil, -32700, "Parse error")); err != nil {
 				fmt.Fprintln(a.Stderr, "MCP output failed: "+err.Error())
 				return ExitNetwork
@@ -280,11 +330,6 @@ func (a *App) serveMCP(opts Options) int {
 			}
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(a.Stderr, "MCP input failed: "+err.Error())
-		return ExitNetwork
-	}
-	return ExitOK
 }
 
 func mcpClientSupportsElicitation(params map[string]any) bool {
@@ -681,11 +726,6 @@ func (a *App) callMCPCommand(ctx context.Context, cmd *Command, args map[string]
 			argv = appendMCPFlag(argv, arg.Flag, value)
 		}
 	}
-	for _, value := range positionals {
-		if value != "" {
-			argv = append(argv, value)
-		}
-	}
 	for key, value := range args {
 		if !known[key] && !strings.HasPrefix(key, "_") {
 			body[key] = value
@@ -719,6 +759,16 @@ func (a *App) callMCPCommand(ctx context.Context, cmd *Command, args map[string]
 		argv = append(argv, "--input", "-")
 	}
 	argv = append(argv, "--output", "json", "--no-input")
+	// Positionals must follow all options and the terminator so data such as
+	// a help-search query beginning with -- is never interpreted as a flag.
+	if len(positionals) > 0 {
+		argv = append(argv, "--")
+		for _, value := range positionals {
+			if value != "" {
+				argv = append(argv, value)
+			}
+		}
+	}
 	stdout := &mcpCappedBuffer{limit: mcpMaxOutputBytes}
 	stderr := &mcpCappedBuffer{limit: mcpMaxStderrBytes}
 	child := *a
@@ -736,9 +786,10 @@ func (a *App) callMCPCommand(ctx context.Context, cmd *Command, args map[string]
 		return map[string]any{"stderr": strings.TrimSpace(stderr.String())}, false, exit
 	}
 	var result any
-	if err := json.Unmarshal(trimmed, &result); err == nil {
+	if err := decodeJSONNumbers(trimmed, &result); err == nil {
 		if exit == ExitOK && transformed {
-			result, transformErr = applyOutputTransforms(result, transformOptions)
+			transformOptions.outputLimit = mcpMaxOutputBytes
+			result, transformErr = applyOutputTransforms(ctx, result, transformOptions)
 			if transformErr != nil {
 				return mcpCLIErrorEnvelope(transformErr), false, transformErr.ExitCode
 			}
@@ -750,7 +801,7 @@ func (a *App) callMCPCommand(ctx context.Context, cmd *Command, args map[string]
 	scanner.Buffer(make([]byte, 64<<10), 20<<20)
 	for scanner.Scan() {
 		var line any
-		if err := json.Unmarshal(scanner.Bytes(), &line); err != nil {
+		if err := decodeJSONNumbers(scanner.Bytes(), &line); err != nil {
 			return map[string]any{"error": "Could not decode Flint NDJSON output: " + err.Error(), "stderr": strings.TrimSpace(stderr.String())}, false, ExitNetwork
 		}
 		lines = append(lines, line)
@@ -832,21 +883,60 @@ func mcpOutputSchema(cmd *Command) (map[string]any, *CLIError) {
 	if cmd.Stream {
 		return mcpStreamOutputSchema(), nil
 	}
-	if !cmd.Supports.Field || !cmd.Supports.Select || !cmd.Supports.JQ {
-		return outputSchema, nil
+	variants := []any{outputSchema}
+	if cmd.Supports.DryRunClient || cmd.Destructive {
+		variants = append(variants, mcpPreviewOutputSchema())
+	}
+	if cmd.Supports.Field && cmd.Supports.Select && cmd.Supports.JQ {
+		variants = append(variants, map[string]any{
+			"type":                 "object",
+			"additionalProperties": false,
+			"properties":           map[string]any{"value": map[string]any{}},
+			"required":             []string{"value"},
+		})
 	}
 	return map[string]any{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
-		"anyOf": []any{
-			outputSchema,
-			map[string]any{
+		"type":    "object",
+		"anyOf":   variants,
+	}, nil
+}
+
+// Client dry runs and destructive previews return the prepared request instead
+// of the API resource. Keep that envelope explicit in the tool's output union.
+func mcpPreviewOutputSchema() map[string]any {
+	return map[string]any{
+		"type":                 "object",
+		"additionalProperties": false,
+		"required":             []string{"data"},
+		"properties": map[string]any{
+			"data": map[string]any{
 				"type":                 "object",
 				"additionalProperties": false,
-				"properties":           map[string]any{"value": map[string]any{}},
-				"required":             []string{"value"},
+				"required":             []string{"method", "path", "headers", "body", "persistent_side_effects"},
+				"properties": map[string]any{
+					"method": map[string]any{"type": "string"},
+					"path":   map[string]any{"type": "string"},
+					"headers": map[string]any{
+						"type":       "object",
+						"properties": map[string]any{"Idempotency-Key": map[string]any{"type": "string"}},
+						"required":   []string{"Idempotency-Key"},
+					},
+					"body":                    map[string]any{},
+					"persistent_side_effects": map[string]any{"const": false},
+					"preview": map[string]any{
+						"type":     "object",
+						"required": []string{"permission_check", "reversibility", "affected_resources"},
+						"properties": map[string]any{
+							"permission_check":   map[string]any{"type": "object"},
+							"reversibility":      map[string]any{"type": "object"},
+							"affected_resources": map[string]any{"type": "array", "items": map[string]any{"type": "object"}},
+						},
+					},
+				},
 			},
 		},
-	}, nil
+	}
 }
 
 func mcpStreamOutputSchema() map[string]any {
@@ -880,7 +970,7 @@ func appendMCPFlag(argv []string, flag string, value any) []string {
 	case bool:
 		argv = append(argv, flag+"="+fmt.Sprint(values))
 	default:
-		argv = append(argv, flag, fmt.Sprint(value))
+		argv = append(argv, flag+"="+fmt.Sprint(value))
 	}
 	return argv
 }
@@ -895,7 +985,7 @@ func appendInheritedMCPOptions(argv []string, opts Options) []string {
 		{"color", opts.Color},
 	} {
 		if len(opts.Raw[item.name]) > 0 && item.value != "" {
-			argv = append(argv, "--"+item.name, item.value)
+			argv = appendMCPFlag(argv, "--"+item.name, item.value)
 		}
 	}
 	for _, item := range []struct {

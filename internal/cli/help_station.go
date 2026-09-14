@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -165,13 +164,11 @@ func (a *App) helpHTTPClient() *http.Client {
 	if a.HTTPClient != nil {
 		return a.HTTPClient
 	}
-	return &http.Client{
-		Transport: &http.Transport{
-			Proxy:               http.ProxyFromEnvironment,
-			DialContext:         (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
-			TLSHandshakeTimeout: 10 * time.Second,
-		},
-	}
+	// Public help searches retain normal redirect handling while sharing the
+	// bounded connection pool. API requests keep their stricter redirect policy.
+	client := *defaultAPIHTTPClient
+	client.CheckRedirect = nil
+	return &client
 }
 
 func renderHelpSearchHuman(w io.Writer, value any, _ time.Time) {

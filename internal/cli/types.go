@@ -129,6 +129,7 @@ type Options struct {
 	Positionals    []string
 	inputBody      map[string]any
 	inputLoaded    bool
+	outputLimit    int // MCP transform output budget; zero leaves CLI output unbounded.
 }
 
 type App struct {

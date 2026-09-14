@@ -32,8 +32,12 @@ func parseInvocation(r *Registry, argv []string) (*Command, Options, bool, *CLIE
 	if err != nil {
 		return nil, opts, false, err
 	}
+	flagsTerminated := len(remaining) > 0 && remaining[0] == "--"
+	if flagsTerminated {
+		remaining = remaining[1:]
+	}
 	if len(remaining) == 0 {
-		if len(opts.Raw["help"]) > 0 {
+		if helpRequested(opts) {
 			if cmd, ok := r.ByName("help"); ok {
 				return cmd, opts, false, nil
 			}
@@ -75,12 +79,15 @@ func parseInvocation(r *Registry, argv []string) (*Command, Options, bool, *CLIE
 			commandFlags[strings.TrimPrefix(a.Flag, "--")] = true
 		}
 	}
-	tail, err := extractKnownFlags(remaining[consumed:], commandFlags, &opts)
-	if err != nil {
-		return nil, opts, false, err
+	tail := remaining[consumed:]
+	if !flagsTerminated {
+		tail, err = extractKnownFlags(tail, commandFlags, &opts)
+		if err != nil {
+			return nil, opts, false, err
+		}
 	}
 	opts.Positionals = tail
-	help := len(opts.Raw["help"]) > 0
+	help := helpRequested(opts)
 	if opts.Output == "json" || opts.Output == "ndjson" {
 		opts.NoInput = true
 	}
@@ -88,6 +95,11 @@ func parseInvocation(r *Registry, argv []string) (*Command, Options, bool, *CLIE
 		return nil, opts, help, err
 	}
 	return cmd, opts, help, nil
+}
+
+func helpRequested(opts Options) bool {
+	values := opts.Raw["help"]
+	return len(values) > 0 && values[len(values)-1] == "true"
 }
 
 func defaultOptions() Options {
@@ -103,6 +115,11 @@ func extractFlags(args []string, allowed map[string]bool, opts *Options, rejectU
 	for i := 0; i < len(args); i++ {
 		token := args[i]
 		if token == "--" {
+			// The command-specific pass must see the terminator too, so it
+			// cannot reinterpret literal positional values as flags.
+			if !rejectUnknown {
+				remaining = append(remaining, token)
+			}
 			remaining = append(remaining, args[i+1:]...)
 			break
 		}
@@ -251,7 +268,8 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	if cmd.CanonicalName == "api" && len(o.Positionals) > 0 {
 		rawMethod = strings.ToUpper(o.Positionals[0])
 	}
-	rawMutation := rawMethod != "" && rawMethod != "GET" && rawMethod != "HEAD"
+	effective := resolveAPICommand(cmd, *o)
+	rawMutation := cmd.CanonicalName == "api" && effective.Mutation
 	used := func(name string) bool { return len(o.Raw[name]) > 0 }
 	for _, item := range []struct {
 		name  string
@@ -282,7 +300,7 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	if used("idempotency-key") && !cmd.Mutation && !rawMutation {
 		return usageError("UNSUPPORTED_FLAG", "--idempotency-key applies only to mutations.", "idempotency-key")
 	}
-	if used("preview") && !(cmd.Mutation && cmd.Destructive) && !(cmd.CanonicalName == "api" && rawMethod == "DELETE") {
+	if used("preview") && !(effective.Mutation && effective.Destructive) {
 		return usageError("UNSUPPORTED_FLAG", "--preview applies only to destructive mutations.", "preview")
 	}
 	confirmApplies := cmd.Sensitive || cmd.Destructive || rawMutation || (cmd.CanonicalName == "history" && o.Clear)
@@ -330,11 +348,14 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	if used("paginate") && cmd.CanonicalName != "api" {
 		return usageError("UNSUPPORTED_FLAG", "--paginate applies only to flint api get.", "paginate")
 	}
+	if cmd.CanonicalName == "api" && (o.All || o.Paginate) && (rawMethod != "GET" || rawMutation) {
+		return usageError("PAGINATION_REQUIRES_GET", "--all and --paginate require a read-only flint api get operation.", "method")
+	}
 	if used("expand") && cmd.Local {
 		return usageError("UNSUPPORTED_FLAG", "--expand applies only to API commands with documented expansions.", "expand")
 	}
 	if used("expand") {
-		if err := validateExpansions(cmd.OperationID, o.Expand); err != nil {
+		if err := validateExpansions(effective.OperationID, o.Expand); err != nil {
 			return err
 		}
 	}

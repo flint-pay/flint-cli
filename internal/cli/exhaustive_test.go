@@ -498,6 +498,10 @@ func TestEveryAdvertisedExecutionControlIsAcceptedByItsCommand(t *testing.T) {
 						} else if command.Supports.WaitFor {
 							argv = append(argv, "--wait-for", "status=succeeded")
 						} else if command.CanonicalName == "api" {
+							// Raw pagination is a read-only capability, unlike
+							// the default raw mutation fixture.
+							argv[1] = "get"
+							argv[2] = "/v1/customers"
 							argv = append(argv, "--paginate")
 						}
 						argv = append(argv, "--progress", "quiet")
@@ -1007,6 +1011,11 @@ func TestEveryMutationExecutesClientDryRunWithoutNetwork(t *testing.T) {
 			if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 				t.Fatalf("invalid dry-run JSON: %v: %s", err, stdout)
 			}
+			schema, schemaErr := mcpOutputSchema(command)
+			if schemaErr != nil {
+				t.Fatal(schemaErr)
+			}
+			assertMCPOutputMatchesSchema(t, schema, result)
 			if sideEffects, ok := lookupPath(result, "data.persistent_side_effects"); !ok || sideEffects != false {
 				t.Fatalf("dry-run result = %#v", result)
 			}
@@ -1066,6 +1075,15 @@ func TestEveryDestructiveMutationExecutesPreviewWithoutMutation(t *testing.T) {
 			if exit != ExitOK || stderr.Len() != 0 {
 				t.Fatalf("argv=%v exit=%d stdout=%s stderr=%s", argv, exit, stdout, stderr)
 			}
+			var result any
+			if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+				t.Fatal(err)
+			}
+			schema, schemaErr := mcpOutputSchema(command)
+			if schemaErr != nil {
+				t.Fatal(schemaErr)
+			}
+			assertMCPOutputMatchesSchema(t, schema, result)
 			if endpointCalls != 0 {
 				t.Fatalf("preview made %d mutation requests", endpointCalls)
 			}
@@ -1158,17 +1176,28 @@ func TestEveryPaginatedCommandExecutesAllPages(t *testing.T) {
 				if request.URL.Query().Get("page_size") != "1" {
 					t.Errorf("page_size = %q", request.URL.Query().Get("page_size"))
 				}
+				nextToken := ""
 				if resourceCalls == 1 {
 					if token := request.URL.Query().Get("page_token"); token != "" {
 						t.Errorf("first page token = %q", token)
 					}
-					fmt.Fprint(w, `{"data":[{"resource_id":"res_1"}],"next_page_token":"page_2"}`)
-					return
-				}
-				if token := request.URL.Query().Get("page_token"); token != "page_2" {
+					nextToken = "page_2"
+				} else if token := request.URL.Query().Get("page_token"); token != "page_2" {
 					t.Errorf("second page token = %q", token)
 				}
-				fmt.Fprint(w, `{"data":[{"resource_id":"res_2"}],"next_page_token":""}`)
+				var data any = []any{map[string]any{"resource_id": fmt.Sprintf("res_%d", resourceCalls)}}
+				if command.CanonicalName == "timeline" {
+					// The public timeline contract nests its collection beside
+					// resource metadata instead of returning a data array.
+					data = map[string]any{
+						"resource_id": "pi_test", "resource_type": "payment_intent", "test": true,
+						"entries": []any{map[string]any{
+							"resource_timeline_entry_id": fmt.Sprintf("entry_%d", resourceCalls),
+							"entry_type":                 "event", "occurred_at": "2026-09-13T00:00:00Z", "test": true,
+						}},
+					}
+				}
+				_ = json.NewEncoder(w).Encode(map[string]any{"data": data, "next_page_token": nextToken})
 			}))
 			defer server.Close()
 			app, stdout, stderr := testApp(t, server.URL)
@@ -1189,7 +1218,11 @@ func TestEveryPaginatedCommandExecutesAllPages(t *testing.T) {
 			if err := json.Unmarshal(stdout.Bytes(), &envelope); err != nil {
 				t.Fatal(err)
 			}
-			data, _ := envelope["data"].([]any)
+			collection := envelope["data"]
+			if command.CanonicalName == "timeline" {
+				collection, _ = lookupPath(envelope, "data.entries")
+			}
+			data, _ := collection.([]any)
 			if len(data) != 2 || envelope["next_page_token"] != "" {
 				t.Fatalf("combined pagination output = %#v", envelope)
 			}

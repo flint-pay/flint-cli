@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { spawnSync } = require("node:child_process");
+const { spawn } = require("node:child_process");
 const path = require("node:path");
 
 const platform = process.platform;
@@ -30,9 +30,29 @@ try {
 }
 
 const binary = path.join(packagePath, "bin", platform === "win32" ? "flint.exe" : "flint");
-const result = spawnSync(binary, process.argv.slice(2), { stdio: "inherit" });
-if (result.error) {
-  process.stderr.write(`${result.error.message}\n`);
-  process.exit(5);
+const child = spawn(binary, process.argv.slice(2), { stdio: "inherit" });
+const signalHandlers = new Map();
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+  const handler = () => child.kill(signal);
+  signalHandlers.set(signal, handler);
+  process.on(signal, handler);
 }
-process.exit(result.status === null ? 5 : result.status);
+function removeSignalHandlers() {
+  for (const [signal, handler] of signalHandlers) {
+    process.removeListener(signal, handler);
+  }
+}
+child.on("error", (error) => {
+  removeSignalHandlers();
+  process.stderr.write(`${error.message}\n`);
+  process.exitCode = 5;
+});
+child.on("exit", (code, signal) => {
+  removeSignalHandlers();
+  if (signal) {
+    // Preserve signal termination for callers as well as ordinary exit codes.
+    process.kill(process.pid, signal);
+  } else {
+    process.exitCode = code;
+  }
+});
