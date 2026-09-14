@@ -246,29 +246,10 @@ jobs:
 
   install-preflight:
     needs: release
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    env:
-      FLINT_CLI_VERSION: ${{ needs.release.outputs.cli_version }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: "26.7.0"
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: flint-cli-release
-          path: dist
-      - name: Match the publication npm version
-        run: npm install --global npm@12.0.1
-      - name: Install archives and npm packages in clean directories
-        run: node scripts/test-install.mjs
-      - name: Install and test the Homebrew formula
-        if: runner.os == 'macOS'
-        run: bash scripts/test-homebrew.sh
+    uses: ./.github/workflows/install-checks.yml
+    with:
+      version: ${{ needs.release.outputs.cli_version }}
+      artifact: flint-cli-release
 
   publish-github:
     needs: [release, channel-preflight, install-preflight]
@@ -470,18 +451,7 @@ jobs:
           registry-url: https://registry.npmjs.org
       - name: Install the published npm package
         shell: bash
-        run: |
-          # npm can return E404/ETARGET briefly after accepting publication.
-          for attempt in 1 2 3 4 5 6; do
-            if npm install --prefix "$RUNNER_TEMP/flint-npm" --no-audit --no-fund "@flintpay/cli@$CLI_VERSION"; then
-              break
-            fi
-            if [ "$attempt" -eq 6 ]; then exit 1; fi
-            sleep 20
-          done
-          "$RUNNER_TEMP/flint-npm/node_modules/.bin/flint" version --output json | \
-            jq -e --arg version "$CLI_VERSION" '.data.cli_version == $version'
-          test "$(npm view "@flintpay/cli@$NPM_TAG" version)" = "$CLI_VERSION"
+        run: bash scripts/verify-npm-install.sh
       - name: Install from the public release downloads
         shell: bash
         run: |
