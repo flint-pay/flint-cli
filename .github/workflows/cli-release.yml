@@ -33,6 +33,7 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   sandbox-listener-e2e:
+    timeout-minutes: 5
     needs: verify
     if: ${{ startsWith(github.ref, 'refs/tags/cli/v') }}
     runs-on: ubuntu-latest
@@ -51,78 +52,7 @@ jobs:
       - name: Exercise listener forwarding and signature verification
         run: |
           go build -trimpath -buildvcs=false -o "$RUNNER_TEMP/flint" ./cmd/flint
-          export LISTENER_OUTPUT="$RUNNER_TEMP/listener.ndjson"
-          export RECEIVER_RESULT="$RUNNER_TEMP/receiver.json"
-          export RECEIVER_READY="$RUNNER_TEMP/receiver.ready"
-          python3 - <<'PY' &
-          import base64
-          import hashlib
-          import hmac
-          import json
-          import os
-          import time
-          from http.server import BaseHTTPRequestHandler, HTTPServer
-
-          class Handler(BaseHTTPRequestHandler):
-              def do_POST(self):
-                  body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
-                  deadline = time.time() + 10
-                  secret = ""
-                  while time.time() < deadline and not secret:
-                      try:
-                          with open(os.environ["LISTENER_OUTPUT"], encoding="utf-8") as output:
-                              for line in output:
-                                  record = json.loads(line)
-                                  if record.get("type") == "listener":
-                                      secret = record.get("signing_secret", "")
-                                      break
-                      except (FileNotFoundError, json.JSONDecodeError):
-                          pass
-                      if not secret:
-                          time.sleep(0.05)
-                  event_id = self.headers.get("webhook-id", "")
-                  timestamp = self.headers.get("webhook-timestamp", "")
-                  signatures = self.headers.get("webhook-signature", "").split()
-                  signed = event_id.encode() + b"." + timestamp.encode() + b"." + body
-                  expected = base64.b64encode(hmac.new(base64.b64decode(secret.removeprefix("whsec_")), signed, hashlib.sha256).digest()).decode()
-                  valid = bool(event_id and timestamp and any(value == "v1," + expected for value in signatures))
-                  with open(os.environ["RECEIVER_RESULT"], "w", encoding="utf-8") as result:
-                      json.dump({"valid_signature": valid, "event_id": event_id, "body": json.loads(body)}, result)
-                  self.send_response(204 if valid else 400)
-                  self.end_headers()
-
-              def log_message(self, *_):
-                  pass
-
-          server = HTTPServer(("127.0.0.1", 18765), Handler)
-          open(os.environ["RECEIVER_READY"], "w", encoding="utf-8").close()
-          server.handle_request()
-          PY
-          receiver_pid=$!
-          "$RUNNER_TEMP/flint" listen \
-            --forward-to http://127.0.0.1:18765 \
-            --event-type customer.created \
-            --max-events 1 \
-            --timeout 30s \
-            --output ndjson >"$LISTENER_OUTPUT" &
-          listener_pid=$!
-          for _ in $(seq 1 100); do
-            if test -f "$RECEIVER_READY" && grep -q '"type":"ready"' "$LISTENER_OUTPUT" 2>/dev/null; then
-              break
-            fi
-            sleep 0.1
-          done
-          test -f "$RECEIVER_READY"
-          grep -q '"type":"ready"' "$LISTENER_OUTPUT"
-          "$RUNNER_TEMP/flint" customers create \
-            --name "CLI release ${GITHUB_REF_NAME}" \
-            --email "cli-release-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}@example.com" \
-            --idempotency-key "cli-listener-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
-            --output json >/dev/null
-          wait "$listener_pid"
-          wait "$receiver_pid"
-          jq -e '.valid_signature == true and .event_id != "" and .body.event_type == "customer.created"' "$RECEIVER_RESULT"
-          jq -s -e 'any(.[]; .type == "forward" and .status_code == 204) and any(.[]; .type == "checkpoint" and .cursor != "")' "$LISTENER_OUTPUT"
+          FLINT_BIN="$RUNNER_TEMP/flint" bash scripts/test-sandbox-listener.sh
 
   release:
     needs: [verify, sandbox-listener-e2e]

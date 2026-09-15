@@ -8,7 +8,7 @@ The CLI version is independent of the API version and SDK package versions. One 
 
 1. Keep `flint-pay/flint-cli` public. The manual installer and Homebrew download its GitHub Release assets anonymously; npm provenance also requires a public source repository. Merge `.github/workflows/cli-release.yml` before configuring publication.
 2. Create the public `flint-pay/homebrew-tap` repository with an initial README commit. The release workflow writes `Formula/flint.rb` to its default branch. Add `HOMEBREW_TAP_TOKEN` as a secret in the CLI repository: use a fine-grained GitHub token restricted to the tap with Contents read/write permission, authorized for the organization. The CLI repository's default `GITHUB_TOKEN` cannot write to another repository.
-3. Create the GitHub environment `cli-release-sandbox`, require a maintainer's approval, and allow the `cli/v*` release tags. Add the environment secret `FLINT_TEST_API_KEY` for a disposable sandbox. The listener check creates a customer and validates the forwarded webhook signature; it must not use a live key.
+3. Create the GitHub environment `cli-release-sandbox`, require a maintainer's approval, and allow the `cli/v*` release tags and the `main` branch. Add the environment secret `FLINT_TEST_API_KEY` for a disposable sandbox. The listener check creates a customer and validates the forwarded webhook signature; it must not use a live key.
 4. Create the GitHub environment `npm`, using the same naming convention as the SDK repository. Restrict it to release tags and apply the desired maintainer approval rules. Configure a GitHub Actions trusted publisher on **each** of these npm packages:
 
    - `@flintpay/cli`
@@ -55,6 +55,8 @@ PR and main-branch CI also build snapshot archives and run the same macOS, Linux
 5. Review and merge after CI passes. Tag the exact reviewed commit on `main`, never the current feature branch by accident.
 
 ## Publish the reviewed commit
+
+Run **CLI Sandbox Check** from `main` and approve the sandbox environment before tagging. This checks the configured credential and webhook forwarding without publishing. Failures report CLI error codes without exposing the signing secret.
 
 Check that the version is unused on GitHub and all six npm packages. A registry authentication or network error does not establish that a version is available.
 

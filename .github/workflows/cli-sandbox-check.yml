@@ -1,0 +1,25 @@
+name: CLI Sandbox Check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: cli-release-sandbox
+    env:
+      FLINT_API_KEY: ${{ secrets.FLINT_TEST_API_KEY }}
+      FLINT_NO_INPUT: "1"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+      - name: Check sandbox listener
+        run: |
+          go build -trimpath -buildvcs=false -o "$RUNNER_TEMP/flint" ./cmd/flint
+          FLINT_BIN="$RUNNER_TEMP/flint" bash scripts/test-sandbox-listener.sh
