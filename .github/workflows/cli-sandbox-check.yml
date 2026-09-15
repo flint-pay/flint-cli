@@ -19,6 +19,29 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
+      - name: Inspect stream response
+        run: |
+          python3 - <<'PYTHON'
+          import json
+          import os
+          import urllib.request
+          import urllib.error
+          request = urllib.request.Request(
+              "https://api.withflintpay.com/v1/webhook-events/stream?event_type=customer.created",
+              headers={"Authorization": "Bearer " + os.environ["FLINT_API_KEY"], "Accept": "text/event-stream", "Flint-Version": "2026-09-07"},
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=10) as response:
+                  print(json.dumps({"status": response.status, "content_type": response.headers.get("Content-Type"), "request_id": response.headers.get("X-Request-ID")}))
+          except urllib.error.HTTPError as error:
+              try:
+                  detail = json.loads(error.read(65536)).get("error", {})
+              except (ValueError, AttributeError):
+                  detail = {}
+              print(json.dumps({"status": error.code, "code": detail.get("code"), "request_id": detail.get("request_id")}))
+          except (urllib.error.URLError, TimeoutError):
+              print("Stream transport failed before response headers.")
+          PYTHON
       - name: Check sandbox listener
         run: |
           go build -trimpath -buildvcs=false -o "$RUNNER_TEMP/flint" ./cmd/flint
