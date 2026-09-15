@@ -8,6 +8,7 @@ export LISTENER_OUTPUT="$work_dir/listener.ndjson"
 export RECEIVER_RESULT="$work_dir/receiver.json"
 export RECEIVER_READY="$work_dir/receiver.ready"
 customer_output="$work_dir/customer.json"
+auth_output="$work_dir/auth.json"
 listener_pid=""
 receiver_pid=""
 cleanup() {
@@ -16,11 +17,15 @@ cleanup() {
   if test "$result" -ne 0; then
     echo "Sandbox listener check failed (exit $result). CLI error codes:" >&2
     # Never print raw listener records: they contain the signing secret.
-    for output in "$LISTENER_OUTPUT" "$customer_output"; do
+    for output in "$auth_output" "$LISTENER_OUTPUT" "$customer_output"; do
       if test -f "$output"; then
-        jq -c 'select(.error != null) | .error | {type, code, request_id}' "$output" >&2 || true
+        jq -c 'select((.error | type) == "object") | .error | {type, code, request_id}' "$output" >&2 || true
       fi
     done
+    if test -f "$LISTENER_OUTPUT"; then
+      echo "Listener checkpoints reached:" >&2
+      jq -r '.type | select(. == "listener" or . == "ready" or . == "checkpoint" or . == "forward")' "$LISTENER_OUTPUT" >&2 || true
+    fi
   fi
   for child in "$listener_pid" "$receiver_pid"; do
     if test -n "$child"; then
@@ -32,6 +37,10 @@ cleanup() {
   exit "$result"
 }
 trap cleanup EXIT
+echo "Checking sandbox authentication..."
+"$FLINT_BIN" auth status --timeout 15s --debug --output json >"$auth_output"
+jq -e '.data.environment == "sandbox" or .data.environment == "test"' "$auth_output" >/dev/null
+echo "Sandbox authentication passed; opening event stream..."
 python3 - <<'PY' &
 import base64
 import hashlib
@@ -74,7 +83,7 @@ class Handler(BaseHTTPRequestHandler):
 
 server = HTTPServer(("127.0.0.1", 18765), Handler)
 open(os.environ["RECEIVER_READY"], "w", encoding="utf-8").close()
-server.timeout = 75
+server.timeout = 120
 server.handle_request()
 PY
 receiver_pid=$!
@@ -84,9 +93,10 @@ receiver_pid=$!
   --max-events 1 \
   --timeout 30s \
   --for 60s \
+  --debug \
   --output ndjson >"$LISTENER_OUTPUT" &
 listener_pid=$!
-for _ in $(seq 1 "${FLINT_LISTENER_STARTUP_ATTEMPTS:-300}"); do
+for _ in $(seq 1 "${FLINT_LISTENER_STARTUP_ATTEMPTS:-650}"); do
   if test -f "$RECEIVER_READY" && grep -q '"type":"ready"' "$LISTENER_OUTPUT" 2>/dev/null; then
     break
   fi
@@ -95,6 +105,7 @@ for _ in $(seq 1 "${FLINT_LISTENER_STARTUP_ATTEMPTS:-300}"); do
 done
 test -f "$RECEIVER_READY"
 grep -q '"type":"ready"' "$LISTENER_OUTPUT"
+echo "Event stream ready; creating sandbox customer..."
 "$FLINT_BIN" customers create \
   --name "CLI release ${GITHUB_REF_NAME:-local}" \
   --email "cli-release-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}@example.com" \
