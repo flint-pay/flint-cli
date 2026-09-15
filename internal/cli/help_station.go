@@ -224,6 +224,7 @@ func pluralizeReplies(value any) string {
 type supportComposerContext struct {
 	Title       string
 	Body        string
+	AIAgent     bool
 	Area        string
 	Private     bool
 	RequestID   string
@@ -232,7 +233,7 @@ type supportComposerContext struct {
 }
 
 // buildSupportComposerURL preserves the context parameter order from
-// web/libs/utils/src/helpLink.ts, with optional title and body before source.
+// web/libs/utils/src/helpLink.ts, with optional title, body, and AI status before source.
 func buildSupportComposerURL(base string, composer supportComposerContext) string {
 	pairs := [][2]string{{"kind", "question"}}
 	if composer.Area != "" {
@@ -255,6 +256,9 @@ func buildSupportComposerURL(base string, composer supportComposerContext) strin
 	}
 	if composer.Body != "" {
 		pairs = append(pairs, [2]string{"body", composer.Body})
+	}
+	if composer.AIAgent {
+		pairs = append(pairs, [2]string{"ai_agent", "true"})
 	}
 	pairs = append(pairs, [2]string{"source", "cli.support"})
 	encoded := make([]string, 0, len(pairs))
@@ -288,6 +292,7 @@ func (a *App) localSupportOpen(cmd *Command, opts Options) int {
 	composer := supportComposerContext{
 		Title:       textOption("title"),
 		Body:        textOption("body"),
+		AIAgent:     booleanRawOption(opts, "ai-agent"),
 		Area:        area,
 		Private:     booleanRawOption(opts, "private"),
 		RequestID:   lastRawOption(opts, "request-id"),
@@ -313,6 +318,7 @@ func (a *App) localSupportOpen(cmd *Command, opts Options) int {
 		"kind":        "question",
 		"title":       composer.Title,
 		"body":        composer.Body,
+		"ai_agent":    composer.AIAgent,
 		"area":        composer.Area,
 		"visibility":  supportVisibility(composer.Private),
 		"request_id":  composer.RequestID,

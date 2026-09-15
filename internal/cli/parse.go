@@ -14,7 +14,7 @@ var boolFlags = map[string]bool{
 	// Command-scoped booleans. They stay out of globalFlags so only the command
 	// that declares them accepts them, but the parser still has to know they
 	// take no value.
-	"private": true, "no-open": true,
+	"private": true, "no-open": true, "ai-agent": true,
 }
 
 var globalFlags = map[string]bool{

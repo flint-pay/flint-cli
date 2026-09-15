@@ -66,6 +66,7 @@ func additionalCommands(page []Arg, input Arg) []*Command {
 			Arguments: []Arg{
 				flag("title", "string", "", "", "Thread title to prefill", false),
 				flag("body", "string", "", "", "Thread body to prefill", false),
+				{Name: "ai_agent", Flag: "--ai-agent", Type: "boolean", Description: "Identify the reporter as an AI agent (self-reported; defaults to false)"},
 				flag("request_id", "string", "", "", "Flint request ID from the failing call", false),
 				flag("resource", "string", "", "", "Flint resource ID the question is about", false),
 				flag("area", "string", "", "", "Product area: "+strings.Join(supportProductAreas, ", "), false),

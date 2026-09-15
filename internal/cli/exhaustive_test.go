@@ -539,6 +539,7 @@ func TestEveryBooleanFlagAcceptsExplicitTrueAndFalse(t *testing.T) {
 		"quiet":    {"version"},
 		"stdin":    {"auth", "import"},
 		"private":  {"support", "open"},
+		"ai-agent": {"support", "open"},
 		"no-open":  {"support", "open"},
 	}
 	if len(cases) != len(boolFlags) {
