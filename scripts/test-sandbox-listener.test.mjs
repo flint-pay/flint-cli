@@ -10,6 +10,7 @@ test("sandbox failures expose error codes without leaking listener secrets", { s
   try {
     const binary = join(dir, "flint");
     writeFileSync(binary, `#!/usr/bin/env node
+if (process.argv[2] === "auth") { console.log(JSON.stringify({data:{environment:"sandbox"}})); process.exit(0); }
 console.log(JSON.stringify({type:"listener",signing_secret:"never-print-this-secret"}));
 console.log(JSON.stringify({error:{type:"authentication_error",code:"INVALID_API_KEY",message:"never-print-this-message",request_id:"req_test"}}));
 process.exit(1);
