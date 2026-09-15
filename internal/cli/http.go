@@ -24,6 +24,7 @@ import (
 type AuthContext struct {
 	CredentialScope string   `json:"-"`
 	AuthType        string   `json:"auth_type"`
+	OAuthGrantID    string   `json:"oauth_grant_id,omitempty"`
 	APIKeyID        string   `json:"api_key_id"`
 	Name            string   `json:"name,omitempty"`
 	Environment     string   `json:"environment"`
@@ -153,6 +154,11 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 	attempt := 0
 	for {
 		attempt++
+		currentKey, tokenErr := a.oauthRequestToken(ctx, key, baseURL)
+		if tokenErr != nil {
+			return nil, tokenErr
+		}
+		key = currentKey
 		req, err := http.NewRequestWithContext(ctx, method, baseURL+path, bytes.NewReader(body))
 		if err != nil {
 			return nil, usageError("INVALID_REQUEST_URL", err.Error(), "path")

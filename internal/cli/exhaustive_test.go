@@ -1226,6 +1226,10 @@ func TestEveryLocalCommandExecutes(t *testing.T) {
 			continue
 		}
 		t.Run(command.CanonicalName, func(t *testing.T) {
+			if command.CanonicalName == "auth.login" {
+				TestBrowserLoginSuccess(t)
+				return
+			}
 			if command.CanonicalName == "signup" {
 				testExhaustiveSignup(t)
 				return

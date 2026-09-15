@@ -222,6 +222,10 @@ func (w *outputErrorWriter) Write(p []byte) (int, error) {
 }
 
 func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) {
+	if cmd != nil && cmd.CanonicalName == "doctor" {
+		renderDoctorHuman(w, value)
+		return
+	}
 	if cmd != nil && cmd.Render == "checkout" {
 		renderCheckoutHuman(w, value, now)
 		return
@@ -251,6 +255,43 @@ func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) {
 		data = value
 	}
 	renderHumanValue(w, data, "", now, 0)
+}
+
+func renderDoctorHuman(w io.Writer, value any) {
+	envelope, _ := value.(map[string]any)
+	checks, _ := envelope["data"].([]map[string]any)
+	for _, check := range checks {
+		marker := "✓"
+		if check["status"] == "fail" {
+			marker = "✗"
+		} else if check["status"] == "info" {
+			marker = "i"
+		}
+		label := humanLabel(fmt.Sprint(check["name"]))
+		if check["name"] == "config" && check["status"] == "pass" {
+			label = fmt.Sprintf("Config loaded (profile: %v)", check["profile"])
+		} else if check["name"] == "credential" && check["status"] == "pass" {
+			label = fmt.Sprintf("Credential found (source: %v); API validation follows", check["source"])
+		}
+		fmt.Fprintf(w, "%s %s\n", marker, label)
+		keys := make([]string, 0, len(check))
+		for key := range check {
+			if key != "fix" && key != "name" && key != "status" && key != "profile" && key != "source" && !(key == "note" && check["name"] == "credential" && check["status"] == "pass") {
+				keys = append(keys, key)
+			}
+		}
+		sort.Strings(keys)
+		if _, ok := check["fix"]; ok {
+			keys = append(keys, "fix")
+		}
+		for _, key := range keys {
+			label := humanLabel(key)
+			if key == "fix" {
+				label = "Next"
+			}
+			fmt.Fprintf(w, "  %s: %v\n", label, check[key])
+		}
+	}
 }
 
 func renderCheckoutHuman(w io.Writer, value any, now time.Time) {

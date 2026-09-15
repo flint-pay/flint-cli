@@ -25,10 +25,24 @@ FLINT_INSTALL_DIR="$HOME/.local/bin" sh /tmp/flint-install.sh
 
 Add `$HOME/.local/bin` to your `PATH` if needed. Set `FLINT_CLI_VERSION=X.Y.Z` to install a specific version. On Windows, download the ZIP and `checksums.txt` from the same release, verify the ZIP with `Get-FileHash -Algorithm SHA256`, and extract `flint.exe` into a directory on `PATH`.
 
+## Sign in (recommended)
+
+For local development, start with `flint auth login`. It opens the Flint website, displays a confirmation code, and saves OAuth access and refresh tokens in your OS keychain. Use `--no-open` to open the printed link yourself, `--profile NAME` to use an existing profile, or `--live` to explicitly request production access. Login waits up to 10 minutes by default; `--timeout 5m` overrides that limit.
+
+Browser login has been verified against Flint staging. To use staging, set `FLINT_BASE_URL=https://api.staging.withflintpay.com` for login and subsequent commands. Production rollout is separate; use `flint auth import` on servers without browser login support. Browser approval requires a person; automation should use an API key through `FLINT_API_KEY` or `flint auth import --stdin`.
+
+Access tokens refresh automatically as needed. `flint auth logout --confirm` revokes the OAuth session before removing its local credentials. If the server does not confirm revocation, logout reports failure and retains the credentials for retry. Imported API-key logout still removes only the local key.
+
+`flint login` is a shortcut for `flint auth login`. Related shortcuts: `flint logout` for `flint auth logout`, and `flint whoami` for `flint auth status`.
+
+### API keys and automation
+
+For manual setup, create a key in the [Flint dashboard](https://app.withflintpay.com/developers/api-keys) and run `flint auth import`. For CI, supply `FLINT_API_KEY` through your secret store and set `FLINT_NO_INPUT=1`. `flint signup` remains available for creating an account from the terminal.
+
 ## Use
 
 ```bash
-flint auth import   # paste a sandbox key; stored in the OS keychain, never a config file
+flint auth login    # recommended: approve browser sign-in; credential saved in the OS keychain
 flint doctor        # config, credential, connectivity, environment, merchant, scopes, version
 flint checkout create --quick-pay-name T-shirt --amount 2500 --currency USD --open
 flint listen --forward-to http://localhost:8080/webhooks/flint
@@ -46,7 +60,7 @@ The CLI includes `--title` and `--body` as URL parameters, preserving multiline 
 
 Add `--ai-agent` to identify the reporter as an AI agent. It defaults to false and accepts `--ai-agent=false`. The CLI emits `ai_agent=true` in the link when enabled and a boolean `ai_agent` in JSON output. The Help web app must read this parameter too; it is self-reported metadata, not verified identity.
 
-Live OAuth installs require `--mode live --live` and confirmation (`--confirm` for scripts), including when using `flint api get /v1/oauth/authorize`. Raw API pagination (`--all` or `--paginate`) accepts only read-only GET operations.
+Live partner OAuth installs require `--mode live --live` and confirmation (`--confirm` for scripts), including when using `flint api get /v1/oauth/authorize`. Raw API pagination (`--all` or `--paginate`) accepts only read-only GET operations.
 
 ## Develop
 
@@ -68,7 +82,7 @@ Layout:
 | `internal/contract` | Coverage report generation. |
 | `e2e` | Tests that run the built binary against a local server. |
 
-Test and live requests both use `https://api.withflintpay.com`. Your API key selects the environment. Set `FLINT_BASE_URL` explicitly when testing against a different server.
+Sandbox and live requests both use `https://api.withflintpay.com`. Browser login binds the OAuth session to the approved environment; imported API keys retain their own environment. Use `--live` to acknowledge production access. Set `FLINT_BASE_URL` before signing in to a development server, using a separate profile. Saved OAuth sessions stay bound to that server and reject a conflicting URL override.
 
 `internal/spec/openapi.json` is the public API snapshot used to build the command catalog. When updating it, replace it with a reviewed public OpenAPI export, run `make coverage`, and run `make contract`. The coverage report checks that every public operation has a dedicated command or an explicit exclusion with a reason. Feedback commands are retired; use `flint support open` to start a thread on Flint Help.
 

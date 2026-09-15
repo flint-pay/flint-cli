@@ -68,6 +68,9 @@ func (a *App) Run(argv []string) int {
 		return a.fail(authErr, opts)
 	}
 	authContext := authEnvelope.Data
+	if authContext.OAuthGrantID != "" && strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) == "" && credentialFromEnvironment() == "" {
+		ctx = context.WithValue(ctx, oauthSessionKey{}, &oauthSession{Profile: resolved.ProfileName, GrantID: authContext.OAuthGrantID})
+	}
 	resolved.CredentialScope = authContext.CredentialScope
 	resolved.Environment = normalizeEnvironment(authContext.Environment)
 	resolved.APIKeyID = authContext.APIKeyID
@@ -284,7 +287,7 @@ func (a *App) printCommandHelp(cmd *Command) {
 	if cmd.Supports.JQ {
 		capabilities = append(capabilities, "--jq EXPR")
 	}
-	if !cmd.Local || cmd.CanonicalName == "auth.import" || cmd.CanonicalName == "config.validate" || cmd.CanonicalName == "doctor" || cmd.CanonicalName == "init" || cmd.CanonicalName == "signup" || cmd.CanonicalName == "mcp.serve" || cmd.CanonicalName == "help.search" {
+	if !cmd.Local || cmd.CanonicalName == "auth.import" || cmd.CanonicalName == "auth.login" || cmd.CanonicalName == "auth.logout" || cmd.CanonicalName == "config.validate" || cmd.CanonicalName == "doctor" || cmd.CanonicalName == "init" || cmd.CanonicalName == "signup" || cmd.CanonicalName == "mcp.serve" || cmd.CanonicalName == "help.search" {
 		capabilities = append(capabilities, "--timeout DURATION")
 	}
 	if cmd.Stream || cmd.Supports.Pagination || cmd.Supports.WaitFor || cmd.CanonicalName == "api" {
@@ -312,7 +315,7 @@ func (a *App) printRootHelp() {
 	fmt.Fprintln(a.Stdout, "  --output human|json|ndjson")
 	fmt.Fprintln(a.Stdout)
 	fmt.Fprintln(a.Stdout, "Start here:")
-	for _, line := range []string{"flint init", "flint signup", "flint auth import", "flint doctor", "flint schema commands --output json", "flint help test-cards", "flint help search <question>", "flint support open --request-id <id>"} {
+	for _, line := range []string{"flint auth login  (recommended for local development)", "flint doctor", "flint init", "flint auth import", "flint signup", "flint schema commands --output json", "flint help test-cards", "flint help search <question>", "flint support open --request-id <id>"} {
 		fmt.Fprintln(a.Stdout, "  "+line)
 	}
 	fmt.Fprintln(a.Stdout)

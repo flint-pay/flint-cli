@@ -24,6 +24,8 @@ func (a *App) runLocal(cmd *Command, opts Options) int {
 		return a.localConfigValidate(cmd, opts)
 	case "history":
 		return a.localHistory(cmd, opts)
+	case "auth.login":
+		return a.localAuthLogin(cmd, opts)
 	case "auth.import":
 		return a.localAuthImport(cmd, opts)
 	case "auth.logout":
@@ -114,18 +116,15 @@ func (a *App) localConfigValidate(cmd *Command, opts Options) int {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
 	}
 	checks := []map[string]any{{"name": "global_config", "status": "pass", "path": resolved.GlobalConfigPath}, {"name": "project_config", "status": "pass", "path": resolved.ProjectConfigPath}, {"name": "profile", "status": "pass", "value": resolved.ProfileName}}
-	key, source, credentialErr := a.resolveCredential(resolved.ProfileName)
+	key, source, credentialErr := a.resolveCheckCredential(resolved.ProfileName)
 	if credentialErr != nil {
 		return a.fail(configError("CREDENTIAL_LOOKUP_FAILED", credentialErr.Error(), credentialErr), opts)
 	}
 	if key != "" {
-		baseURL, baseURLErr := a.baseURLForCredential(key)
-		if baseURLErr != nil {
-			return a.fail(configError("INVALID_CREDENTIAL", baseURLErr.Error(), baseURLErr), opts)
-		}
 		ctx, cancel := context.WithTimeout(a.commandContext(), opts.Timeout)
 		defer cancel()
-		authContext, authErr := a.fetchAuthContext(ctx, baseURL, key, opts.Debug)
+		_, _, envelope, authErr := a.fetchCredentialContext(ctx, resolved.ProfileName, key, opts.Debug)
+		authContext := envelope.Data
 		if authErr != nil {
 			return a.fail(authErr, opts)
 		}
@@ -171,9 +170,20 @@ func (a *App) localHistory(cmd *Command, opts Options) int {
 		resolved.Environment = environment
 		resolved.MerchantID = resolved.MerchantGuard
 		resolved.SandboxID = resolved.SandboxGuard
-	} else if resolved.Environment == "" {
+	} else {
 		if credential, _, credentialErr := a.resolveCredential(resolved.ProfileName); credentialErr == nil && credential != "" {
-			resolved.Environment, _ = credentialEnvironment(credential)
+			if isOAuthCredential(credential) {
+				c, e := decodeOAuthCredential(credential)
+				if e != nil {
+					return a.fail(e, opts)
+				}
+				resolved.Environment = c.Auth.Environment
+				resolved.MerchantID = c.Auth.MerchantID
+				resolved.SandboxID = c.Auth.SandboxID
+				resolved.CredentialScope = "oauth:" + c.Auth.OAuthGrantID
+			} else if resolved.Environment == "" {
+				resolved.Environment, _ = credentialEnvironment(credential)
+			}
 		}
 	}
 	scope := historyScopeFromResolved(resolved)
@@ -239,10 +249,17 @@ func (a *App) localAuthImport(cmd *Command, opts Options) int {
 	if intentErr := validateCredentialIntent(authContext, opts, resolved.MerchantGuard, resolved.SandboxGuard); intentErr != nil {
 		return a.fail(intentErr, opts)
 	}
+	if e := a.saveAuthenticatedCredential(resolved.ProfileName, key, authContext); e != nil {
+		return a.fail(e, opts)
+	}
+	return a.outputLocal(map[string]any{"data": authContext}, cmd, opts)
+}
+
+func (a *App) saveAuthenticatedCredential(profile, key string, authContext AuthContext) *CLIError {
 	var persistenceErr *CLIError
 	lockErr := a.withConfigLock(func() error {
 		if err := a.commandContext().Err(); err != nil {
-			persistenceErr = networkError("REQUEST_CANCELED", "Import was canceled before the credential was stored.", err)
+			persistenceErr = networkError("REQUEST_CANCELED", "Authentication was canceled before the credential was stored.", err)
 			return persistenceErr
 		}
 		cfg, loadErr := a.loadConfig()
@@ -250,26 +267,29 @@ func (a *App) localAuthImport(cmd *Command, opts Options) int {
 			persistenceErr = configError("CONFIG_INVALID", loadErr.Error(), loadErr)
 			return loadErr
 		}
-		previousCredential, previousErr := a.LoadCredential(resolved.ProfileName)
+		previousCredential, previousErr := a.LoadCredential(profile)
 		if previousErr != nil {
-			persistenceErr = configError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before import.", previousErr)
+			persistenceErr = configError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before authentication.", previousErr)
 			return previousErr
 		}
-		if storeErr := a.StoreCredential(resolved.ProfileName, key); storeErr != nil {
+		if storeErr := a.StoreCredential(profile, key); storeErr != nil {
 			persistenceErr = configError("KEYCHAIN_WRITE_FAILED", "The validated credential could not be stored in the OS keychain.", storeErr)
+			if restoreErr := a.restoreCredential(profile, previousCredential); restoreErr != nil {
+				persistenceErr.Message += "; credential rollback also failed: " + restoreErr.Error()
+			}
 			return storeErr
 		}
 		if cfg.Profiles == nil {
 			cfg.Profiles = map[string]Profile{}
 		}
-		p := cfg.Profiles[resolved.ProfileName]
+		p := cfg.Profiles[profile]
 		p.Environment = normalizeEnvironment(authContext.Environment)
 		p.APIKeyID = authContext.APIKeyID
 		p.MerchantID = authContext.MerchantID
 		p.SandboxID = authContext.SandboxID
-		cfg.Profiles[resolved.ProfileName] = p
+		cfg.Profiles[profile] = p
 		if saveErr := a.saveConfigUnlocked(cfg); saveErr != nil {
-			if restoreErr := a.restoreCredential(resolved.ProfileName, previousCredential); restoreErr != nil {
+			if restoreErr := a.restoreCredential(profile, previousCredential); restoreErr != nil {
 				persistenceErr = configError("CONFIG_WRITE_FAILED", saveErr.Error()+"; credential rollback also failed: "+restoreErr.Error(), saveErr)
 				return saveErr
 			}
@@ -282,9 +302,9 @@ func (a *App) localAuthImport(cmd *Command, opts Options) int {
 		if persistenceErr == nil {
 			persistenceErr = configError("CONFIG_WRITE_FAILED", lockErr.Error(), lockErr)
 		}
-		return a.fail(persistenceErr, opts)
+		return persistenceErr
 	}
-	return a.outputLocal(map[string]any{"data": authContext}, cmd, opts)
+	return nil
 }
 
 func (a *App) localLogout(cmd *Command, opts Options) int {
@@ -297,11 +317,32 @@ func (a *App) localLogout(cmd *Command, opts Options) int {
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
 	}
-	if e := a.confirmLocal("Remove the active Flint credential from the OS keychain?", opts); e != nil {
+	if e := a.confirmLocal("Sign out and remove the active credential (revokes OAuth sessions)?", opts); e != nil {
 		return a.fail(e, opts)
 	}
 	var persistenceErr *CLIError
 	lockErr := a.withConfigLock(func() error {
+		raw, credentialErr := a.LoadCredential(resolved.ProfileName)
+		if credentialErr != nil {
+			persistenceErr = configError("CREDENTIAL_LOOKUP_FAILED", "Could not read the credential before logout.", nil)
+			return persistenceErr
+		}
+		if isOAuthCredential(raw) {
+			credential, e := decodeOAuthCredential(raw)
+			if e == nil {
+				e = a.oauthBaseURL(credential)
+			}
+			if e != nil {
+				persistenceErr = e
+				return persistenceErr
+			}
+			ctx, cancel := context.WithTimeout(a.commandContext(), opts.Timeout)
+			defer cancel()
+			if e := a.revokeOAuth(ctx, credential); e != nil {
+				persistenceErr = configError("OAUTH_REVOCATION_FAILED", "Could not revoke the OAuth session. Your local credential was retained so you can retry flint auth logout.", nil)
+				return persistenceErr
+			}
+		}
 		cfg, loadErr := a.loadConfig()
 		if loadErr != nil {
 			persistenceErr = configError("CONFIG_INVALID", loadErr.Error(), loadErr)
@@ -441,12 +482,12 @@ func (a *App) localInit(cmd *Command, opts Options) int {
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
 	}
-	key, _, err := a.resolveCredential(resolved.ProfileName)
+	key, _, err := a.resolveCheckCredential(resolved.ProfileName)
 	if err != nil {
 		return a.fail(configError("CREDENTIAL_LOOKUP_FAILED", err.Error(), err), opts)
 	}
 	if key == "" {
-		return a.outputLocal(map[string]any{"data": map[string]any{"authenticated": false, "existing_account": "flint auth import", "new_account": "flint signup", "dashboard_api_keys_url": dashboardAPIKeysURL}}, cmd, opts)
+		return a.outputLocal(map[string]any{"data": map[string]any{"authenticated": false, "recommended_auth": "flint auth login", "existing_account": "flint auth login", "manual_api_key": "flint auth import", "new_account": "flint signup", "dashboard_api_keys_url": dashboardAPIKeysURL}}, cmd, opts)
 	}
 	checks, exit := a.doctorChecks(opts)
 	value := map[string]any{"data": map[string]any{
@@ -489,25 +530,39 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 		return checks, ExitAuth
 	}
 	checks = append(checks, map[string]any{"name": "config", "status": "pass", "profile": resolved.ProfileName})
-	key, source, err := a.resolveCredential(resolved.ProfileName)
+	key, source, err := a.resolveCheckCredential(resolved.ProfileName)
 	if err != nil {
 		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": err.Error()})
 		return checks, ExitAuth
 	}
 	if key == "" {
-		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": "Run flint auth import or flint signup."})
+		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": "Run flint auth login (recommended), or flint auth import to use an API key."})
 		return checks, ExitAuth
 	}
-	checks = append(checks, map[string]any{"name": "credential", "status": "pass", "source": source})
-	baseURL, err := a.baseURLForCredential(key)
-	if err != nil {
-		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": err.Error()})
-		return checks, ExitAuth
-	}
+	checks = append(checks, map[string]any{"name": "credential", "status": "pass", "source": source, "note": "Credential found; API validation follows."})
 	ctx, cancel := context.WithTimeout(a.commandContext(), opts.Timeout)
 	defer cancel()
-	authResponse, e := a.fetchAuthContextResponse(ctx, baseURL, key, opts.Debug)
+	_, baseURL, authResponse, e := a.fetchCredentialContext(ctx, resolved.ProfileName, key, opts.Debug)
 	if e != nil {
+		switch e.Code {
+		case "INVALID_CREDENTIAL", "INVALID_OAUTH_CREDENTIAL", "OAUTH_SERVER_MISMATCH", "CREDENTIAL_LOOKUP_FAILED", "KEYCHAIN_WRITE_FAILED", "OAUTH_REFRESH_FAILED", "OAUTH_SESSION_CHANGED":
+			checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": e.Message})
+			return checks, e.ExitCode
+		}
+		if e.ExitCode == ExitAuth {
+			fix := "Run flint auth login --profile " + resolved.ProfileName + " to sign in again (recommended), or flint auth import --profile " + resolved.ProfileName + " to replace the saved API key."
+			if source == "environment_access_token" {
+				fix = "Replace or unset FLINT_ACCESS_TOKEN. To save an OAuth session, unset the override and run flint auth login --profile " + resolved.ProfileName + "."
+			} else if source != "keychain" {
+				fix = "Replace or unset FLINT_API_KEY. To save a valid API key, run flint auth import --profile " + resolved.ProfileName + "."
+			}
+			message := e.Message
+			if !isOAuthCredential(key) {
+				message = "API rejected the credential: " + e.Message
+			}
+			checks = append(checks, map[string]any{"name": "authentication", "status": "fail", "message": message, "fix": fix})
+			return checks, e.ExitCode
+		}
 		checks = append(checks, map[string]any{"name": "connectivity", "status": "fail", "fix": e.Message})
 		return checks, e.ExitCode
 	}
@@ -519,6 +574,7 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 	checks = append(
 		checks,
 		map[string]any{"name": "connectivity", "status": "pass"},
+		map[string]any{"name": "authentication", "status": "pass", "message": "API accepted the credential"},
 		map[string]any{"name": "environment", "status": "pass", "value": authContext.Environment},
 		map[string]any{"name": "merchant", "status": "pass", "value": authContext.MerchantID},
 	)
@@ -527,7 +583,7 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 			"name":   "scopes",
 			"status": "fail",
 			"count":  0,
-			"fix":    "Issue an API key with the scopes required by the commands you intend to run.",
+			"fix":    "Sign in again or issue an API key with the scopes required by the commands you intend to run.",
 		})
 		return checks, ExitAuth
 	}
