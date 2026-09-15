@@ -279,6 +279,51 @@ func TestSupportOpenPrefillsTitleAndBody(t *testing.T) {
 	}
 }
 
+func TestSupportOpenAIAgent(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		flags []string
+		want  bool
+	}{
+		{name: "default"},
+		{name: "enabled", flags: []string{"--ai-agent"}, want: true},
+		{name: "explicit true", flags: []string{"--ai-agent=true"}, want: true},
+		{name: "explicit false", flags: []string{"--ai-agent=false"}},
+		{name: "last wins", flags: []string{"--ai-agent", "--ai-agent=false"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app, stdout, stderr := testApp(t, "")
+			args := append([]string{"support", "open", "--no-open", "--output", "json"}, tc.flags...)
+			if exit := app.Run(args); exit != ExitOK {
+				t.Fatalf("exit=%d stderr=%s", exit, stderr)
+			}
+			var envelope struct {
+				Data struct {
+					URL     string `json:"url"`
+					AIAgent *bool  `json:"ai_agent"`
+				} `json:"data"`
+			}
+			if err := json.Unmarshal(stdout.Bytes(), &envelope); err != nil {
+				t.Fatal(err)
+			}
+			if envelope.Data.AIAgent == nil || *envelope.Data.AIAgent != tc.want {
+				t.Fatalf("unexpected AI agent metadata: %s", stdout)
+			}
+			target, err := url.Parse(envelope.Data.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.want {
+				if target.Query().Get("ai_agent") != "true" {
+					t.Fatalf("missing AI agent prefill: %s", target)
+				}
+			} else if target.Query().Has("ai_agent") {
+				t.Fatalf("false should omit prefill: %s", target)
+			}
+		})
+	}
+}
+
 func TestSupportOpenDerivesTheEnvironmentFromTheCredential(t *testing.T) {
 	for key, want := range map[string]string{
 		"flint_test_key": "env=sandbox",

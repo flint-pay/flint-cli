@@ -44,6 +44,8 @@ flint support open --title "Webhook delivery failed" --body "My endpoint returne
 
 The CLI includes `--title` and `--body` as URL parameters, preserving multiline text. Browser prefilling requires the Help web app to accept these parameters; its existing link schema needs a corresponding update.
 
+Add `--ai-agent` to identify the reporter as an AI agent. It defaults to false and accepts `--ai-agent=false`. The CLI emits `ai_agent=true` in the link when enabled and a boolean `ai_agent` in JSON output. The Help web app must read this parameter too; it is self-reported metadata, not verified identity.
+
 Live OAuth installs require `--mode live --live` and confirmation (`--confirm` for scripts), including when using `flint api get /v1/oauth/authorize`. Raw API pagination (`--all` or `--paginate`) accepts only read-only GET operations.
 
 ## Develop
