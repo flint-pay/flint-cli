@@ -26,9 +26,11 @@ jobs:
           import os
           import urllib.request
           import urllib.error
+          with open("internal/spec/openapi.json", encoding="utf-8") as spec:
+              api_version = json.load(spec)["x-flint-api-version"]
           request = urllib.request.Request(
               "https://api.withflintpay.com/v1/webhook-events/stream?event_type=customer.created",
-              headers={"Authorization": "Bearer " + os.environ["FLINT_API_KEY"], "Accept": "text/event-stream", "Flint-Version": "2026-09-07"},
+              headers={"Authorization": "Bearer " + os.environ["FLINT_API_KEY"], "Accept": "text/event-stream", "Flint-Version": api_version},
           )
           try:
               with urllib.request.urlopen(request, timeout=10) as response:
