@@ -38,18 +38,36 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/tags/cli/v') }}
     runs-on: ubuntu-latest
     environment: cli-release-sandbox
+    outputs:
+      waiver_reason: ${{ steps.waiver.outputs.waived == 'true' && vars.CLI_SANDBOX_WAIVER_REASON || '' }}
     env:
       FLINT_API_KEY: ${{ secrets.FLINT_TEST_API_KEY }}
       FLINT_NO_INPUT: "1"
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+      - name: Record release-specific sandbox waiver
+        id: waiver
+        env:
+          WAIVER_TAG: ${{ vars.CLI_SANDBOX_WAIVER_TAG }}
+          WAIVER_REASON: ${{ vars.CLI_SANDBOX_WAIVER_REASON }}
+        run: |
+          if [ "$WAIVER_TAG" = "$GITHUB_REF_NAME" ] && [ -n "$WAIVER_REASON" ]; then
+            echo 'waived=true' >> "$GITHUB_OUTPUT"
+            printf 'Sandbox check waived for %s: %s\n' "$GITHUB_REF_NAME" "$WAIVER_REASON" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'waived=false' >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.waiver.outputs.waived != 'true'
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - if: steps.waiver.outputs.waived != 'true'
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
       - name: Require protected sandbox credentials
+        if: steps.waiver.outputs.waived != 'true'
         run: test -n "$FLINT_API_KEY"
       - name: Exercise listener forwarding and signature verification
+        if: steps.waiver.outputs.waived != 'true'
         run: |
           go build -trimpath -buildvcs=false -o "$RUNNER_TEMP/flint" ./cmd/flint
           FLINT_BIN="$RUNNER_TEMP/flint" bash scripts/test-sandbox-listener.sh
@@ -59,6 +77,7 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/tags/cli/v') }}
     runs-on: ubuntu-latest
     outputs:
+      sandbox_waiver: ${{ needs.sandbox-listener-e2e.outputs.waiver_reason }}
       build_date: ${{ steps.metadata.outputs.build_date }}
       cli_version: ${{ steps.metadata.outputs.cli_version }}
       docker_tags: ${{ steps.metadata.outputs.docker_tags }}
@@ -206,6 +225,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CLI_VERSION: ${{ needs.release.outputs.cli_version }}
           IS_PRERELEASE: ${{ needs.release.outputs.is_prerelease }}
+          SANDBOX_WAIVER: ${{ needs.release.outputs.sandbox_waiver }}
         run: |
           if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             verification_dir="$(mktemp -d)"
@@ -221,6 +241,10 @@ jobs:
             exit 0
           fi
           release_flags=()
+          if [ -n "$SANDBOX_WAIVER" ]; then
+            printf 'Known issue: %s\n' "$SANDBOX_WAIVER" > "$RUNNER_TEMP/release-notes.md"
+            release_flags+=(--notes-file "$RUNNER_TEMP/release-notes.md")
+          fi
           if [ "$IS_PRERELEASE" = "true" ]; then
             release_flags+=(--prerelease)
           fi
