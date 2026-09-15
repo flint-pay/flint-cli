@@ -137,6 +137,7 @@ type App struct {
 	Stdin             io.Reader
 	IsTTY             func() bool
 	Now               func() time.Time
+	OpenBrowser       func(string) error
 	HTTPClient        *http.Client
 	ForwardHTTPClient *http.Client
 	Context           context.Context

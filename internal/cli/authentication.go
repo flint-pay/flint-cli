@@ -156,9 +156,26 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 		return "", "", envelope, configError("CREDENTIAL_LOOKUP_FAILED", "The credential could not be read from the OS keychain.", err)
 	}
 	if key == "" {
-		e := configError("API_KEY_REQUIRED", "No Flint credential is configured. Run flint auth import for an API key, flint signup to create an account, or set FLINT_ACCESS_TOKEN for a session token.", nil)
-		e.Details = map[string]any{"remediation": map[string]any{"next_actions": []any{map[string]any{"command": "flint auth import", "url": dashboardAPIKeysURL}, map[string]any{"command": "flint signup"}}}}
+		e := configError("API_KEY_REQUIRED", "No Flint credential is configured. Run flint auth login (recommended for local development), or flint auth import to use an API key. For automation, set FLINT_API_KEY.", nil)
+		e.Details = map[string]any{"remediation": map[string]any{"next_actions": []any{map[string]any{"command": "flint auth login"}, map[string]any{"command": "flint auth import", "url": dashboardAPIKeysURL}, map[string]any{"command": "flint signup"}}}}
 		return "", "", envelope, e
+	}
+	if isOAuthCredential(key) {
+		if opts.DryRun == "client" {
+			c, e := decodeOAuthCredential(key)
+			if e != nil {
+				return "", "", envelope, e
+			}
+			if e := a.oauthBaseURL(c); e != nil {
+				return "", "", envelope, e
+			}
+			envelope.Data = c.Auth
+			envelope.Data.CredentialScope = "oauth:" + c.Auth.OAuthGrantID
+			return c.AccessToken, c.BaseURL, envelope, nil
+		}
+		authCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
+		defer cancel()
+		return a.fetchCredentialContext(authCtx, resolved.ProfileName, key, opts.Debug)
 	}
 	baseURL, err := a.baseURLForCredential(key)
 	if err != nil {

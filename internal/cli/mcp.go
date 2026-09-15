@@ -452,7 +452,11 @@ func mcpToolAnnotations(cmd *Command) map[string]any {
 		// The raw tool's method is selected at call time and can be DELETE.
 		readOnly = false
 		destructive = true
-	case "auth.logout", "history":
+	case "auth.logout":
+		readOnly = false
+		destructive = true
+		openWorld = true
+	case "history":
 		readOnly = false
 		destructive = true
 	case "config.set", "doctor":

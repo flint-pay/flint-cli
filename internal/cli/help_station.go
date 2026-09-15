@@ -339,6 +339,13 @@ func (a *App) supportEnvironmentHint(opts Options) string {
 	if err != nil || key == "" {
 		return ""
 	}
+	if isOAuthCredential(key) {
+		c, e := decodeOAuthCredential(key)
+		if e != nil {
+			return ""
+		}
+		return c.Auth.Environment
+	}
 	environment, err := credentialEnvironment(key)
 	if err != nil {
 		return ""

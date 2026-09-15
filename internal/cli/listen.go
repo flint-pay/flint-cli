@@ -203,6 +203,12 @@ func (a *App) openListenStream(ctx context.Context, baseURL, key, path, cursor s
 		return nil, false, usageError("INVALID_REQUEST_URL", err.Error(), "path")
 	}
 	req.Header.Set("Accept", "text/event-stream")
+	currentKey, tokenErr := a.oauthRequestToken(ctx, key, baseURL)
+	if tokenErr != nil {
+		cancelRequest()
+		return nil, false, tokenErr
+	}
+	key = currentKey
 	req.Header.Set("Authorization", "Bearer "+key)
 	req.Header.Set("User-Agent", "flintpay-cli/"+a.Info.Version)
 	req.Header.Set("X-Flint-CLI-Version", a.Info.Version)
