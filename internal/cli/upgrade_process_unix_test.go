@@ -4,11 +4,21 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestUpgradeCommandPreservesFormulaMetadata(t *testing.T) {
+	metadata := `{"formulae":[{"desc":"` + strings.Repeat("x", 4096) + `","versions":{"stable":"0.3.0"}}]}`
+	output, err := runUpgradeCommand(t.Context(), "/bin/sh", "-c", `printf '%s' "$1"`, "probe", metadata)
+	if err != nil || !json.Valid(output) || string(output) != metadata {
+		t.Fatalf("formula metadata was truncated: bytes=%d error=%v", len(output), err)
+	}
+}
 
 func TestUpgradeTimeoutStopsDescendants(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "child-finished")

@@ -414,7 +414,7 @@ func addCLIArgumentsToSchema(schema map[string]any, c *Command) map[string]any {
 	if c.Supports.Pagination && !c.Stream {
 		controls["all"] = map[string]any{"type": "boolean"}
 	}
-	if c.Stream || c.Supports.Pagination || c.Supports.WaitFor || c.CanonicalName == "api" {
+	if c.Stream || c.Supports.Pagination || c.Supports.WaitFor || c.CanonicalName == "api" || c.CanonicalName == "upgrade" {
 		controls["progress"] = map[string]any{"type": "string", "enum": []string{"auto", "plain", "json", "quiet"}}
 	}
 	if c.Supports.Open {
