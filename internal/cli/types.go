@@ -101,6 +101,7 @@ type Options struct {
 	NoInput        bool
 	Live           bool
 	Merchant       string
+	ContextID      string
 	Profile        string
 	Color          string
 	Confirm        bool
@@ -131,23 +132,29 @@ type Options struct {
 }
 
 type App struct {
-	Info              BuildInfo
-	Stdout            io.Writer
-	Stderr            io.Writer
-	Stdin             io.Reader
-	IsTTY             func() bool
-	Now               func() time.Time
-	OpenBrowser       func(string) error
-	HTTPClient        *http.Client
-	ForwardHTTPClient *http.Client
-	Context           context.Context
-	BaseURL           string
-	ConfigDir         string
-	WorkingDir        string
-	Registry          *Registry
-	LoadCredential    func(string) (string, error)
-	StoreCredential   func(string, string) error
-	DeleteCredential  func(string) error
+	Info                      BuildInfo
+	Stdout                    io.Writer
+	Stderr                    io.Writer
+	Stdin                     io.Reader
+	IsTTY                     func() bool
+	Now                       func() time.Time
+	OpenBrowser               func(string) error
+	HTTPClient                *http.Client
+	ForwardHTTPClient         *http.Client
+	Context                   context.Context
+	BaseURL                   string
+	ConfigDir                 string
+	WorkingDir                string
+	Registry                  *Registry
+	LoadCredential            func(string) (string, error)
+	StoreCredential           func(string, string) error
+	DeleteCredential          func(string) error
+	upgradeReleaseAPIURL      string
+	upgradeReleaseDownloadURL string
+	executablePath            func() (string, error)
+	runCommand                func(context.Context, string, ...string) ([]byte, error)
+	runtimeGOOS               string
+	runtimeGOARCH             string
 }
 
 type CLIError struct {

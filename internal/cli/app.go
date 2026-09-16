@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -24,16 +25,22 @@ func (a *App) commandContext() context.Context {
 
 func New(info BuildInfo) *App {
 	return &App{
-		Info:             info,
-		Stdout:           os.Stdout,
-		Stderr:           os.Stderr,
-		Stdin:            os.Stdin,
-		IsTTY:            func() bool { return term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stderr.Fd())) },
-		Now:              time.Now,
-		Registry:         NewRegistry(),
-		LoadCredential:   loadKeychainCredential,
-		StoreCredential:  storeKeychainCredential,
-		DeleteCredential: deleteKeychainCredential,
+		Info:                      info,
+		Stdout:                    os.Stdout,
+		Stderr:                    os.Stderr,
+		Stdin:                     os.Stdin,
+		IsTTY:                     func() bool { return term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stderr.Fd())) },
+		Now:                       time.Now,
+		Registry:                  NewRegistry(),
+		LoadCredential:            loadKeychainCredential,
+		StoreCredential:           storeKeychainCredential,
+		DeleteCredential:          deleteKeychainCredential,
+		upgradeReleaseAPIURL:      defaultUpgradeReleaseAPIURL,
+		upgradeReleaseDownloadURL: defaultUpgradeReleaseDownloadURL,
+		executablePath:            os.Executable,
+		runCommand:                runUpgradeCommand,
+		runtimeGOOS:               runtime.GOOS,
+		runtimeGOARCH:             runtime.GOARCH,
 	}
 }
 
@@ -62,6 +69,7 @@ func (a *App) Run(argv []string) int {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	ctx = withOAuthContext(ctx, resolved.ContextID)
 	effective := resolveAPICommand(cmd, opts)
 	key, baseURL, authEnvelope, authErr := a.authenticateCommand(ctx, effective, opts, resolved)
 	if authErr != nil {
@@ -69,7 +77,10 @@ func (a *App) Run(argv []string) int {
 	}
 	authContext := authEnvelope.Data
 	if authContext.OAuthGrantID != "" && strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) == "" && credentialFromEnvironment() == "" {
-		ctx = context.WithValue(ctx, oauthSessionKey{}, &oauthSession{Profile: resolved.ProfileName, GrantID: authContext.OAuthGrantID})
+		ctx = context.WithValue(ctx, oauthSessionKey{}, &oauthSession{Profile: resolved.ProfileName, GrantID: authContext.OAuthGrantID, ContextID: authContext.ContextID, SessionID: authContext.OAuthSessionID, MerchantID: authContext.MerchantID, SandboxID: authContext.SandboxID, Environment: authContext.Environment})
+	}
+	if authContext.SelectedContext && authContext.Environment == "live" && !opts.Quiet {
+		fmt.Fprintln(a.Stderr, "LIVE context:", terminalSafe(authContext.ContextID), "merchant:", terminalSafe(authContext.MerchantID))
 	}
 	resolved.CredentialScope = authContext.CredentialScope
 	resolved.Environment = normalizeEnvironment(authContext.Environment)
@@ -150,6 +161,9 @@ func validateCredentialIntent(authContext AuthContext, opts Options, merchantGua
 }
 
 func validateCredentialIntentForCommand(authContext AuthContext, opts Options, merchantGuard, sandboxGuard string, affinity EnvironmentAffinity) *CLIError {
+	if authContext.SelectedContext && len(opts.Raw["live"]) == 0 && authContext.Environment == "live" {
+		opts.Live = true
+	}
 	env := normalizeEnvironment(authContext.Environment)
 	if env != "sandbox" && env != "live" {
 		return configError("UNKNOWN_CREDENTIAL_ENVIRONMENT", "The credential returned an unknown environment: "+authContext.Environment, nil)
@@ -245,6 +259,9 @@ func (a *App) printCommandHelp(cmd *Command) {
 	}
 	fmt.Fprintln(a.Stdout)
 	fmt.Fprintln(a.Stdout, "Global flags:")
+	if supportsContextSelection(cmd) {
+		fmt.Fprintln(a.Stdout, "  --context ID  Select an authorized context for this command")
+	}
 	fmt.Fprintln(a.Stdout, "  --output human|json|ndjson  --quiet  --debug  --no-input  --live  --merchant ID  --profile NAME  --color auto|always|never")
 	var capabilities []string
 	if cmd.Mutation {
@@ -287,7 +304,7 @@ func (a *App) printCommandHelp(cmd *Command) {
 	if cmd.Supports.JQ {
 		capabilities = append(capabilities, "--jq EXPR")
 	}
-	if !cmd.Local || cmd.CanonicalName == "auth.import" || cmd.CanonicalName == "auth.login" || cmd.CanonicalName == "auth.logout" || cmd.CanonicalName == "config.validate" || cmd.CanonicalName == "doctor" || cmd.CanonicalName == "init" || cmd.CanonicalName == "signup" || cmd.CanonicalName == "mcp.serve" || cmd.CanonicalName == "help.search" {
+	if !cmd.Local || cmd.CanonicalName == "auth.import" || cmd.CanonicalName == "auth.login" || cmd.CanonicalName == "auth.reauth" || strings.HasPrefix(cmd.CanonicalName, "context.") || cmd.CanonicalName == "auth.logout" || cmd.CanonicalName == "config.validate" || cmd.CanonicalName == "doctor" || cmd.CanonicalName == "upgrade" || cmd.CanonicalName == "init" || cmd.CanonicalName == "signup" || cmd.CanonicalName == "mcp.serve" || cmd.CanonicalName == "help.search" {
 		capabilities = append(capabilities, "--timeout DURATION")
 	}
 	if cmd.Stream || cmd.Supports.Pagination || cmd.Supports.WaitFor || cmd.CanonicalName == "api" {
@@ -313,9 +330,10 @@ func (a *App) printRootHelp() {
 	fmt.Fprintln(a.Stdout, "Usage:")
 	fmt.Fprintln(a.Stdout, "  flint <command> [flags]")
 	fmt.Fprintln(a.Stdout, "  --output human|json|ndjson")
+	fmt.Fprintln(a.Stdout, "  --context ID  Use an authorized browser-session context")
 	fmt.Fprintln(a.Stdout)
 	fmt.Fprintln(a.Stdout, "Start here:")
-	for _, line := range []string{"flint auth login  (recommended for local development)", "flint doctor", "flint init", "flint auth import", "flint signup", "flint schema commands --output json", "flint help test-cards", "flint help search <question>", "flint support open --request-id <id>"} {
+	for _, line := range []string{"flint auth login  (recommended for local development)", "flint context list", "flint context switch", "flint reauth", "flint doctor", "flint upgrade", "flint init", "flint auth import", "flint signup", "flint schema commands --output json", "flint help test-cards", "flint help search <question>", "flint support open --request-id <id>"} {
 		fmt.Fprintln(a.Stdout, "  "+line)
 	}
 	fmt.Fprintln(a.Stdout)

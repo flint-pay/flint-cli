@@ -14,12 +14,12 @@ var boolFlags = map[string]bool{
 	// Command-scoped booleans. They stay out of globalFlags so only the command
 	// that declares them accepts them, but the parser still has to know they
 	// take no value.
-	"private": true, "no-open": true, "ai-agent": true,
+	"new-session": true, "private": true, "no-open": true, "ai-agent": true,
 }
 
 var globalFlags = map[string]bool{
 	"output": true, "quiet": true, "debug": true, "no-input": true, "live": true,
-	"merchant": true, "profile": true, "color": true, "confirm": true, "dry-run": true,
+	"context": true, "merchant": true, "profile": true, "color": true, "confirm": true, "dry-run": true,
 	"idempotency-key": true, "jq": true, "select": true, "field": true, "expand": true,
 	"open": true, "page-size": true, "page-token": true, "all": true, "timeout": true,
 	"max-events": true, "for": true, "wait-for": true, "progress": true, "input": true,
@@ -163,6 +163,8 @@ func setOption(o *Options, key, value string) *CLIError {
 	o.Raw[key] = append(o.Raw[key], value)
 	boolValue := value == "true"
 	switch key {
+	case "context":
+		o.ContextID = value
 	case "output":
 		o.Output = value
 	case "quiet":
@@ -275,6 +277,7 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 		name  string
 		value string
 	}{
+		{"context", o.ContextID},
 		{"profile", o.Profile},
 		{"merchant", o.Merchant},
 		{"dry-run", o.DryRun},
@@ -303,6 +306,10 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	if used("preview") && !(effective.Mutation && effective.Destructive) {
 		return usageError("UNSUPPORTED_FLAG", "--preview applies only to destructive mutations.", "preview")
 	}
+	if used("context") && !supportsContextSelection(cmd) {
+		return usageError("UNSUPPORTED_FLAG", "--context does not apply to this command.", "context")
+	}
+
 	confirmApplies := cmd.Sensitive || cmd.Destructive || rawMutation || (cmd.CanonicalName == "history" && o.Clear)
 	if used("confirm") && !confirmApplies {
 		return usageError("UNSUPPORTED_FLAG", "--confirm applies only to sensitive or destructive mutations.", "confirm")

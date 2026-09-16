@@ -13,6 +13,8 @@ npm install -g @flintpay/cli      # resolves a prebuilt binary for your platform
 brew install flint-pay/tap/flint   # macOS and Linux
 ```
 
+After installation, `flint upgrade` checks for the latest stable release. On macOS and Linux it uses npm or Homebrew when they own the installation, or securely replaces a standalone binary after verifying the release checksum. On Windows it prints the exact npm or manual update step to run after closing the CLI.
+
 Prebuilt archives for macOS, Linux, and Windows are attached to each `cli/v*` [release](https://github.com/flint-pay/flint-cli/releases) with a `checksums.txt`. [`scripts/install.sh`](scripts/install.sh) downloads and verifies the right one. The release workflow also publishes a container image to `ghcr.io/flint-pay/flint-cli`.
 
 For manual installation on macOS or Linux:
@@ -29,11 +31,35 @@ Add `$HOME/.local/bin` to your `PATH` if needed. Set `FLINT_CLI_VERSION=X.Y.Z` t
 
 For local development, start with `flint auth login`. It opens the Flint website, displays a confirmation code, and saves OAuth access and refresh tokens in your OS keychain. Use `--no-open` to open the printed link yourself, `--profile NAME` to use an existing profile, or `--live` to explicitly request production access. Login waits up to 10 minutes by default; `--timeout 5m` overrides that limit.
 
-Browser login has been verified against Flint staging. To use staging, set `FLINT_BASE_URL=https://api.staging.withflintpay.com` for login and subsequent commands. Production rollout is separate; use `flint auth import` on servers without browser login support. Browser approval requires a person; automation should use an API key through `FLINT_API_KEY` or `flint auth import --stdin`.
+The existing single-context browser login has been verified against Flint staging. To use staging, set `FLINT_BASE_URL=https://api.staging.withflintpay.com` for login and subsequent commands. Production rollout is separate; use `flint auth import` on servers without browser login support. Browser approval requires a person; automation should use an API key through `FLINT_API_KEY` or `flint auth import --stdin`.
 
 Access tokens refresh automatically as needed. `flint auth logout --confirm` revokes the OAuth session before removing its local credentials. If the server does not confirm revocation, logout reports failure and retains the credentials for retry. Imported API-key logout still removes only the local key.
 
 `flint login` is a shortcut for `flint auth login`. Related shortcuts: `flint logout` for `flint auth logout`, and `flint whoami` for `flint auth status`.
+
+### Sessions and contexts
+
+With a server that supports multi-context sessions, approve access to selected merchants, sandboxes, and live contexts once in the browser, then select where commands run:
+
+```sh
+flint login
+flint context list
+flint context switch                        # interactive selector
+flint context switch ctx_development        # select an authorized sandbox
+flint context switch ctx_production --live   # explicitly select a live default
+flint auth status --context ctx_development  # one command, without changing the default
+flint reauth                                # change browser-approved access
+```
+
+`flint login` reuses a valid saved OAuth session and starts browser approval again when the server confirms that the session expired or was revoked. Temporary connection failures or loss of access to one context do not automatically replace the session. Use `flint login --new-session` to replace it after browser approval; the CLI then attempts to revoke the previous session. `flint logout --confirm` revokes the entire session across its contexts.
+
+Manage and revoke sessions on the [CLI sessions page](https://app.withflintpay.com/developers/cli). Browser authorization sends your computer's hostname and operating system to help identify the session.
+
+Context selection uses `--context ID`, then a project's `.flint/config.json` `context` field, then the profile default. For example, `{"context":"ctx_development"}` pins a project. Switching changes the profile default, not a project pin. Each running command retains its starting context. Access tokens remain restricted to one context and refresh automatically. LIVE contexts are labeled in the selector and command diagnostics; selected multi-context sessions do not need `--live` on every command, while sensitive/destructive operations still require confirmation.
+
+Environment credentials (`FLINT_API_KEY`, `FLINT_ACCESS_TOKEN`, or `FLINT_CHECKOUT_SESSION_SECRET`) override configured browser-session contexts. An explicit `--context` cannot be combined with these overrides. Merchant and sandbox guards still apply.
+
+**Backend rollout required:** multi-context listing, switching, and reauthorization require the new session endpoints and token metadata. Existing single-context OAuth sessions remain usable and keep their existing live-mode safeguards. Run `flint reauth` after the server is upgraded to authorize multiple contexts. The new multi-context flow has not yet been verified against a deployed backend.
 
 ### API keys and automation
 
@@ -82,7 +108,7 @@ Layout:
 | `internal/contract` | Coverage report generation. |
 | `e2e` | Tests that run the built binary against a local server. |
 
-Sandbox and live requests both use `https://api.withflintpay.com`. Browser login binds the OAuth session to the approved environment; imported API keys retain their own environment. Use `--live` to acknowledge production access. Set `FLINT_BASE_URL` before signing in to a development server, using a separate profile. Saved OAuth sessions stay bound to that server and reject a conflicting URL override.
+Sandbox and live requests both use `https://api.withflintpay.com`. Browser login binds the OAuth session to the approved environment; imported API keys retain their own environment. Imported API keys and legacy sessions require `--live` to acknowledge production access; multi-context sessions use the selected context. Set `FLINT_BASE_URL` before signing in to a development server, using a separate profile. Saved OAuth sessions stay bound to that server and reject a conflicting URL override.
 
 `internal/spec/openapi.json` is the public API snapshot used to build the command catalog. When updating it, replace it with a reviewed public OpenAPI export, run `make coverage`, and run `make contract`. The coverage report checks that every public operation has a dedicated command or an explicit exclusion with a reason. Feedback commands are retired; use `flint support open` to start a thread on Flint Help.
 

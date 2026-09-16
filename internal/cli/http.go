@@ -22,6 +22,9 @@ import (
 )
 
 type AuthContext struct {
+	SelectedContext bool     `json:"-"`
+	OAuthSessionID  string   `json:"oauth_session_id,omitempty"`
+	ContextID       string   `json:"context_id,omitempty"`
 	CredentialScope string   `json:"-"`
 	AuthType        string   `json:"auth_type"`
 	OAuthGrantID    string   `json:"oauth_grant_id,omitempty"`

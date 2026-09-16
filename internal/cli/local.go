@@ -16,6 +16,8 @@ func (a *App) runLocal(cmd *Command, opts Options) int {
 	switch cmd.CanonicalName {
 	case "version":
 		return a.outputLocal(map[string]any{"data": a.Info}, cmd, opts)
+	case "upgrade":
+		return a.localUpgrade(cmd, opts)
 	case "config.get":
 		return a.localConfigGet(cmd, opts)
 	case "config.set":
@@ -24,7 +26,9 @@ func (a *App) runLocal(cmd *Command, opts Options) int {
 		return a.localConfigValidate(cmd, opts)
 	case "history":
 		return a.localHistory(cmd, opts)
-	case "auth.login":
+	case "context.list", "context.switch":
+		return a.localContext(cmd, opts)
+	case "auth.login", "auth.reauth":
 		return a.localAuthLogin(cmd, opts)
 	case "auth.import":
 		return a.localAuthImport(cmd, opts)
@@ -121,7 +125,7 @@ func (a *App) localConfigValidate(cmd *Command, opts Options) int {
 		return a.fail(configError("CREDENTIAL_LOOKUP_FAILED", credentialErr.Error(), credentialErr), opts)
 	}
 	if key != "" {
-		ctx, cancel := context.WithTimeout(a.commandContext(), opts.Timeout)
+		ctx, cancel := context.WithTimeout(withOAuthContext(a.commandContext(), resolved.ContextID), opts.Timeout)
 		defer cancel()
 		_, _, envelope, authErr := a.fetchCredentialContext(ctx, resolved.ProfileName, key, opts.Debug)
 		authContext := envelope.Data
@@ -177,10 +181,16 @@ func (a *App) localHistory(cmd *Command, opts Options) int {
 				if e != nil {
 					return a.fail(e, opts)
 				}
+				if c.PendingValidation {
+					return a.fail(configError("OAUTH_CONTEXT_UNAVAILABLE", "The saved token needs validation before reading history. Run flint auth status for the selected context first.", nil), opts)
+				}
 				resolved.Environment = c.Auth.Environment
 				resolved.MerchantID = c.Auth.MerchantID
 				resolved.SandboxID = c.Auth.SandboxID
-				resolved.CredentialScope = "oauth:" + c.Auth.OAuthGrantID
+				if resolved.ContextID != "" && (c.Version != 2 || c.ContextID != resolved.ContextID) {
+					return a.fail(configError("CONTEXT_NOT_CACHED", "Run flint auth status --context "+resolved.ContextID+" before reading this context's history offline.", nil), opts)
+				}
+				resolved.CredentialScope = oauthHistoryScope(c.Auth)
 			} else if resolved.Environment == "" {
 				resolved.Environment, _ = credentialEnvironment(credential)
 			}
@@ -240,7 +250,7 @@ func (a *App) localAuthImport(cmd *Command, opts Options) int {
 	if err != nil {
 		return a.fail(configError("INVALID_CREDENTIAL", err.Error(), err), opts)
 	}
-	ctx, cancel := context.WithTimeout(a.commandContext(), opts.Timeout)
+	ctx, cancel := context.WithTimeout(withOAuthContext(a.commandContext(), resolved.ContextID), opts.Timeout)
 	defer cancel()
 	authContext, e := a.fetchAuthContext(ctx, baseURL, key, opts.Debug)
 	if e != nil {
@@ -255,9 +265,48 @@ func (a *App) localAuthImport(cmd *Command, opts Options) int {
 	return a.outputLocal(map[string]any{"data": authContext}, cmd, opts)
 }
 
-func (a *App) saveAuthenticatedCredential(profile, key string, authContext AuthContext) *CLIError {
+func (a *App) saveAuthenticatedCredential(profile, key string, auth AuthContext) *CLIError {
+	var result *CLIError
+	err := a.withConfigLock(func() error {
+		result = a.saveAuthenticatedCredentialUnlocked(profile, key, auth)
+		if result != nil {
+			return result
+		}
+		return nil
+	})
+	if err != nil && result == nil {
+		result = configError("CONFIG_WRITE_FAILED", "Could not lock the profile.", err)
+	}
+	return result
+}
+
+func profileWithAuth(p Profile, auth AuthContext) Profile {
+	p.ContextID = auth.ContextID
+	p.Environment = normalizeEnvironment(auth.Environment)
+	p.APIKeyID = auth.APIKeyID
+	p.MerchantID = auth.MerchantID
+	p.SandboxID = auth.SandboxID
+	return p
+}
+
+func (a *App) saveAuthenticatedCredentialUnlocked(profile, key string, auth AuthContext) *CLIError {
+	return a.saveCredentialProfileUnlocked(profile, key, func(p Profile) Profile { return profileWithAuth(p, auth) })
+}
+
+func (a *App) saveReauthorizedCredentialUnlocked(resolved ResolvedConfig, key string, auth AuthContext) *CLIError {
+	return a.saveCredentialProfileUnlocked(resolved.ProfileName, key, func(p Profile) Profile {
+		// Reauthorization changes consent, not a newer selection made in another
+		// terminal. A project pin must not overwrite the profile's default either.
+		if p.ContextID != resolved.ProfileContextID || resolved.Sources["context"] == "project" {
+			return p
+		}
+		return profileWithAuth(p, auth)
+	})
+}
+
+func (a *App) saveCredentialProfileUnlocked(profile, key string, updateProfile func(Profile) Profile) *CLIError {
 	var persistenceErr *CLIError
-	lockErr := a.withConfigLock(func() error {
+	lockErr := func() error {
 		if err := a.commandContext().Err(); err != nil {
 			persistenceErr = networkError("REQUEST_CANCELED", "Authentication was canceled before the credential was stored.", err)
 			return persistenceErr
@@ -282,12 +331,7 @@ func (a *App) saveAuthenticatedCredential(profile, key string, authContext AuthC
 		if cfg.Profiles == nil {
 			cfg.Profiles = map[string]Profile{}
 		}
-		p := cfg.Profiles[profile]
-		p.Environment = normalizeEnvironment(authContext.Environment)
-		p.APIKeyID = authContext.APIKeyID
-		p.MerchantID = authContext.MerchantID
-		p.SandboxID = authContext.SandboxID
-		cfg.Profiles[profile] = p
+		cfg.Profiles[profile] = updateProfile(cfg.Profiles[profile])
 		if saveErr := a.saveConfigUnlocked(cfg); saveErr != nil {
 			if restoreErr := a.restoreCredential(profile, previousCredential); restoreErr != nil {
 				persistenceErr = configError("CONFIG_WRITE_FAILED", saveErr.Error()+"; credential rollback also failed: "+restoreErr.Error(), saveErr)
@@ -297,7 +341,7 @@ func (a *App) saveAuthenticatedCredential(profile, key string, authContext AuthC
 			return saveErr
 		}
 		return nil
-	})
+	}()
 	if lockErr != nil {
 		if persistenceErr == nil {
 			persistenceErr = configError("CONFIG_WRITE_FAILED", lockErr.Error(), lockErr)
@@ -336,7 +380,7 @@ func (a *App) localLogout(cmd *Command, opts Options) int {
 				persistenceErr = e
 				return persistenceErr
 			}
-			ctx, cancel := context.WithTimeout(a.commandContext(), opts.Timeout)
+			ctx, cancel := context.WithTimeout(withOAuthContext(a.commandContext(), resolved.ContextID), opts.Timeout)
 			defer cancel()
 			if e := a.revokeOAuth(ctx, credential); e != nil {
 				persistenceErr = configError("OAUTH_REVOCATION_FAILED", "Could not revoke the OAuth session. Your local credential was retained so you can retry flint auth logout.", nil)
@@ -353,6 +397,7 @@ func (a *App) localLogout(cmd *Command, opts Options) int {
 		}
 		previousProfile := cfg.Profiles[resolved.ProfileName]
 		p := previousProfile
+		p.ContextID = ""
 		p.Environment = ""
 		p.APIKeyID = ""
 		p.MerchantID = ""
@@ -540,7 +585,7 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 		return checks, ExitAuth
 	}
 	checks = append(checks, map[string]any{"name": "credential", "status": "pass", "source": source, "note": "Credential found; API validation follows."})
-	ctx, cancel := context.WithTimeout(a.commandContext(), opts.Timeout)
+	ctx, cancel := context.WithTimeout(withOAuthContext(a.commandContext(), resolved.ContextID), opts.Timeout)
 	defer cancel()
 	_, baseURL, authResponse, e := a.fetchCredentialContext(ctx, resolved.ProfileName, key, opts.Debug)
 	if e != nil {
@@ -617,7 +662,7 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 		versionCheck["note"] = "The server's current API version is " + observedVersion + ". This CLI requests " + a.Info.APIVersion + "."
 		versionCheck["changelog_url"] = "https://developers.withflintpay.com/changelog"
 	}
-	checks = append(checks, versionCheck, map[string]any{"name": "cli_version", "status": "pass", "installed": a.Info.Version, "note": "No public CLI release feed is configured for staleness checks."})
+	checks = append(checks, versionCheck, map[string]any{"name": "cli_version", "status": "pass", "installed": a.Info.Version, "note": "Run flint upgrade to check for a newer stable CLI release."})
 	return checks, ExitOK
 }
 
