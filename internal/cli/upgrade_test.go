@@ -192,13 +192,22 @@ func TestStandaloneUpgradeCancellationPreservesBinary(t *testing.T) {
 }
 
 func TestUpgradeUsesOwningPackageManager(t *testing.T) {
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	npmRoot := filepath.Join(root, "node_modules")
+	npmBinary := filepath.Join(npmRoot, "@flintpay", "cli-darwin-arm64", "bin", "flint")
+	brewCellar := filepath.Join(root, "Cellar", "flint")
+	brewBinary := filepath.Join(brewCellar, "1.0.0", "bin", "flint")
+	brewPrefix := filepath.Join(root, "opt", "flint")
 	for _, test := range []struct {
 		name       string
 		executable string
 		want       []string
 	}{
-		{name: "npm", executable: "/usr/local/lib/node_modules/@flintpay/cli-darwin-arm64/bin/flint", want: []string{"npm root -g", "npm install -g @flintpay/cli@1.1.0 --no-audit --no-fund", "/usr/local/lib/node_modules/@flintpay/cli-darwin-arm64/bin/flint version --field data.cli_version --color never"}},
-		{name: "homebrew", executable: "/opt/homebrew/Cellar/flint/1.0.0/bin/flint", want: []string{"brew --cellar flint-pay/tap/flint", "brew update", "brew upgrade flint-pay/tap/flint", "brew --prefix flint-pay/tap/flint", "/opt/homebrew/opt/flint/bin/flint version --field data.cli_version --color never"}},
+		{name: "npm", executable: npmBinary, want: []string{"npm root -g", "npm install -g @flintpay/cli@1.1.0 --no-audit --no-fund", npmBinary + " version --field data.cli_version --color never"}},
+		{name: "homebrew", executable: brewBinary, want: []string{"brew --cellar flint-pay/tap/flint", "brew update", "brew upgrade flint-pay/tap/flint", "brew --prefix flint-pay/tap/flint", filepath.Join(brewPrefix, "bin", "flint") + " version --field data.cli_version --color never"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -214,13 +223,13 @@ func TestUpgradeUsesOwningPackageManager(t *testing.T) {
 			app.runCommand = func(_ context.Context, name string, args ...string) ([]byte, error) {
 				commands = append(commands, strings.Join(append([]string{name}, args...), " "))
 				if name == "npm" && slices.Equal(args, []string{"root", "-g"}) {
-					return []byte("/usr/local/lib/node_modules\n"), nil
+					return []byte(npmRoot + "\n"), nil
 				}
 				if name == "brew" && slices.Equal(args, []string{"--cellar", "flint-pay/tap/flint"}) {
-					return []byte("/opt/homebrew/Cellar/flint\n"), nil
+					return []byte(brewCellar + "\n"), nil
 				}
 				if name == "brew" && slices.Equal(args, []string{"--prefix", "flint-pay/tap/flint"}) {
-					return []byte("/opt/homebrew/opt/flint\n"), nil
+					return []byte(brewPrefix + "\n"), nil
 				}
 				if len(args) > 0 && args[0] == "version" {
 					return []byte("1.1.0\n"), nil
@@ -239,6 +248,11 @@ func TestUpgradeUsesOwningPackageManager(t *testing.T) {
 }
 
 func TestPackageManagerUpgradeVerifiesCurrentInstallation(t *testing.T) {
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	npmRoot := filepath.Join(root, "node_modules")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, `[{"tag_name":"cli/v1.1.0"}]`)
 	}))
@@ -247,12 +261,12 @@ func TestPackageManagerUpgradeVerifiesCurrentInstallation(t *testing.T) {
 	app.Info.Version = "1.0.0"
 	app.upgradeReleaseAPIURL = server.URL
 	app.executablePath = func() (string, error) {
-		return "/usr/local/lib/node_modules/@flintpay/cli-darwin-arm64/bin/flint", nil
+		return filepath.Join(npmRoot, "@flintpay", "cli-darwin-arm64", "bin", "flint"), nil
 	}
 	app.runtimeGOOS = "darwin"
 	app.runCommand = func(_ context.Context, name string, args ...string) ([]byte, error) {
 		if name == "npm" && slices.Equal(args, []string{"root", "-g"}) {
-			return []byte("/usr/local/lib/node_modules\n"), nil
+			return []byte(npmRoot + "\n"), nil
 		}
 		if len(args) > 0 && args[0] == "version" {
 			return []byte("1.0.0\n"), nil
