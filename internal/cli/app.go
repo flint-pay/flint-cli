@@ -307,7 +307,7 @@ func (a *App) printCommandHelp(cmd *Command) {
 	if !cmd.Local || cmd.CanonicalName == "auth.import" || cmd.CanonicalName == "auth.login" || cmd.CanonicalName == "auth.reauth" || strings.HasPrefix(cmd.CanonicalName, "context.") || cmd.CanonicalName == "auth.logout" || cmd.CanonicalName == "config.validate" || cmd.CanonicalName == "doctor" || cmd.CanonicalName == "upgrade" || cmd.CanonicalName == "init" || cmd.CanonicalName == "signup" || cmd.CanonicalName == "mcp.serve" || cmd.CanonicalName == "help.search" {
 		capabilities = append(capabilities, "--timeout DURATION")
 	}
-	if cmd.Stream || cmd.Supports.Pagination || cmd.Supports.WaitFor || cmd.CanonicalName == "api" {
+	if cmd.Stream || cmd.Supports.Pagination || cmd.Supports.WaitFor || cmd.CanonicalName == "api" || cmd.CanonicalName == "upgrade" {
 		capabilities = append(capabilities, "--progress auto|plain|json|quiet")
 	}
 	if len(capabilities) > 0 {

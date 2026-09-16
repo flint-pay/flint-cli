@@ -151,7 +151,11 @@ func (a *App) localUpgrade(cmd *Command, opts Options) int {
 	}
 	ctx, cancel := context.WithTimeout(a.commandContext(), upgradeTimeout)
 	defer cancel()
-	latest, upgradeErr := a.latestStableCLIRelease(ctx)
+	var latest releaseVersion
+	var upgradeErr *CLIError
+	a.withUpgradeProgress(ctx, opts, "Checking for a newer Flint CLI release", func() {
+		latest, upgradeErr = a.latestStableCLIRelease(ctx)
+	})
 	if upgradeErr != nil {
 		return a.fail(upgradeErr, opts)
 	}
@@ -187,7 +191,7 @@ func (a *App) localUpgrade(cmd *Command, opts Options) int {
 				Message:  "Close Flint CLI, then run npm install -g @flintpay/cli@" + latest.raw + ". Windows cannot replace the running platform binary.",
 			}, opts)
 		}
-		if upgradeErr := a.upgradeWithPackageManager(ctx, method, latest.raw, executable); upgradeErr != nil {
+		if upgradeErr := a.upgradeWithPackageManager(ctx, opts, method, latest.raw, executable); upgradeErr != nil {
 			return a.fail(upgradeErr, opts)
 		}
 		return a.outputLocal(upgradeResult(installed.raw, latest.raw, method), cmd, opts)
@@ -216,11 +220,18 @@ func (a *App) localUpgrade(cmd *Command, opts Options) int {
 		}, opts)
 	}
 
-	binary, upgradeErr := a.downloadUpgradeBinary(ctx, latest.raw, a.runtimeGOOS, arch)
+	var binary []byte
+	a.withUpgradeProgress(ctx, opts, "Downloading Flint CLI "+latest.raw+" and checking its checksum", func() {
+		binary, upgradeErr = a.downloadUpgradeBinary(ctx, latest.raw, a.runtimeGOOS, arch)
+	})
 	if upgradeErr != nil {
 		return a.fail(upgradeErr, opts)
 	}
-	if replaceErr := a.replaceExecutableAtomically(ctx, executable, binary, latest.raw); replaceErr != nil {
+	var replaceErr *CLIError
+	a.withUpgradeProgress(ctx, opts, "Verifying and installing Flint CLI "+latest.raw, func() {
+		replaceErr = a.replaceExecutableAtomically(ctx, executable, binary, latest.raw)
+	})
+	if replaceErr != nil {
 		return a.fail(replaceErr, opts)
 	}
 	return a.outputLocal(upgradeResult(installed.raw, latest.raw, "standalone"), cmd, opts)
@@ -273,7 +284,9 @@ func (b *tailBuffer) Write(value []byte) (int, error) {
 }
 
 func runUpgradeCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
-	stdout, stderr := &tailBuffer{limit: 2048}, &tailBuffer{limit: 2048}
+	// Homebrew's single-formula JSON exceeds 2 KiB. Keep enough bounded stdout
+	// for metadata parsing while retaining a small diagnostic stderr tail.
+	stdout, stderr := &tailBuffer{limit: 64 << 10}, &tailBuffer{limit: 2048}
 	command := exec.CommandContext(ctx, name, args...)
 	configureUpgradeProcess(command)
 	command.WaitDelay = time.Second
@@ -297,8 +310,15 @@ type packageManagerCommand struct {
 	args []string
 }
 
-func (a *App) upgradeWithPackageManager(ctx context.Context, method, version, executable string) *CLIError {
-	if ownershipErr := a.verifyPackageManagerOwnership(ctx, method, executable); ownershipErr != nil {
+func (a *App) upgradeWithPackageManager(ctx context.Context, opts Options, method, version, executable string) *CLIError {
+	var ownershipErr *CLIError
+	a.withUpgradeProgress(ctx, opts, "Checking the "+method+" installation", func() {
+		ownershipErr = a.verifyPackageManagerOwnership(ctx, method, executable)
+	})
+	if ctx.Err() != nil {
+		return networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+	}
+	if ownershipErr != nil {
 		return ownershipErr
 	}
 	var commands []packageManagerCommand
@@ -314,7 +334,14 @@ func (a *App) upgradeWithPackageManager(ctx context.Context, method, version, ex
 		return upgradeFailure("UNKNOWN_INSTALL_METHOD", "Could not determine how Flint CLI was installed.", nil)
 	}
 	for _, command := range commands {
-		_, err := a.runCommand(ctx, command.name, command.args...)
+		message := "Installing Flint CLI " + version + " with " + method
+		if command.name == "brew" && command.args[0] == "update" {
+			message = "Updating Homebrew package information"
+		}
+		var err error
+		a.withUpgradeProgress(ctx, opts, message, func() {
+			_, err = a.runCommand(ctx, command.name, command.args...)
+		})
 		if err == nil {
 			continue
 		}
@@ -324,18 +351,71 @@ func (a *App) upgradeWithPackageManager(ctx context.Context, method, version, ex
 		return upgradeFailure("PACKAGE_MANAGER_FAILED", "The "+method+" upgrade failed. Run the package manager directly for more detail.", err)
 	}
 	if method == "homebrew" {
-		output, err := a.runCommand(ctx, "brew", "--prefix", "flint-pay/tap/flint")
+		var output []byte
+		var err error
+		a.withUpgradeProgress(ctx, opts, "Locating the Homebrew installation", func() {
+			output, err = a.runCommand(ctx, "brew", "--prefix", "flint-pay/tap/flint")
+		})
+		if ctx.Err() != nil {
+			return networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+		}
 		prefix := strings.TrimSpace(string(output))
 		if err != nil || !filepath.IsAbs(prefix) || strings.ContainsAny(prefix, "\r\n") {
 			return upgradeFailure("UPGRADE_VERIFICATION_FAILED", "Homebrew completed, but Flint CLI could not locate the installed binary.", err)
 		}
 		executable = filepath.Join(filepath.Clean(prefix), "bin", "flint")
 	}
-	output, err := a.runCommand(ctx, executable, "version", "--field", "data.cli_version", "--color", "never")
-	if err != nil || strings.TrimSpace(string(output)) != version {
-		return upgradeFailure("UPGRADE_VERIFICATION_FAILED", "The package manager completed, but the installed Flint CLI version could not be verified.", err)
+	var output []byte
+	var err error
+	a.withUpgradeProgress(ctx, opts, "Verifying installed Flint CLI "+version, func() {
+		output, err = a.runCommand(ctx, executable, "version", "--field", "data.cli_version", "--color", "never")
+	})
+	if ctx.Err() != nil {
+		return networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 	}
-	return nil
+	if err == nil && strings.TrimSpace(string(output)) == version {
+		return nil
+	}
+	failure := upgradeFailure("UPGRADE_VERIFICATION_FAILED", "The "+method+" command completed, but Flint CLI could not read the installed version. Expected "+version+". Run flint version to check the installation, then retry flint upgrade.", err)
+	details := map[string]any{"install_method": method, "expected_version": version, "executable": executable, "retry_command": "flint upgrade"}
+	failure.Details = details
+	installed, valid := parseReleaseVersion(string(output))
+	if err != nil || !valid {
+		return failure
+	}
+	details["installed_version"] = installed.raw
+	failure.Message = fmt.Sprintf("The %s command completed, but Flint CLI %s is installed; expected %s. Run flint version to check the installation, then retry flint upgrade.", method, installed.raw, version)
+	if method == "homebrew" {
+		// Confirm that the formula is behind before attributing a version mismatch
+		// to release propagation; a current formula can also have a stale binary.
+		var info []byte
+		var infoErr error
+		a.withUpgradeProgress(ctx, opts, "Checking the version available through Homebrew", func() {
+			info, infoErr = a.runCommand(ctx, "brew", "info", "--json=v2", "flint-pay/tap/flint")
+		})
+		if ctx.Err() != nil {
+			return networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+		}
+		var feed struct {
+			Formulae []struct {
+				Versions struct {
+					Stable string `json:"stable"`
+				} `json:"versions"`
+			} `json:"formulae"`
+		}
+		if infoErr == nil && json.Unmarshal(info, &feed) == nil && len(feed.Formulae) == 1 {
+			available, availableOK := parseReleaseVersion(feed.Formulae[0].Versions.Stable)
+			expected, expectedOK := parseReleaseVersion(version)
+			if availableOK {
+				details["available_version"] = available.raw
+			}
+			if availableOK && expectedOK && compareReleaseVersions(available, expected) < 0 && compareReleaseVersions(installed, expected) < 0 {
+				failure.Code = "PACKAGE_MANAGER_RELEASE_PENDING"
+				failure.Message = fmt.Sprintf("Flint CLI %s is available on GitHub, but Homebrew currently offers %s. Installed version: %s. The Homebrew release may still be publishing. Wait a few minutes, then run flint upgrade again.", version, available.raw, installed.raw)
+			}
+		}
+	}
+	return failure
 }
 
 func (a *App) verifyPackageManagerOwnership(ctx context.Context, method, executable string) *CLIError {

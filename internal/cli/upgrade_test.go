@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -243,6 +244,19 @@ func TestUpgradeUsesOwningPackageManager(t *testing.T) {
 			if !slices.Equal(commands, test.want) {
 				t.Fatalf("commands=%v want=%v", commands, test.want)
 			}
+			stdout.Reset()
+			stderr.Reset()
+			if exit := app.Run([]string{"upgrade", "--output", "json", "--progress", "plain"}); exit != ExitOK {
+				t.Fatalf("upgrade with progress failed: %d %s", exit, stdout)
+			}
+			if !json.Valid(stdout.Bytes()) {
+				t.Fatalf("progress polluted JSON result: %s", stdout)
+			}
+			for _, stage := range []string{"Checking for a newer Flint CLI release", "Installing Flint CLI 1.1.0 with " + test.name, "Verifying installed Flint CLI 1.1.0"} {
+				if !strings.Contains(stderr.String(), stage) {
+					t.Errorf("missing upgrade stage %q: %s", stage, stderr)
+				}
+			}
 		})
 	}
 }
@@ -443,4 +457,125 @@ func testUpgradeArchive(t *testing.T, binary []byte) []byte {
 		t.Fatal(err)
 	}
 	return output.Bytes()
+}
+
+func TestPackageManagerUpgradeExplainsVersionMismatch(t *testing.T) {
+	for _, tc := range []struct {
+		name, method, installed, available, code string
+		readFails                                bool
+	}{
+		{"brew-publishing", "homebrew", "0.3.0", "0.3.0", "PACKAGE_MANAGER_RELEASE_PENDING", false},
+		{"brew-current-formula", "homebrew", "0.3.0", "0.3.1", "UPGRADE_VERIFICATION_FAILED", false},
+		{"brew-unreadable-formula", "homebrew", "0.3.0", "", "UPGRADE_VERIFICATION_FAILED", false},
+		{"brew-newer-binary", "homebrew", "0.3.2", "0.3.0", "UPGRADE_VERIFICATION_FAILED", false},
+		{"npm-old-binary", "npm", "0.3.0", "", "UPGRADE_VERIFICATION_FAILED", false},
+		{"unreadable-binary", "homebrew", "", "0.3.0", "UPGRADE_VERIFICATION_FAILED", true},
+		{"invalid-version", "homebrew", "unexpected output", "0.3.0", "UPGRADE_VERIFICATION_FAILED", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				fmt.Fprint(w, `[{"tag_name":"cli/v0.3.1"}]`)
+			}))
+			defer server.Close()
+			app, out, stderr := testApp(t, "")
+			app.Info.Version = "0.3.0"
+			app.upgradeReleaseAPIURL = server.URL
+			app.runtimeGOOS = "darwin"
+			binary := filepath.Join(root, "Cellar", "flint", "0.3.0", "bin", "flint")
+			if tc.method == "npm" {
+				binary = filepath.Join(root, "node_modules", "@flintpay", "cli-darwin-arm64", "bin", "flint")
+			}
+			app.executablePath = func() (string, error) { return binary, nil }
+			app.runCommand = func(_ context.Context, name string, args ...string) ([]byte, error) {
+				switch {
+				case name == "brew" && args[0] == "--cellar":
+					return []byte(filepath.Join(root, "Cellar", "flint")), nil
+				case name == "npm" && args[0] == "root":
+					return []byte(filepath.Join(root, "node_modules")), nil
+				case name == "brew" && args[0] == "--prefix":
+					return []byte(filepath.Join(root, "opt", "flint")), nil
+				case args[0] == "version":
+					if tc.readFails {
+						return nil, errors.New("cannot execute binary")
+					}
+					return []byte(tc.installed), nil
+				case name == "brew" && args[0] == "info":
+					if tc.available == "" {
+						return []byte("invalid json"), nil
+					}
+					return []byte(fmt.Sprintf(`{"formulae":[{"versions":{"stable":%q}}]}`, tc.available)), nil
+				default:
+					return nil, nil
+				}
+			}
+			if exit := app.Run([]string{"upgrade", "--output", "json"}); exit != ExitSoftware {
+				t.Fatalf("exit=%d output=%s", exit, out)
+			}
+			var result struct {
+				Error struct {
+					Code    string         `json:"code"`
+					Message string         `json:"message"`
+					Details map[string]any `json:"details"`
+				} `json:"error"`
+			}
+			if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+				t.Fatal(err)
+			}
+			if result.Error.Code != tc.code || result.Error.Details["expected_version"] != "0.3.1" || result.Error.Details["retry_command"] != "flint upgrade" {
+				t.Fatalf("missing actionable details: %s", out)
+			}
+			if strings.HasPrefix(tc.installed, "0.3.") && result.Error.Details["installed_version"] != tc.installed {
+				t.Fatalf("missing installed version: %s", out)
+			}
+			if tc.code == "PACKAGE_MANAGER_RELEASE_PENDING" && (!strings.Contains(result.Error.Message, "Homebrew currently offers 0.3.0") || !strings.Contains(result.Error.Message, "Wait a few minutes")) {
+				t.Fatalf("missing release guidance: %s", out)
+			}
+			if strings.Contains(result.Error.Message, "unexpected output") {
+				t.Fatal("unvalidated binary output leaked into message")
+			}
+			out.Reset()
+			stderr.Reset()
+			if exit := app.Run([]string{"upgrade"}); exit != ExitSoftware || !strings.Contains(stderr.String(), result.Error.Message) {
+				t.Fatalf("human message missing: exit=%d stderr=%s", exit, stderr)
+			}
+		})
+	}
+}
+
+func TestPackageManagerVerificationCancellation(t *testing.T) {
+	for _, step := range []string{"--cellar", "--prefix", "version", "info"} {
+		t.Run(step, func(t *testing.T) {
+			app, _, _ := testApp(t, "")
+			root, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			app.runCommand = func(_ context.Context, name string, args ...string) ([]byte, error) {
+				if args[0] == step {
+					cancel()
+					return nil, ctx.Err()
+				}
+				switch args[0] {
+				case "--cellar":
+					return []byte(root), nil
+				case "--prefix":
+					return []byte(root), nil
+				case "version":
+					return []byte("0.3.0"), nil
+				default:
+					return nil, nil
+				}
+			}
+			e := app.upgradeWithPackageManager(ctx, defaultOptions(), "homebrew", "0.3.1", filepath.Join(root, "bin", "flint"))
+			if e == nil || e.Code != "REQUEST_CANCELED" {
+				t.Fatalf("cancellation reported as %v", e)
+			}
+		})
+	}
 }

@@ -375,8 +375,8 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	if used("fix") && cmd.CanonicalName != "doctor" {
 		return usageError("UNSUPPORTED_FLAG", "--fix applies only to flint doctor.", "fix")
 	}
-	if used("progress") && !cmd.Stream && !o.All && !o.Paginate && len(o.WaitFor) == 0 {
-		return usageError("UNSUPPORTED_FLAG", "--progress applies only to pagination, streams, and waits.", "progress")
+	if used("progress") && !cmd.Stream && !o.All && !o.Paginate && len(o.WaitFor) == 0 && cmd.CanonicalName != "upgrade" {
+		return usageError("UNSUPPORTED_FLAG", "--progress applies only to pagination, streams, waits, and upgrades.", "progress")
 	}
 	maxPositional := 0
 	variadic := false

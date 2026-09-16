@@ -222,6 +222,28 @@ func (w *outputErrorWriter) Write(p []byte) (int, error) {
 }
 
 func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) {
+	if cmd != nil && cmd.CanonicalName == "auth.login" {
+		envelope, _ := value.(map[string]any)
+		data, _ := envelope["data"].(map[string]any)
+		if auth, ok := data["active_context"].(AuthContext); ok {
+			fmt.Fprintln(w, "Already authenticated.")
+			if auth.Name != "" {
+				fmt.Fprintln(w, "Context:", terminalSafe(auth.Name))
+			}
+			fmt.Fprintln(w, "Environment:", strings.ToUpper(terminalSafe(auth.Environment)))
+			fmt.Fprintln(w, "Merchant:", terminalSafe(auth.MerchantID))
+			if auth.SandboxID != "" {
+				fmt.Fprintln(w, "Sandbox:", terminalSafe(auth.SandboxID))
+			}
+			if auth.ContextID != "" {
+				fmt.Fprintln(w, "Context ID:", terminalSafe(auth.ContextID))
+			}
+			if next, ok := data["next"].(string); ok && next != "" {
+				fmt.Fprintln(w, "Next:", terminalSafe(next))
+			}
+			return
+		}
+	}
 	if cmd != nil && cmd.CanonicalName == "context.list" {
 		envelope, _ := value.(map[string]any)
 		list, ok := envelope["data"].(contextList)

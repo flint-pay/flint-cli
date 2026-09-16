@@ -271,3 +271,79 @@ func TestBrowserLoginRejectsMalformedResponses(t *testing.T) {
 		})
 	}
 }
+
+func TestSavedLoginOutput(t *testing.T) {
+	for _, kind := range []string{"sandbox", "live", "legacy"} {
+		t.Run(kind, func(t *testing.T) {
+			auth := contextTestAuth("ctx_a")
+			if kind == "live" {
+				auth = contextTestAuth("ctx_live")
+			}
+			auth.Name = "cedar-stone"
+			if kind == "legacy" {
+				auth.ContextID = ""
+				auth.OAuthSessionID = ""
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/v1/developer/auth-context" {
+					t.Errorf("reused login made unexpected request: %s", r.URL.Path)
+					http.NotFound(w, r)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]any{"data": auth})
+			}))
+			defer server.Close()
+			app, out, _ := testApp(t, server.URL)
+			t.Setenv("FLINT_API_KEY", "")
+			credential := testOAuthCredential(t, server.URL, time.Now().Add(time.Hour))
+			credential.Auth = auth
+			if kind != "legacy" {
+				credential.Version = 2
+				credential.ContextID = auth.ContextID
+				credential.SessionID = auth.OAuthSessionID
+			}
+			installTestOAuth(t, app, credential)
+			if exit := app.Run([]string{"login"}); exit != ExitOK {
+				t.Fatalf("login failed: exit=%d output=%s", exit, out)
+			}
+			for _, want := range []string{"Already authenticated.\n", "Context: cedar-stone\n", "Environment: " + strings.ToUpper(auth.Environment) + "\n", "Merchant: " + auth.MerchantID + "\n", "Next: flint "} {
+				if !strings.Contains(out.String(), want) {
+					t.Errorf("missing %q in human output: %s", want, out)
+				}
+			}
+			if auth.SandboxID != "" && !strings.Contains(out.String(), "Sandbox: "+auth.SandboxID+"\n") {
+				t.Errorf("sandbox missing: %s", out)
+			}
+			if auth.ContextID != "" && !strings.Contains(out.String(), "Context ID: "+auth.ContextID+"\n") {
+				t.Errorf("context ID missing: %s", out)
+			}
+			for _, unwanted := range []string{"{", "<nil>", "oauth:", "session_one", auth.OAuthGrantID, auth.Scopes[0]} {
+				if strings.Contains(out.String(), unwanted) {
+					t.Errorf("internal auth details %q in human summary: %s", unwanted, out)
+				}
+			}
+			// Machine output must retain the full public context, including scopes.
+			out.Reset()
+			if exit := app.Run([]string{"auth", "login", "--output", "json"}); exit != ExitOK {
+				t.Fatalf("JSON login failed: %d %s", exit, out)
+			}
+			var result struct {
+				Data struct {
+					AlreadyAuthenticated bool        `json:"already_authenticated"`
+					ActiveContext        AuthContext `json:"active_context"`
+				} `json:"data"`
+			}
+			if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+				t.Fatal(err)
+			}
+			if !result.Data.AlreadyAuthenticated || result.Data.ActiveContext.Name != auth.Name || result.Data.ActiveContext.OAuthGrantID != auth.OAuthGrantID || len(result.Data.ActiveContext.Scopes) != len(auth.Scopes) {
+				t.Fatalf("machine output lost context: %s", out)
+			}
+			out.Reset()
+			if exit := app.Run([]string{"login", "--field", "data.active_context.name"}); exit != ExitOK || out.String() != "cedar-stone\n" {
+				t.Fatalf("field output changed: %d %s", exit, out)
+			}
+		})
+	}
+}
