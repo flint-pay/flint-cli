@@ -97,7 +97,11 @@ func oauthAuthorizationEnvironment(command *Command, opts Options) string {
 }
 
 func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Options, resolved ResolvedConfig) (string, string, authContextEnvelope, *CLIError) {
+	ctx = withOAuthContext(ctx, resolved.ContextID)
 	envelope := authContextEnvelope{}
+	if resolved.ContextID != "" && (credentialFromEnvironment() != "" || os.Getenv("FLINT_ACCESS_TOKEN") != "" || os.Getenv("FLINT_CHECKOUT_SESSION_SECRET") != "") {
+		return "", "", envelope, contextSessionRequired()
+	}
 	token := strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN"))
 	if strings.HasPrefix(token, "flint_test_") || strings.HasPrefix(token, "flint_live_") {
 		return "", "", envelope, configError("API_KEY_IN_ACCESS_TOKEN", "Set FLINT_API_KEY for an API key. FLINT_ACCESS_TOKEN is for session and partner tokens.", nil)
@@ -169,13 +173,23 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 			if e := a.oauthBaseURL(c); e != nil {
 				return "", "", envelope, e
 			}
+			if resolved.ContextID != "" && (c.Version != 2 || c.ContextID != resolved.ContextID) {
+				return "", "", envelope, configError("CONTEXT_NOT_CACHED", "This context is not cached. Run flint auth status --context "+resolved.ContextID+" first.", nil)
+			}
+			if c.PendingValidation {
+				return "", "", envelope, configError("OAUTH_CONTEXT_UNAVAILABLE", "The saved token needs validation. Run flint auth status first.", nil)
+			}
 			envelope.Data = c.Auth
-			envelope.Data.CredentialScope = "oauth:" + c.Auth.OAuthGrantID
+			envelope.Data.SelectedContext = c.Version == 2
+			envelope.Data.CredentialScope = oauthHistoryScope(c.Auth)
 			return c.AccessToken, c.BaseURL, envelope, nil
 		}
 		authCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
 		defer cancel()
 		return a.fetchCredentialContext(authCtx, resolved.ProfileName, key, opts.Debug)
+	}
+	if resolved.ContextID != "" {
+		return "", "", envelope, contextSessionRequired()
 	}
 	baseURL, err := a.baseURLForCredential(key)
 	if err != nil {

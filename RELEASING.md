@@ -87,7 +87,7 @@ npm install -g @flintpay/cli@0.1.0-beta.1
 flint version --output json
 ```
 
-Stable installations use `npm install -g @flintpay/cli` or `brew install flint-pay/tap/flint`; beta installations use `npm install -g @flintpay/cli@next`. Homebrew upgrades use `brew update && brew upgrade flint-pay/tap/flint`.
+Stable installations use `npm install -g @flintpay/cli` or `brew install flint-pay/tap/flint`; beta installations use `npm install -g @flintpay/cli@next`. On macOS and Linux, stable installations can run `flint upgrade`; the command delegates to npm or Homebrew when appropriate and updates standalone binaries directly. On Windows it prints the exact update step to run after the process exits.
 
 For manual installation on macOS or Linux, download the installer from the release's source tag and select the same version:
 

@@ -222,6 +222,35 @@ func (w *outputErrorWriter) Write(p []byte) (int, error) {
 }
 
 func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) {
+	if cmd != nil && cmd.CanonicalName == "context.list" {
+		envelope, _ := value.(map[string]any)
+		list, ok := envelope["data"].(contextList)
+		if ok {
+			if len(list.Contexts) == 0 {
+				fmt.Fprintln(w, "No authorized contexts. Run flint reauth.")
+				return
+			}
+			for _, item := range list.Contexts {
+				marker := " "
+				if item.ID == list.Active {
+					marker = "*"
+				}
+				fmt.Fprintf(w, "%s %s  %s / %s [%s]\n", marker, terminalSafe(item.ID), terminalSafe(item.Name), terminalSafe(item.MerchantID), strings.ToUpper(item.Environment))
+			}
+			fmt.Fprintln(w, "Run flint context switch to select a context.")
+			return
+		}
+	}
+	if cmd != nil && cmd.CanonicalName == "context.switch" {
+		envelope, _ := value.(map[string]any)
+		data, _ := envelope["data"].(map[string]any)
+		item, ok := data["active_context"].(*authorizedContext)
+		if ok {
+			fmt.Fprintf(w, "Active context: %s / %s [%s] (%s)\n", terminalSafe(item.Name), terminalSafe(item.MerchantID), strings.ToUpper(item.Environment), terminalSafe(item.ID))
+			return
+		}
+	}
+
 	if cmd != nil && cmd.CanonicalName == "doctor" {
 		renderDoctorHuman(w, value)
 		return

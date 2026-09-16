@@ -24,6 +24,8 @@ const deviceGrantType = "urn:ietf:params:oauth:grant-type:device_code"
 // The complete record lives only in the OS keychain. Existing raw API-key
 // entries remain readable; tokens are never placed in config.json.
 type oauthCredential struct {
+	SessionID         string      `json:"oauth_session_id,omitempty"`
+	ContextID         string      `json:"context_id,omitempty"`
 	PendingValidation bool        `json:"pending_validation,omitempty"`
 	Kind              string      `json:"kind"`
 	Version           int         `json:"version"`
@@ -35,6 +37,8 @@ type oauthCredential struct {
 }
 
 type oauthTokenResponse struct {
+	SessionID    string `json:"oauth_session_id"`
+	ContextID    string `json:"context_id"`
 	AccessToken  string `json:"access_token"`
 	TokenType    string `json:"token_type"`
 	RefreshToken string `json:"refresh_token"`
@@ -46,8 +50,11 @@ func isOAuthCredential(raw string) bool { return strings.HasPrefix(strings.TrimS
 
 func decodeOAuthCredential(raw string) (oauthCredential, *CLIError) {
 	var c oauthCredential
-	if json.Unmarshal([]byte(raw), &c) != nil || c.Kind != "oauth" || c.Version != 1 || !validOAuthToken(c.AccessToken) || !validOAuthToken(c.RefreshToken) || c.ExpiresAt.IsZero() || !validOAuthContext(c.Auth) {
+	if json.Unmarshal([]byte(raw), &c) != nil || c.Kind != "oauth" || (c.Version != 1 && c.Version != 2) || !validOAuthToken(c.AccessToken) || !validOAuthToken(c.RefreshToken) || c.ExpiresAt.IsZero() || !validOAuthContext(c.Auth) {
 		return c, configError("INVALID_OAUTH_CREDENTIAL", "The saved OAuth session is invalid. Run flint auth login again.", nil)
+	}
+	if c.Version == 2 && (c.SessionID == "" || c.ContextID == "" || c.Auth.OAuthSessionID != c.SessionID || (!c.PendingValidation && c.Auth.ContextID != c.ContextID)) {
+		return c, configError("INVALID_OAUTH_CREDENTIAL", "The saved context session is invalid. Run flint login --new-session.", nil)
 	}
 	base, err := validateBaseURL(c.BaseURL)
 	if err != nil || base != c.BaseURL {
@@ -90,6 +97,10 @@ func (a *App) oauthBaseURL(c oauthCredential) *CLIError {
 // OAuth endpoints use RFC 6749 form bodies and flat JSON responses, not Flint
 // API envelopes. Do not log bodies or automatically replay rotating grants.
 func (a *App) oauthRequest(ctx context.Context, baseURL, path string, form url.Values) ([]byte, *CLIError) {
+	return a.oauthRequestWithBearer(ctx, baseURL, path, form, "")
+}
+
+func (a *App) oauthRequestWithBearer(ctx context.Context, baseURL, path string, form url.Values, token string) ([]byte, *CLIError) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+path, strings.NewReader(form.Encode()))
@@ -97,6 +108,9 @@ func (a *App) oauthRequest(ctx context.Context, baseURL, path string, form url.V
 		return nil, networkError("OAUTH_REQUEST_FAILED", "Could not prepare the OAuth request.", nil)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "flintpay-cli/"+a.Info.Version)
 	req.Header.Set("X-Flint-CLI-Version", a.Info.Version)
@@ -141,7 +155,7 @@ func (a *App) oauthRequest(ctx context.Context, baseURL, path string, form url.V
 		// Only known protocol error names may reach output. Never echo remote
 		// descriptions, arbitrary error strings, or token response bodies.
 		switch body.Error {
-		case "authorization_pending", "slow_down", "access_denied", "expired_token", "invalid_grant", "invalid_client", "invalid_scope", "unsupported_grant_type":
+		case "invalid_context", "context_access_denied", "authorization_pending", "slow_down", "access_denied", "expired_token", "invalid_grant", "invalid_client", "invalid_scope", "unsupported_grant_type":
 			return nil, configError(body.Error, "OAuth authorization failed. Run flint auth login again.", nil)
 		}
 		return nil, networkError("OAUTH_REQUEST_FAILED", "The OAuth server rejected the request. Try again, or run flint auth login.", nil)
@@ -154,7 +168,14 @@ func (a *App) decodeOAuthTokens(raw []byte, baseURL string) (oauthCredential, *C
 	if json.Unmarshal(raw, &response) != nil || !strings.EqualFold(response.TokenType, "Bearer") || !validOAuthToken(response.AccessToken) || !validOAuthToken(response.RefreshToken) || response.ExpiresIn < 1 || response.ExpiresIn > 86400 {
 		return oauthCredential{}, configError("INVALID_OAUTH_RESPONSE", "Flint returned invalid OAuth tokens or expiry. Run flint auth login again.", nil)
 	}
-	return oauthCredential{Kind: "oauth", Version: 1, BaseURL: baseURL, AccessToken: response.AccessToken, RefreshToken: response.RefreshToken, ExpiresAt: a.Now().Add(time.Duration(response.ExpiresIn) * time.Second)}, nil
+	version := 1
+	if response.SessionID != "" || response.ContextID != "" {
+		if response.SessionID == "" || response.ContextID == "" {
+			return oauthCredential{}, configError("INVALID_OAUTH_RESPONSE", "Incomplete OAuth session metadata.", nil)
+		}
+		version = 2
+	}
+	return oauthCredential{Kind: "oauth", Version: version, SessionID: response.SessionID, ContextID: response.ContextID, BaseURL: baseURL, AccessToken: response.AccessToken, RefreshToken: response.RefreshToken, ExpiresAt: a.Now().Add(time.Duration(response.ExpiresIn) * time.Second)}, nil
 }
 
 func (a *App) revokeOAuth(ctx context.Context, c oauthCredential) *CLIError {
@@ -211,18 +232,46 @@ func (a *App) oauthAccess(ctx context.Context, profile string) (oauthCredential,
 		if result = a.oauthBaseURL(c); result != nil {
 			return result
 		}
-		if !a.Now().Add(30 * time.Second).Before(c.ExpiresAt) {
-			response, e := a.oauthRequest(ctx, c.BaseURL, loginTokenPath, url.Values{"client_id": {oauthClientID}, "grant_type": {"refresh_token"}, "refresh_token": {c.RefreshToken}})
+		if result = validateOAuthIdentity(ctx, c); result != nil {
+			return result
+		}
+
+		target := requestedOAuthContext(ctx)
+		if target == "" && c.Version == 2 {
+			cfg, err := a.loadConfig()
+			if err != nil {
+				result = configError("CONFIG_INVALID", "Could not read the active context.", err)
+				return result
+			}
+			target = cfg.Profiles[profile].ContextID
+			if target == "" {
+				target = c.ContextID
+			}
+		}
+		if target != "" && c.Version != 2 {
+			result = contextSessionRequired()
+			return result
+		}
+		if !a.Now().Add(30*time.Second).Before(c.ExpiresAt) || (target != "" && target != c.ContextID) {
+			form := url.Values{"client_id": {oauthClientID}, "grant_type": {"refresh_token"}, "refresh_token": {c.RefreshToken}}
+			if c.Version == 2 {
+				form.Set("context_id", target)
+			}
+			response, e := a.oauthRequest(ctx, c.BaseURL, loginTokenPath, form)
 			if e != nil {
 				if e.Code == "invalid_grant" {
 					e = configError("OAUTH_SESSION_EXPIRED", "Your Flint session expired or was revoked. Run flint auth login again.", nil)
 				}
-				result = e
+				result = contextEndpointError(e)
 				return result
 			}
 			next, e := a.decodeOAuthTokens(response, c.BaseURL)
 			if e != nil {
 				result = a.cleanupOAuthResponse(response, c.BaseURL, c, e)
+				return result
+			}
+			if next.Version != c.Version || (c.Version == 2 && (next.SessionID != c.SessionID || next.ContextID != target)) {
+				result = a.cleanupOAuth(next, configError("OAUTH_CONTEXT_MISMATCH", "The token response did not match the requested session and context.", nil))
 				return result
 			}
 			if next.RefreshToken == c.RefreshToken {
@@ -251,7 +300,14 @@ func (a *App) oauthAccess(ctx context.Context, profile string) (oauthCredential,
 			result = cliError(e.ExitCode, e.Type, "OAUTH_CONTEXT_UNAVAILABLE", "The refreshed session is saved but could not be verified. Retry the command.")
 			return result
 		}
-		if e != nil || !validOAuthContext(auth) || auth.OAuthGrantID != c.Auth.OAuthGrantID || auth.Environment != c.Auth.Environment || auth.MerchantID != c.Auth.MerchantID || auth.SandboxID != c.Auth.SandboxID {
+		if e != nil && c.Version == 2 {
+			// An access token can lose its context while the session still
+			// authorizes other contexts. Keep the rotated refresh token for
+			// listing, reauthorization, or selecting another context.
+			result = contextEndpointError(configError("context_access_denied", "", nil))
+			return result
+		}
+		if e != nil || !matchesOAuthCredential(c, auth) {
 			result = a.cleanupOAuth(c, configError("OAUTH_REFRESH_INVALID", "The refreshed session did not match the original grant. Run flint auth login again.", nil))
 			return result
 		}
@@ -280,6 +336,9 @@ func (a *App) resolveCheckCredential(profile string) (string, string, error) {
 }
 
 func (a *App) fetchCredentialContext(ctx context.Context, profile, raw string, debug bool) (string, string, authContextEnvelope, *CLIError) {
+	if requestedOAuthContext(ctx) != "" && (!isOAuthCredential(raw) || credentialFromEnvironment() != "" || os.Getenv("FLINT_ACCESS_TOKEN") != "") {
+		return "", "", authContextEnvelope{}, contextSessionRequired()
+	}
 	if token := strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")); token != "" && token == raw {
 		if !validOAuthToken(token) || strings.HasPrefix(token, "flint_test_") || strings.HasPrefix(token, "flint_live_") {
 			return "", "", authContextEnvelope{}, configError("INVALID_CREDENTIAL", "FLINT_ACCESS_TOKEN must contain an access token. Use FLINT_API_KEY for an API key.", nil)
@@ -302,6 +361,11 @@ func (a *App) fetchCredentialContext(ctx context.Context, profile, raw string, d
 		auth, e := a.fetchAuthContextResponse(ctx, base, raw, debug)
 		return raw, base, auth, e
 	}
+	expected, e := decodeOAuthCredential(raw)
+	if e != nil {
+		return "", "", authContextEnvelope{}, e
+	}
+	ctx = withOAuthIdentity(ctx, expected)
 	c, e := a.oauthAccess(ctx, profile)
 	if e != nil {
 		return "", "", authContextEnvelope{}, e
@@ -309,20 +373,24 @@ func (a *App) fetchCredentialContext(ctx context.Context, profile, raw string, d
 	envelope, e := a.fetchAuthContextResponse(withoutOAuthSession(ctx), c.BaseURL, c.AccessToken, false)
 	if e != nil {
 		if e.ExitCode == ExitAuth {
+			if c.Version == 2 {
+				return "", "", envelope, contextEndpointError(configError("context_access_denied", "", nil))
+			}
 			return "", "", envelope, configError("OAUTH_SESSION_INVALID", "Flint rejected the OAuth session. Run flint auth login again.", nil)
 		}
 		return "", "", envelope, cliError(e.ExitCode, e.Type, "OAUTH_CONTEXT_UNAVAILABLE", "Could not verify the OAuth session because the API request failed. Retry the command.")
 	}
 	auth := envelope.Data
-	if !validOAuthContext(auth) || auth.OAuthGrantID != c.Auth.OAuthGrantID || auth.Environment != c.Auth.Environment || auth.MerchantID != c.Auth.MerchantID || auth.SandboxID != c.Auth.SandboxID {
+	if !matchesOAuthCredential(c, auth) {
 		return "", "", envelope, configError("OAUTH_CONTEXT_MISMATCH", "The OAuth session context changed. Run flint auth login again.", nil)
 	}
-	envelope.Data.CredentialScope = "oauth:" + auth.OAuthGrantID
+	envelope.Data.SelectedContext = c.Version == 2
+	envelope.Data.CredentialScope = oauthHistoryScope(auth)
 	return c.AccessToken, c.BaseURL, envelope, nil
 }
 
 type oauthSessionKey struct{}
-type oauthSession struct{ Profile, GrantID string }
+type oauthSession struct{ Profile, GrantID, ContextID, SessionID, MerchantID, SandboxID, Environment string }
 
 func withoutOAuthSession(ctx context.Context) context.Context {
 	return context.WithValue(context.WithValue(ctx, oauthSessionKey{}, (*oauthSession)(nil)), responseContractKey{}, (*Command)(nil))
@@ -333,11 +401,16 @@ func (a *App) oauthRequestToken(ctx context.Context, key, baseURL string) (strin
 	if session == nil || key == "" {
 		return key, nil
 	}
-	c, e := a.oauthAccess(ctx, session.Profile)
+	version := 1
+	if session.SessionID != "" {
+		version = 2
+	}
+	ctx = withOAuthIdentity(ctx, oauthCredential{Version: version, BaseURL: baseURL, SessionID: session.SessionID, Auth: AuthContext{OAuthGrantID: session.GrantID}})
+	c, e := a.oauthAccess(withOAuthContext(ctx, session.ContextID), session.Profile)
 	if e != nil {
 		return "", e
 	}
-	if c.BaseURL != baseURL || c.Auth.OAuthGrantID != session.GrantID {
+	if c.BaseURL != baseURL || c.Auth.OAuthGrantID != session.GrantID || c.ContextID != session.ContextID || c.SessionID != session.SessionID || (session.SessionID != "" && (c.Auth.MerchantID != session.MerchantID || c.Auth.SandboxID != session.SandboxID || c.Auth.Environment != session.Environment)) {
 		return "", configError("OAUTH_SESSION_CHANGED", "The active OAuth session changed. Retry the command.", nil)
 	}
 	return c.AccessToken, nil

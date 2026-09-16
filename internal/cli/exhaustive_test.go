@@ -125,7 +125,7 @@ func TestEveryResourceIDArgumentDeclaresHistoryReference(t *testing.T) {
 				strings.HasSuffix(argument.BodyPath, "_id") ||
 				strings.HasSuffix(argument.Query, "_id")
 			if resourceShaped && argument.Name != "request_id" && argument.Name != "related_request_id" &&
-				argument.Name != "external_event_id" &&
+				argument.Name != "external_event_id" && argument.Name != "context_id" &&
 				argument.Name != "external_reference_id" && !isResourceID {
 				if isPublicResourceID(argument.Name) && !argument.AcceptsHistoryRef {
 					t.Errorf("%s %s does not accept resource history references", command.CanonicalName, argument.Name)
@@ -361,6 +361,7 @@ func TestEveryGeneratedCommandSchemaCompiles(t *testing.T) {
 
 func TestEveryParserFlagHasPositiveCase(t *testing.T) {
 	cases := map[string][]string{
+		"context":         {"auth", "status", "--context", "ctx_test"},
 		"all":             {"customers", "list", "--all"},
 		"clear":           {"history", "--clear"},
 		"color":           {"version", "--color", "never"},
@@ -525,22 +526,23 @@ func TestEveryAdvertisedExecutionControlIsAcceptedByItsCommand(t *testing.T) {
 
 func TestEveryBooleanFlagAcceptsExplicitTrueAndFalse(t *testing.T) {
 	cases := map[string][]string{
-		"all":      {"customers", "list"},
-		"clear":    {"history"},
-		"confirm":  {"history", "--clear"},
-		"debug":    {"version"},
-		"fix":      {"doctor"},
-		"help":     {"version"},
-		"live":     {"sandboxes", "list"},
-		"no-input": {"version"},
-		"open":     {"checkout-sessions", "create"},
-		"paginate": {"api", "get", "/v1/customers"},
-		"preview":  {"webhook-endpoints", "delete", "whep_test"},
-		"quiet":    {"version"},
-		"stdin":    {"auth", "import"},
-		"private":  {"support", "open"},
-		"ai-agent": {"support", "open"},
-		"no-open":  {"support", "open"},
+		"new-session": {"auth", "login"},
+		"all":         {"customers", "list"},
+		"clear":       {"history"},
+		"confirm":     {"history", "--clear"},
+		"debug":       {"version"},
+		"fix":         {"doctor"},
+		"help":        {"version"},
+		"live":        {"sandboxes", "list"},
+		"no-input":    {"version"},
+		"open":        {"checkout-sessions", "create"},
+		"paginate":    {"api", "get", "/v1/customers"},
+		"preview":     {"webhook-endpoints", "delete", "whep_test"},
+		"quiet":       {"version"},
+		"stdin":       {"auth", "import"},
+		"private":     {"support", "open"},
+		"ai-agent":    {"support", "open"},
+		"no-open":     {"support", "open"},
 	}
 	if len(cases) != len(boolFlags) {
 		t.Fatalf("boolean flag matrix has %d entries, parser has %d", len(cases), len(boolFlags))
@@ -1226,6 +1228,14 @@ func TestEveryLocalCommandExecutes(t *testing.T) {
 			continue
 		}
 		t.Run(command.CanonicalName, func(t *testing.T) {
+			switch command.CanonicalName {
+			case "context.list", "context.switch":
+				TestContextListAndSwitch(t)
+				return
+			case "auth.reauth":
+				TestContextReauthorization(t)
+				return
+			}
 			if command.CanonicalName == "auth.login" {
 				TestBrowserLoginSuccess(t)
 				return
@@ -1236,6 +1246,11 @@ func TestEveryLocalCommandExecutes(t *testing.T) {
 			}
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+				if request.URL.Path == "/cli-releases" {
+					w.Header().Set("Content-Type", "application/json")
+					fmt.Fprint(w, `[{"tag_name":"cli/v1.0.0","draft":false,"prerelease":false}]`)
+					return
+				}
 				if request.URL.Path == "/v1/openapi.json" {
 					w.Header().Set("Content-Type", "application/json")
 					fmt.Fprint(w, `{"x-flint-api-releases":{"current_version":"2026-02-01"}}`)
@@ -1286,6 +1301,9 @@ func TestEveryLocalCommandExecutes(t *testing.T) {
 				argv = append(argv, "--fix")
 			case "history":
 				argv = append(argv, "--clear", "--confirm")
+			case "upgrade":
+				app.Info.Version = "1.0.0"
+				app.upgradeReleaseAPIURL = server.URL + "/cli-releases"
 			case "schema.command", "schema.input", "schema.output":
 				argv = append(argv, "customers.list")
 			case "help":

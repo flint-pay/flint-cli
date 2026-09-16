@@ -293,11 +293,22 @@ func TestCheckoutSessionHeadersSkipAPIKeyAuthentication(t *testing.T) {
 	app, out, _ := testApp(t, server.URL)
 	t.Setenv("FLINT_CHECKOUT_SESSION_ID", "cs_test")
 	t.Setenv("FLINT_CHECKOUT_SESSION_SECRET", "secret_test")
+	t.Setenv("FLINT_API_KEY", "")
+	if err := app.updateConfig(func(cfg *Config) error {
+		cfg.Profiles["default"] = Profile{ContextID: "ctx_saved"}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
 	if exit := app.Run([]string{"checkout", "get", "cs_test", "--output", "json"}); exit != 0 {
 		t.Fatalf("exit=%d: %s", exit, out)
 	}
 	if calls != 1 {
 		t.Errorf("made %d requests", calls)
+	}
+	out.Reset()
+	if exit := app.Run([]string{"checkout", "get", "cs_test", "--context", "ctx_explicit", "--output", "json"}); exit != ExitAuth || !strings.Contains(out.String(), "CONTEXT_SESSION_REQUIRED") {
+		t.Fatalf("explicit context accepted: exit=%d: %s", exit, out)
 	}
 }
 

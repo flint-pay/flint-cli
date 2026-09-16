@@ -20,6 +20,7 @@ type Config struct {
 }
 
 type Profile struct {
+	ContextID     string `json:"context,omitempty"`
 	MerchantGuard string `json:"merchant_guard,omitempty"`
 	Environment   string `json:"environment,omitempty"`
 	APIKeyID      string `json:"api_key_id,omitempty"`
@@ -43,12 +44,15 @@ func (p *Profile) UnmarshalJSON(data []byte) error {
 }
 
 type ProjectConfig struct {
-	Profile  string `json:"profile,omitempty"`
-	Merchant string `json:"merchant,omitempty"`
-	Sandbox  string `json:"sandbox,omitempty"`
+	ContextID string `json:"context,omitempty"`
+	Profile   string `json:"profile,omitempty"`
+	Merchant  string `json:"merchant,omitempty"`
+	Sandbox   string `json:"sandbox,omitempty"`
 }
 
 type ResolvedConfig struct {
+	ProfileContextID  string            `json:"-"`
+	ContextID         string            `json:"context,omitempty"`
 	CredentialScope   string            `json:"-"`
 	ProfileName       string            `json:"profile"`
 	MerchantGuard     string            `json:"merchant_guard,omitempty"`
@@ -280,8 +284,27 @@ func (a *App) resolveConfig(opts Options) (ResolvedConfig, Config, error) {
 		}
 		sources["sandbox_guard"] = "project"
 	}
+	contextID := p.ContextID
+	if contextID != "" {
+		sources["context"] = "profile"
+	}
+	if project.ContextID != "" {
+		contextID = project.ContextID
+		sources["context"] = "project"
+	}
+	// Environment credentials replace the saved browser session, including its
+	// configured context. Explicit --context remains an error for these tokens;
+	// merchant and sandbox guards still apply independently.
+	if credentialFromEnvironment() != "" || strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) != "" || strings.TrimSpace(os.Getenv("FLINT_CHECKOUT_SESSION_SECRET")) != "" {
+		contextID = ""
+		delete(sources, "context")
+	}
+	if opts.ContextID != "" {
+		contextID = opts.ContextID
+		sources["context"] = "flag"
+	}
 	path, _ := a.configPath()
-	return ResolvedConfig{ProfileName: profile, MerchantGuard: merchant, SandboxGuard: sandboxGuard, Environment: p.Environment, APIKeyID: p.APIKeyID, MerchantID: p.MerchantID, SandboxID: p.SandboxID, ProjectConfigPath: projectPath, GlobalConfigPath: path, Sources: sources}, cfg, nil
+	return ResolvedConfig{ProfileContextID: p.ContextID, ContextID: contextID, ProfileName: profile, MerchantGuard: merchant, SandboxGuard: sandboxGuard, Environment: p.Environment, APIKeyID: p.APIKeyID, MerchantID: p.MerchantID, SandboxID: p.SandboxID, ProjectConfigPath: projectPath, GlobalConfigPath: path, Sources: sources}, cfg, nil
 }
 
 func credentialFromEnvironment() string { return strings.TrimSpace(os.Getenv("FLINT_API_KEY")) }
