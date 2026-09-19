@@ -10,7 +10,7 @@ Every command maps to a documented `/v1` route, so anything you can do over HTTP
 npm install -g @flintpay/cli
 ```
 
-On macOS and Linux, run `flint upgrade` to update the global package and its platform binary to the latest stable release. On Windows, the command prints the exact npm update to run after closing the CLI.
+On macOS and Linux, run `flint upgrade` (or its alias `flint update`) to update the global package and its platform binary to the latest stable release. On Windows, the command prints the exact npm update to run after closing the CLI.
 
 This package resolves a prebuilt binary for your platform. Node `>=18` is required to run the installer. On macOS and Linux you can install with Homebrew instead:
 

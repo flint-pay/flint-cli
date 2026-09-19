@@ -15,7 +15,13 @@ import (
 func (a *App) runLocal(cmd *Command, opts Options) int {
 	switch cmd.CanonicalName {
 	case "version":
-		return a.outputLocal(map[string]any{"data": a.Info}, cmd, opts)
+		return a.outputLocal(map[string]any{"data": map[string]any{
+			"cli_version": a.Info.Version,
+			"git_commit":  a.Info.Commit,
+			"build_date":  a.Info.BuildDate,
+			"api_version": a.Info.APIVersion,
+			"schema_hash": a.Info.SchemaHash,
+		}}, cmd, opts)
 	case "upgrade":
 		return a.localUpgrade(cmd, opts)
 	case "config.get":

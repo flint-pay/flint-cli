@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/itchyny/gojq"
 )
@@ -94,20 +96,29 @@ func writeJSON(w io.Writer, value any) error {
 	return enc.Encode(value)
 }
 
+// normalizeOutput gives typed local values the same shape and field visibility
+// as JSON responses, while preserving exact integer values.
+func normalizeOutput(value any) (any, *CLIError) {
+	raw, err := json.Marshal(value)
+	if err == nil {
+		err = decodeJSONNumbers(raw, &value)
+	}
+	if err != nil {
+		outputErr := cliError(ExitSoftware, "internal_error", "OUTPUT_ENCODING_FAILED", "Could not encode command output.")
+		outputErr.Cause = err
+		return nil, outputErr
+	}
+	return value, nil
+}
+
 func applyOutputTransforms(ctx context.Context, value any, opts Options) (any, *CLIError) {
 	if len(opts.Select) > 0 || opts.Field != "" || opts.JQ != "" {
 		// Commands may build envelopes with typed Go values. Normalize through
 		// JSON first so every transform sees the same shape users receive.
-		raw, err := json.Marshal(value)
+		var err *CLIError
+		value, err = normalizeOutput(value)
 		if err != nil {
-			outputErr := cliError(ExitSoftware, "internal_error", "OUTPUT_ENCODING_FAILED", "Could not encode command output for client-side transforms.")
-			outputErr.Cause = err
-			return nil, outputErr
-		}
-		if err := decodeJSONNumbers(raw, &value); err != nil {
-			outputErr := cliError(ExitSoftware, "internal_error", "OUTPUT_ENCODING_FAILED", "Could not decode command output for client-side transforms.")
-			outputErr.Cause = err
-			return nil, outputErr
+			return nil, err
 		}
 	}
 	if len(opts.Select) > 0 {
@@ -195,7 +206,9 @@ func (a *App) writeResult(value any, cmd *Command, opts Options) *CLIError {
 		cmd = nil
 	}
 	output := &outputErrorWriter{writer: a.Stdout}
-	renderHuman(output, value, cmd, a.Now())
+	if err := renderHuman(output, value, cmd, a.Now()); err != nil {
+		return err
+	}
 	if output.err != nil {
 		return networkError("OUTPUT_WRITE_FAILED", "Could not write command output.", output.err)
 	}
@@ -221,7 +234,7 @@ func (w *outputErrorWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) {
+func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) *CLIError {
 	if cmd != nil && cmd.CanonicalName == "auth.login" {
 		envelope, _ := value.(map[string]any)
 		data, _ := envelope["data"].(map[string]any)
@@ -241,7 +254,7 @@ func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) {
 			if next, ok := data["next"].(string); ok && next != "" {
 				fmt.Fprintln(w, "Next:", terminalSafe(next))
 			}
-			return
+			return nil
 		}
 	}
 	if cmd != nil && cmd.CanonicalName == "context.list" {
@@ -250,7 +263,7 @@ func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) {
 		if ok {
 			if len(list.Contexts) == 0 {
 				fmt.Fprintln(w, "No authorized contexts. Run flint reauth.")
-				return
+				return nil
 			}
 			for _, item := range list.Contexts {
 				marker := " "
@@ -260,7 +273,7 @@ func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) {
 				fmt.Fprintf(w, "%s %s  %s / %s [%s]\n", marker, terminalSafe(item.ID), terminalSafe(item.Name), terminalSafe(item.MerchantID), strings.ToUpper(item.Environment))
 			}
 			fmt.Fprintln(w, "Run flint context switch to select a context.")
-			return
+			return nil
 		}
 	}
 	if cmd != nil && cmd.CanonicalName == "context.switch" {
@@ -269,25 +282,25 @@ func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) {
 		item, ok := data["active_context"].(*authorizedContext)
 		if ok {
 			fmt.Fprintf(w, "Active context: %s / %s [%s] (%s)\n", terminalSafe(item.Name), terminalSafe(item.MerchantID), strings.ToUpper(item.Environment), terminalSafe(item.ID))
-			return
+			return nil
 		}
 	}
 
 	if cmd != nil && cmd.CanonicalName == "doctor" {
 		renderDoctorHuman(w, value)
-		return
+		return nil
 	}
 	if cmd != nil && cmd.Render == "checkout" {
 		renderCheckoutHuman(w, value, now)
-		return
+		return nil
 	}
 	if cmd != nil && cmd.Render == "help_search" {
 		renderHelpSearchHuman(w, value, now)
-		return
+		return nil
 	}
 	if cmd != nil && cmd.Render == "support_open" {
 		renderSupportOpenHuman(w, value)
-		return
+		return nil
 	}
 	if cmd != nil && cmd.Render == "request_log" {
 		for _, path := range []string{"data.recommended_action", "data.retryable", "data.error_category"} {
@@ -296,16 +309,25 @@ func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) {
 			}
 		}
 	}
+	// Specialized renderers above consume their original typed payloads.
+	// Normalize only the generic fallback so structs and typed collections
+	// render as named fields instead of Go debug representations.
+	var err *CLIError
+	value, err = normalizeOutput(value)
+	if err != nil {
+		return err
+	}
 	m, ok := value.(map[string]any)
 	if !ok {
 		fmt.Fprintln(w, humanScalar(value))
-		return
+		return nil
 	}
 	data := m["data"]
 	if data == nil {
 		data = value
 	}
 	renderHumanValue(w, data, "", now, 0)
+	return nil
 }
 
 func renderDoctorHuman(w io.Writer, value any) {
@@ -415,7 +437,8 @@ func humanLabel(path string) string {
 		}
 		return "(empty key)"
 	}
-	label := strings.ToUpper(s[:1]) + s[1:]
+	first, size := utf8.DecodeRuneInString(s)
+	label := string(unicode.ToUpper(first)) + s[size:]
 	if label == "Id" {
 		return "ID"
 	}
