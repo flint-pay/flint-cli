@@ -164,7 +164,7 @@ func (a *App) listOAuthContexts(ctx context.Context, profile string) (contextLis
 }
 func contextEndpointError(e *CLIError) *CLIError {
 	if e.Code == "LOGIN_UNAVAILABLE" {
-		return configError("CONTEXTS_UNAVAILABLE", "This Flint server does not support multi-context sessions yet. Your existing login remains usable.", nil)
+		return configError("CONTEXTS_UNAVAILABLE", "Contexts are not available for this login yet. Your existing login remains usable.", nil)
 	}
 	if e.Code == "invalid_context" || e.Code == "context_access_denied" {
 		return configError("CONTEXT_ACCESS_DENIED", "This context is unavailable. Run flint context list, select another context, or run flint reauth.", nil)

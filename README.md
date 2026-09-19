@@ -31,7 +31,7 @@ Add `$HOME/.local/bin` to your `PATH` if needed. Set `FLINT_CLI_VERSION=X.Y.Z` t
 
 For local development, start with `flint auth login`. It opens the Flint website, displays a confirmation code, and saves OAuth access and refresh tokens in your OS keychain. Use `--no-open` to open the printed link yourself, `--profile NAME` to use an existing profile, or `--live` to explicitly request production access. Login waits up to 10 minutes by default; `--timeout 5m` overrides that limit.
 
-The existing single-context browser login has been verified against Flint staging. To use staging, set `FLINT_BASE_URL=https://api.staging.withflintpay.com` for login and subsequent commands. Production rollout is separate; use `flint auth import` on servers without browser login support. Browser approval requires a person; automation should use an API key through `FLINT_API_KEY` or `flint auth import --stdin`.
+If browser login is unavailable, use `flint auth import` instead. Browser approval requires a person; automation should use an API key through `FLINT_API_KEY` or `flint auth import --stdin`.
 
 Access tokens refresh automatically as needed. `flint auth logout --confirm` revokes the OAuth session before removing its local credentials. If the server does not confirm revocation, logout reports failure and retains the credentials for retry. Imported API-key logout still removes only the local key.
 
@@ -39,7 +39,7 @@ Access tokens refresh automatically as needed. `flint auth logout --confirm` rev
 
 ### Sessions and contexts
 
-With a server that supports multi-context sessions, approve access to selected merchants, sandboxes, and live contexts once in the browser, then select where commands run:
+Approve access to selected merchants, sandboxes, and live contexts once in the browser, then select where commands run:
 
 ```sh
 flint login
@@ -59,7 +59,7 @@ Context selection uses `--context ID`, then a project's `.flint/config.json` `co
 
 Environment credentials (`FLINT_API_KEY`, `FLINT_ACCESS_TOKEN`, or `FLINT_CHECKOUT_SESSION_SECRET`) override configured browser-session contexts. An explicit `--context` cannot be combined with these overrides. Merchant and sandbox guards still apply.
 
-**Backend rollout required:** multi-context listing, switching, and reauthorization require the new session endpoints and token metadata. Existing single-context OAuth sessions remain usable and keep their existing live-mode safeguards. Run `flint reauth` after the server is upgraded to authorize multiple contexts. The new multi-context flow has not yet been verified against a deployed backend.
+If `flint context list` reports that contexts are unavailable, your existing login remains usable and keeps its live-mode safeguards. Run `flint reauth` later to authorize multiple contexts.
 
 ### API keys and automation
 

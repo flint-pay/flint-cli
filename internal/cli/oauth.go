@@ -145,7 +145,7 @@ func (a *App) oauthRequestWithBearer(ctx context.Context, baseURL, path string, 
 		return nil, networkError("OAUTH_RESPONSE_INVALID", "The OAuth server returned an unreadable response.", nil)
 	}
 	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusNotImplemented {
-		return nil, configError("LOGIN_UNAVAILABLE", "OAuth browser login is not available on this Flint server yet. Use flint auth import.", nil)
+		return nil, configError("LOGIN_UNAVAILABLE", "Browser login is not available. Use flint auth import.", nil)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		var body struct {
