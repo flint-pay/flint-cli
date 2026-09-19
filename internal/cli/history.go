@@ -31,7 +31,7 @@ var resourcePrefixes = buildResourcePrefixes()
 func buildResourcePrefixes() map[string]string {
 	prefixes := map[string]string{
 		"pi_": "payment_intent", "ord_": "order", "cus_": "customer", "ref_": "refund", "cs_": "checkout_session",
-		"whep_": "webhook_endpoint", "whev_": "webhook_event", "wdel_": "webhook_delivery", "rlog_": "request_log", "inv_": "invoice", "org_": "organization",
+		"whep_": "webhook_endpoint", "whev_": "webhook_event", "wdel_": "webhook_delivery", "rlog_": "request_log", "inv_": "invoice", "invse_": "invoice_schedule_entry", "inlf_": "invoice_late_fee", "org_": "organization",
 		"mer_": "merchant", "test_": "sandbox", "key_": "api_key", "pl_": "payment_link", "pm_": "payment_method",
 		"dls_": "delivery_location_set", "dlsr_": "delivery_location_set_revision", "dmet_": "delivery_method", "dmetr_": "delivery_method_revision",
 		"dprof_": "delivery_profile", "dprofr_": "delivery_profile_revision", "dqt_": "delivery_quote", "dcb_": "delivery_rate_callback",
