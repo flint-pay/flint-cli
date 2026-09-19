@@ -2983,5 +2983,17 @@
     "path": "/v1/webhook-events/stream",
     "operation_id": "streamWebhookEvents",
     "classification": "workflow"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/late-fees",
+    "operation_id": "assessInvoiceLateFee",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/late-fees/{invoice_late_fee_id}/waive",
+    "operation_id": "waiveInvoiceLateFee",
+    "classification": "resource"
   }
 ]
