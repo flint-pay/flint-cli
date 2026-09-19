@@ -382,16 +382,20 @@ func TestUpgradeDoesNothingWhenCurrent(t *testing.T) {
 		fmt.Fprint(w, `[{"tag_name":"cli/v2.0.0"}]`)
 	}))
 	defer server.Close()
-	app, stdout, stderr := testApp(t, "")
-	app.Info.Version = "2.0.0"
-	app.upgradeReleaseAPIURL = server.URL
-	app.executablePath = func() (string, error) { t.Fatal("looked up executable for current version"); return "", nil }
+	for _, name := range []string{"upgrade", "update"} {
+		t.Run(name, func(t *testing.T) {
+			app, stdout, stderr := testApp(t, "")
+			app.Info.Version = "2.0.0"
+			app.upgradeReleaseAPIURL = server.URL
+			app.executablePath = func() (string, error) { t.Fatal("looked up executable for current version"); return "", nil }
 
-	if exit := app.Run([]string{"upgrade", "--output", "json"}); exit != ExitOK {
-		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
-	}
-	if !strings.Contains(stdout.String(), `"status":"current"`) {
-		t.Fatalf("stdout=%s", stdout)
+			if exit := app.Run([]string{name, "--output", "json"}); exit != ExitOK {
+				t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
+			}
+			if !strings.Contains(stdout.String(), `"status":"current"`) {
+				t.Fatalf("stdout=%s", stdout)
+			}
+		})
 	}
 }
 

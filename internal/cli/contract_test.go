@@ -84,7 +84,7 @@ func TestRegistryContract(t *testing.T) {
 			t.Errorf("%s output schema: %v", cmd.Name, e)
 		}
 	}
-	for aliasName, canonical := range map[string]string{"payment.create": "payment-intents.create", "checkout.create": "checkout-sessions.create", "checkout.get": "checkout-sessions.get", "checkout.list": "checkout-sessions.list", "whoami": "auth.status", "logout": "auth.logout"} {
+	for aliasName, canonical := range map[string]string{"payment.create": "payment-intents.create", "checkout.create": "checkout-sessions.create", "checkout.get": "checkout-sessions.get", "checkout.list": "checkout-sessions.list", "whoami": "auth.status", "logout": "auth.logout", "update": "upgrade"} {
 		cmd, ok := registry.ByName(aliasName)
 		if !ok || cmd.CanonicalName != canonical {
 			t.Errorf("alias %s does not normalize to %s", aliasName, canonical)
@@ -1158,5 +1158,37 @@ func TestCheckoutHumanOutputUsesHostedLaunchURL(t *testing.T) {
 	}}, &Command{Render: "checkout"}, time.Now())
 	if !strings.HasPrefix(output.String(), "https://checkout.example.com/launch\n") || strings.Count(output.String(), "https://checkout.example.com/launch") != 1 {
 		t.Fatalf("hosted launch URL missing or repeated: %s", output.String())
+	}
+}
+
+func TestVersionHumanOutputRendersBuildInfoFields(t *testing.T) {
+	app, stdout, stderr := testApp(t, "")
+	app.Info = BuildInfo{
+		Version:    "1.2.3",
+		Commit:     "abc123",
+		BuildDate:  "2026-09-15T21:44:23-04:00",
+		APIVersion: "2026-09-07",
+		SchemaHash: "schema123",
+	}
+
+	if exit := app.Run([]string{"version"}); exit != ExitOK || stderr.Len() != 0 {
+		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
+	}
+	for _, want := range []string{
+		"Api version",
+		"Build date",
+		"Cli version",
+		"Git commit",
+		"Schema hash",
+		"1.2.3",
+		"abc123",
+		"schema123",
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("human version output missing %q: %q", want, stdout.String())
+		}
+	}
+	if strings.Contains(stdout.String(), "{1.2.3") {
+		t.Fatalf("human version output used Go struct formatting: %q", stdout.String())
 	}
 }
