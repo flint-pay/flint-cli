@@ -86,7 +86,7 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 					}
 					next := "flint context list or flint reauth"
 					if previous.Version == 1 {
-						next = "flint doctor; use flint reauth after the server supports contexts"
+						next = "flint doctor"
 					}
 					return a.outputLocal(map[string]any{"data": map[string]any{"authenticated": true, "already_authenticated": true, "active_context": envelope.Data, "next": next}}, cmd, opts)
 				}
@@ -332,7 +332,7 @@ func (a *App) finishBrowserLogin(ctx context.Context, cmd *Command, opts Options
 	}
 	next := "flint context list"
 	if credential.Version == 1 {
-		next = "flint doctor; use flint reauth after the server supports contexts"
+		next = "flint doctor"
 	}
 	return a.outputLocal(map[string]any{"data": map[string]any{"authenticated": true, "credential_saved": true, "profile": resolved.ProfileName, "environment": auth.Environment, "merchant_id": auth.MerchantID, "sandbox_id": auth.SandboxID, "context_id": auth.ContextID, "oauth_session_id": auth.OAuthSessionID, "next": next}}, cmd, opts)
 }
@@ -345,7 +345,7 @@ func loginRequestError(ctx context.Context, e *CLIError) *CLIError {
 		return configError("LOGIN_EXPIRED", "Browser login timed out. Run flint login to try again.", nil)
 	}
 	if e != nil && e.Code == "LOGIN_UNAVAILABLE" {
-		return configError("LOGIN_UNAVAILABLE", "Browser login is not available on this Flint server yet. Use flint auth import.", nil)
+		return configError("LOGIN_UNAVAILABLE", "Browser login is not available. Use flint auth import.", nil)
 	}
 	// Never echo remote error details: this exchange contains one-time secrets.
 	return networkError("LOGIN_REQUEST_FAILED", "Could not complete browser login. Try again, or use flint auth import.", nil)
