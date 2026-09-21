@@ -34,6 +34,7 @@ type oauthCredential struct {
 	RefreshToken      string      `json:"refresh_token"`
 	ExpiresAt         time.Time   `json:"expires_at"`
 	Auth              AuthContext `json:"auth_context"`
+	TokenScopes       []string    `json:"token_scopes,omitempty"`
 }
 
 type oauthTokenResponse struct {
@@ -168,6 +169,13 @@ func (a *App) decodeOAuthTokens(raw []byte, baseURL string) (oauthCredential, *C
 	if json.Unmarshal(raw, &response) != nil || !strings.EqualFold(response.TokenType, "Bearer") || !validOAuthToken(response.AccessToken) || !validOAuthToken(response.RefreshToken) || response.ExpiresIn < 1 || response.ExpiresIn > 86400 {
 		return oauthCredential{}, configError("INVALID_OAUTH_RESPONSE", "Flint returned invalid OAuth tokens or expiry. Run flint auth login again.", nil)
 	}
+	if strings.ContainsAny(response.Scope, "\x00\r\n\t") {
+		return oauthCredential{}, configError("INVALID_OAUTH_RESPONSE", "Flint returned invalid OAuth scope metadata. Run flint auth login again.", nil)
+	}
+	tokenScopes := strings.Fields(response.Scope)
+	if len(tokenScopes) == 0 {
+		return oauthCredential{}, configError("INVALID_OAUTH_RESPONSE", "Flint returned OAuth tokens without authorized scopes. Run flint auth login again.", nil)
+	}
 	version := 1
 	if response.SessionID != "" || response.ContextID != "" {
 		if response.SessionID == "" || response.ContextID == "" {
@@ -175,7 +183,7 @@ func (a *App) decodeOAuthTokens(raw []byte, baseURL string) (oauthCredential, *C
 		}
 		version = 2
 	}
-	return oauthCredential{Kind: "oauth", Version: version, SessionID: response.SessionID, ContextID: response.ContextID, BaseURL: baseURL, AccessToken: response.AccessToken, RefreshToken: response.RefreshToken, ExpiresAt: a.Now().Add(time.Duration(response.ExpiresIn) * time.Second)}, nil
+	return oauthCredential{Kind: "oauth", Version: version, SessionID: response.SessionID, ContextID: response.ContextID, BaseURL: baseURL, AccessToken: response.AccessToken, RefreshToken: response.RefreshToken, ExpiresAt: a.Now().Add(time.Duration(response.ExpiresIn) * time.Second), TokenScopes: tokenScopes}, nil
 }
 
 func (a *App) revokeOAuth(ctx context.Context, c oauthCredential) *CLIError {
@@ -307,7 +315,7 @@ func (a *App) oauthAccess(ctx context.Context, profile string) (oauthCredential,
 			result = contextEndpointError(configError("context_access_denied", "", nil))
 			return result
 		}
-		if e != nil || !matchesOAuthCredential(c, auth) {
+		if e != nil || !matchesOAuthCredential(c, auth) || (len(c.TokenScopes) > 0 && !sameScopeSet(c.TokenScopes, auth.Scopes)) {
 			result = a.cleanupOAuth(c, configError("OAUTH_REFRESH_INVALID", "The refreshed session did not match the original grant. Run flint auth login again.", nil))
 			return result
 		}
@@ -324,6 +332,26 @@ func (a *App) oauthAccess(ctx context.Context, profile string) (oauthCredential,
 		result = configError("OAUTH_REFRESH_FAILED", "Could not lock or update the OAuth session. Retry the command.", nil)
 	}
 	return c, result
+}
+
+func sameScopeSet(left, right []string) bool {
+	leftSet := make(map[string]bool, len(left))
+	for _, scope := range left {
+		leftSet[strings.TrimSpace(scope)] = true
+	}
+	rightSet := make(map[string]bool, len(right))
+	for _, scope := range right {
+		rightSet[strings.TrimSpace(scope)] = true
+	}
+	if len(leftSet) != len(rightSet) {
+		return false
+	}
+	for scope := range leftSet {
+		if !rightSet[scope] {
+			return false
+		}
+	}
+	return true
 }
 
 // Local checks must inspect the credential ordinary API commands would use.

@@ -11,14 +11,17 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/flint-pay/flint-cli/internal/cli"
+	apispec "github.com/flint-pay/flint-cli/internal/spec"
 )
 
 func TestBuiltCLIExecutesEveryRemoteCommand(t *testing.T) {
 	bin := buildCLI(t)
+	scopes := allAPIOperationScopes(t)
 	for _, command := range cli.NewRegistry().Commands {
 		command := command
 		if command.Local || command.Stream {
@@ -35,11 +38,13 @@ func TestBuiltCLIExecutesEveryRemoteCommand(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				if request.URL.Path == "/v1/developer/auth-context" {
-					fmt.Fprintf(
-						w,
-						`{"data":{"auth_type":"api_key","api_key_id":"key_test","environment":%q,"merchant_id":"mer_test","sandbox_id":"test_test","scopes":["customers.read","customers.write","payments.payment_intents.read","payments.payment_intents.write","webhooks.read","webhooks.write"]},"request_id":"req_auth","meta":{"api_version":"2026-02-01"}}`,
-						environment,
-					)
+					_ = json.NewEncoder(w).Encode(map[string]any{
+						"data": map[string]any{
+							"auth_type": "api_key", "api_key_id": "key_test", "environment": environment,
+							"merchant_id": "mer_test", "sandbox_id": "test_test", "scopes": scopes,
+						},
+						"request_id": "req_auth", "meta": map[string]any{"api_version": "2026-02-01"},
+					})
 					return
 				}
 				resourceCalls++
@@ -87,6 +92,32 @@ func TestBuiltCLIExecutesEveryRemoteCommand(t *testing.T) {
 			}
 		})
 	}
+}
+
+func allAPIOperationScopes(t *testing.T) []string {
+	t.Helper()
+	var document struct {
+		Paths map[string]map[string]struct {
+			Scopes []string `json:"x-flint-required-scopes"`
+		} `json:"paths"`
+	}
+	if err := json.Unmarshal(apispec.OpenAPI, &document); err != nil {
+		t.Fatal(err)
+	}
+	set := make(map[string]bool)
+	for _, methods := range document.Paths {
+		for _, operation := range methods {
+			for _, scope := range operation.Scopes {
+				set[scope] = true
+			}
+		}
+	}
+	scopes := make([]string, 0, len(set))
+	for scope := range set {
+		scopes = append(scopes, scope)
+	}
+	sort.Strings(scopes)
+	return scopes
 }
 
 func TestBuiltCLIExecutesEveryCommandAndAliasHelp(t *testing.T) {

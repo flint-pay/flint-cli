@@ -302,8 +302,9 @@ func (a *App) saveAuthenticatedCredentialUnlocked(profile, key string, auth Auth
 func (a *App) saveReauthorizedCredentialUnlocked(resolved ResolvedConfig, key string, auth AuthContext) *CLIError {
 	return a.saveCredentialProfileUnlocked(resolved.ProfileName, key, func(p Profile) Profile {
 		// Reauthorization changes consent, not a newer selection made in another
-		// terminal. A project pin must not overwrite the profile's default either.
-		if p.ContextID != resolved.ProfileContextID || resolved.Sources["context"] == "project" {
+		// terminal. Project pins and explicit contexts must not overwrite the
+		// profile's default either.
+		if p.ContextID != resolved.ProfileContextID || resolved.Sources["context"] == "project" || resolved.Sources["context"] == "flag" {
 			return p
 		}
 		return profileWithAuth(p, auth)
@@ -652,7 +653,15 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 	if missingBaselineScopes > 0 {
 		scopeCheck["limited"] = true
 		scopeCheck["missing_cli_baseline_count"] = missingBaselineScopes
-		scopeCheck["note"] = "This is a limited key. Commands outside its granted scopes will fail authorization."
+		if authContext.AuthType == "oauth" {
+			scopeCheck["note"] = "This browser session is missing CLI baseline scopes. Commands outside its granted scopes will fail authorization."
+		} else {
+			scopeCheck["note"] = "This is a limited key. Commands outside its granted scopes will fail authorization."
+		}
+	} else if authContext.AuthType == "oauth" {
+		scopeCheck["status"] = "info"
+		scopeCheck["browser_login_baseline"] = true
+		scopeCheck["note"] = "Browser login grants the CLI baseline scopes. Use flint reauth --scope for commands that need additional access."
 	}
 	checks = append(checks, scopeCheck)
 	observedVersion, discoveryError := a.fetchCurrentAPIVersion(ctx, baseURL, opts.Debug)

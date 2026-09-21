@@ -96,6 +96,11 @@ func (a *App) Run(argv []string) int {
 		}
 		return ExitOK
 	}
+	if !opts.DryRunClient() {
+		if e := commandPermissionError(permissionCommand(effective, opts), authContext, resolved.ProfileName); e != nil {
+			return a.fail(e, opts)
+		}
+	}
 	if e := a.confirmCommand(effective, authContext, opts); e != nil {
 		return a.fail(e, opts)
 	}

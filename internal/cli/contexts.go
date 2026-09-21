@@ -300,7 +300,7 @@ func supportsContextSelection(cmd *Command) bool {
 		return true
 	}
 	switch cmd.CanonicalName {
-	case "doctor", "init", "config.get", "config.validate", "history", "context.list":
+	case "doctor", "init", "config.get", "config.validate", "history", "context.list", "auth.reauth":
 		return true
 	default:
 		return false

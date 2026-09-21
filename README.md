@@ -33,6 +33,8 @@ For local development, start with `flint auth login`. It opens the Flint website
 
 If browser login is unavailable, use `flint auth import` instead. Browser approval requires a person; automation should use an API key through `FLINT_API_KEY` or `flint auth import --stdin`.
 
+Browser login grants baseline permissions for common development workflows. Some command groups, including subscriptions, payouts, reports, risk, and advanced commerce operations, require additional access. Add scopes to the active context with `flint reauth --scope SCOPE`; repeat `--scope` when an operation requires multiple scopes. The browser may approve only part of a request, and the CLI reports what was approved. Known command requirements are checked before a request is sent.
+
 Access tokens refresh automatically as needed. `flint auth logout --confirm` revokes the OAuth session before removing its local credentials. If the server does not confirm revocation, logout reports failure and retains the credentials for retry. Imported API-key logout still removes only the local key.
 
 `flint login` is a shortcut for `flint auth login`. Related shortcuts: `flint logout` for `flint auth logout`, and `flint whoami` for `flint auth status`.
@@ -53,7 +55,7 @@ flint reauth                                # change browser-approved access
 
 `flint login` reuses a valid saved OAuth session and starts browser approval again when the server confirms that the session expired or was revoked. Temporary connection failures or loss of access to one context do not automatically replace the session. Use `flint login --new-session` to replace it after browser approval; the CLI then attempts to revoke the previous session. `flint logout --confirm` revokes the entire session across its contexts.
 
-Manage and revoke sessions on the [CLI sessions page](https://app.withflintpay.com/developers/cli). Browser authorization sends your computer's hostname and operating system to help identify the session.
+Manage and revoke sessions on the [CLI sessions page](https://app.withflintpay.com/developers/cli).
 
 Context selection uses `--context ID`, then a project's `.flint/config.json` `context` field, then the profile default. For example, `{"context":"ctx_development"}` pins a project. Switching changes the profile default, not a project pin. Each running command retains its starting context. Access tokens remain restricted to one context and refresh automatically. LIVE contexts are labeled in the selector and command diagnostics; selected multi-context sessions do not need `--live` on every command, while sensitive/destructive operations still require confirmation.
 

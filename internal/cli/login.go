@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"runtime"
 	"strings"
 	"time"
 )
@@ -43,6 +42,10 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	ctx, cancel := context.WithTimeout(a.commandContext(), timeout)
 	defer cancel()
 	reauthorize := cmd.CanonicalName == "auth.reauth"
+	requestedScopes, scopeErr := requestedCLIScopes(opts)
+	if scopeErr != nil {
+		return a.fail(scopeErr, opts)
+	}
 	var previous oauthCredential
 	if isOAuthCredential(previousRaw) {
 		var e *CLIError
@@ -81,6 +84,9 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 					return a.fail(e, opts)
 				}
 				if !expired {
+					if len(requestedScopes) > 0 {
+						return a.fail(usageError("SCOPES_REQUIRE_REAUTH", "A browser session is already active. Use flint reauth with the requested --scope values, or add --new-session to replace it.", "scope"), opts)
+					}
 					if e := validateCredentialIntent(envelope.Data, opts, resolved.MerchantGuard, resolved.SandboxGuard); e != nil {
 						return a.fail(e, opts)
 					}
@@ -97,6 +103,9 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	if reauthorize && previous.Kind != "oauth" {
 		return a.fail(configError("LOGIN_REQUIRED", "Run flint login before reauthorizing a session.", nil), opts)
 	}
+	if reauthorize && opts.ContextID != "" && previous.Version != 2 {
+		return a.fail(contextSessionRequired(), opts)
+	}
 	// JSON output implicitly disables terminal input elsewhere. This flow reads
 	// no terminal input, so only an explicit automation setting blocks approval.
 	noInputEnv := strings.TrimSpace(os.Getenv("FLINT_NO_INPUT"))
@@ -107,22 +116,24 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	if opts.Live {
 		mode = "live"
 	}
-	body := url.Values{"client_id": {oauthClientID}, "scope": {strings.Join(initialCLIScopes, " ")}, "environment": {mode}, "session_mode": {"contexts"}}
-	hostname, _ := os.Hostname()
-	for key, value := range map[string]string{"device_name": hostname, "platform": runtime.GOOS} {
-		chars := []rune(strings.TrimSpace(value))
-		if len(chars) > 80 {
-			chars = chars[:80]
-		}
-		if len(chars) > 0 {
-			body.Set(key, string(chars))
-		}
+	scopes := append([]string(nil), initialCLIScopes...)
+	additive := reauthorize && previous.Version == 2 && len(requestedScopes) > 0
+	if additive {
+		scopes = requestedScopes
+	} else {
+		scopes = appendUniqueStrings(scopes, requestedScopes...)
 	}
-	if resolved.MerchantGuard != "" {
-		body.Set("merchant_id", resolved.MerchantGuard)
-	}
-	if resolved.SandboxGuard != "" {
-		body.Set("sandbox_id", resolved.SandboxGuard)
+	body := url.Values{"client_id": {oauthClientID}, "scope": {strings.Join(scopes, " ")}, "session_mode": {"contexts"}}
+	if additive {
+		body.Set("scope_mode", "additive")
+	} else {
+		body.Set("environment", mode)
+		if resolved.MerchantGuard != "" {
+			body.Set("merchant_id", resolved.MerchantGuard)
+		}
+		if resolved.SandboxGuard != "" {
+			body.Set("sandbox_id", resolved.SandboxGuard)
+		}
 	}
 	path := loginDevicePath
 	if reauthorize && previous.Version == 2 {
@@ -223,7 +234,7 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 			response, e = a.oauthRequest(pollCtx, baseURL, loginTokenPath, pollBody)
 			if e == nil {
 				completed = true
-				result = a.finishBrowserLogin(ctx, cmd, opts, resolved, baseURL, response, previous, reauthorize && previous.Version == 2)
+				result = a.finishBrowserLogin(ctx, cmd, opts, resolved, baseURL, response, previous, reauthorize && previous.Version == 2, requestedScopes)
 			}
 			return nil
 		}
@@ -260,7 +271,7 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	}
 }
 
-func (a *App) finishBrowserLogin(ctx context.Context, cmd *Command, opts Options, resolved ResolvedConfig, baseURL string, response []byte, previous oauthCredential, locked bool) int {
+func (a *App) finishBrowserLogin(ctx context.Context, cmd *Command, opts Options, resolved ResolvedConfig, baseURL string, response []byte, previous oauthCredential, locked bool, requestedScopes []string) int {
 	credential, e := a.decodeOAuthTokens(response, baseURL)
 	if e != nil {
 		fallback := oauthCredential{}
@@ -275,6 +286,9 @@ func (a *App) finishBrowserLogin(ctx context.Context, cmd *Command, opts Options
 	if locked {
 		if credential.Version != 2 || credential.SessionID != previous.SessionID || credential.RefreshToken == previous.RefreshToken {
 			return a.fail(a.cleanupOAuth(credential, configError("OAUTH_SESSION_CHANGED", "Reauthorization returned an invalid session or unrotated token.", nil)), opts)
+		}
+		if len(requestedScopes) > 0 && credential.ContextID != resolved.ContextID {
+			return a.fail(a.cleanupOAuth(credential, configError("OAUTH_CONTEXT_MISMATCH", "Scope reauthorization returned a different context from the requested context.", nil)), opts)
 		}
 		// Redemption rotates the existing family. Persist before context validation
 		// so transient failures cannot discard its only usable refresh token.
@@ -294,6 +308,9 @@ func (a *App) finishBrowserLogin(ctx context.Context, cmd *Command, opts Options
 	}
 	if !validOAuthContext(auth) || (credential.Version == 2 && (auth.OAuthSessionID != credential.SessionID || auth.ContextID != credential.ContextID)) {
 		return a.fail(a.cleanupOAuth(credential, configError("LOGIN_VALIDATION_FAILED", "The issued session context did not match the token response.", nil)), opts)
+	}
+	if !sameScopeSet(credential.TokenScopes, auth.Scopes) {
+		return a.fail(a.cleanupOAuth(credential, configError("OAUTH_SCOPE_MISMATCH", "The authorized scopes did not match the token response. Run flint auth login again.", nil)), opts)
 	}
 	if locked && previous.ContextID == credential.ContextID && !matchesOAuthCredential(credential, auth) {
 		return a.fail(a.cleanupOAuth(credential, configError("OAUTH_CONTEXT_MISMATCH", "Reauthorization changed the selected context identity.", nil)), opts)
@@ -334,7 +351,69 @@ func (a *App) finishBrowserLogin(ctx context.Context, cmd *Command, opts Options
 	if credential.Version == 1 {
 		next = "flint doctor"
 	}
-	return a.outputLocal(map[string]any{"data": map[string]any{"authenticated": true, "credential_saved": true, "profile": resolved.ProfileName, "environment": auth.Environment, "merchant_id": auth.MerchantID, "sandbox_id": auth.SandboxID, "context_id": auth.ContextID, "oauth_session_id": auth.OAuthSessionID, "next": next}}, cmd, opts)
+	data := map[string]any{"authenticated": true, "credential_saved": true, "profile": resolved.ProfileName, "environment": auth.Environment, "merchant_id": auth.MerchantID, "sandbox_id": auth.SandboxID, "context_id": auth.ContextID, "oauth_session_id": auth.OAuthSessionID, "next": next}
+	if len(requestedScopes) > 0 {
+		approved, unapproved := partitionScopes(requestedScopes, auth.Scopes)
+		data["requested_scopes"] = requestedScopes
+		data["approved_scopes"] = approved
+		data["unapproved_scopes"] = unapproved
+		data["partial_approval"] = len(unapproved) > 0
+		if len(unapproved) > 0 && !opts.Quiet {
+			fmt.Fprintln(a.Stderr, "Some requested scopes were not approved:", strings.Join(unapproved, ", "))
+		}
+	}
+	return a.outputLocal(map[string]any{"data": data}, cmd, opts)
+}
+
+func requestedCLIScopes(opts Options) ([]string, *CLIError) {
+	allowed := make(map[string]bool)
+	for _, scope := range embeddedAllowedCLIScopes() {
+		allowed[scope] = true
+	}
+	result := make([]string, 0, len(opts.Raw["scope"]))
+	seen := make(map[string]bool)
+	for _, raw := range opts.Raw["scope"] {
+		scope := strings.TrimSpace(raw)
+		if scope == "" || strings.ContainsAny(scope, " \t\r\n") || !allowed[scope] {
+			return nil, usageError("INVALID_SCOPE", "Unknown or unsupported CLI OAuth scope: "+raw+".", "scope")
+		}
+		if !seen[scope] {
+			seen[scope] = true
+			result = append(result, scope)
+		}
+	}
+	return result, nil
+}
+
+func appendUniqueStrings(base []string, values ...string) []string {
+	seen := make(map[string]bool, len(base)+len(values))
+	for _, value := range base {
+		seen[value] = true
+	}
+	for _, value := range values {
+		if !seen[value] {
+			seen[value] = true
+			base = append(base, value)
+		}
+	}
+	return base
+}
+
+func partitionScopes(requested, granted []string) ([]string, []string) {
+	set := make(map[string]bool, len(granted))
+	for _, scope := range granted {
+		set[scope] = true
+	}
+	approved := make([]string, 0, len(requested))
+	unapproved := make([]string, 0)
+	for _, scope := range requested {
+		if set[scope] {
+			approved = append(approved, scope)
+		} else {
+			unapproved = append(unapproved, scope)
+		}
+	}
+	return approved, unapproved
 }
 
 func loginRequestError(ctx context.Context, e *CLIError) *CLIError {
@@ -343,6 +422,12 @@ func loginRequestError(ctx context.Context, e *CLIError) *CLIError {
 	}
 	if ctx.Err() != nil {
 		return configError("LOGIN_EXPIRED", "Browser login timed out. Run flint login to try again.", nil)
+	}
+	if e != nil && e.Code == "invalid_scope" {
+		return configError("invalid_scope", "The requested scope is not available for the selected context.", nil)
+	}
+	if e != nil && e.Code == "invalid_context" {
+		return configError("invalid_context", "The selected context does not match this browser authorization request.", nil)
 	}
 	if e != nil && e.Code == "LOGIN_UNAVAILABLE" {
 		return configError("LOGIN_UNAVAILABLE", "Browser login is not available. Use flint auth import.", nil)

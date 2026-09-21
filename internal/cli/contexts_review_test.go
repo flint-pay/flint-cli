@@ -15,7 +15,7 @@ func reviewReauthToken(t *testing.T, state *contextTestServer, id string) []byte
 	state.mu.Lock()
 	state.tokens["review-reauth-access"] = id
 	state.mu.Unlock()
-	data, err := json.Marshal(map[string]any{"access_token": "review-reauth-access", "refresh_token": "review-reauth-refresh", "token_type": "Bearer", "expires_in": 3600, "oauth_session_id": "session_one", "context_id": id})
+	data, err := json.Marshal(map[string]any{"access_token": "review-reauth-access", "refresh_token": "review-reauth-refresh", "token_type": "Bearer", "expires_in": 3600, "scope": "payments.payment_intents.read", "oauth_session_id": "session_one", "context_id": id})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestContextReviewReauthRetainsLiveSelectionWithSandboxCache(t *testing.T) {
 		t.Fatal(e)
 	}
 	out.Reset()
-	exit := app.finishBrowserLogin(context.Background(), cmd, opts, resolved, previous.BaseURL, reviewReauthToken(t, state, "ctx_live"), previous, true)
+	exit := app.finishBrowserLogin(context.Background(), cmd, opts, resolved, previous.BaseURL, reviewReauthToken(t, state, "ctx_live"), previous, true, nil)
 	if exit != ExitOK || state.revokes != 0 {
 		t.Fatalf("reauth revoked valid live session: exit=%d revokes=%d out=%s", exit, state.revokes, out)
 	}
@@ -69,13 +69,39 @@ func TestContextReviewReauthPreservesConcurrentDefaultSwitch(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	exit := app.finishBrowserLogin(context.Background(), cmd, opts, resolved, previous.BaseURL, reviewReauthToken(t, state, "ctx_a"), previous, true)
+	exit := app.finishBrowserLogin(context.Background(), cmd, opts, resolved, previous.BaseURL, reviewReauthToken(t, state, "ctx_a"), previous, true, nil)
 	if exit != ExitOK {
 		t.Fatalf("%d %s", exit, out)
 	}
 	cfg, _ := app.loadConfig()
 	if cfg.Profiles["default"].ContextID != "ctx_b" {
 		t.Fatalf("reauth overwrote another terminal's selection: %s", cfg.Profiles["default"].ContextID)
+	}
+}
+
+func TestScopeReauthorizationRejectsDifferentContext(t *testing.T) {
+	for _, outage := range []bool{false, true} {
+		t.Run(map[bool]string{false: "available", true: "outage"}[outage], func(t *testing.T) {
+			app, out, _, state, stored := newContextTestApp(t)
+			cmd, opts, _, _ := parseInvocation(app.Registry, []string{"reauth", "--scope", "payments.payment_intents.read", "--output", "json"})
+			resolved, _, err := app.resolveConfig(opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			before := stored()
+			previous, e := decodeOAuthCredential(before)
+			if e != nil {
+				t.Fatal(e)
+			}
+			state.outage = outage
+			exit := app.finishBrowserLogin(context.Background(), cmd, opts, resolved, previous.BaseURL, reviewReauthToken(t, state, "ctx_b"), previous, true, []string{"payments.payment_intents.read"})
+			if exit != ExitAuth || !strings.Contains(out.String(), "OAUTH_CONTEXT_MISMATCH") || state.revokes != 1 {
+				t.Fatalf("accepted wrong context: exit=%d revokes=%d out=%s", exit, state.revokes, out)
+			}
+			if stored() != before {
+				t.Fatal("staged an incorrectly scoped token for later validation")
+			}
+		})
 	}
 }
 func TestContextReviewPendingHistoryDoesNotUsePreviousContext(t *testing.T) {
@@ -113,7 +139,7 @@ func TestContextReviewReauthProjectPinPreservesProfile(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	if exit := app.finishBrowserLogin(context.Background(), cmd, opts, resolved, previous.BaseURL, reviewReauthToken(t, state, "ctx_b"), previous, true); exit != ExitOK {
+	if exit := app.finishBrowserLogin(context.Background(), cmd, opts, resolved, previous.BaseURL, reviewReauthToken(t, state, "ctx_b"), previous, true, nil); exit != ExitOK {
 		t.Fatalf("%d %s", exit, out)
 	}
 	after, err := app.loadConfig()

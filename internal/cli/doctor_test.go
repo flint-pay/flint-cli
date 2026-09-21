@@ -79,7 +79,7 @@ func TestDoctorHumanSuccess(t *testing.T) {
 			fmt.Fprint(w, `{"x-flint-api-releases":{"current_version":"2026-02-01"}}`)
 			return
 		}
-		fmt.Fprint(w, authContextJSON("sandbox"))
+		fmt.Fprint(w, limitedAuthContextJSON("sandbox"))
 	}))
 	defer server.Close()
 	app, stdout, _ := testApp(t, server.URL)
@@ -93,5 +93,36 @@ func TestDoctorHumanSuccess(t *testing.T) {
 	}
 	if strings.Contains(stdout.String(), "map[") || strings.Contains(stdout.String(), "✗") {
 		t.Fatalf("unexpected output: %s", stdout)
+	}
+}
+
+func TestDoctorExplainsBrowserLoginScopeBaseline(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/v1/openapi.json" {
+			fmt.Fprint(w, `{"x-flint-api-releases":{"current_version":"2026-02-01"}}`)
+			return
+		}
+		body, err := json.Marshal(map[string]any{"data": map[string]any{
+			"auth_type": "oauth", "oauth_grant_id": "grant_123", "environment": "sandbox",
+			"merchant_id": "mer_123", "sandbox_id": "test_123", "scopes": initialCLIScopes,
+		}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = w.Write(body)
+	}))
+	defer server.Close()
+	app, stdout, _ := testApp(t, server.URL)
+	if exit := app.Run([]string{"doctor", "--output", "human"}); exit != ExitOK {
+		t.Fatalf("exit=%d output=%s", exit, stdout)
+	}
+	for _, want := range []string{"Browser login baseline: true", "Use flint reauth --scope for commands that need additional access"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("missing %q in %s", want, stdout)
+		}
+	}
+	if !strings.Contains(stdout.String(), "i Scopes") || strings.Contains(stdout.String(), "✓ Scopes") {
+		t.Errorf("browser scope baseline was presented as a full pass: %s", stdout)
 	}
 }

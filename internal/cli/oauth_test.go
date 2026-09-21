@@ -306,7 +306,7 @@ func TestOAuthAPICredentialOverrideStillWins(t *testing.T) {
 
 func TestOAuthTokenResponseRejectsUnsupportedCredentials(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	for _, raw := range []string{`{"data":{"secret_key":"flint_test_old"}}`, `{"access_token":"access","refresh_token":"refresh","token_type":"mac","expires_in":3600}`, `{"access_token":"access","refresh_token":"refresh","token_type":"Bearer","expires_in":0}`} {
+	for _, raw := range []string{`{"data":{"secret_key":"flint_test_old"}}`, `{"access_token":"access","refresh_token":"refresh","token_type":"mac","expires_in":3600}`, `{"access_token":"access","refresh_token":"refresh","token_type":"Bearer","expires_in":0}`, `{"access_token":"access","refresh_token":"refresh","token_type":"Bearer","expires_in":3600}`} {
 		if _, e := app.decodeOAuthTokens([]byte(raw), defaultAPIBaseURL); e == nil {
 			t.Fatal("accepted invalid token response")
 		}
@@ -324,5 +324,58 @@ func TestOAuthContextServerErrorIsNotAuthFailure(t *testing.T) {
 	installTestOAuth(t, app, testOAuthCredential(t, server.URL, time.Now().Add(time.Hour)))
 	if exit := app.Run([]string{"doctor", "--output", "json"}); exit != ExitAPI || !strings.Contains(out.String(), `"name":"connectivity"`) || strings.Contains(out.String(), testOAuthAccess) {
 		t.Fatalf("exit=%d out=%s", exit, out)
+	}
+}
+
+func TestOAuthScopeValidationSurvivesRetry(t *testing.T) {
+	for _, mismatch := range []bool{false, true} {
+		t.Run(fmt.Sprint(mismatch), func(t *testing.T) {
+			refreshes, revokes := 0, 0
+			var unavailable atomic.Bool
+			unavailable.Store(true)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case loginTokenPath:
+					refreshes++
+					writeTestTokens(w, "new-access", "new-refresh")
+				case "/v1/developer/auth-context":
+					if unavailable.Load() {
+						w.WriteHeader(http.StatusServiceUnavailable)
+						return
+					}
+					body := oauthAuthJSON("sandbox")
+					if mismatch {
+						body = strings.ReplaceAll(body, "payments.payment_intents.read", "customers.read")
+					}
+					fmt.Fprint(w, body)
+				case oauthRevokePath:
+					revokes++
+				default:
+					t.Errorf("unexpected request %s", r.URL.Path)
+				}
+			}))
+			defer server.Close()
+			app, _, _ := testApp(t, server.URL)
+			stored := installTestOAuth(t, app, testOAuthCredential(t, server.URL, time.Now().Add(-time.Minute)))
+			if _, e := app.oauthAccess(context.Background(), "default"); e == nil || e.Code != "OAUTH_CONTEXT_UNAVAILABLE" {
+				t.Fatalf("first validation = %v", e)
+			}
+			staged, e := decodeOAuthCredential(stored())
+			if e != nil || !staged.PendingValidation || !sameScopeSet(staged.TokenScopes, []string{"payments.payment_intents.read"}) {
+				t.Fatal("staged credential lost expected scopes")
+			}
+			unavailable.Store(false)
+			credential, e := app.oauthAccess(context.Background(), "default")
+			if mismatch {
+				if e == nil || e.Code != "OAUTH_REFRESH_INVALID" || revokes != 1 {
+					t.Fatalf("mismatched scopes accepted after retry: error=%v revokes=%d", e, revokes)
+				}
+			} else if e != nil || credential.PendingValidation || revokes != 0 {
+				t.Fatalf("matching scopes rejected after retry: error=%v revokes=%d", e, revokes)
+			}
+			if refreshes != 1 {
+				t.Fatalf("retry rotated tokens again: %d", refreshes)
+			}
+		})
 	}
 }
