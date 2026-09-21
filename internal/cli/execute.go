@@ -19,7 +19,7 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 		return nil, e
 	}
 	if opts.DryRun == "client" || opts.Preview {
-		return previewRequest(req, cmd, authContext, opts.Preview), nil
+		return previewRequest(req, permissionCommand(cmd, opts), authContext, opts.Preview), nil
 	}
 	if cmd.CanonicalName == "listen" {
 		return a.executeListen(ctx, cmd, opts, req, key, baseURL)
@@ -65,7 +65,23 @@ func previewRequest(req preparedRequest, cmd *Command, authContext AuthContext, 
 	return map[string]any{"data": data}
 }
 
+// The order shortcut sends a different operation from standalone creation.
+// Resolve its permission contract without changing request-building metadata.
+func permissionCommand(cmd *Command, opts Options) *Command {
+	if cmd != nil && cmd.CanonicalName == "payment-intents.create" && len(opts.Raw["order"]) > 0 {
+		if operation, ok := matchPublicOperation("POST", "/v1/orders/{order_id}/payment-intents"); ok {
+			resolved := *cmd
+			resolved.OperationID = operation.OperationID
+			return &resolved
+		}
+	}
+	return cmd
+}
+
 func permissionPreview(cmd *Command, authContext AuthContext) map[string]any {
+	if authContext.AuthType == "session" {
+		return map[string]any{"status": "unknown", "reason": "Session credential permissions are validated by the API and cannot be checked locally."}
+	}
 	if cmd == nil || cmd.OperationID == "" {
 		return map[string]any{"status": "unknown", "reason": "The raw API command has no fixed operation contract."}
 	}
@@ -112,6 +128,85 @@ func permissionPreview(cmd *Command, authContext AuthContext) map[string]any {
 		"required_scopes": append([]string(nil), operation.FlintRequiredScopes...),
 		"missing_scopes":  missing,
 	}
+}
+
+func commandPermissionError(cmd *Command, authContext AuthContext, profile string) *CLIError {
+	if authContext.AuthType != "oauth" && authContext.AuthType != "api_key" {
+		return nil
+	}
+	check := permissionPreview(cmd, authContext)
+	if check["status"] != "fail" {
+		return nil
+	}
+	missing, _ := check["missing_scopes"].([]string)
+	mode, _ := check["scope_mode"].(string)
+	requirement := "requires these scopes: "
+	required, _ := check["required_scopes"].([]string)
+	remediation := "Create an API key with all required scopes: " + strings.Join(required, ", ") + "."
+	if mode == "any" {
+		requirement = "requires at least one of these scopes: "
+		remediation = "Create an API key with at least one of the listed scopes."
+	}
+	message := "The active credential " + requirement + strings.Join(missing, ", ") + "."
+	actions := []any{map[string]any{"reason_message": remediation}}
+	if authContext.AuthType == "oauth" {
+		requestScopes := missing
+		if mode == "any" && len(requestScopes) > 1 {
+			requestScopes = requestScopes[:1]
+		}
+		command := "flint reauth"
+		if authContext.OAuthSessionID == "" || authContext.ContextID == "" {
+			command = "flint login --new-session"
+			if authContext.Environment == "live" {
+				command += " --live"
+			}
+		} else {
+			command += " --context " + quoteRemediationArgument(authContext.ContextID)
+		}
+		if profile != "" {
+			command += " --profile " + quoteRemediationArgument(profile)
+		}
+		for _, scope := range requestScopes {
+			command += " --scope " + scope
+		}
+		message = "The current browser login " + requirement + strings.Join(missing, ", ") + ". Approve additional access in the browser."
+		actions = []any{
+			map[string]any{"reason_message": "Approve the additional scope access for this context."},
+			map[string]any{"command": command},
+		}
+	} else {
+		if credentialFromEnvironment() != "" {
+			actions = append(actions, map[string]any{
+				"reason_message": "Replace FLINT_API_KEY with the new key, or unset it before using an imported key. FLINT_API_KEY overrides saved credentials.",
+			})
+		}
+		if profile != "" {
+			actions = append(actions, map[string]any{
+				"reason_message": fmt.Sprintf("When importing the key, set --profile to %q to update the profile used by this command.", profile),
+			})
+		}
+		actions = append(actions, map[string]any{"command": "flint auth import", "url": dashboardAPIKeysURL})
+	}
+	err := cliError(ExitAuth, "authorization_error", "MISSING_REQUIRED_SCOPES", message)
+	err.Details = map[string]any{
+		"auth_type":       authContext.AuthType,
+		"command":         cmd.CanonicalName,
+		"operation_id":    cmd.OperationID,
+		"scope_mode":      mode,
+		"required_scopes": check["required_scopes"],
+		"missing_scopes":  missing,
+		"remediation":     map[string]any{"next_actions": actions},
+	}
+	return err
+}
+
+func quoteRemediationArgument(value string) string {
+	if value != "" && strings.IndexFunc(value, func(r rune) bool {
+		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("_./-", r))
+	}) == -1 {
+		return value
+	}
+	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }
 
 func (a *App) executeAllPages(ctx context.Context, cmd *Command, opts Options, req preparedRequest, key, baseURL string) (any, *CLIError) {

@@ -1772,8 +1772,12 @@ func exhaustiveNamedID(name string) string {
 }
 
 func exhaustiveAuthContextJSON(environment string) string {
-	return fmt.Sprintf(
-		`{"data":{"auth_type":"api_key","api_key_id":"key_test","environment":%q,"merchant_id":"mer_test","sandbox_id":"test_test","scopes":["customers.read","customers.write","payments.payment_intents.read","payments.payment_intents.write","webhooks.read","webhooks.write"]},"request_id":"req_auth","meta":{"api_version":"2026-02-01"}}`,
-		environment,
-	)
+	body, _ := json.Marshal(map[string]any{
+		"data": map[string]any{
+			"auth_type": "api_key", "api_key_id": "key_test", "environment": environment,
+			"merchant_id": "mer_test", "sandbox_id": "test_test", "scopes": allTestScopes(),
+		},
+		"request_id": "req_auth", "meta": map[string]any{"api_version": "2026-02-01"},
+	})
+	return string(body)
 }

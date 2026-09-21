@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -723,6 +724,128 @@ func TestPreviewReportsActualEmbeddedPermissionCheck(t *testing.T) {
 	}
 }
 
+func TestCommandPermissionErrorExplainsMissingScopes(t *testing.T) {
+	cmd := &Command{CanonicalName: "subscriptions.list", OperationID: "listSubscriptions"}
+	oauthErr := commandPermissionError(cmd, AuthContext{AuthType: "oauth", OAuthSessionID: "session_123", ContextID: "ctx_123", Scopes: []string{"customers.read"}}, "default")
+	if oauthErr == nil || oauthErr.ExitCode != ExitAuth || oauthErr.Type != "authorization_error" || oauthErr.Code != "MISSING_REQUIRED_SCOPES" {
+		t.Fatalf("OAuth permission error = %#v", oauthErr)
+	}
+	if !strings.Contains(oauthErr.Message, "requires at least one") || !strings.Contains(oauthErr.Message, "commerce.subscriptions.read") {
+		t.Fatalf("OAuth permission message = %q", oauthErr.Message)
+	}
+	details, _ := oauthErr.Details.(map[string]any)
+	missing, _ := details["missing_scopes"].([]string)
+	if !slices.Equal(missing, []string{"commerce.subscriptions.read", "commerce.subscriptions.write"}) {
+		t.Fatalf("missing scopes = %#v", missing)
+	}
+	if details["command"] != "subscriptions.list" || details["operation_id"] != "listSubscriptions" || details["scope_mode"] != "any" {
+		t.Fatalf("permission details = %#v", details)
+	}
+	oauthActions := details["remediation"].(map[string]any)["next_actions"].([]any)
+	if got := oauthActions[len(oauthActions)-1].(map[string]any)["command"]; got != "flint reauth --context ctx_123 --profile default --scope commerce.subscriptions.read" {
+		t.Fatalf("OAuth remediation command = %#v", got)
+	}
+
+	if err := commandPermissionError(cmd, AuthContext{AuthType: "api_key", Scopes: []string{"commerce.subscriptions.write"}}, "default"); err != nil {
+		t.Fatalf("write-capable API key failed any-scope requirement: %v", err)
+	}
+	allErr := commandPermissionError(&Command{CanonicalName: "sandboxes.test-key", OperationID: "issueDeveloperSandboxTestKey"}, AuthContext{
+		AuthType: "api_key",
+		Scopes:   []string{"accounts.api_keys.write"},
+	}, "default")
+	if allErr == nil || !strings.Contains(allErr.Message, "requires these scopes") || strings.Contains(allErr.Message, "requires at least one") {
+		t.Fatalf("all-scope permission error = %#v", allErr)
+	}
+	allDetails := allErr.Details.(map[string]any)
+	actions := allDetails["remediation"].(map[string]any)["next_actions"].([]any)
+	replacementAdvice := actions[0].(map[string]any)["reason_message"].(string)
+	for _, scope := range []string{"accounts.api_keys.write", "developer.sandboxes.write"} {
+		if !strings.Contains(replacementAdvice, scope) {
+			t.Errorf("replacement key advice omits %s: %s", scope, replacementAdvice)
+		}
+	}
+	if err := commandPermissionError(cmd, AuthContext{AuthType: "session"}, "default"); err != nil {
+		t.Fatalf("resource session received merchant scope check: %v", err)
+	}
+}
+
+func TestOrderPaymentIntentPermissionUsesOrderScope(t *testing.T) {
+	for _, scope := range []string{"commerce.orders.write", "payments.payment_intents.write"} {
+		for _, dryRun := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/dryRun=%t", scope, dryRun), func(t *testing.T) {
+				requests := 0
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					if r.URL.Path == "/v1/developer/auth-context" {
+						fmt.Fprintf(w, `{"data":{"auth_type":"api_key","api_key_id":"key_123","merchant_id":"mer_123","sandbox_id":"test_123","environment":"sandbox","scopes":[%q]}}`, scope)
+						return
+					}
+					requests++
+					if r.Method != "POST" || r.URL.Path != "/v1/orders/ord_123/payment-intents" {
+						t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+					}
+					fmt.Fprint(w, `{"data":{"payment_intent_id":"pi_123"}}`)
+				}))
+				defer server.Close()
+				app, stdout, stderr := testApp(t, server.URL)
+				argv := []string{"payment-intents", "create", "--order", "ord_123", "--output", "json"}
+				if dryRun {
+					argv = append(argv, "--dry-run=client")
+				}
+				wantExit, wantRequests := ExitOK, 1
+				if scope != "commerce.orders.write" {
+					wantExit, wantRequests = ExitAuth, 0
+				}
+				if dryRun {
+					wantExit, wantRequests = ExitOK, 0
+				}
+				if exit := app.Run(argv); exit != wantExit {
+					t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
+				}
+				if requests != wantRequests {
+					t.Errorf("resource requests=%d, want %d", requests, wantRequests)
+				}
+				if dryRun && !strings.Contains(stdout.String(), `"path":"/v1/orders/ord_123/payment-intents"`) {
+					t.Errorf("wrong dry-run path: %s", stdout)
+				}
+			})
+		}
+	}
+}
+
+func TestCommandRejectsMissingScopesBeforeAPIRequest(t *testing.T) {
+	for name, argv := range map[string][]string{
+		"first-class": {"subscriptions", "list", "--output", "json"},
+		"raw":         {"api", "get", "/v1/subscriptions?page_size=10", "--output", "json"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			requests := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				if r.URL.Path == "/v1/developer/auth-context" {
+					fmt.Fprint(w, limitedAuthContextJSON("sandbox"))
+					return
+				}
+				requests++
+				fmt.Fprint(w, `{"data":[]}`)
+			}))
+			defer server.Close()
+			app, stdout, stderr := testApp(t, server.URL)
+			if exit := app.Run(argv); exit != ExitAuth || stderr.Len() != 0 {
+				t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
+			}
+			for _, want := range []string{`"code":"MISSING_REQUIRED_SCOPES"`, `"scope_mode":"any"`, `"commerce.subscriptions.read"`} {
+				if !strings.Contains(stdout.String(), want) {
+					t.Errorf("missing %q in %s", want, stdout)
+				}
+			}
+			if requests != 0 {
+				t.Fatalf("made %d unauthorized resource requests", requests)
+			}
+		})
+	}
+}
+
 func TestListenForwardsExactPayloadWithCanonicalSignatureAndCheckpoint(t *testing.T) {
 	const eventID = "whev_01ABCDEFGHIJKLMNOPQRSTUVWX"
 	const payload = `{ "payment_intent_id" : "pi_123", "status" : "succeeded" }`
@@ -1014,7 +1137,44 @@ func testApp(t *testing.T, baseURL string) (*App, *bytes.Buffer, *bytes.Buffer) 
 	return app, stdout, stderr
 }
 func authContextJSON(environment string) string {
+	body, _ := json.Marshal(map[string]any{
+		"data": map[string]any{
+			"auth_type": "api_key", "api_key_id": "key_123", "environment": environment,
+			"merchant_id": "mer_123", "sandbox_id": "test_123", "scopes": allTestScopes(),
+		},
+		"request_id": "req_auth", "meta": map[string]any{"api_version": "2026-02-01"},
+	})
+	return string(body)
+}
+
+func limitedAuthContextJSON(environment string) string {
 	return fmt.Sprintf(`{"data":{"auth_type":"api_key","api_key_id":"key_123","environment":%q,"merchant_id":"mer_123","sandbox_id":"test_123","scopes":["payments.payment_intents.read","payments.payment_intents.write"]},"request_id":"req_auth","meta":{"api_version":"2026-02-01"}}`, environment)
+}
+
+var testScopesOnce sync.Once
+var testScopes []string
+
+func allTestScopes() []string {
+	testScopesOnce.Do(func() {
+		doc, err := loadOpenAPI()
+		if err != nil {
+			panic(err)
+		}
+		set := make(map[string]bool)
+		for _, methods := range doc.Paths {
+			for _, operation := range methods {
+				for _, scope := range operation.FlintRequiredScopes {
+					set[scope] = true
+				}
+			}
+		}
+		testScopes = make([]string, 0, len(set))
+		for scope := range set {
+			testScopes = append(testScopes, scope)
+		}
+		sort.Strings(testScopes)
+	})
+	return append([]string(nil), testScopes...)
 }
 
 func TestPayOrderActionInputAndTokenShortcut(t *testing.T) {

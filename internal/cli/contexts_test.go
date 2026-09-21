@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -37,6 +39,8 @@ type contextTestServer struct {
 	wrongSession        bool
 	devices             int
 	revokes             int
+	reauthForm          url.Values
+	approvedScopes      []string
 }
 
 func newContextTestApp(t *testing.T) (*App, *bytes.Buffer, *bytes.Buffer, *contextTestServer, func() string) {
@@ -71,6 +75,10 @@ func newContextTestApp(t *testing.T) (*App, *bytes.Buffer, *bytes.Buffer, *conte
 			state.devices++
 			if r.URL.Path == oauthReauthorizePath {
 				_ = r.ParseForm()
+				state.reauthForm = make(url.Values, len(r.Form))
+				for key, values := range r.Form {
+					state.reauthForm[key] = append([]string(nil), values...)
+				}
 				if r.Form.Get("refresh_token") == "" {
 					t.Error("reauth has no credential")
 				}
@@ -84,6 +92,9 @@ func newContextTestApp(t *testing.T) (*App, *bytes.Buffer, *bytes.Buffer, *conte
 				return
 			}
 			id := r.Form.Get("context_id")
+			if id == "" && r.Form.Get("grant_type") == deviceGrantType {
+				id = state.reauthForm.Get("context_id")
+			}
 			if id == "" {
 				id = "ctx_a"
 			}
@@ -100,7 +111,15 @@ func newContextTestApp(t *testing.T) (*App, *bytes.Buffer, *bytes.Buffer, *conte
 			if state.wrongSession {
 				session = "session_other"
 			}
-			_ = json.NewEncoder(w).Encode(map[string]any{"access_token": access, "refresh_token": fmt.Sprintf("refresh-%d", state.refreshes), "token_type": "Bearer", "expires_in": 3600, "oauth_session_id": session, "context_id": id})
+			scopes := []string{"payments.payment_intents.read"}
+			if state.reauthForm.Get("scope_mode") == "additive" {
+				approved := state.approvedScopes
+				if approved == nil {
+					approved = strings.Fields(state.reauthForm.Get("scope"))
+				}
+				scopes = append(scopes, approved...)
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"access_token": access, "refresh_token": fmt.Sprintf("refresh-%d", state.refreshes), "token_type": "Bearer", "expires_in": 3600, "scope": strings.Join(scopes, " "), "oauth_session_id": session, "context_id": id})
 		case "/v1/developer/auth-context":
 			if state.revokedOriginal && r.Header.Get("Authorization") == "Bearer "+testOAuthAccess {
 				w.WriteHeader(401)
@@ -115,7 +134,15 @@ func newContextTestApp(t *testing.T) (*App, *bytes.Buffer, *bytes.Buffer, *conte
 				w.WriteHeader(401)
 				return
 			}
-			_ = json.NewEncoder(w).Encode(map[string]any{"data": contextTestAuth(id)})
+			auth := contextTestAuth(id)
+			if state.reauthForm.Get("scope_mode") == "additive" {
+				approved := state.approvedScopes
+				if approved == nil {
+					approved = strings.Fields(state.reauthForm.Get("scope"))
+				}
+				auth.Scopes = append(auth.Scopes, approved...)
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": auth})
 		case oauthRevokePath:
 			state.revokes++
 		default:
@@ -283,6 +310,44 @@ func TestContextReauthorization(t *testing.T) {
 	c, e := decodeOAuthCredential(stored())
 	if e != nil || c.Version != 2 || c.SessionID != "session_one" || state.devices != 1 || state.refreshes != 1 || state.revokes != 0 {
 		t.Fatalf("reauth session: %+v %v", c, e)
+	}
+}
+
+func TestContextAdditiveScopeReauthorization(t *testing.T) {
+	for _, partial := range []bool{false, true} {
+		t.Run(fmt.Sprintf("partial=%t", partial), func(t *testing.T) {
+			app, out, stderr, state, stored := newContextTestApp(t)
+			requested := []string{"commerce.subscriptions.read", "commerce.subscription_plans.read"}
+			if partial {
+				state.approvedScopes = requested[:1]
+			}
+			args := []string{"reauth", "--no-open", "--output", "json"}
+			for _, scope := range requested {
+				args = append(args, "--scope", scope)
+			}
+			if exit := app.Run(args); exit != ExitOK {
+				t.Fatalf("exit=%d out=%s stderr=%s", exit, out, stderr)
+			}
+			if state.reauthForm.Get("scope_mode") != "additive" || state.reauthForm.Get("context_id") != "ctx_a" || state.reauthForm.Get("scope") != strings.Join(requested, " ") {
+				t.Fatalf("reauthorization form = %v", state.reauthForm)
+			}
+			for _, absent := range []string{"environment", "merchant_id", "sandbox_id", "device_name", "platform"} {
+				if state.reauthForm.Has(absent) {
+					t.Errorf("additive reauthorization sent %s", absent)
+				}
+			}
+			credential, e := decodeOAuthCredential(stored())
+			if e != nil || !slices.Contains(credential.Auth.Scopes, requested[0]) {
+				t.Fatalf("saved credential = %#v, %v", credential, e)
+			}
+			if partial {
+				if !strings.Contains(out.String(), `"partial_approval":true`) || !strings.Contains(out.String(), `"unapproved_scopes":["commerce.subscription_plans.read"]`) || !strings.Contains(stderr.String(), "not approved") {
+					t.Fatalf("partial approval not reported: out=%s stderr=%s", out, stderr)
+				}
+			} else if !strings.Contains(out.String(), `"partial_approval":false`) || strings.Contains(stderr.String(), "not approved") {
+				t.Fatalf("full approval reported incorrectly: out=%s stderr=%s", out, stderr)
+			}
+		})
 	}
 }
 func TestContextLegacySessionStillRequiresLiveFlag(t *testing.T) {

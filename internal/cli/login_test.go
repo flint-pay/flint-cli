@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -47,6 +48,9 @@ func TestBrowserLoginSuccess(t *testing.T) {
 			checkOAuthForm(t, r)
 			if r.Form.Get("environment") != "sandbox" || r.Form.Get("scope") == "" {
 				t.Error("missing requested context/scopes")
+			}
+			if r.Form.Has("device_name") || r.Form.Has("platform") {
+				t.Error("login sent fields outside the public OAuth contract")
 			}
 			writeTestDevice(w)
 		case loginTokenPath:
@@ -107,6 +111,58 @@ func TestBrowserLoginSuccess(t *testing.T) {
 	}
 }
 
+func TestBrowserLoginRequestsBaselineAndAdditionalScopes(t *testing.T) {
+	requested := "commerce.subscriptions.read"
+	var authorizeForm url.Values
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case loginDevicePath:
+			checkOAuthForm(t, r)
+			authorizeForm = make(url.Values, len(r.Form))
+			for key, values := range r.Form {
+				authorizeForm[key] = append([]string(nil), values...)
+			}
+			writeTestDevice(w)
+		case loginTokenPath:
+			fmt.Fprintf(w, `{"access_token":%q,"refresh_token":%q,"token_type":"Bearer","expires_in":3600,"scope":%q,"oauth_session_id":"session_one","context_id":"ctx_a"}`, testOAuthAccess, testOAuthRefresh, strings.Join(appendUniqueStrings(append([]string(nil), initialCLIScopes...), requested), " "))
+		case "/v1/developer/auth-context":
+			auth := contextTestAuth("ctx_a")
+			auth.Scopes = appendUniqueStrings(append([]string(nil), initialCLIScopes...), requested)
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": auth})
+		default:
+			t.Errorf("unexpected request %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+	app, out, stderr := testApp(t, server.URL)
+	t.Setenv("FLINT_API_KEY", "")
+	app.StoreCredential = func(string, string) error { return nil }
+	if exit := app.Run([]string{"login", "--new-session", "--scope", requested, "--no-open", "--output", "json"}); exit != ExitOK {
+		t.Fatalf("exit=%d out=%s stderr=%s", exit, out, stderr)
+	}
+	wantScopes := strings.Join(appendUniqueStrings(append([]string(nil), initialCLIScopes...), requested), " ")
+	if authorizeForm.Get("scope") != wantScopes || authorizeForm.Get("environment") != "sandbox" || authorizeForm.Has("scope_mode") {
+		t.Fatalf("authorization form = %v", authorizeForm)
+	}
+	if !strings.Contains(out.String(), `"approved_scopes":["commerce.subscriptions.read"]`) || !strings.Contains(out.String(), `"partial_approval":false`) {
+		t.Fatalf("scope approval output = %s", out)
+	}
+}
+
+func TestRequestedCLIScopesValidateAndDeduplicate(t *testing.T) {
+	opts := Options{Raw: map[string][]string{"scope": {"commerce.subscriptions.read", "commerce.subscriptions.read"}}}
+	got, e := requestedCLIScopes(opts)
+	if e != nil || len(got) != 1 || got[0] != "commerce.subscriptions.read" {
+		t.Fatalf("requested scopes = %v, %v", got, e)
+	}
+	for _, value := range []string{"unknown.scope", "commerce.subscriptions.read commerce.subscriptions.write", ""} {
+		if _, e := requestedCLIScopes(Options{Raw: map[string][]string{"scope": {value}}}); e == nil || e.Code != "INVALID_SCOPE" {
+			t.Fatalf("accepted invalid scope %q: %v", value, e)
+		}
+	}
+}
+
 func TestBrowserLoginTerminalStates(t *testing.T) {
 	for _, code := range []string{"access_denied", "expired_token", "slow_down"} {
 		t.Run(code, func(t *testing.T) {
@@ -154,6 +210,24 @@ func TestBrowserLoginUnavailableAndCanceled(t *testing.T) {
 				want = "LOGIN_CANCELED"
 			}
 			if exit := app.Run([]string{"auth", "login", "--no-open", "--output", "json"}); exit != ExitAuth || !strings.Contains(out.String(), want) {
+				t.Fatalf("exit=%d out=%s", exit, out)
+			}
+		})
+	}
+}
+
+func TestBrowserLoginPreservesStableAuthorizationErrors(t *testing.T) {
+	for _, code := range []string{"invalid_scope", "invalid_context"} {
+		t.Run(code, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				fmt.Fprintf(w, `{"error":%q}`, code)
+			}))
+			defer server.Close()
+			app, out, _ := testApp(t, server.URL)
+			t.Setenv("FLINT_API_KEY", "")
+			if exit := app.Run([]string{"login", "--new-session", "--scope", "commerce.subscriptions.read", "--no-open", "--output", "json"}); exit != ExitAuth || !strings.Contains(out.String(), `"code":"`+code+`"`) {
 				t.Fatalf("exit=%d out=%s", exit, out)
 			}
 		})

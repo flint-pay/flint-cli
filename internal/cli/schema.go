@@ -16,6 +16,7 @@ type openAPIDocument struct {
 	JSONSchemaDialect string                                 `json:"jsonSchemaDialect"`
 	FlintAPIVersion   string                                 `json:"x-flint-api-version"`
 	FlintCLIScopes    []string                               `json:"x-flint-cli-bootstrap-scopes"`
+	FlintCLIAllowed   []string                               `json:"x-flint-cli-allowed-scopes"`
 	Info              map[string]any                         `json:"info"`
 	Paths             map[string]map[string]openAPIOperation `json:"paths"`
 	Components        struct {
@@ -34,6 +35,35 @@ func embeddedInitialCLIScopes() []string {
 		panic("embedded OpenAPI snapshot has no x-flint-cli-bootstrap-scopes")
 	}
 	return append([]string(nil), doc.FlintCLIScopes...)
+}
+
+func embeddedAllowedCLIScopes() []string {
+	doc, err := loadOpenAPI()
+	if err != nil {
+		panic("load embedded OpenAPI allowed CLI scopes: " + err.Error())
+	}
+	if len(doc.FlintCLIAllowed) > 0 {
+		return append([]string(nil), doc.FlintCLIAllowed...)
+	}
+	// Older snapshots predate x-flint-cli-allowed-scopes. Every scope used by
+	// a public operation is still explicit in its operation metadata.
+	set := make(map[string]bool)
+	for _, scope := range doc.FlintCLIScopes {
+		set[scope] = true
+	}
+	for _, methods := range doc.Paths {
+		for _, operation := range methods {
+			for _, scope := range operation.FlintRequiredScopes {
+				set[scope] = true
+			}
+		}
+	}
+	result := make([]string, 0, len(set))
+	for scope := range set {
+		result = append(result, scope)
+	}
+	sort.Strings(result)
+	return result
 }
 
 type openAPIOperation struct {
