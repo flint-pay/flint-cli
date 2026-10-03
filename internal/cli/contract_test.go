@@ -162,6 +162,9 @@ func TestFulfillmentLifecycleResourcesHaveTypedCommands(t *testing.T) {
 }
 
 func TestInitialCLIScopesCoverBootstrapWorkflow(t *testing.T) {
+	if slices.Contains(initialCLIScopes, "accounts.organizations.write") {
+		t.Fatal("sandbox bootstrap must not request live-only organization writes")
+	}
 	granted := map[string]bool{}
 	for _, scope := range initialCLIScopes {
 		if granted[scope] {
@@ -1062,14 +1065,14 @@ func TestSignupIssuesScopedSandboxKeyAndStoresOnlyInCredentialStore(t *testing.T
 			fmt.Fprint(w, `{"data":{"can_issue_api_key":true,"default_sandbox_id":"test_123","next_step":{"code":"complete_verification_step"}}}`)
 		case "/v1/onboarding/api-key":
 			var body struct {
-				Name      string   `json:"name"`
-				SandboxID string   `json:"sandbox_id"`
-				Scopes    []string `json:"scopes"`
+				Name      string          `json:"name"`
+				SandboxID string          `json:"sandbox_id"`
+				Scopes    json.RawMessage `json:"scopes"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				t.Error(err)
 			}
-			if body.Name != "flint-cli" || body.SandboxID != "test_123" || !slices.Equal(body.Scopes, initialCLIScopes) {
+			if body.Name != "flint-cli" || body.SandboxID != "test_123" || body.Scopes != nil {
 				t.Errorf("unexpected initial key request: %#v", body)
 			}
 			fmt.Fprint(w, `{"data":{"api_key_id":"key_123","merchant_id":"mer_123","sandbox_id":"test_123","secret_key":"flint_test_secret"}}`)

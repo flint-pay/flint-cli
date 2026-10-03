@@ -90,7 +90,7 @@ func (a *App) runSignup(opts Options) int {
 	if sandboxID == "" {
 		return a.fail(invalidResponseError("INVALID_SIGNUP_RESPONSE", "Flint did not return a default sandbox for the initial API key.", nil), opts)
 	}
-	keyBody, _ := json.Marshal(map[string]any{"name": "flint-cli", "sandbox_id": sandboxID, "scopes": initialCLIScopes})
+	keyBody, _ := json.Marshal(map[string]any{"name": "flint-cli", "sandbox_id": sandboxID})
 	issueKey, err := newIdempotencyKey()
 	if err != nil {
 		return a.fail(networkError("IDEMPOTENCY_KEY_GENERATION_FAILED", "Could not generate an idempotency key.", err), opts)
