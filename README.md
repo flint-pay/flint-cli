@@ -76,7 +76,48 @@ flint checkout create --quick-pay-name T-shirt --amount 2500 --currency USD --op
 flint listen --forward-to http://localhost:8080/webhooks/flint
 ```
 
-`flint help` lists the starting points and `flint <command> --help` documents any single command. `flint schema commands --output json` returns the whole catalog as data.
+`flint`, `flint --help`, and `flint help` list starting points, API resource groups, and examples for creating primitives. `flint schema commands --output json` returns the whole catalog as data.
+
+Primitives use their resource names, such as `customers`, `products`, `orders`, and `subscription-plans`. Start with `flint <resource> --help` to list operations, then `flint <resource> create --help` to see flags and examples when creation is supported. Some groups are read-only or use nested command paths; their resource help lists the exact commands.
+
+Commands with convenience flags can create a resource directly. Other commands take a JSON request body through `--input FILE.json`. Use `flint schema input <resource>.create --output json` to see the body's fields and requirements, prepare the file, then run the create command:
+
+```bash
+flint customers create --email jane@example.com
+flint products create --help
+flint schema input products.create --output json  # schema for product.json
+
+cat > product.json <<'JSON'
+{
+  "name": "T-shirt",
+  "product_type": "physical",
+  "default_variant": {
+    "unit_price_money": {"amount": 2500, "currency": "USD"}
+  }
+}
+JSON
+flint products create --input product.json
+```
+
+The product example sets a $25.00 USD price; money amounts use the smallest currency unit. With credentials configured, add `--dry-run=client` to validate the request body and inspect the prepared request without making an API request or creating a resource:
+
+```bash
+flint products create --input product.json --dry-run=client --output json
+```
+
+Client dry runs use the saved or environment credential locally; sign in first if no credential is configured. They do not check server permissions or server-side business rules. Remove `--dry-run=client` to submit the create request.
+
+The same workflow applies to other primitives. Inspect each schema, prepare the corresponding JSON request body file, then create it:
+
+```bash
+flint schema input orders.create --output json
+# Prepare order.json using the fields and requirements in the schema.
+flint orders create --input order.json
+
+flint schema input subscription-plans.create --output json
+# Prepare plan.json using the fields and requirements in the schema.
+flint subscription-plans create --input plan.json
+```
 
 `flint support open` opens the Flint Help composer; you review and post in the browser. Use `--private` for a private thread or `--no-open` to print the link only.
 
@@ -98,6 +139,8 @@ make test       # go test ./...
 make contract   # tests, then diff the API coverage report against coverage.json
 make coverage   # regenerate coverage.json after intentionally changing the surface
 ```
+
+After `make build`, run `./bin/flint --help` to inspect workspace changes. Use `./bin/flint` for subsequent commands to run the binary you just built; `flint` resolves through your shell's `PATH`.
 
 Layout:
 

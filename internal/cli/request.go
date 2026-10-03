@@ -180,11 +180,24 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 	// is optional. Send an empty object so omission means no fields, not invalid JSON.
 	operation, _ := openAPIOperationByID(cmd.OperationID)
 	if len(body) > 0 || opts.Input != "" || cmd.InputSchema != "" || operation.RequestBody != nil {
-		raw, e := json.Marshal(body)
-		if e != nil {
-			return req, usageError("INVALID_INPUT", e.Error(), "input")
+		mediaType, _ := requestContentSchema(operation.RequestBody)
+		if mediaType == "application/x-www-form-urlencoded" {
+			form := url.Values{}
+			for name, value := range body {
+				text, ok := value.(string)
+				if !ok {
+					return req, usageError("INVALID_INPUT", "Form request fields must be strings.", name)
+				}
+				form.Set(name, text)
+			}
+			req.Body = []byte(form.Encode())
+		} else {
+			raw, e := json.Marshal(body)
+			if e != nil {
+				return req, usageError("INVALID_INPUT", e.Error(), "input")
+			}
+			req.Body = raw
 		}
-		req.Body = raw
 		req.BodyValue = body
 	}
 	return req, nil

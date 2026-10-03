@@ -253,6 +253,24 @@
   },
   {
     "method": "POST",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/customer-verifications",
+    "operation_id": "createCheckoutSessionCustomerVerification",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.customer-verifications.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/customer-verifications/{customer_verification_id}/confirm",
+    "operation_id": "confirmCheckoutSessionCustomerVerification",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.customer-verifications.confirm"
+    ]
+  },
+  {
+    "method": "POST",
     "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-quotes",
     "operation_id": "createCheckoutSessionDeliveryQuote",
     "classification": "resource",
@@ -402,6 +420,24 @@
     "classification": "resource",
     "commands": [
       "credit-notes.pdf.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/credit-notes/{credit_note_id}/refunds",
+    "operation_id": "listCreditNoteRefunds",
+    "classification": "resource",
+    "commands": [
+      "credit-notes.refunds.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/credit-notes/{credit_note_id}/refunds",
+    "operation_id": "createCreditNoteRefund",
+    "classification": "resource",
+    "commands": [
+      "credit-notes.refunds.create"
     ]
   },
   {
@@ -1254,6 +1290,213 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/gift-card-funding-disputes/{dispute_id}/honor-value",
+    "operation_id": "honorGiftCardFundingLoss",
+    "classification": "resource",
+    "commands": [
+      "gift-card-funding-disputes.honor-value"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-loads",
+    "operation_id": "listGiftCardLoads",
+    "classification": "resource",
+    "commands": [
+      "gift-card-loads.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-loads/{gift_card_load_id}",
+    "operation_id": "getGiftCardLoad",
+    "classification": "resource",
+    "commands": [
+      "gift-card-loads.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-notifications",
+    "operation_id": "listGiftCardNotifications",
+    "classification": "resource",
+    "commands": [
+      "gift-card-notifications.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-card-notifications",
+    "operation_id": "createGiftCardNotification",
+    "classification": "resource",
+    "commands": [
+      "gift-card-notifications.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-notifications/{gift_card_notification_id}",
+    "operation_id": "getGiftCardNotification",
+    "classification": "resource",
+    "commands": [
+      "gift-card-notifications.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-card-notifications/{gift_card_notification_id}/cancel",
+    "operation_id": "cancelGiftCardNotification",
+    "classification": "resource",
+    "commands": [
+      "gift-card-notifications.cancel"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-redemptions",
+    "operation_id": "listGiftCardRedemptions",
+    "classification": "resource",
+    "commands": [
+      "gift-card-redemptions.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-card-redemptions",
+    "operation_id": "createGiftCardRedemption",
+    "classification": "resource",
+    "commands": [
+      "gift-card-redemptions.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-redemptions/{gift_card_redemption_id}",
+    "operation_id": "getGiftCardRedemption",
+    "classification": "resource",
+    "commands": [
+      "gift-card-redemptions.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-card-redemptions/{gift_card_redemption_id}/cancel",
+    "operation_id": "cancelGiftCardRedemption",
+    "classification": "resource",
+    "commands": [
+      "gift-card-redemptions.cancel"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-card-redemptions/{gift_card_redemption_id}/capture",
+    "operation_id": "captureGiftCardRedemption",
+    "classification": "resource",
+    "commands": [
+      "gift-card-redemptions.capture"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-transactions",
+    "operation_id": "listGiftCardTransactions",
+    "classification": "resource",
+    "commands": [
+      "gift-card-transactions.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-cards",
+    "operation_id": "listGiftCards",
+    "classification": "resource",
+    "commands": [
+      "gift-cards.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards",
+    "operation_id": "createGiftCard",
+    "classification": "resource",
+    "commands": [
+      "gift-cards.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards/lookup",
+    "operation_id": "lookupGiftCard",
+    "classification": "resource",
+    "commands": [
+      "gift-cards.lookup"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-cards/{gift_card_id}",
+    "operation_id": "getGiftCard",
+    "classification": "resource",
+    "commands": [
+      "gift-cards.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/gift-cards/{gift_card_id}",
+    "operation_id": "updateGiftCard",
+    "classification": "resource",
+    "commands": [
+      "gift-cards.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards/{gift_card_id}/adjustments",
+    "operation_id": "createGiftCardAdjustment",
+    "classification": "resource",
+    "commands": [
+      "gift-cards.adjustments.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards/{gift_card_id}/cash-outs",
+    "operation_id": "createGiftCardCashOut",
+    "classification": "resource",
+    "commands": [
+      "gift-cards.cash-outs.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards/{gift_card_id}/loads",
+    "operation_id": "createGiftCardLoad",
+    "classification": "resource",
+    "commands": [
+      "gift-cards.loads.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards/{gift_card_id}/rotate-code",
+    "operation_id": "rotateGiftCardCode",
+    "classification": "resource",
+    "commands": [
+      "gift-cards.rotate-code"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards/{gift_card_id}/transitions",
+    "operation_id": "transitionGiftCard",
+    "classification": "resource",
+    "commands": [
+      "gift-cards.transitions"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/inventory-adjustments",
     "operation_id": "listInventoryAdjustments",
@@ -1902,6 +2145,15 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/me/deletion-requests",
+    "operation_id": "listMeDeletionRequests",
+    "classification": "resource",
+    "commands": [
+      "me.deletion-requests.list"
+    ]
+  },
+  {
     "method": "POST",
     "path": "/v1/me/deletion-requests",
     "operation_id": "createMeDeletionRequest",
@@ -1935,6 +2187,24 @@
     "classification": "resource",
     "commands": [
       "me.email-change-requests.confirm"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/email-preferences",
+    "operation_id": "getMeEmailPreferences",
+    "classification": "resource",
+    "commands": [
+      "me.email-preferences.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/me/email-preferences",
+    "operation_id": "updateMeEmailPreferences",
+    "classification": "resource",
+    "commands": [
+      "me.email-preferences.update"
     ]
   },
   {
@@ -2079,6 +2349,15 @@
     "classification": "resource",
     "commands": [
       "me.payment-methods.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/payment-methods/{payment_method_id}",
+    "operation_id": "getMePaymentMethod",
+    "classification": "resource",
+    "commands": [
+      "me.payment-methods.get"
     ]
   },
   {
@@ -2416,6 +2695,42 @@
   },
   {
     "method": "POST",
+    "path": "/v1/oauth/contexts",
+    "operation_id": "listCLIContexts",
+    "classification": "resource",
+    "commands": [
+      "oauth.contexts"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/oauth/device/authorize",
+    "operation_id": "authorizeCLIDevice",
+    "classification": "resource",
+    "commands": [
+      "oauth.device.authorize"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/oauth/device/reauthorize",
+    "operation_id": "reauthorizeCLIDevice",
+    "classification": "resource",
+    "commands": [
+      "oauth.device.reauthorize"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/oauth/revoke",
+    "operation_id": "revokeCLIGrant",
+    "classification": "resource",
+    "commands": [
+      "oauth.revoke"
+    ]
+  },
+  {
+    "method": "POST",
     "path": "/v1/oauth/token",
     "operation_id": "exchangePartnerInstallToken",
     "classification": "resource",
@@ -2614,6 +2929,24 @@
   },
   {
     "method": "POST",
+    "path": "/v1/orders/{order_id}/gift-cards",
+    "operation_id": "applyOrderGiftCard",
+    "classification": "resource",
+    "commands": [
+      "orders.gift-cards"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/orders/{order_id}/gift-cards/{gift_card_id}",
+    "operation_id": "removeOrderGiftCard",
+    "classification": "resource",
+    "commands": [
+      "orders.gift-cards.delete"
+    ]
+  },
+  {
+    "method": "POST",
     "path": "/v1/orders/{order_id}/inventory-exception/resolve",
     "operation_id": "resolveOrderInventoryException",
     "classification": "resource",
@@ -2718,6 +3051,15 @@
     "classification": "resource",
     "commands": [
       "orders.receipt"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/send-receipt",
+    "operation_id": "sendOrderReceipt",
+    "classification": "resource",
+    "commands": [
+      "orders.send-receipt"
     ]
   },
   {

@@ -61,7 +61,7 @@ func TestRegistryContract(t *testing.T) {
 			if !operationExists || (operation.FlintRouteClass == "" && cmd.OperationID != "authorizePartnerInstall" && cmd.OperationID != "previewPartnerInstallAuthorization" && cmd.OperationID != "exchangePartnerInstallToken" && cmd.OperationID != "getOpenAPISpec") {
 				t.Errorf("%s operation %s has no public route class", cmd.Name, cmd.OperationID)
 			}
-			wantSensitive := operation.FlintRouteClass == "sensitive_write" || operation.FlintRouteClass == "external_provider_action" || operation.OperationID == "authorizePartnerInstall"
+			wantSensitive := operation.FlintRouteClass == "sensitive_write" || operation.FlintRouteClass == "external_provider_action" || operation.FlintRouteClass == "payment" || operation.OperationID == "authorizePartnerInstall"
 			if cmd.Sensitive != wantSensitive {
 				t.Errorf("%s sensitive=%t, want %t from route class %q", cmd.Name, cmd.Sensitive, wantSensitive, operation.FlintRouteClass)
 			}

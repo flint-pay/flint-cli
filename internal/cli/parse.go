@@ -37,7 +37,7 @@ func parseInvocation(r *Registry, argv []string) (*Command, Options, bool, *CLIE
 		remaining = remaining[1:]
 	}
 	if len(remaining) == 0 {
-		if helpRequested(opts) {
+		if len(argv) == 0 || helpRequested(opts) {
 			if cmd, ok := r.ByName("help"); ok {
 				return cmd, opts, false, nil
 			}

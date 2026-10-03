@@ -11,6 +11,32 @@ import (
 	"testing"
 )
 
+func TestNoArgumentsShowsRootHelpWithoutAuthentication(t *testing.T) {
+	app, stdout, stderr := testApp(t, "http://127.0.0.1:1")
+	app.LoadCredential = func(string) (string, error) {
+		t.Fatal("root help must not read credentials")
+		return "", nil
+	}
+	if code := app.Run(nil); code != ExitOK {
+		t.Fatalf("exit=%d stderr=%s", code, stderr)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("unexpected stderr: %s", stderr)
+	}
+	output := stdout.String()
+	for _, text := range []string{"Usage:", "Start here:", "flint auth login", "flint <command> --help"} {
+		if !strings.Contains(output, text) {
+			t.Errorf("help omitted %q: %s", text, output)
+		}
+	}
+	for _, args := range [][]string{{"--help"}, {"help"}} {
+		stdout.Reset()
+		if code := app.Run(args); code != ExitOK || stdout.String() != output || stderr.Len() != 0 {
+			t.Errorf("%v differs from bare flint: exit=%d stdout=%s stderr=%s", args, code, stdout, stderr)
+		}
+	}
+}
+
 func TestEveryCommandNamespaceHasHelp(t *testing.T) {
 	registry := NewRegistry()
 	seen := map[string]bool{}

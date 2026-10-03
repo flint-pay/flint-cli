@@ -255,6 +255,7 @@ var publicResourceIDPrefixes = map[string]string{
 	"customer_deletion_request_id":       "cdel_",
 	"customer_id":                        "cus_",
 	"customer_session_id":                "cses_",
+	"customer_verification_id":           "cscv_",
 	"delivery_location_set_id":           "dls_",
 	"delivery_location_set_revision_id":  "dlsr_",
 	"delivery_method_id":                 "dmet_",
@@ -275,6 +276,11 @@ var publicResourceIDPrefixes = map[string]string{
 	"environment_id":                     "menv_",
 	"expected_delivery_selection_id":     "dsel_",
 	"fraud_warning_id":                   "fw_",
+	"gift_card_id":                       "gc_",
+	"gift_card_load_id":                  "gcl_",
+	"gift_card_notification_id":          "gcn_",
+	"gift_card_redemption_id":            "gcr_",
+	"gift_card_transaction_id":           "gct_",
 	"fulfillment_event_id":               "fev_",
 	"fulfillment_id":                     "ful_",
 	"fulfillment_notification_id":        "fnt_",
@@ -347,9 +353,7 @@ var publicResourceIDPrefixes = map[string]string{
 func publicResourceIDPrefix(name string) string { return publicResourceIDPrefixes[name] }
 
 func requestSchemaName(requestBody map[string]any) string {
-	content, _ := requestBody["content"].(map[string]any)
-	jsonContent, _ := content["application/json"].(map[string]any)
-	schema, _ := jsonContent["schema"].(map[string]any)
+	_, schema := requestContentSchema(requestBody)
 	if name := schemaRefName(schema); name != "" {
 		return name
 	}
@@ -359,7 +363,18 @@ func requestSchemaName(requestBody map[string]any) string {
 	return ""
 }
 
-func responseSchemaName(responses map[string]map[string]any) string {
+func requestContentSchema(requestBody map[string]any) (string, map[string]any) {
+	content, _ := requestBody["content"].(map[string]any)
+	for _, mediaType := range []string{"application/json", "application/x-www-form-urlencoded"} {
+		if media, ok := content[mediaType].(map[string]any); ok {
+			schema, _ := media["schema"].(map[string]any)
+			return mediaType, schema
+		}
+	}
+	return "", nil
+}
+
+func responseSchema(responses map[string]map[string]any) map[string]any {
 	statuses := make([]string, 0, len(responses))
 	for status := range responses {
 		if strings.HasPrefix(status, "2") {
@@ -370,11 +385,15 @@ func responseSchemaName(responses map[string]map[string]any) string {
 	for _, status := range statuses {
 		content, _ := responses[status]["content"].(map[string]any)
 		jsonContent, _ := content["application/json"].(map[string]any)
-		if name := schemaRefName(jsonContent["schema"]); name != "" {
-			return name
+		if schema, ok := jsonContent["schema"].(map[string]any); ok {
+			return schema
 		}
 	}
-	return ""
+	return nil
+}
+
+func responseSchemaName(responses map[string]map[string]any) string {
+	return schemaRefName(responseSchema(responses))
 }
 
 func schemaRefName(value any) string {
@@ -480,6 +499,7 @@ func applyPublicOperationMetadata(command *Command) {
 		return
 	}
 	command.Security = operation.Security
+	command.OutputSchema = responseSchemaName(operation.Responses)
 	command.AuthRequired = len(operation.Security) > 0
 	if strings.HasPrefix(command.APIPath, "/v1/developer/partner/") || strings.HasPrefix(command.APIPath, "/v1/developer/sandboxes") || strings.HasPrefix(command.APIPath, "/v1/onboarding/") || strings.HasPrefix(command.APIPath, "/v1/oauth/") {
 		command.EnvironmentAffinity = EnvironmentAffinityAccount

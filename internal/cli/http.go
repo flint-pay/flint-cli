@@ -195,7 +195,14 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 				}
 			}
 		}
-		if len(body) > 0 {
+		if command := responseContract(ctx); command != nil {
+			if operation, ok := openAPIOperationByID(command.OperationID); ok {
+				if mediaType, _ := requestContentSchema(operation.RequestBody); mediaType == "application/x-www-form-urlencoded" {
+					req.Header.Set("Content-Type", mediaType)
+				}
+			}
+		}
+		if len(body) > 0 && req.Header.Get("Content-Type") == "" {
 			req.Header.Set("Content-Type", "application/json")
 		}
 		if idempotencyKey != "" {

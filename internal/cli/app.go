@@ -342,5 +342,48 @@ func (a *App) printRootHelp() {
 		fmt.Fprintln(a.Stdout, "  "+line)
 	}
 	fmt.Fprintln(a.Stdout)
+	fmt.Fprintln(a.Stdout, "Create a primitive:")
+	fmt.Fprintln(a.Stdout, "  flint <resource> --help                         List available operations")
+	fmt.Fprintln(a.Stdout, "  flint <resource> create --help                  Show create flags and examples")
+	fmt.Fprintln(a.Stdout, "  flint <resource> create [flags]                 Create with supported flags")
+	fmt.Fprintln(a.Stdout, "  flint <resource> create --input FILE.json       Create from a JSON request body")
+	fmt.Fprintln(a.Stdout, "  flint schema input <resource>.create --output json  Show the request body schema")
+	fmt.Fprintln(a.Stdout, "  Check resource help first: some groups are read-only or use nested commands.")
+	fmt.Fprintln(a.Stdout)
+	fmt.Fprintln(a.Stdout, "Examples:")
+	fmt.Fprintln(a.Stdout, "  # Create a customer")
+	fmt.Fprintln(a.Stdout, "  flint customers create --email jane@example.com")
+	fmt.Fprintln(a.Stdout, "  # Inspect the schema, prepare product.json, then create a product")
+	fmt.Fprintln(a.Stdout, "  flint products create --help")
+	fmt.Fprintln(a.Stdout, "  flint schema input products.create --output json")
+	fmt.Fprintln(a.Stdout, "  flint products create --input product.json")
+	fmt.Fprintln(a.Stdout, "  # Inspect each schema and prepare the named file before creating")
+	fmt.Fprintln(a.Stdout, "  flint schema input orders.create --output json")
+	fmt.Fprintln(a.Stdout, "  flint orders create --input order.json")
+	fmt.Fprintln(a.Stdout, "  flint schema input subscription-plans.create --output json")
+	fmt.Fprintln(a.Stdout, "  flint subscription-plans create --input plan.json")
+	fmt.Fprintln(a.Stdout, "  # With credentials configured, validate and inspect a request locally")
+	fmt.Fprintln(a.Stdout, "  flint products create --input product.json --dry-run=client --output json")
+	fmt.Fprintln(a.Stdout)
+	fmt.Fprintln(a.Stdout, "API resource groups (run flint <resource> --help):")
+	seen := map[string]bool{}
+	var resources []string
+	for _, command := range a.Registry.Commands {
+		if command.Local || command.APIPath == "" || len(command.Path) < 3 || seen[command.Path[1]] {
+			continue
+		}
+		resource := command.Path[1]
+		seen[resource] = true
+		resources = append(resources, resource)
+	}
+	for i := 0; i < len(resources); i += 2 {
+		if i+1 < len(resources) {
+			fmt.Fprintf(a.Stdout, "  %-32s  %s\n", resources[i], resources[i+1])
+		} else {
+			fmt.Fprintln(a.Stdout, "  "+resources[i])
+		}
+	}
+	fmt.Fprintln(a.Stdout)
+	fmt.Fprintln(a.Stdout, "Run flint <command> --help for help with a specific command.")
 	fmt.Fprintln(a.Stdout, "Run flint schema commands --output json for the complete command catalog.")
 }
