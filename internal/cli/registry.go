@@ -56,7 +56,7 @@ func NewRegistry() *Registry {
 			// Safety classification belongs to the public API contract. Keeping the
 			// CLI confirmation gate derived from it prevents a new sensitive route
 			// from silently behaving like an ordinary write.
-			c.Sensitive = operation.FlintRouteClass == "sensitive_write" || operation.FlintRouteClass == "external_provider_action"
+			c.Sensitive = operation.FlintRouteClass == "sensitive_write" || operation.FlintRouteClass == "external_provider_action" || operation.FlintRouteClass == "payment"
 		}
 		c.Supports.JSONOutput = true
 		c.Supports.NoInput = true

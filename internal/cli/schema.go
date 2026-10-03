@@ -201,9 +201,8 @@ func schemaForCommand(c *Command, input bool) (map[string]any, *CLIError) {
 	}
 	if input {
 		if operation, ok := openAPIOperationByID(c.OperationID); ok {
-			content, _ := operation.RequestBody["content"].(map[string]any)
-			jsonContent, _ := content["application/json"].(map[string]any)
-			if schema, ok := jsonContent["schema"].(map[string]any); ok {
+			_, schema := requestContentSchema(operation.RequestBody)
+			if schema != nil {
 				if schemaRefName(schema) == "" {
 					combined := deepCopyMap(root)
 					for key, value := range schema {
@@ -226,6 +225,10 @@ func schemaForCommand(c *Command, input bool) (map[string]any, *CLIError) {
 					root = combined
 				}
 			}
+		}
+	} else if operation, ok := openAPIOperationByID(c.OperationID); ok {
+		if schema := responseSchema(operation.Responses); schema != nil && schemaRefName(schema) == "" {
+			root = deepCopyMap(schema)
 		}
 	}
 	if root == nil {

@@ -2995,5 +2995,233 @@
     "path": "/v1/invoices/{invoice_id}/late-fees/{invoice_late_fee_id}/waive",
     "operation_id": "waiveInvoiceLateFee",
     "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/customer-verifications",
+    "operation_id": "createCheckoutSessionCustomerVerification",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/customer-verifications/{customer_verification_id}/confirm",
+    "operation_id": "confirmCheckoutSessionCustomerVerification",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/credit-notes/{credit_note_id}/refunds",
+    "operation_id": "listCreditNoteRefunds",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/credit-notes/{credit_note_id}/refunds",
+    "operation_id": "createCreditNoteRefund",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-card-funding-disputes/{dispute_id}/honor-value",
+    "operation_id": "honorGiftCardFundingLoss",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-loads",
+    "operation_id": "listGiftCardLoads",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-loads/{gift_card_load_id}",
+    "operation_id": "getGiftCardLoad",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-notifications",
+    "operation_id": "listGiftCardNotifications",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-card-notifications",
+    "operation_id": "createGiftCardNotification",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-notifications/{gift_card_notification_id}",
+    "operation_id": "getGiftCardNotification",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-card-notifications/{gift_card_notification_id}/cancel",
+    "operation_id": "cancelGiftCardNotification",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-redemptions",
+    "operation_id": "listGiftCardRedemptions",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-card-redemptions",
+    "operation_id": "createGiftCardRedemption",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-redemptions/{gift_card_redemption_id}",
+    "operation_id": "getGiftCardRedemption",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-card-redemptions/{gift_card_redemption_id}/cancel",
+    "operation_id": "cancelGiftCardRedemption",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-card-redemptions/{gift_card_redemption_id}/capture",
+    "operation_id": "captureGiftCardRedemption",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-transactions",
+    "operation_id": "listGiftCardTransactions",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-cards",
+    "operation_id": "listGiftCards",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards",
+    "operation_id": "createGiftCard",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards/lookup",
+    "operation_id": "lookupGiftCard",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-cards/{gift_card_id}",
+    "operation_id": "getGiftCard",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/gift-cards/{gift_card_id}",
+    "operation_id": "updateGiftCard",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards/{gift_card_id}/adjustments",
+    "operation_id": "createGiftCardAdjustment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards/{gift_card_id}/cash-outs",
+    "operation_id": "createGiftCardCashOut",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards/{gift_card_id}/loads",
+    "operation_id": "createGiftCardLoad",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards/{gift_card_id}/rotate-code",
+    "operation_id": "rotateGiftCardCode",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards/{gift_card_id}/transitions",
+    "operation_id": "transitionGiftCard",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/deletion-requests",
+    "operation_id": "listMeDeletionRequests",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/email-preferences",
+    "operation_id": "getMeEmailPreferences",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/me/email-preferences",
+    "operation_id": "updateMeEmailPreferences",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/payment-methods/{payment_method_id}",
+    "operation_id": "getMePaymentMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/oauth/contexts",
+    "operation_id": "listCLIContexts",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/oauth/device/authorize",
+    "operation_id": "authorizeCLIDevice",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/oauth/device/reauthorize",
+    "operation_id": "reauthorizeCLIDevice",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/oauth/revoke",
+    "operation_id": "revokeCLIGrant",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/gift-cards",
+    "operation_id": "applyOrderGiftCard",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/orders/{order_id}/gift-cards/{gift_card_id}",
+    "operation_id": "removeOrderGiftCard",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/send-receipt",
+    "operation_id": "sendOrderReceipt",
+    "classification": "resource"
   }
 ]

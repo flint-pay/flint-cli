@@ -94,10 +94,15 @@ func TestEveryResourceIDArgumentDeclaresHistoryReference(t *testing.T) {
 		"cursor":                             "whev_",
 		"customer":                           "cus_",
 		"customer_id":                        "cus_",
+		"customer_verification_id":           "cscv_",
+		"gift_card_id":                       "gc_",
+		"gift_card_load_id":                  "gcl_",
+		"gift_card_notification_id":          "gcn_",
+		"gift_card_redemption_id":            "gcr_",
+		"gift_card_transaction_id":           "gct_",
 		"invoice_id":                         "inv_",
 		"merchant_id":                        "mer_",
 		"location_id":                        "loc_",
-		"order":                              "ord_",
 		"order_id":                           "ord_",
 		"organization_id":                    "org_",
 		"payment_intent":                     "pi_",
@@ -118,6 +123,9 @@ func TestEveryResourceIDArgumentDeclaresHistoryReference(t *testing.T) {
 	for _, command := range NewRegistry().Commands {
 		for _, argument := range command.Arguments {
 			wantPrefix, isResourceID := resourcePrefixesByName[argument.Name]
+			if argument.Name == "order" && (argument.BodyPath == "order_id" || argument.Query == "order_id") {
+				wantPrefix, isResourceID = "ord_", true
+			}
 			if argument.Name == "resource_id" {
 				isResourceID = true
 			}
@@ -1584,7 +1592,19 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 	}
 
 	var body map[string]any
-	if len(request.Body) > 0 {
+	if request.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
+		form, err := url.ParseQuery(string(request.Body))
+		if err != nil {
+			t.Fatalf("decode form body: %v", err)
+		}
+		body = map[string]any{}
+		for name, values := range form {
+			if len(values) != 1 {
+				t.Fatalf("form field %s has multiple values", name)
+			}
+			body[name] = values[0]
+		}
+	} else if len(request.Body) > 0 {
 		decoder := json.NewDecoder(strings.NewReader(string(request.Body)))
 		decoder.UseNumber()
 		if err := decoder.Decode(&body); err != nil {
