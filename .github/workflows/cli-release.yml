@@ -201,7 +201,9 @@ jobs:
       artifact: flint-cli-release
 
   publish-github:
-    needs: [release, channel-preflight, install-preflight]
+    # GitHub releases drive CLI update discovery, so npm must be installable
+    # before this version becomes visible to existing npm installations.
+    needs: [release, channel-preflight, install-preflight, npm-readiness]
     if: ${{ startsWith(github.ref, 'refs/tags/cli/v') }}
     runs-on: ubuntu-latest
     permissions:
@@ -352,6 +354,26 @@ jobs:
             publish_if_missing "$package"
           done
           publish_if_missing wrapper
+
+  npm-readiness:
+    needs: [release, npm]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CLI_VERSION: ${{ needs.release.outputs.cli_version }}
+      NPM_TAG: ${{ needs.release.outputs.npm_tag }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "26.7.0"
+          registry-url: https://registry.npmjs.org
+      - name: Wait for public npm installation before update discovery
+        shell: bash
+        run: bash scripts/verify-npm-install.sh
 
   docker:
     needs: [release, channel-preflight, install-preflight]
