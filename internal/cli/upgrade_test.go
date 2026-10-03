@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -54,7 +55,7 @@ func TestStandaloneUpgradeVerifiesAndReplacesBinary(t *testing.T) {
 	defer server.Close()
 
 	executable := filepath.Join(t.TempDir(), "flint")
-	if err := os.WriteFile(executable, oldBinary, 0o755); err != nil {
+	if err := os.WriteFile(executable, oldBinary, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	app, stdout, stderr := testApp(t, "")
@@ -80,6 +81,11 @@ func TestStandaloneUpgradeVerifiesAndReplacesBinary(t *testing.T) {
 	}
 	if !bytes.Equal(got, newBinary) {
 		t.Fatalf("installed binary = %q", got)
+	}
+	if runtime.GOOS != "windows" {
+		if info, err := os.Stat(executable); err != nil || info.Mode().Perm() != 0o700 {
+			t.Fatalf("upgraded executable permissions changed: info=%v error=%v", info, err)
+		}
 	}
 	for _, want := range []string{`"status":"upgraded"`, `"previous_version":"1.0.0"`, `"installed_version":"1.2.0"`, `"install_method":"standalone"`} {
 		if !strings.Contains(stdout.String(), want) {
@@ -146,7 +152,7 @@ func TestStandaloneUpgradeVersionMismatchPreservesBinary(t *testing.T) {
 	app.runCommand = func(_ context.Context, _ string, _ ...string) ([]byte, error) {
 		return []byte("1.0.0\n"), nil
 	}
-	upgradeErr := app.replaceExecutableAtomically(t.Context(), executable, []byte("wrong release"), "1.1.0")
+	_, upgradeErr := app.replaceExecutableAtomically(t.Context(), executable, []byte("wrong release"), "1.1.0")
 	if upgradeErr == nil || upgradeErr.Code != "UPGRADE_VERIFICATION_FAILED" {
 		t.Fatalf("error=%v", upgradeErr)
 	}
@@ -176,7 +182,7 @@ func TestStandaloneUpgradeCancellationPreservesBinary(t *testing.T) {
 				}
 				return []byte("1.1.0\n"), nil
 			}
-			upgradeErr := app.replaceExecutableAtomically(ctx, executable, []byte("new flint"), "1.1.0")
+			_, upgradeErr := app.replaceExecutableAtomically(ctx, executable, []byte("new flint"), "1.1.0")
 			if upgradeErr == nil || upgradeErr.Code != "REQUEST_CANCELED" || !errors.Is(upgradeErr.Cause, context.Canceled) {
 				t.Fatalf("error=%v", upgradeErr)
 			}
@@ -207,7 +213,7 @@ func TestUpgradeUsesOwningPackageManager(t *testing.T) {
 		executable string
 		want       []string
 	}{
-		{name: "npm", executable: npmBinary, want: []string{"npm root -g", "npm install -g @flintpay/cli@1.1.0 --no-audit --no-fund", npmBinary + " version --field data.cli_version --color never"}},
+		{name: "npm", executable: npmBinary, want: []string{"npm root -g", "npm config get globalconfig", "npm install -g --prefix STAGING @flintpay/cli@1.1.0 --include=optional --no-audit --no-fund --globalconfig " + filepath.Join(root, "npmrc"), "node " + filepath.Join("STAGING", "lib", "node_modules", "@flintpay", "cli", "bin", "flint.js") + " version --field data.cli_version --color never", "node " + filepath.Join(npmRoot, "@flintpay", "cli", "bin", "flint.js") + " version --field data.cli_version --color never"}},
 		{name: "homebrew", executable: brewBinary, want: []string{"brew --cellar flint-pay/tap/flint", "brew update", "brew upgrade flint-pay/tap/flint", "brew --prefix flint-pay/tap/flint", filepath.Join(brewPrefix, "bin", "flint") + " version --field data.cli_version --color never"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -220,9 +226,24 @@ func TestUpgradeUsesOwningPackageManager(t *testing.T) {
 			app.upgradeReleaseAPIURL = server.URL
 			app.executablePath = func() (string, error) { return test.executable, nil }
 			app.runtimeGOOS = "darwin"
+			if test.name == "npm" {
+				makeNPMTestWrapper(t, filepath.Join(npmRoot, "@flintpay", "cli"), app.runtimeGOOS, app.runtimeGOARCH)
+			}
 			var commands []string
+			var staging string
 			app.runCommand = func(_ context.Context, name string, args ...string) ([]byte, error) {
-				commands = append(commands, strings.Join(append([]string{name}, args...), " "))
+				command := strings.Join(append([]string{name}, args...), " ")
+				if name == "npm" && args[0] == "install" {
+					staging = args[3]
+					makeNPMTestWrapper(t, filepath.Join(staging, "lib", "node_modules", "@flintpay", "cli"), app.runtimeGOOS, app.runtimeGOARCH)
+				}
+				if staging != "" {
+					command = strings.ReplaceAll(command, staging, "STAGING")
+				}
+				commands = append(commands, command)
+				if name == "npm" && args[0] == "config" {
+					return []byte(filepath.Join(root, "npmrc")), nil
+				}
 				if name == "npm" && slices.Equal(args, []string{"root", "-g"}) {
 					return []byte(npmRoot + "\n"), nil
 				}
@@ -232,7 +253,7 @@ func TestUpgradeUsesOwningPackageManager(t *testing.T) {
 				if name == "brew" && slices.Equal(args, []string{"--prefix", "flint-pay/tap/flint"}) {
 					return []byte(brewPrefix + "\n"), nil
 				}
-				if len(args) > 0 && args[0] == "version" {
+				if name == "node" || len(args) > 0 && args[0] == "version" {
 					return []byte("1.1.0\n"), nil
 				}
 				return nil, nil
@@ -278,11 +299,18 @@ func TestPackageManagerUpgradeVerifiesCurrentInstallation(t *testing.T) {
 		return filepath.Join(npmRoot, "@flintpay", "cli-darwin-arm64", "bin", "flint"), nil
 	}
 	app.runtimeGOOS = "darwin"
+	makeNPMTestWrapper(t, filepath.Join(npmRoot, "@flintpay", "cli"), app.runtimeGOOS, app.runtimeGOARCH)
 	app.runCommand = func(_ context.Context, name string, args ...string) ([]byte, error) {
+		if name == "npm" && args[0] == "config" {
+			return []byte(filepath.Join(root, "npmrc")), nil
+		}
+		if name == "npm" && args[0] == "install" {
+			makeNPMTestWrapper(t, filepath.Join(args[3], "lib", "node_modules", "@flintpay", "cli"), app.runtimeGOOS, app.runtimeGOARCH)
+		}
 		if name == "npm" && slices.Equal(args, []string{"root", "-g"}) {
 			return []byte(npmRoot + "\n"), nil
 		}
-		if len(args) > 0 && args[0] == "version" {
+		if name == "node" || len(args) > 0 && args[0] == "version" {
 			return []byte("1.0.0\n"), nil
 		}
 		return nil, nil
@@ -494,15 +522,23 @@ func TestPackageManagerUpgradeExplainsVersionMismatch(t *testing.T) {
 				binary = filepath.Join(root, "node_modules", "@flintpay", "cli-darwin-arm64", "bin", "flint")
 			}
 			app.executablePath = func() (string, error) { return binary, nil }
+			if tc.method == "npm" {
+				makeNPMTestWrapper(t, filepath.Join(root, "node_modules", "@flintpay", "cli"), app.runtimeGOOS, app.runtimeGOARCH)
+			}
 			app.runCommand = func(_ context.Context, name string, args ...string) ([]byte, error) {
 				switch {
+				case name == "npm" && args[0] == "config":
+					return []byte(filepath.Join(root, "npmrc")), nil
+				case name == "npm" && args[0] == "install":
+					makeNPMTestWrapper(t, filepath.Join(args[3], "lib", "node_modules", "@flintpay", "cli"), app.runtimeGOOS, app.runtimeGOARCH)
+					return nil, nil
 				case name == "brew" && args[0] == "--cellar":
 					return []byte(filepath.Join(root, "Cellar", "flint")), nil
 				case name == "npm" && args[0] == "root":
 					return []byte(filepath.Join(root, "node_modules")), nil
 				case name == "brew" && args[0] == "--prefix":
 					return []byte(filepath.Join(root, "opt", "flint")), nil
-				case args[0] == "version":
+				case name == "node" || args[0] == "version":
 					if tc.readFails {
 						return nil, errors.New("cannot execute binary")
 					}
@@ -576,7 +612,7 @@ func TestPackageManagerVerificationCancellation(t *testing.T) {
 					return nil, nil
 				}
 			}
-			e := app.upgradeWithPackageManager(ctx, defaultOptions(), "homebrew", "0.3.1", filepath.Join(root, "bin", "flint"))
+			_, e := app.upgradeWithPackageManager(ctx, defaultOptions(), "homebrew", "0.3.1", filepath.Join(root, "bin", "flint"))
 			if e == nil || e.Code != "REQUEST_CANCELED" {
 				t.Fatalf("cancellation reported as %v", e)
 			}

@@ -73,7 +73,7 @@ const path = require('node:path');
 const args = process.argv.slice(2);
 const url = args.find(arg => arg.startsWith('https://'));
 if (url === 'https://api.github.com/repos/flint-pay/flint-cli/releases?per_page=100') {
-  process.stdout.write(JSON.stringify([{tag_name:'cli/v99.0.0-beta.1',prerelease:true},{tag_name:'cli/v${version}',prerelease:false}], null, 2));
+  fs.writeFileSync(args[args.indexOf('-o') + 1], JSON.stringify([{tag_name:'cli/v99.0.0-beta.1',prerelease:true},{tag_name:'cli/v${version}',prerelease:false}], null, 2));
 } else {
   const prefix = 'https://github.com/flint-pay/flint-cli/releases/download/cli%2Fv${version}/';
   if (!url?.startsWith(prefix)) throw new Error('Unexpected download URL: ' + url);

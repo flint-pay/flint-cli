@@ -191,8 +191,14 @@ func (a *App) localUpgrade(cmd *Command, opts Options) int {
 				Message:  "Close Flint CLI, then run npm install -g @flintpay/cli@" + latest.raw + ". Windows cannot replace the running platform binary.",
 			}, opts)
 		}
-		if upgradeErr := a.upgradeWithPackageManager(ctx, opts, method, latest.raw, executable); upgradeErr != nil {
+		installedVersion, upgradeErr := a.upgradeWithPackageManager(ctx, opts, method, latest.raw, executable)
+		if upgradeErr != nil {
 			return a.fail(upgradeErr, opts)
+		}
+		if installedVersion != latest.raw {
+			return a.outputLocal(map[string]any{"data": map[string]any{
+				"status": "current", "installed_version": installedVersion, "latest_version": latest.raw,
+			}}, cmd, opts)
 		}
 		return a.outputLocal(upgradeResult(installed.raw, latest.raw, method), cmd, opts)
 	}
@@ -228,11 +234,17 @@ func (a *App) localUpgrade(cmd *Command, opts Options) int {
 		return a.fail(upgradeErr, opts)
 	}
 	var replaceErr *CLIError
+	var installedVersion string
 	a.withUpgradeProgress(ctx, opts, "Verifying and installing Flint CLI "+latest.raw, func() {
-		replaceErr = a.replaceExecutableAtomically(ctx, executable, binary, latest.raw)
+		installedVersion, replaceErr = a.replaceExecutableAtomically(ctx, executable, binary, latest.raw)
 	})
 	if replaceErr != nil {
 		return a.fail(replaceErr, opts)
+	}
+	if installedVersion != latest.raw {
+		return a.outputLocal(map[string]any{"data": map[string]any{
+			"status": "current", "installed_version": installedVersion, "latest_version": latest.raw,
+		}}, cmd, opts)
 	}
 	return a.outputLocal(upgradeResult(installed.raw, latest.raw, "standalone"), cmd, opts)
 }
@@ -310,28 +322,29 @@ type packageManagerCommand struct {
 	args []string
 }
 
-func (a *App) upgradeWithPackageManager(ctx context.Context, opts Options, method, version, executable string) *CLIError {
+func (a *App) upgradeWithPackageManager(ctx context.Context, opts Options, method, version, executable string) (string, *CLIError) {
 	var ownershipErr *CLIError
+	var root string
 	a.withUpgradeProgress(ctx, opts, "Checking the "+method+" installation", func() {
-		ownershipErr = a.verifyPackageManagerOwnership(ctx, method, executable)
+		root, ownershipErr = a.verifyPackageManagerOwnership(ctx, method, executable)
 	})
 	if ctx.Err() != nil {
-		return networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+		return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 	}
 	if ownershipErr != nil {
-		return ownershipErr
+		return "", ownershipErr
 	}
 	var commands []packageManagerCommand
 	switch method {
 	case "npm":
-		commands = append(commands, packageManagerCommand{"npm", []string{"install", "-g", "@flintpay/cli@" + version, "--no-audit", "--no-fund"}})
+		return a.upgradeWithNPM(ctx, opts, version, root)
 	case "homebrew":
 		commands = append(commands,
 			packageManagerCommand{"brew", []string{"update"}},
 			packageManagerCommand{"brew", []string{"upgrade", "flint-pay/tap/flint"}},
 		)
 	default:
-		return upgradeFailure("UNKNOWN_INSTALL_METHOD", "Could not determine how Flint CLI was installed.", nil)
+		return "", upgradeFailure("UNKNOWN_INSTALL_METHOD", "Could not determine how Flint CLI was installed.", nil)
 	}
 	for _, command := range commands {
 		message := "Installing Flint CLI " + version + " with " + method
@@ -346,9 +359,9 @@ func (a *App) upgradeWithPackageManager(ctx context.Context, opts Options, metho
 			continue
 		}
 		if errors.Is(ctx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+			return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 		}
-		return upgradeFailure("PACKAGE_MANAGER_FAILED", "The "+method+" upgrade failed. Run the package manager directly for more detail.", err)
+		return "", upgradeFailure("PACKAGE_MANAGER_FAILED", "The "+method+" upgrade failed. Run the package manager directly for more detail.", err)
 	}
 	if method == "homebrew" {
 		var output []byte
@@ -357,11 +370,11 @@ func (a *App) upgradeWithPackageManager(ctx context.Context, opts Options, metho
 			output, err = a.runCommand(ctx, "brew", "--prefix", "flint-pay/tap/flint")
 		})
 		if ctx.Err() != nil {
-			return networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+			return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 		}
 		prefix := strings.TrimSpace(string(output))
 		if err != nil || !filepath.IsAbs(prefix) || strings.ContainsAny(prefix, "\r\n") {
-			return upgradeFailure("UPGRADE_VERIFICATION_FAILED", "Homebrew completed, but Flint CLI could not locate the installed binary.", err)
+			return "", upgradeFailure("UPGRADE_VERIFICATION_FAILED", "Homebrew completed, but Flint CLI could not locate the installed binary.", err)
 		}
 		executable = filepath.Join(filepath.Clean(prefix), "bin", "flint")
 	}
@@ -371,17 +384,17 @@ func (a *App) upgradeWithPackageManager(ctx context.Context, opts Options, metho
 		output, err = a.runCommand(ctx, executable, "version", "--field", "data.cli_version", "--color", "never")
 	})
 	if ctx.Err() != nil {
-		return networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+		return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 	}
 	if err == nil && strings.TrimSpace(string(output)) == version {
-		return nil
+		return version, nil
 	}
 	failure := upgradeFailure("UPGRADE_VERIFICATION_FAILED", "The "+method+" command completed, but Flint CLI could not read the installed version. Expected "+version+". Run flint version to check the installation, then retry flint upgrade.", err)
 	details := map[string]any{"install_method": method, "expected_version": version, "executable": executable, "retry_command": "flint upgrade"}
 	failure.Details = details
 	installed, valid := parseReleaseVersion(string(output))
 	if err != nil || !valid {
-		return failure
+		return "", failure
 	}
 	details["installed_version"] = installed.raw
 	failure.Message = fmt.Sprintf("The %s command completed, but Flint CLI %s is installed; expected %s. Run flint version to check the installation, then retry flint upgrade.", method, installed.raw, version)
@@ -394,7 +407,7 @@ func (a *App) upgradeWithPackageManager(ctx context.Context, opts Options, metho
 			info, infoErr = a.runCommand(ctx, "brew", "info", "--json=v2", "flint-pay/tap/flint")
 		})
 		if ctx.Err() != nil {
-			return networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+			return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 		}
 		var feed struct {
 			Formulae []struct {
@@ -415,10 +428,10 @@ func (a *App) upgradeWithPackageManager(ctx context.Context, opts Options, metho
 			}
 		}
 	}
-	return failure
+	return "", failure
 }
 
-func (a *App) verifyPackageManagerOwnership(ctx context.Context, method, executable string) *CLIError {
+func (a *App) verifyPackageManagerOwnership(ctx context.Context, method, executable string) (string, *CLIError) {
 	var command packageManagerCommand
 	switch method {
 	case "npm":
@@ -426,7 +439,7 @@ func (a *App) verifyPackageManagerOwnership(ctx context.Context, method, executa
 	case "homebrew":
 		command = packageManagerCommand{"brew", []string{"--cellar", "flint-pay/tap/flint"}}
 	default:
-		return upgradeFailure("UNKNOWN_INSTALL_METHOD", "Could not determine how Flint CLI was installed.", nil)
+		return "", upgradeFailure("UNKNOWN_INSTALL_METHOD", "Could not determine how Flint CLI was installed.", nil)
 	}
 	output, err := a.runCommand(ctx, command.name, command.args...)
 	root := strings.TrimSpace(string(output))
@@ -435,9 +448,9 @@ func (a *App) verifyPackageManagerOwnership(ctx context.Context, method, executa
 	}
 	if err != nil || !filepath.IsAbs(root) || strings.ContainsAny(root, "\r\n") || !pathWithin(root, executable) {
 		message := "The " + method + " command on PATH does not own the running Flint CLI installation. Use the package manager and prefix that installed this executable: " + executable
-		return upgradeFailure("PACKAGE_MANAGER_MISMATCH", message, err)
+		return "", upgradeFailure("PACKAGE_MANAGER_MISMATCH", message, err)
 	}
-	return nil
+	return filepath.Clean(root), nil
 }
 
 func pathWithin(root, target string) bool {
@@ -549,52 +562,78 @@ func extractFlintBinary(archive []byte) ([]byte, error) {
 	return nil, errors.New("archive does not contain flint")
 }
 
-func (a *App) replaceExecutableAtomically(ctx context.Context, executable string, binary []byte, expectedVersion string) *CLIError {
+func (a *App) replaceExecutableAtomically(ctx context.Context, executable string, binary []byte, expectedVersion string) (string, *CLIError) {
 	writeFailure := func(err error) *CLIError {
 		message := "Could not replace the Flint CLI executable at " + executable + ". Check that its directory is writable."
 		return upgradeFailure("UPGRADE_WRITE_FAILED", message, err)
 	}
 	info, err := os.Stat(executable)
 	if err != nil {
-		return writeFailure(err)
+		return "", writeFailure(err)
 	}
 	if !info.Mode().IsRegular() {
-		return writeFailure(errors.New("the executable path is not a regular file"))
+		return "", writeFailure(errors.New("the executable path is not a regular file"))
 	}
 	directory := filepath.Dir(executable)
 	temporary, err := os.CreateTemp(directory, ".flint-upgrade-*")
 	if err != nil {
-		return writeFailure(err)
+		return "", writeFailure(err)
 	}
 	temporaryPath := temporary.Name()
 	defer os.Remove(temporaryPath)
-	mode := info.Mode().Perm() | 0o111
+	mode := info.Mode().Perm()
 	if err := temporary.Chmod(mode); err != nil {
 		temporary.Close()
-		return writeFailure(err)
+		return "", writeFailure(err)
 	}
 	if _, err := temporary.Write(binary); err != nil {
 		temporary.Close()
-		return writeFailure(err)
+		return "", writeFailure(err)
 	}
 	if err := temporary.Sync(); err != nil {
 		temporary.Close()
-		return writeFailure(err)
+		return "", writeFailure(err)
 	}
 	if err := temporary.Close(); err != nil {
-		return writeFailure(err)
+		return "", writeFailure(err)
 	}
 	output, verifyErr := a.runCommand(ctx, temporaryPath, "version", "--field", "data.cli_version", "--color", "never")
 	if err := ctx.Err(); err != nil {
-		return networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out; the existing installation was left unchanged.", err)
+		return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out; the existing installation was left unchanged.", err)
 	}
 	if verifyErr != nil || strings.TrimSpace(string(output)) != expectedVersion {
-		return upgradeFailure("UPGRADE_VERIFICATION_FAILED", "The downloaded Flint CLI binary did not report the expected release version; the existing installation was left unchanged.", verifyErr)
+		return "", upgradeFailure("UPGRADE_VERIFICATION_FAILED", "The downloaded Flint CLI binary did not report the expected release version; the existing installation was left unchanged.", verifyErr)
 	}
-	if err := os.Rename(temporaryPath, executable); err != nil {
-		return writeFailure(err)
+	installedVersion := expectedVersion
+	err = withLocalFileLock(ctx, filepath.Join(directory, ".flint-upgrade"), func() error {
+		// Another updater may have installed this version, or a newer one,
+		// while the archive downloaded. Never replace a working newer binary.
+		output, currentErr := a.runCommand(ctx, executable, "version", "--field", "data.cli_version", "--color", "never")
+		if ctx.Err() != nil {
+			return networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out; the existing installation was left unchanged.", ctx.Err())
+		}
+		current, currentOK := parseReleaseVersion(string(output))
+		expected, expectedOK := parseReleaseVersion(expectedVersion)
+		if currentErr == nil && currentOK && expectedOK && compareReleaseVersions(current, expected) >= 0 {
+			installedVersion = current.raw
+			return nil
+		}
+		if err := os.Rename(temporaryPath, executable); err != nil {
+			return writeFailure(err)
+		}
+		return nil
+	})
+	if err != nil {
+		var failure *CLIError
+		if errors.As(err, &failure) {
+			return "", failure
+		}
+		if ctx.Err() != nil {
+			return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out; the existing installation was left unchanged.", ctx.Err())
+		}
+		return "", writeFailure(err)
 	}
-	return nil
+	return installedVersion, nil
 }
 
 func (a *App) getUpgradeURL(ctx context.Context, target string, limit int64) ([]byte, *CLIError) {
@@ -621,6 +660,9 @@ func (a *App) getUpgradeURL(ctx context.Context, target string, limit int64) ([]
 	}
 	raw, readErr := io.ReadAll(io.LimitReader(response.Body, limit+1))
 	if readErr != nil {
+		if ctx.Err() != nil {
+			return nil, networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+		}
 		return nil, networkError("RELEASE_DOWNLOAD_FAILED", "Could not read Flint CLI release information.", readErr)
 	}
 	if int64(len(raw)) > limit {

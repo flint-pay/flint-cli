@@ -69,13 +69,13 @@ git push origin cli/v0.1.0-beta.1
 gh run list --workflow cli-release.yml --limit 5
 ```
 
-Approve the sandbox and npm environment deployments when prompted by GitHub. The workflow validates the tag and main ancestry, runs CI and the sandbox check, builds archives once, and runs installation tests on macOS, Linux, and Windows before any publication. Homebrew is tested on macOS using the generated formula. npm publishes the platform packages before the wrapper. Stable releases update the public tap after the other publishing jobs succeed.
+Approve the sandbox and npm environment deployments when prompted by GitHub. The workflow validates the tag and main ancestry, runs CI and the sandbox check, builds archives once, and runs installation tests on macOS, Linux, and Windows before any publication. Homebrew is tested on macOS using the generated formula. npm publishes the platform packages before the wrapper. The `npm-readiness` job then downloads all five public platform packages and checks their versions and executable contents, installs and runs the native CLI on macOS and Linux, and verifies the npm dist-tag. GitHub publication waits for both readiness checks because GitHub releases drive CLI update discovery. Container publication runs independently. Stable releases update the public tap after the npm, GitHub, and container publishing jobs succeed.
 
 GitHub Releases retain the binary archives and `checksums.txt`; the workflow also creates build provenance attestations. npm packages embed the same binaries. The container is built separately from the same commit and build metadata.
 
 ## Verify publication
 
-The `verify-published` job installs the exact npm version and checks its `latest`/`next` tag, installs from the public GitHub downloads on macOS and Linux, and installs/tests the public Homebrew formula on macOS for stable releases. A publishing job succeeding is not sufficient: require the verification job to pass too.
+The `verify-published` job downloads and checks all five npm platform packages, installs the exact npm version and checks its `latest`/`next` tag, installs from the public GitHub downloads on macOS and Linux, and installs/tests the public Homebrew formula on macOS for stable releases. A publishing job succeeding is not sufficient: require the verification job to pass too.
 
 For a manual check, replace `0.1.0-beta.1` below with the released version:
 
@@ -103,11 +103,11 @@ For Windows, download `flint_VERSION_windows_amd64.zip` and `checksums.txt` from
 
 ## Partial publication and retries
 
-Channels publish independently. Check the actual GitHub release, npm versions/dist-tags, tap commit, and container tags before retrying. Never move a published source tag, overwrite release assets, or publish changed contents under an existing version. Fix code with a new version.
+Publication is not atomic: npm publishes first and must pass its public installation check before GitHub exposes the release; the container publishes independently, and the stable tap waits for all three. Check the actual GitHub release, npm versions/dist-tags, tap commit, and container tags before retrying. Never move a published source tag, overwrite release assets, or publish changed contents under an existing version. Fix code with a new version.
 
 For a transient failure, rerun the failed jobs of the original workflow run. GitHub and npm publication verify existing content before accepting a rerun. The workflow pins build tools and derives build metadata from the source commit. If a rebuilt artifact differs, stop and investigate; do not bypass the integrity check. A partially uploaded GitHub Release may require carefully adding only the missing original artifacts before rerunning.
 
-npm can take several minutes to expose accepted versions. Verification retries installation, CLI execution, and the npm dist-tag check in a fresh directory each time; if it still fails, wait and rerun only the failed verification job. Do not bump or republish solely to work around registry propagation. When retrying an older release after a newer release has shipped, inspect the channel pointers first: publishing an older stable version can move `latest` or the Homebrew formula backward. The automatic dist-tag verification deliberately fails if the expected pointer does not match.
+npm can take several minutes to expose accepted versions. Verification retries platform archive downloads, installation, CLI execution, and the npm dist-tag check up to six times, with a fresh directory and npm cache each time. If `npm-readiness` still fails, wait and rerun the failed jobs; GitHub publication resumes only after both readiness checks pass, without republishing npm packages. If the later `verify-published` job fails, rerun only that failed verification job. Do not bump or republish solely to work around registry propagation. When retrying an older release after a newer release has shipped, inspect the channel pointers first: publishing an older stable version can move `latest` or the Homebrew formula backward. The automatic dist-tag verification deliberately fails if the expected pointer does not match.
 
 For npm OIDC failures, check the exact repository/workflow/environment fields, direct publishing permission, the public repository URL in the package, and `id-token: write`. `npm whoami` does not test OIDC. For tap failures, check token expiry, organization authorization, Contents write access, and the tap's branch rules. Do not paste credentials into issues, PRs, or release notes.
 
