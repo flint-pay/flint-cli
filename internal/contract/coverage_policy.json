@@ -1294,6 +1294,36 @@
   },
   {
     "method": "GET",
+    "path": "/v1/me/gift-cards",
+    "operation_id": "listMeGiftCards",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/gift-cards",
+    "operation_id": "saveMeGiftCard",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/me/gift-cards/{gift_card_id}",
+    "operation_id": "removeMeGiftCard",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/gift-cards/{gift_card_id}",
+    "operation_id": "getMeGiftCard",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/gift-cards/{gift_card_id}/transactions",
+    "operation_id": "listMeGiftCardTransactions",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
     "path": "/v1/me/invoices",
     "operation_id": "listMeInvoices",
     "classification": "resource"
@@ -1470,6 +1500,18 @@
     "method": "POST",
     "path": "/v1/me/subscriptions/{subscription_id}/payment-method",
     "operation_id": "changeMeSubscriptionPaymentMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/payment-retries",
+    "operation_id": "createMeSubscriptionPaymentRetry",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/subscriptions/{subscription_id}/payment-retries/{subscription_payment_retry_id}",
+    "operation_id": "getMeSubscriptionPaymentRetry",
     "classification": "resource"
   },
   {
