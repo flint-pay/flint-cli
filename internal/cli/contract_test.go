@@ -1313,14 +1313,14 @@ func TestDoctorRejectsMissingReleaseDiscovery(t *testing.T) {
 	}
 }
 
-func TestCheckoutHumanOutputUsesHostedLaunchURL(t *testing.T) {
+func TestCheckoutHumanOutputUsesCheckoutSessionURL(t *testing.T) {
 	var output bytes.Buffer
 	renderHuman(&output, map[string]any{"data": map[string]any{
 		"checkout_session": map[string]any{"checkout_session_id": "cs_test", "url": "https://checkout.example.com/session"},
-		"hosted_checkout":  map[string]any{"url": "https://checkout.example.com/launch"},
+		"checkout_access":  map[string]any{"checkout_auth_token": "csauth_test"},
 	}}, &Command{Render: "checkout"}, time.Now())
-	if !strings.HasPrefix(output.String(), "https://checkout.example.com/launch\n") || strings.Count(output.String(), "https://checkout.example.com/launch") != 1 {
-		t.Fatalf("hosted launch URL missing or repeated: %s", output.String())
+	if !strings.HasPrefix(output.String(), "https://checkout.example.com/session\n") || strings.Count(output.String(), "https://checkout.example.com/session") != 1 {
+		t.Fatalf("checkout session URL missing or repeated: %s", output.String())
 	}
 }
 
