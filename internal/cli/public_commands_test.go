@@ -11,6 +11,164 @@ import (
 	"testing"
 )
 
+func TestPublicVerificationArgumentsUseOperationIDPrefixes(t *testing.T) {
+	for _, scenario := range []struct {
+		operationID string
+		prefix      string
+	}{
+		{"confirmCustomerVerification", "cver_"},
+		{"confirmCheckoutSessionCustomerVerification", "cscv_"},
+	} {
+		t.Run(scenario.operationID, func(t *testing.T) {
+			operation, ok := openAPIOperationByID(scenario.operationID)
+			if !ok {
+				t.Fatal("verification operation missing")
+			}
+			for _, argument := range publicAPIArguments("", operation) {
+				if argument.Name == "customer_verification_id" {
+					if argument.IDPrefix != scenario.prefix || !argument.AcceptsHistoryRef {
+						t.Fatalf("verification argument = %#v", argument)
+					}
+					return
+				}
+			}
+			t.Fatal("verification ID argument missing")
+		})
+	}
+}
+
+func TestVerificationCreateResponsesRecordHistoryAndResolveReferences(t *testing.T) {
+	for _, scenario := range []struct {
+		name             string
+		createOperation  string
+		confirmOperation string
+		id               string
+		resourceType     string
+		createBody       string
+		response         string
+		checkout         bool
+	}{
+		{
+			name: "customer", createOperation: "createCustomerVerification", confirmOperation: "confirmCustomerVerification",
+			id: "cver_created", resourceType: "customer_verification",
+			createBody: `{"customer_id":"cus_test","email":"buyer@example.com","purpose":"link_guest_purchases"}`,
+			response:   `{"data":{"customer_verification_id":"cver_created","customer_id":"cus_test","channel":"email","email":"buyer@example.com","purpose":"link_guest_purchases","status":"pending","created_at":"2026-03-17T14:30:00Z","expires_at":"2026-03-17T14:45:00Z"}}`,
+		},
+		{
+			name: "checkout", createOperation: "createCheckoutSessionCustomerVerification", confirmOperation: "confirmCheckoutSessionCustomerVerification",
+			id: "cscv_created", resourceType: "checkout_session_customer_verification", checkout: true,
+			createBody: `{"email":"buyer@example.com","purpose":"save_payment_method"}`,
+			response:   `{"data":{"customer_verification_id":"cscv_created","checkout_session_id":"cs_test","channel":"email","email":"buyer@example.com","purpose":"save_payment_method","created_at":"2026-03-17T14:30:00Z","expires_at":"2026-03-17T14:45:00Z"}}`,
+		},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			registry := NewRegistry()
+			var create, confirm *Command
+			for _, command := range registry.Commands {
+				if command.OperationID == scenario.createOperation {
+					create = command
+				}
+				if command.OperationID == scenario.confirmOperation {
+					confirm = command
+				}
+			}
+			if create == nil || confirm == nil {
+				t.Fatal("verification commands missing")
+			}
+			createPath := strings.ReplaceAll(create.APIPath, "{checkout_session_id}", "cs_test")
+			confirmPath := strings.ReplaceAll(confirm.APIPath, "{checkout_session_id}", "cs_test")
+			confirmPath = strings.ReplaceAll(confirmPath, "{customer_verification_id}", scenario.id)
+			confirmCalls, linkCalls := 0, 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				if r.URL.Path == "/v1/developer/auth-context" {
+					fmt.Fprint(w, authContextJSON("sandbox"))
+					return
+				}
+				if r.Method != http.MethodPost {
+					t.Errorf("method = %s", r.Method)
+				}
+				switch r.URL.Path {
+				case createPath:
+					w.WriteHeader(http.StatusCreated)
+					fmt.Fprint(w, scenario.response)
+				case confirmPath:
+					confirmCalls++
+					var body map[string]any
+					if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body["code"] != "123456" {
+						t.Errorf("confirm body = %#v, error = %v", body, err)
+					}
+					fmt.Fprint(w, `{"data":{}}`)
+				case "/v1/customers/cus_test/link-guest-purchases":
+					linkCalls++
+					var body map[string]any
+					if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body["customer_verification_id"] != scenario.id {
+						t.Errorf("link body = %#v, error = %v", body, err)
+					}
+					fmt.Fprint(w, `{"data":{}}`)
+				default:
+					t.Errorf("unexpected verification path %s", r.URL.Path)
+					w.WriteHeader(http.StatusNotFound)
+				}
+			}))
+			defer server.Close()
+			app, stdout, stderr := testApp(t, server.URL)
+			if scenario.checkout {
+				t.Setenv("FLINT_API_KEY", "")
+				t.Setenv("FLINT_CHECKOUT_SESSION_ID", "cs_test")
+				t.Setenv("FLINT_CHECKOUT_SESSION_SECRET", "secret_test")
+			}
+			run := func(command *Command, args []string, body string) {
+				t.Helper()
+				argv := append([]string(nil), command.Path[1:]...)
+				argv = append(argv, args...)
+				if body != "" {
+					argv = append(argv, "--input", "-")
+				}
+				argv = append(argv, "--output", "json")
+				app.Stdin = strings.NewReader(body)
+				stdout.Reset()
+				stderr.Reset()
+				if exit := app.Run(argv); exit != ExitOK {
+					t.Fatalf("argv = %v, exit = %d, stdout = %s, stderr = %s", argv, exit, stdout, stderr)
+				}
+			}
+			var positionals []string
+			if scenario.checkout {
+				positionals = []string{"cs_test"}
+			}
+			run(create, positionals, scenario.createBody)
+			history, err := app.loadHistory()
+			if err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			for _, entry := range history.Entries {
+				if entry.ID == scenario.id {
+					found = true
+					if entry.ResourceType != scenario.resourceType || entry.Command != create.CanonicalName {
+						t.Fatalf("verification history entry = %#v", entry)
+					}
+				}
+			}
+			if !found {
+				t.Fatalf("create response verification ID missing from history: %#v", history)
+			}
+			for _, ref := range []string{"@last", "@last." + strings.SplitN(scenario.id, "_", 2)[0]} {
+				args := append(append([]string(nil), positionals...), ref)
+				run(confirm, args, `{"code":"123456"}`)
+				if !scenario.checkout {
+					link, _ := registry.ByName("customers.link-guest-purchases")
+					run(link, []string{"cus_test", "--customer-verification", ref}, "")
+				}
+			}
+			if confirmCalls != 2 || (!scenario.checkout && linkCalls != 2) {
+				t.Fatalf("confirm calls = %d, link calls = %d", confirmCalls, linkCalls)
+			}
+		})
+	}
+}
+
 func TestNoArgumentsShowsRootHelpWithoutAuthentication(t *testing.T) {
 	app, stdout, stderr := testApp(t, "http://127.0.0.1:1")
 	app.LoadCredential = func(string) (string, error) {
