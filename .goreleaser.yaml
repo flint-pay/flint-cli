@@ -6,6 +6,7 @@ builds:
   - id: flint
     main: ./cmd/flint
     binary: flint
+    mod_timestamp: "{{ .CommitTimestamp }}"
     flags:
       - -trimpath
       - -buildvcs=false
@@ -31,8 +32,12 @@ builds:
 archives:
   - id: binaries
     files:
-      - LICENSE
-      - README.md
+      - src: LICENSE
+        info:
+          mtime: "{{ .CommitDate }}"
+      - src: README.md
+        info:
+          mtime: "{{ .CommitDate }}"
     formats: [tar.gz]
     format_overrides:
       - goos: windows
