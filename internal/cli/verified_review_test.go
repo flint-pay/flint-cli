@@ -176,10 +176,10 @@ func TestVerifiedCheckoutTransformsRemainVisible(t *testing.T) {
 			io.WriteString(w, authContextJSON("sandbox"))
 			return
 		}
-		io.WriteString(w, `{"data":{"checkout_session":{"checkout_session_id":"cs_review"},"hosted_checkout":{"url":"https://checkout.example/session"}}}`)
+		io.WriteString(w, `{"data":{"checkout_session":{"checkout_session_id":"cs_review","url":"https://checkout.example/session"},"checkout_access":{"checkout_auth_token":"csauth_review"}}}`)
 	}))
 	defer server.Close()
-	for _, flags := range [][]string{{"--jq", ".data.hosted_checkout.url"}, {"--select", "hosted_checkout.url"}, {"--jq", ".data.hosted_checkout.url", "--output", "json"}} {
+	for _, flags := range [][]string{{"--jq", ".data.checkout_session.url"}, {"--select", "checkout_session.url"}, {"--jq", ".data.checkout_session.url", "--output", "json"}} {
 		a, out, _ := testApp(t, server.URL)
 		argv := append([]string{"checkout", "create", "--quick-pay-name", "T-shirt", "--amount", "2500", "--currency", "USD"}, flags...)
 		if exit := a.Run(argv); exit != ExitOK || !strings.Contains(out.String(), "https://checkout.example/session") {

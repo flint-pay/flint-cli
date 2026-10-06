@@ -705,7 +705,7 @@ func TestExpandAndOpenFlagsExecuteEndToEnd(t *testing.T) {
 				fmt.Fprint(w, exhaustiveAuthContextJSON("sandbox"))
 				return
 			}
-			fmt.Fprint(w, `{"data":{"checkout_session":{"checkout_session_id":"cs_test"},"hosted_checkout":{"url":"https://checkout.example.com/cs_test"}}}`)
+			fmt.Fprint(w, `{"data":{"checkout_session":{"checkout_session_id":"cs_test","url":"https://checkout.example.com/cs_test"},"checkout_access":{"checkout_auth_token":"csauth_test"}}}`)
 		}))
 		defer server.Close()
 		app, stdout, stderr := testApp(t, server.URL)
