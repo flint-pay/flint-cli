@@ -204,12 +204,6 @@
     "classification": "resource"
   },
   {
-    "method": "POST",
-    "path": "/v1/checkout-sessions/{checkout_session_id}/query-pickup-availability",
-    "operation_id": "queryCheckoutSessionPickupAvailability",
-    "classification": "resource"
-  },
-  {
     "method": "GET",
     "path": "/v1/customer-deletion-requests",
     "operation_id": "listCustomerDeletionRequests",
@@ -1089,12 +1083,6 @@
     "classification": "resource"
   },
   {
-    "method": "GET",
-    "path": "/v1/invoices/{invoice_id}/events",
-    "operation_id": "listInvoiceEvents",
-    "classification": "resource"
-  },
-  {
     "method": "POST",
     "path": "/v1/invoices/{invoice_id}/issue",
     "operation_id": "issueInvoice",
@@ -1116,12 +1104,6 @@
     "method": "POST",
     "path": "/v1/invoices/{invoice_id}/mark-uncollectible",
     "operation_id": "markInvoiceUncollectible",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/invoices/{invoice_id}/pause-reminders",
-    "operation_id": "pauseInvoiceReminders",
     "classification": "resource"
   },
   {
@@ -1152,12 +1134,6 @@
     "method": "POST",
     "path": "/v1/invoices/{invoice_id}/regenerate-public-link",
     "operation_id": "regenerateInvoicePublicLink",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/invoices/{invoice_id}/resume-reminders",
-    "operation_id": "resumeInvoiceReminders",
     "classification": "resource"
   },
   {
@@ -1353,12 +1329,6 @@
     "classification": "resource"
   },
   {
-    "method": "POST",
-    "path": "/v1/me/orders/{order_id}/receipt",
-    "operation_id": "resendMeOrderReceipt",
-    "classification": "resource"
-  },
-  {
     "method": "GET",
     "path": "/v1/me/packages",
     "operation_id": "listMePackages",
@@ -1408,7 +1378,7 @@
   },
   {
     "method": "POST",
-    "path": "/v1/me/return-resolutions/{resolution_id}/checkout-session",
+    "path": "/v1/me/return-resolutions/{return_resolution_id}/checkout-session",
     "operation_id": "createMeReturnResolutionCheckoutSession",
     "classification": "resource"
   },
@@ -1522,13 +1492,13 @@
   },
   {
     "method": "GET",
-    "path": "/v1/merchants/{merchant_id}",
+    "path": "/v1/merchant",
     "operation_id": "getMerchant",
     "classification": "resource"
   },
   {
     "method": "PATCH",
-    "path": "/v1/merchants/{merchant_id}",
+    "path": "/v1/merchant",
     "operation_id": "updateMerchant",
     "classification": "resource"
   },
@@ -1714,12 +1684,6 @@
   },
   {
     "method": "POST",
-    "path": "/v1/orders/{order_id}/discounts/preview",
-    "operation_id": "previewOrderDiscounts",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
     "path": "/v1/orders/{order_id}/discounts/remove",
     "operation_id": "removeOrderDiscounts",
     "classification": "resource"
@@ -1774,13 +1738,13 @@
   },
   {
     "method": "GET",
-    "path": "/v1/orders/{order_id}/payment-attempts/{payment_attempt_id}",
+    "path": "/v1/orders/{order_id}/payment-attempts/{order_payment_attempt_id}",
     "operation_id": "getOrderPaymentAttempt",
     "classification": "resource"
   },
   {
     "method": "POST",
-    "path": "/v1/orders/{order_id}/payment-attempts/{payment_attempt_id}/cancel",
+    "path": "/v1/orders/{order_id}/payment-attempts/{order_payment_attempt_id}/cancel",
     "operation_id": "cancelOrderPaymentAttempt",
     "classification": "resource"
   },
@@ -1800,12 +1764,6 @@
     "method": "POST",
     "path": "/v1/orders/{order_id}/payment-intents/{payment_intent_id}/capture",
     "operation_id": "captureOrderPayment",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/orders/{order_id}/receipt",
-    "operation_id": "resendOrderReceipt",
     "classification": "resource"
   },
   {
@@ -2224,7 +2182,7 @@
   },
   {
     "method": "GET",
-    "path": "/v1/promotions/{promotion_id}/codes",
+    "path": "/v1/promotion-codes",
     "operation_id": "listPromotionCodes",
     "classification": "resource"
   },
@@ -2244,12 +2202,6 @@
     "method": "PATCH",
     "path": "/v1/promotions/{promotion_id}/codes/{promotion_code_id}",
     "operation_id": "updatePromotionCode",
-    "classification": "resource"
-  },
-  {
-    "method": "GET",
-    "path": "/v1/promotions/by-code/{code}",
-    "operation_id": "resolvePromotionCode",
     "classification": "resource"
   },
   {
@@ -2794,19 +2746,19 @@
   },
   {
     "method": "GET",
-    "path": "/v1/subscription-plans/{plan_id}",
+    "path": "/v1/subscription-plans/{subscription_plan_id}",
     "operation_id": "getSubscriptionPlan",
     "classification": "resource"
   },
   {
     "method": "PATCH",
-    "path": "/v1/subscription-plans/{plan_id}",
+    "path": "/v1/subscription-plans/{subscription_plan_id}",
     "operation_id": "updateSubscriptionPlan",
     "classification": "resource"
   },
   {
     "method": "DELETE",
-    "path": "/v1/subscription-plans/{plan_id}",
+    "path": "/v1/subscription-plans/{subscription_plan_id}",
     "operation_id": "deleteSubscriptionPlan",
     "classification": "resource"
   },
@@ -3021,12 +2973,6 @@
     "classification": "resource"
   },
   {
-    "method": "POST",
-    "path": "/v1/gift-card-funding-disputes/{dispute_id}/honor-value",
-    "operation_id": "honorGiftCardFundingLoss",
-    "classification": "resource"
-  },
-  {
     "method": "GET",
     "path": "/v1/gift-card-loads",
     "operation_id": "listGiftCardLoads",
@@ -3222,6 +3168,156 @@
     "method": "POST",
     "path": "/v1/orders/{order_id}/send-receipt",
     "operation_id": "sendOrderReceipt",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customer-verifications",
+    "operation_id": "createCustomerVerification",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customer-verifications/{customer_verification_id}/confirm",
+    "operation_id": "confirmCustomerVerification",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/link-guest-purchases",
+    "operation_id": "linkCustomerGuestPurchases",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/email-preference-links/lookup",
+    "operation_id": "lookupEmailPreferenceLink",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/email-preference-links/unsubscribe",
+    "operation_id": "unsubscribeEmailPreferenceLink",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/fulfillment-events",
+    "operation_id": "listMeFulfillmentEvents",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/gift-cards",
+    "operation_id": "listMeGiftCards",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/gift-cards",
+    "operation_id": "saveMeGiftCard",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/me/gift-cards/{gift_card_id}",
+    "operation_id": "removeMeGiftCard",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/gift-cards/{gift_card_id}",
+    "operation_id": "getMeGiftCard",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/gift-cards/{gift_card_id}/transactions",
+    "operation_id": "listMeGiftCardTransactions",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/payment-retries",
+    "operation_id": "createMeSubscriptionPaymentRetry",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/subscriptions/{subscription_id}/payment-retries/{subscription_payment_retry_id}",
+    "operation_id": "getMeSubscriptionPaymentRetry",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/settings/custom-domains/{domain_type}/validate",
+    "operation_id": "validateCustomDomain",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/discount-previews",
+    "operation_id": "createDiscountPreview",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-card-funding-dispositions",
+    "operation_id": "createGiftCardFundingDisposition",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-allocation-policies/{inventory_allocation_policy_id}",
+    "operation_id": "getInventoryAllocationPolicy",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-items/{inventory_item_id}",
+    "operation_id": "getInventoryItem",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/activities",
+    "operation_id": "listInvoiceActivities",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/flint-wallet/payment-methods",
+    "operation_id": "listMeFlintWalletPaymentMethods",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/flint-wallet/payment-methods/{id}/store-setups",
+    "operation_id": "createMeFlintWalletStoreSetup",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/orders/{order_id}/send-receipt",
+    "operation_id": "sendMeOrderReceipt",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/access-links",
+    "operation_id": "createOrderAccessLink",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/access-links",
+    "operation_id": "createReturnAccessLink",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/access-links",
+    "operation_id": "createSubscriptionAccessLink",
     "classification": "resource"
   }
 ]

@@ -324,15 +324,6 @@
     ]
   },
   {
-    "method": "POST",
-    "path": "/v1/checkout-sessions/{checkout_session_id}/query-pickup-availability",
-    "operation_id": "queryCheckoutSessionPickupAvailability",
-    "classification": "resource",
-    "commands": [
-      "checkout-sessions.query-pickup-availability"
-    ]
-  },
-  {
     "method": "GET",
     "path": "/v1/credit-notes",
     "operation_id": "listCreditNotes",
@@ -495,6 +486,24 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/customer-verifications",
+    "operation_id": "createCustomerVerification",
+    "classification": "resource",
+    "commands": [
+      "customer-verifications.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customer-verifications/{customer_verification_id}/confirm",
+    "operation_id": "confirmCustomerVerification",
+    "classification": "resource",
+    "commands": [
+      "customer-verifications.confirm"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/customers",
     "operation_id": "listCustomers",
@@ -600,6 +609,15 @@
     "classification": "resource",
     "commands": [
       "customers.deletion-requests.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/link-guest-purchases",
+    "operation_id": "linkCustomerGuestPurchases",
+    "classification": "resource",
+    "commands": [
+      "customers.link-guest-purchases"
     ]
   },
   {
@@ -1143,6 +1161,15 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/discount-previews",
+    "operation_id": "createDiscountPreview",
+    "classification": "resource",
+    "commands": [
+      "discount-previews.create"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/disputes",
     "operation_id": "listDisputes",
@@ -1158,6 +1185,24 @@
     "classification": "resource",
     "commands": [
       "disputes.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/email-preference-links/lookup",
+    "operation_id": "lookupEmailPreferenceLink",
+    "classification": "resource",
+    "commands": [
+      "email-preference-links.lookup"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/email-preference-links/unsubscribe",
+    "operation_id": "unsubscribeEmailPreferenceLink",
+    "classification": "resource",
+    "commands": [
+      "email-preference-links.unsubscribe"
     ]
   },
   {
@@ -1291,11 +1336,11 @@
   },
   {
     "method": "POST",
-    "path": "/v1/gift-card-funding-disputes/{dispute_id}/honor-value",
-    "operation_id": "honorGiftCardFundingLoss",
+    "path": "/v1/gift-card-funding-dispositions",
+    "operation_id": "createGiftCardFundingDisposition",
     "classification": "resource",
     "commands": [
-      "gift-card-funding-disputes.honor-value"
+      "gift-card-funding-dispositions.create"
     ]
   },
   {
@@ -1542,6 +1587,15 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/inventory-allocation-policies/{inventory_allocation_policy_id}",
+    "operation_id": "getInventoryAllocationPolicy",
+    "classification": "resource",
+    "commands": [
+      "inventory-allocation-policies.get"
+    ]
+  },
+  {
     "method": "PATCH",
     "path": "/v1/inventory-allocation-policies/{inventory_allocation_policy_id}",
     "operation_id": "updateInventoryAllocationPolicy",
@@ -1620,6 +1674,15 @@
     "classification": "resource",
     "commands": [
       "inventory-items.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-items/{inventory_item_id}",
+    "operation_id": "getInventoryItem",
+    "classification": "resource",
+    "commands": [
+      "inventory-items.get"
     ]
   },
   {
@@ -1839,6 +1902,15 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/activities",
+    "operation_id": "listInvoiceActivities",
+    "classification": "resource",
+    "commands": [
+      "invoices.activities.list"
+    ]
+  },
+  {
     "method": "POST",
     "path": "/v1/invoices/{invoice_id}/checkout-session",
     "operation_id": "getOrCreateInvoiceCheckoutSession",
@@ -1863,15 +1935,6 @@
     "classification": "resource",
     "commands": [
       "invoices.delivery-attempts.list"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/invoices/{invoice_id}/events",
-    "operation_id": "listInvoiceEvents",
-    "classification": "resource",
-    "commands": [
-      "invoices.events.list"
     ]
   },
   {
@@ -1929,15 +1992,6 @@
     ]
   },
   {
-    "method": "POST",
-    "path": "/v1/invoices/{invoice_id}/pause-reminders",
-    "operation_id": "pauseInvoiceReminders",
-    "classification": "resource",
-    "commands": [
-      "invoices.pause-reminders"
-    ]
-  },
-  {
     "method": "GET",
     "path": "/v1/invoices/{invoice_id}/payment-attempts",
     "operation_id": "listInvoicePaymentAttempts",
@@ -1980,15 +2034,6 @@
     "classification": "resource",
     "commands": [
       "invoices.regenerate-public-link"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/invoices/{invoice_id}/resume-reminders",
-    "operation_id": "resumeInvoiceReminders",
-    "classification": "resource",
-    "commands": [
-      "invoices.resume-reminders"
     ]
   },
   {
@@ -2209,11 +2254,83 @@
   },
   {
     "method": "GET",
+    "path": "/v1/me/flint-wallet/payment-methods",
+    "operation_id": "listMeFlintWalletPaymentMethods",
+    "classification": "resource",
+    "commands": [
+      "me.flint-wallet.payment-methods.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/flint-wallet/payment-methods/{id}/store-setups",
+    "operation_id": "createMeFlintWalletStoreSetup",
+    "classification": "resource",
+    "commands": [
+      "me.flint-wallet.payment-methods.store-setups.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/fulfillment-events",
+    "operation_id": "listMeFulfillmentEvents",
+    "classification": "resource",
+    "commands": [
+      "me.fulfillment-events.list"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/me/fulfillments",
     "operation_id": "listMeFulfillments",
     "classification": "resource",
     "commands": [
       "me.fulfillments.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/gift-cards",
+    "operation_id": "listMeGiftCards",
+    "classification": "resource",
+    "commands": [
+      "me.gift-cards.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/gift-cards",
+    "operation_id": "saveMeGiftCard",
+    "classification": "resource",
+    "commands": [
+      "me.gift-cards"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/me/gift-cards/{gift_card_id}",
+    "operation_id": "removeMeGiftCard",
+    "classification": "resource",
+    "commands": [
+      "me.gift-cards.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/gift-cards/{gift_card_id}",
+    "operation_id": "getMeGiftCard",
+    "classification": "resource",
+    "commands": [
+      "me.gift-cards.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/gift-cards/{gift_card_id}/transactions",
+    "operation_id": "listMeGiftCardTransactions",
+    "classification": "resource",
+    "commands": [
+      "me.gift-cards.transactions.list"
     ]
   },
   {
@@ -2308,11 +2425,11 @@
   },
   {
     "method": "POST",
-    "path": "/v1/me/orders/{order_id}/receipt",
-    "operation_id": "resendMeOrderReceipt",
+    "path": "/v1/me/orders/{order_id}/send-receipt",
+    "operation_id": "sendMeOrderReceipt",
     "classification": "resource",
     "commands": [
-      "me.orders.receipt"
+      "me.orders.send-receipt"
     ]
   },
   {
@@ -2398,7 +2515,7 @@
   },
   {
     "method": "POST",
-    "path": "/v1/me/return-resolutions/{resolution_id}/checkout-session",
+    "path": "/v1/me/return-resolutions/{return_resolution_id}/checkout-session",
     "operation_id": "createMeReturnResolutionCheckoutSession",
     "classification": "resource",
     "commands": [
@@ -2497,6 +2614,24 @@
   },
   {
     "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/payment-retries",
+    "operation_id": "createMeSubscriptionPaymentRetry",
+    "classification": "resource",
+    "commands": [
+      "me.subscriptions.payment-retries.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/subscriptions/{subscription_id}/payment-retries/{subscription_payment_retry_id}",
+    "operation_id": "getMeSubscriptionPaymentRetry",
+    "classification": "resource",
+    "commands": [
+      "me.subscriptions.payment-retries.get"
+    ]
+  },
+  {
+    "method": "POST",
     "path": "/v1/me/subscriptions/{subscription_id}/reactivate",
     "operation_id": "reactivateMeSubscription",
     "classification": "resource",
@@ -2511,6 +2646,24 @@
     "classification": "resource",
     "commands": [
       "me.subscriptions.resume"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/merchant",
+    "operation_id": "getMerchant",
+    "classification": "resource",
+    "commands": [
+      "merchants.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/merchant",
+    "operation_id": "updateMerchant",
+    "classification": "resource",
+    "commands": [
+      "merchants.update"
     ]
   },
   {
@@ -2565,24 +2718,6 @@
     "classification": "resource",
     "commands": [
       "merchant-subscription-invoices.get"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/merchants/{merchant_id}",
-    "operation_id": "getMerchant",
-    "classification": "resource",
-    "commands": [
-      "merchants.get"
-    ]
-  },
-  {
-    "method": "PATCH",
-    "path": "/v1/merchants/{merchant_id}",
-    "operation_id": "updateMerchant",
-    "classification": "resource",
-    "commands": [
-      "merchants.update"
     ]
   },
   {
@@ -2829,6 +2964,15 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/access-links",
+    "operation_id": "createOrderAccessLink",
+    "classification": "resource",
+    "commands": [
+      "orders.access-links.create"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/orders/{order_id}/activities",
     "operation_id": "listOrderActivities",
@@ -2889,15 +3033,6 @@
     "classification": "resource",
     "commands": [
       "orders.discounts"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/orders/{order_id}/discounts/preview",
-    "operation_id": "previewOrderDiscounts",
-    "classification": "resource",
-    "commands": [
-      "orders.discounts.preview"
     ]
   },
   {
@@ -3001,7 +3136,7 @@
   },
   {
     "method": "GET",
-    "path": "/v1/orders/{order_id}/payment-attempts/{payment_attempt_id}",
+    "path": "/v1/orders/{order_id}/payment-attempts/{order_payment_attempt_id}",
     "operation_id": "getOrderPaymentAttempt",
     "classification": "resource",
     "commands": [
@@ -3010,7 +3145,7 @@
   },
   {
     "method": "POST",
-    "path": "/v1/orders/{order_id}/payment-attempts/{payment_attempt_id}/cancel",
+    "path": "/v1/orders/{order_id}/payment-attempts/{order_payment_attempt_id}/cancel",
     "operation_id": "cancelOrderPaymentAttempt",
     "classification": "resource",
     "commands": [
@@ -3042,15 +3177,6 @@
     "classification": "resource",
     "commands": [
       "orders.payment-intents.capture"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/orders/{order_id}/receipt",
-    "operation_id": "resendOrderReceipt",
-    "classification": "resource",
-    "commands": [
-      "orders.receipt"
     ]
   },
   {
@@ -3640,6 +3766,15 @@
   },
   {
     "method": "GET",
+    "path": "/v1/promotion-codes",
+    "operation_id": "listPromotionCodes",
+    "classification": "resource",
+    "commands": [
+      "promotion-codes.list"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/promotions",
     "operation_id": "listPromotions",
     "classification": "resource",
@@ -3654,15 +3789,6 @@
     "classification": "resource",
     "commands": [
       "promotions.create"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/promotions/by-code/{code}",
-    "operation_id": "resolvePromotionCode",
-    "classification": "resource",
-    "commands": [
-      "promotions.by-code.get"
     ]
   },
   {
@@ -3690,15 +3816,6 @@
     "classification": "resource",
     "commands": [
       "promotions.update"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/promotions/{promotion_id}/codes",
-    "operation_id": "listPromotionCodes",
-    "classification": "resource",
-    "commands": [
-      "promotions.codes.list"
     ]
   },
   {
@@ -4126,6 +4243,15 @@
   },
   {
     "method": "POST",
+    "path": "/v1/returns/{return_id}/access-links",
+    "operation_id": "createReturnAccessLink",
+    "classification": "resource",
+    "commands": [
+      "returns.access-links.create"
+    ]
+  },
+  {
+    "method": "POST",
     "path": "/v1/returns/{return_id}/cancel",
     "operation_id": "cancelReturn",
     "classification": "resource",
@@ -4467,6 +4593,15 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/settings/custom-domains/{domain_type}/validate",
+    "operation_id": "validateCustomDomain",
+    "classification": "resource",
+    "commands": [
+      "settings.custom-domains.validate"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/settings/effective",
     "operation_id": "getEffectiveSettings",
@@ -4540,7 +4675,7 @@
   },
   {
     "method": "DELETE",
-    "path": "/v1/subscription-plans/{plan_id}",
+    "path": "/v1/subscription-plans/{subscription_plan_id}",
     "operation_id": "deleteSubscriptionPlan",
     "classification": "resource",
     "commands": [
@@ -4549,7 +4684,7 @@
   },
   {
     "method": "GET",
-    "path": "/v1/subscription-plans/{plan_id}",
+    "path": "/v1/subscription-plans/{subscription_plan_id}",
     "operation_id": "getSubscriptionPlan",
     "classification": "resource",
     "commands": [
@@ -4558,7 +4693,7 @@
   },
   {
     "method": "PATCH",
-    "path": "/v1/subscription-plans/{plan_id}",
+    "path": "/v1/subscription-plans/{subscription_plan_id}",
     "operation_id": "updateSubscriptionPlan",
     "classification": "resource",
     "commands": [
@@ -4599,6 +4734,15 @@
     "classification": "resource",
     "commands": [
       "subscriptions.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/access-links",
+    "operation_id": "createSubscriptionAccessLink",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.access-links.create"
     ]
   },
   {

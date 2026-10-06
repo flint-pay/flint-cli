@@ -314,8 +314,8 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	if used("confirm") && !confirmApplies {
 		return usageError("UNSUPPORTED_FLAG", "--confirm applies only to sensitive or destructive mutations.", "confirm")
 	}
-	if used("input") && !cmd.Mutation && !rawMutation {
-		return usageError("UNSUPPORTED_FLAG", "--input applies only to mutations.", "input")
+	if used("input") && !cmd.Mutation && !rawMutation && cmd.InputSchema == "" {
+		return usageError("UNSUPPORTED_FLAG", "--input requires a command with a request body.", "input")
 	}
 	if len(o.WaitFor) > 0 && !cmd.Supports.WaitFor {
 		return usageError("UNSUPPORTED_FLAG", "--wait-for applies only to single-resource get commands.", "wait-for")

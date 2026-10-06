@@ -94,7 +94,8 @@ func TestEveryResourceIDArgumentDeclaresHistoryReference(t *testing.T) {
 		"cursor":                             "whev_",
 		"customer":                           "cus_",
 		"customer_id":                        "cus_",
-		"customer_verification_id":           "cscv_",
+		"customer_verification_id":           "cver_",
+		"customer_verification":              "cver_",
 		"gift_card_id":                       "gc_",
 		"gift_card_load_id":                  "gcl_",
 		"gift_card_notification_id":          "gcn_",
@@ -123,6 +124,9 @@ func TestEveryResourceIDArgumentDeclaresHistoryReference(t *testing.T) {
 	for _, command := range NewRegistry().Commands {
 		for _, argument := range command.Arguments {
 			wantPrefix, isResourceID := resourcePrefixesByName[argument.Name]
+			if argument.Name == "customer_verification_id" && command.OperationID == "confirmCheckoutSessionCustomerVerification" {
+				wantPrefix = "cscv_"
+			}
 			if argument.Name == "order" && (argument.BodyPath == "order_id" || argument.Query == "order_id") {
 				wantPrefix, isResourceID = "ord_", true
 			}

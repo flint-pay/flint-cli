@@ -181,7 +181,7 @@ func publicAPIArguments(
 			Name:        name,
 			Type:        openAPIArgumentType(typeName, schema),
 			Description: description,
-			IDPrefix:    publicResourceIDPrefix(name),
+			IDPrefix:    publicResourceIDPrefix(name, operation.OperationID),
 		}
 		if argument.IDPrefix != "" || isPublicResourceID(name) {
 			argument.AcceptsHistoryRef = true
@@ -255,7 +255,7 @@ var publicResourceIDPrefixes = map[string]string{
 	"customer_deletion_request_id":       "cdel_",
 	"customer_id":                        "cus_",
 	"customer_session_id":                "cses_",
-	"customer_verification_id":           "cscv_",
+	"customer_verification_id":           "cver_",
 	"delivery_location_set_id":           "dls_",
 	"delivery_location_set_revision_id":  "dlsr_",
 	"delivery_method_id":                 "dmet_",
@@ -350,7 +350,12 @@ var publicResourceIDPrefixes = map[string]string{
 	"webhook_event_id":                   "whev_",
 }
 
-func publicResourceIDPrefix(name string) string { return publicResourceIDPrefixes[name] }
+func publicResourceIDPrefix(name, operationID string) string {
+	if name == "customer_verification_id" && operationID == "confirmCheckoutSessionCustomerVerification" {
+		return "cscv_"
+	}
+	return publicResourceIDPrefixes[name]
+}
 
 func requestSchemaName(requestBody map[string]any) string {
 	_, schema := requestContentSchema(requestBody)

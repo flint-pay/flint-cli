@@ -1187,7 +1187,7 @@ func TestPayOrderActionInputAndTokenShortcut(t *testing.T) {
 		`{"action":"pay","payment_source":{"confirmation_token":"ctoken_test"}}`,
 		`{"action":"confirm_payment_intents","payment_intents":[{"payment_intent_id":"pi_test"}],"completion_behavior":"partial_payment"}`,
 		`{"action":"setup","setup_payment_source":{"token":"src_test"}}`,
-		`{"action":"resume","payment_attempt_id":"opat_test"}`,
+		`{"action":"resume","order_payment_attempt_id":"opat_test"}`,
 	} {
 		t.Run(body, func(t *testing.T) {
 			app, _, _ := testApp(t, "")
@@ -1253,7 +1253,7 @@ func TestPayOrderMCPActionBranchesAcceptCLIArguments(t *testing.T) {
 		`{"action":"pay"}`,
 		`{"action":"confirm_payment_intents","payment_intents":[{"payment_intent_id":"pi_test"}]}`,
 		`{"action":"setup","setup_payment_source":{"token":"src_test"}}`,
-		`{"action":"resume","payment_attempt_id":"opat_test"}`,
+		`{"action":"resume","order_payment_attempt_id":"opat_test"}`,
 	} {
 		var arguments map[string]any
 		if err := json.Unmarshal([]byte(body), &arguments); err != nil {
