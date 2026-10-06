@@ -368,7 +368,7 @@ func renderDoctorHuman(w io.Writer, value any) {
 }
 
 func renderCheckoutHuman(w io.Writer, value any, now time.Time) {
-	if url, ok := firstStringAt(value, "data.hosted_checkout.url", "data.url", "data.checkout_session.url", "data.checkout_session.checkout_url"); ok {
+	if url, ok := firstStringAt(value, "data.url", "data.checkout_session.url", "data.checkout_session.checkout_url"); ok {
 		fmt.Fprintln(w, url)
 	}
 	m, ok := value.(map[string]any)
@@ -382,11 +382,6 @@ func renderCheckoutHuman(w io.Writer, value any, now time.Time) {
 	remaining := maps.Clone(data)
 	delete(remaining, "url")
 	delete(remaining, "checkout_url")
-	if hosted, ok := remaining["hosted_checkout"].(map[string]any); ok {
-		hosted = maps.Clone(hosted)
-		delete(hosted, "url")
-		remaining["hosted_checkout"] = hosted
-	}
 	if checkoutSession, ok := remaining["checkout_session"].(map[string]any); ok {
 		checkoutSession = maps.Clone(checkoutSession)
 		delete(checkoutSession, "url")
