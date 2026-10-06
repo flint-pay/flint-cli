@@ -386,6 +386,90 @@ func TestRequiredQueryCannotBeSuppliedByInputFile(t *testing.T) {
 	}
 }
 
+func TestCustomerFulfillmentEventsRequireOrderBeforeRequest(t *testing.T) {
+	for _, scenario := range []struct {
+		name      string
+		flags     []string
+		withOrder bool
+	}{
+		{name: "missing order"},
+		{name: "other filter", flags: []string{"--fulfillment-id", "ful_test"}},
+		{name: "order scoped", flags: []string{"--order-id", "ord_test", "--fulfillment-id", "ful_test"}, withOrder: true},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			calls := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				if r.Method != http.MethodGet || r.URL.Path != "/v1/me/fulfillment-events" {
+					t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+				}
+				if got := r.Header.Get("Authorization"); got != "Bearer flint_cses_test" {
+					t.Error("customer bearer authentication missing")
+				}
+				if got := r.URL.Query().Get("order_id"); got != "ord_test" {
+					t.Errorf("order_id=%q", got)
+				}
+				if got := r.URL.Query().Get("fulfillment_id"); got != "ful_test" {
+					t.Errorf("fulfillment_id=%q", got)
+				}
+				fmt.Fprint(w, `{"data":[],"has_more":false}`)
+			}))
+			defer server.Close()
+			app, out, stderr := testApp(t, server.URL)
+			t.Setenv("FLINT_API_KEY", "")
+			t.Setenv("FLINT_ACCESS_TOKEN", "")
+			app.LoadCredential = func(string) (string, error) {
+				t.Error("unexpected keychain lookup")
+				return "", nil
+			}
+			if scenario.withOrder {
+				t.Setenv("FLINT_ACCESS_TOKEN", "flint_cses_test")
+			}
+			args := append([]string{"me", "fulfillment-events", "list"}, scenario.flags...)
+			exit := app.Run(append(args, "--output", "json"))
+			if scenario.withOrder {
+				if exit != ExitOK || calls != 1 || stderr.Len() != 0 {
+					t.Fatalf("exit=%d calls=%d stdout=%s stderr=%s", exit, calls, out, stderr)
+				}
+				return
+			}
+			var result struct {
+				Error struct {
+					Code  string `json:"code"`
+					Param string `json:"param"`
+				} `json:"error"`
+			}
+			if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+				t.Fatal(err)
+			}
+			if exit != ExitUsage || calls != 0 || result.Error.Code != "MISSING_REQUIRED_ARGUMENT" || result.Error.Param != "order_id" {
+				t.Fatalf("exit=%d calls=%d stdout=%s stderr=%s", exit, calls, out, stderr)
+			}
+		})
+	}
+}
+
+func TestFulfillmentEventInputSchemasPreserveCustomerOrderScope(t *testing.T) {
+	for _, scenario := range []struct {
+		command   string
+		arguments map[string]any
+		valid     bool
+	}{
+		{"me.fulfillment-events.list", map[string]any{}, false},
+		{"me.fulfillment-events.list", map[string]any{"fulfillment_id": "ful_test"}, false},
+		{"me.fulfillment-events.list", map[string]any{"order_id": "ord_test"}, true},
+		{"fulfillment-events.list", map[string]any{}, true},
+	} {
+		command, ok := NewRegistry().ByName(scenario.command)
+		if !ok {
+			t.Fatalf("command %s missing", scenario.command)
+		}
+		if err := validateMCPArguments(command, scenario.arguments); (err == nil) != scenario.valid {
+			t.Errorf("%s arguments=%v valid=%t: %v", scenario.command, scenario.arguments, scenario.valid, err)
+		}
+	}
+}
+
 func TestReportRedirectDownloadsWithoutForwardingCredentials(t *testing.T) {
 	storageCalls := 0
 	storage := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
