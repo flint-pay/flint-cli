@@ -117,3 +117,61 @@ func TestOAuthTokenOutputSchemaAcceptsPartnerAndCLITokens(t *testing.T) {
 		assertMCPOutputMatchesSchema(t, schema, response)
 	}
 }
+
+func TestCheckoutExpirationInputBoundaries(t *testing.T) {
+	for _, target := range []struct {
+		command string
+		field   string
+		body    map[string]any
+	}{
+		{"checkout-sessions.create", "expiration.expires_in_seconds", map[string]any{"order_id": "ord_test"}},
+		{"settings.update", "checkout.default_expires_in_seconds", map[string]any{}},
+	} {
+		t.Run(target.command, func(t *testing.T) {
+			command, ok := NewRegistry().ByName(target.command)
+			if !ok {
+				t.Fatal("command missing")
+			}
+			if err := validateMCPArguments(command, target.body); err != nil {
+				t.Fatalf("optional expiration rejected: %v", err)
+			}
+			for _, seconds := range []int{59, 60, 86400, 86401} {
+				t.Run(fmt.Sprint(seconds), func(t *testing.T) {
+					body := deepCopyMap(target.body)
+					if err := setBodyPath(body, target.field, float64(seconds)); err != nil {
+						t.Fatal(err)
+					}
+					valid := seconds >= 60 && seconds <= 86400
+					if err := validateMCPArguments(command, body); (err == nil) != valid {
+						t.Fatalf("expiration %d valid=%t: %v", seconds, valid, err)
+					}
+					if !valid {
+						return
+					}
+					input, err := json.Marshal(body)
+					if err != nil {
+						t.Fatal(err)
+					}
+					app, _, _ := testApp(t, "")
+					app.Stdin = strings.NewReader(string(input))
+					argv := append(append([]string{}, command.Path[1:]...), "--input", "-")
+					_, options, _, parseErr := parseInvocation(app.Registry, argv)
+					if parseErr != nil {
+						t.Fatal(parseErr)
+					}
+					request, prepareErr := app.prepareRequest(context.Background(), command, options, ResolvedConfig{}, "", "")
+					if prepareErr != nil {
+						t.Fatal(prepareErr)
+					}
+					var sent map[string]any
+					if err := json.Unmarshal(request.Body, &sent); err != nil {
+						t.Fatal(err)
+					}
+					if got, _ := lookupPath(sent, target.field); got != float64(seconds) {
+						t.Fatalf("expiration changed in request: %v", got)
+					}
+				})
+			}
+		})
+	}
+}
