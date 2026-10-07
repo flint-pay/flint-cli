@@ -1124,10 +1124,17 @@ func TestSignupIssuesScopedSandboxKeyAndStoresOnlyInCredentialStore(t *testing.T
 
 func testApp(t *testing.T, baseURL string) (*App, *bytes.Buffer, *bytes.Buffer) {
 	t.Helper()
+	return testAppFromTemplate(t, baseURL, New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"}))
+}
+
+// Exhaustive matrices reuse a pristine app's read-only registry. Each case
+// still gets independent configuration, streams, and credential hooks.
+func testAppFromTemplate(t *testing.T, baseURL string, template *App) (*App, *bytes.Buffer, *bytes.Buffer) {
+	t.Helper()
 	t.Setenv("FLINT_API_KEY", "flint_test_test")
 	t.Setenv("FLINT_BASE_URL", baseURL)
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
-	app := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
+	app := *template
 	app.Stdout = stdout
 	app.Stderr = stderr
 	app.Stdin = strings.NewReader("")
@@ -1137,7 +1144,7 @@ func testApp(t *testing.T, baseURL string) (*App, *bytes.Buffer, *bytes.Buffer) 
 	app.LoadCredential = func(string) (string, error) { return "", nil }
 	app.StoreCredential = func(string, string) error { return nil }
 	app.DeleteCredential = func(string) error { return nil }
-	return app, stdout, stderr
+	return &app, stdout, stderr
 }
 func authContextJSON(environment string) string {
 	body, _ := json.Marshal(map[string]any{

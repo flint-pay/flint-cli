@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/flint-pay/flint-cli/internal/cli"
@@ -21,6 +22,7 @@ import (
 
 func TestBuiltCLIExecutesEveryRemoteCommand(t *testing.T) {
 	bin := buildCLI(t)
+	workers := make(chan struct{}, 2)
 	scopes := allAPIOperationScopes(t)
 	for _, command := range cli.NewRegistry().Commands {
 		command := command
@@ -28,6 +30,9 @@ func TestBuiltCLIExecutesEveryRemoteCommand(t *testing.T) {
 			continue
 		}
 		t.Run(command.CanonicalName, func(t *testing.T) {
+			t.Parallel()
+			workers <- struct{}{}
+			defer func() { <-workers }()
 			environment := "sandbox"
 			credential := "flint_test_exhaustive"
 			if strings.HasPrefix(command.CanonicalName, "sandboxes.") {
@@ -123,9 +128,13 @@ func allAPIOperationScopes(t *testing.T) []string {
 func TestBuiltCLIExecutesEveryCommandAndAliasHelp(t *testing.T) {
 	bin := buildCLI(t)
 	registry := cli.NewRegistry()
+	workers := make(chan struct{}, 2)
 	for _, command := range registry.Commands {
 		command := command
 		t.Run(command.CanonicalName, func(t *testing.T) {
+			t.Parallel()
+			workers <- struct{}{}
+			defer func() { <-workers }()
 			assertBuiltCLIHelp(t, bin, command.Path[1:], command)
 			for index, aliasPath := range command.AliasPaths {
 				t.Run("alias-"+command.Aliases[index], func(t *testing.T) {
@@ -318,17 +327,44 @@ func assertBuiltCLIHelp(t *testing.T, bin string, path []string, command *cli.Co
 	}
 }
 
+var builtCLI struct {
+	once   sync.Once
+	dir    string
+	path   string
+	output []byte
+	err    error
+}
+
+func TestMain(m *testing.M) {
+	exit := m.Run()
+	if builtCLI.dir != "" {
+		if err := os.RemoveAll(builtCLI.dir); err != nil {
+			fmt.Fprintln(os.Stderr, "remove built CLI fixture:", err)
+			exit = 1
+		}
+	}
+	os.Exit(exit)
+}
+
 func buildCLI(t *testing.T) string {
 	t.Helper()
-	name := "flint"
-	if runtime.GOOS == "windows" {
-		name += ".exe"
+	// Build lazily inside the first test so build time remains part of the
+	// package deadline. Every invocation gets its own process and config.
+	builtCLI.once.Do(func() {
+		builtCLI.dir, builtCLI.err = os.MkdirTemp("", "flint-e2e-")
+		if builtCLI.err != nil {
+			return
+		}
+		name := "flint"
+		if runtime.GOOS == "windows" {
+			name += ".exe"
+		}
+		builtCLI.path = filepath.Join(builtCLI.dir, name)
+		build := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-o", builtCLI.path, "../cmd/flint")
+		builtCLI.output, builtCLI.err = build.CombinedOutput()
+	})
+	if builtCLI.err != nil {
+		t.Fatalf("build CLI: %v\n%s", builtCLI.err, builtCLI.output)
 	}
-	bin := filepath.Join(t.TempDir(), name)
-	build := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-o", bin, "../cmd/flint")
-	output, err := build.CombinedOutput()
-	if err != nil {
-		t.Fatalf("build CLI: %v\n%s", err, output)
-	}
-	return bin
+	return builtCLI.path
 }

@@ -22,9 +22,11 @@ import (
 // parser flag without giving it an executable test case must break the suite.
 
 func TestEveryRegisteredCommandAcceptsEveryDeclaredArgument(t *testing.T) {
-	for _, command := range NewRegistry().Commands {
+	registry := NewRegistry()
+	for _, command := range registry.Commands {
 		command := command
 		t.Run(command.CanonicalName, func(t *testing.T) {
+			wantCanonicalName := command.CanonicalName
 			argv := append([]string(nil), command.Path[1:]...)
 			wantPositionals := make([]string, 0)
 			wantFlags := map[string][]string{}
@@ -46,15 +48,15 @@ func TestEveryRegisteredCommandAcceptsEveryDeclaredArgument(t *testing.T) {
 				}
 			}
 
-			parsed, options, help, cliErr := parseInvocation(NewRegistry(), argv)
+			parsed, options, help, cliErr := parseInvocation(registry, argv)
 			if cliErr != nil {
 				t.Fatalf("parseInvocation(%v): %v", argv, cliErr)
 			}
 			if help {
 				t.Fatalf("parseInvocation(%v) unexpectedly requested help", argv)
 			}
-			if parsed.CanonicalName != command.CanonicalName {
-				t.Fatalf("parsed command = %s, want %s", parsed.CanonicalName, command.CanonicalName)
+			if parsed.CanonicalName != wantCanonicalName {
+				t.Fatalf("parsed command = %s, want %s", parsed.CanonicalName, wantCanonicalName)
 			}
 			if !slices.Equal(options.Positionals, wantPositionals) {
 				t.Fatalf("positionals = %#v, want %#v", options.Positionals, wantPositionals)
@@ -166,8 +168,9 @@ func TestEveryResourcePrefixHasAHistoryQualifier(t *testing.T) {
 }
 
 func TestEveryHistoryReferenceArgumentResolvesAndMissingFails(t *testing.T) {
+	template := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
 	resolved := ResolvedConfig{ProfileName: "default", Environment: "sandbox"}
-	for _, command := range NewRegistry().Commands {
+	for _, command := range template.Registry.Commands {
 		for _, argument := range command.Arguments {
 			if !argument.AcceptsHistoryRef {
 				continue
@@ -189,7 +192,7 @@ func TestEveryHistoryReferenceArgumentResolvesAndMissingFails(t *testing.T) {
 			for _, reference := range references {
 				name := command.CanonicalName + "/" + argument.Name + "/" + strings.TrimPrefix(reference, "@last")
 				t.Run(name, func(t *testing.T) {
-					app, _, _ := testApp(t, "")
+					app, _, _ := testAppFromTemplate(t, "", template)
 					if err := app.saveHistory(History{Entries: []HistoryEntry{{
 						ID:           historyID,
 						ResourceType: resourceTypeForPrefix(argument.IDPrefix),
@@ -201,7 +204,7 @@ func TestEveryHistoryReferenceArgumentResolvesAndMissingFails(t *testing.T) {
 						t.Fatal(err)
 					}
 
-					options := historyReferenceOptions(t, command, argument, reference)
+					options := historyReferenceOptions(t, template.Registry, command, argument, reference)
 					request, cliErr := app.prepareRequest(context.Background(), command, options, resolved, "flint_test_test", "")
 					if cliErr != nil {
 						t.Fatalf("prepareRequest(%s): %v", reference, cliErr)
@@ -214,8 +217,8 @@ func TestEveryHistoryReferenceArgumentResolvesAndMissingFails(t *testing.T) {
 						t.Errorf("prepared request leaked history reference: %s", serialized)
 					}
 
-					emptyApp, _, _ := testApp(t, "")
-					missingOptions := historyReferenceOptions(t, command, argument, reference)
+					emptyApp, _, _ := testAppFromTemplate(t, "", template)
+					missingOptions := historyReferenceOptions(t, template.Registry, command, argument, reference)
 					_, missingErr := emptyApp.prepareRequest(context.Background(), command, missingOptions, resolved, "flint_test_test", "")
 					if missingErr == nil || missingErr.Code != "HISTORY_REFERENCE_NOT_FOUND" || missingErr.ExitCode != ExitUsage {
 						t.Fatalf("missing history error = %#v, want HISTORY_REFERENCE_NOT_FOUND exit %d", missingErr, ExitUsage)
@@ -257,11 +260,13 @@ func TestOrderPaymentHistoryMapKeyResolves(t *testing.T) {
 }
 
 func TestEveryHelpExampleParsesAsItsDocumentedCommand(t *testing.T) {
-	for _, command := range NewRegistry().Commands {
+	registry := NewRegistry()
+	for _, command := range registry.Commands {
 		command := command
 		for index, example := range command.Examples {
 			example := example
 			t.Run(fmt.Sprintf("%s/%d", command.CanonicalName, index), func(t *testing.T) {
+				wantCanonicalName := command.CanonicalName
 				fields := strings.Fields(example)
 				if len(fields) == 0 || fields[0] != "flint" {
 					t.Fatalf("example is not a flint invocation: %q", example)
@@ -273,12 +278,12 @@ func TestEveryHelpExampleParsesAsItsDocumentedCommand(t *testing.T) {
 					}
 					argv = append(argv, fields[i])
 				}
-				parsed, _, _, cliErr := parseInvocation(NewRegistry(), argv)
+				parsed, _, _, cliErr := parseInvocation(registry, argv)
 				if cliErr != nil {
 					t.Fatalf("example %q does not parse: %v", example, cliErr)
 				}
-				if parsed.CanonicalName != command.CanonicalName {
-					t.Fatalf("example %q resolves to %s, want %s", example, parsed.CanonicalName, command.CanonicalName)
+				if parsed.CanonicalName != wantCanonicalName {
+					t.Fatalf("example %q resolves to %s, want %s", example, parsed.CanonicalName, wantCanonicalName)
 				}
 			})
 		}
@@ -286,7 +291,8 @@ func TestEveryHelpExampleParsesAsItsDocumentedCommand(t *testing.T) {
 }
 
 func TestEveryAliasExecutesLikeItsCanonicalCommand(t *testing.T) {
-	for _, command := range NewRegistry().Commands {
+	template := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
+	for _, command := range template.Registry.Commands {
 		for index, aliasPath := range command.AliasPaths {
 			if index >= len(command.Aliases) {
 				t.Fatalf("%s has an alias path without an alias name", command.CanonicalName)
@@ -319,7 +325,7 @@ func TestEveryAliasExecutesLikeItsCanonicalCommand(t *testing.T) {
 				aliasArgs = append(aliasArgs, canonicalArgs[canonicalPrefixLength:]...)
 
 				run := func(argv []string) (int, string, string) {
-					app, stdout, stderr := testApp(t, server.URL)
+					app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
 					app.Stdin = strings.NewReader(`{"input_marker":"present"}`)
 					exit := app.Run(argv)
 					return exit, stdout.String(), stderr.String()
@@ -339,6 +345,7 @@ func TestEveryAliasExecutesLikeItsCanonicalCommand(t *testing.T) {
 }
 
 func TestEveryGeneratedCommandSchemaCompiles(t *testing.T) {
+	workers := make(chan struct{}, 2)
 	for _, command := range NewRegistry().Commands {
 		for _, input := range []bool{true, false} {
 			direction := "output"
@@ -346,6 +353,9 @@ func TestEveryGeneratedCommandSchemaCompiles(t *testing.T) {
 				direction = "input"
 			}
 			t.Run(command.CanonicalName+"/"+direction, func(t *testing.T) {
+				t.Parallel()
+				workers <- struct{}{}
+				defer func() { <-workers }()
 				schema, cliErr := schemaForCommand(command, input)
 				if cliErr != nil {
 					t.Fatal(cliErr)
@@ -372,6 +382,7 @@ func TestEveryGeneratedCommandSchemaCompiles(t *testing.T) {
 }
 
 func TestEveryParserFlagHasPositiveCase(t *testing.T) {
+	registry := NewRegistry()
 	cases := map[string][]string{
 		"context":         {"auth", "status", "--context", "ctx_test"},
 		"all":             {"customers", "list", "--all"},
@@ -413,7 +424,7 @@ func TestEveryParserFlagHasPositiveCase(t *testing.T) {
 			t.Errorf("global parser flag --%s has no positive test case", flag)
 			continue
 		}
-		_, options, help, cliErr := parseInvocation(NewRegistry(), argv)
+		_, options, help, cliErr := parseInvocation(registry, argv)
 		if cliErr != nil {
 			t.Errorf("--%s positive case %v failed: %v", flag, argv, cliErr)
 			continue
@@ -433,7 +444,8 @@ func TestEveryParserFlagHasPositiveCase(t *testing.T) {
 }
 
 func TestEveryAdvertisedExecutionControlIsAcceptedByItsCommand(t *testing.T) {
-	for _, command := range NewRegistry().Commands {
+	registry := NewRegistry()
+	for _, command := range registry.Commands {
 		command := command
 		t.Run(command.CanonicalName, func(t *testing.T) {
 			schema, cliErr := schemaForCommand(command, true)
@@ -527,7 +539,7 @@ func TestEveryAdvertisedExecutionControlIsAcceptedByItsCommand(t *testing.T) {
 					default:
 						t.Fatalf("advertised execution control %q has no parser fixture", control)
 					}
-					if _, _, _, parseErr := parseInvocation(NewRegistry(), argv); parseErr != nil {
+					if _, _, _, parseErr := parseInvocation(registry, argv); parseErr != nil {
 						t.Fatalf("advertised control %q is rejected for %s: argv=%v error=%v", control, command.CanonicalName, argv, parseErr)
 					}
 				})
@@ -537,6 +549,7 @@ func TestEveryAdvertisedExecutionControlIsAcceptedByItsCommand(t *testing.T) {
 }
 
 func TestEveryBooleanFlagAcceptsExplicitTrueAndFalse(t *testing.T) {
+	registry := NewRegistry()
 	cases := map[string][]string{
 		"new-session": {"auth", "login"},
 		"all":         {"customers", "list"},
@@ -567,7 +580,7 @@ func TestEveryBooleanFlagAcceptsExplicitTrueAndFalse(t *testing.T) {
 		}
 		for _, value := range []string{"true", "false"} {
 			argv := append(append([]string(nil), base...), "--"+flag+"="+value)
-			_, options, _, cliErr := parseInvocation(NewRegistry(), argv)
+			_, options, _, cliErr := parseInvocation(registry, argv)
 			if cliErr != nil {
 				t.Errorf("%v failed: %v", argv, cliErr)
 				continue
@@ -580,6 +593,7 @@ func TestEveryBooleanFlagAcceptsExplicitTrueAndFalse(t *testing.T) {
 }
 
 func TestParserFlagValueDomainsAndBoundaries(t *testing.T) {
+	registry := NewRegistry()
 	valid := [][]string{
 		{"version", "--output", "human"},
 		{"version", "--output", "json"},
@@ -601,7 +615,7 @@ func TestParserFlagValueDomainsAndBoundaries(t *testing.T) {
 		{"customers", "get", "cus_test", "--expand", "default_payment_method"},
 	}
 	for _, argv := range valid {
-		if _, _, _, cliErr := parseInvocation(NewRegistry(), argv); cliErr != nil {
+		if _, _, _, cliErr := parseInvocation(registry, argv); cliErr != nil {
 			t.Errorf("valid argv %v failed: %v", argv, cliErr)
 		}
 	}
@@ -633,7 +647,7 @@ func TestParserFlagValueDomainsAndBoundaries(t *testing.T) {
 		{argv: []string{"version", "--field", "data", "--jq", "."}, code: "CONFLICTING_FLAGS"},
 	}
 	for _, test := range invalid {
-		_, _, _, cliErr := parseInvocation(NewRegistry(), test.argv)
+		_, _, _, cliErr := parseInvocation(registry, test.argv)
 		if cliErr == nil || cliErr.Code != test.code {
 			t.Errorf("invalid argv %v error = %#v, want %s", test.argv, cliErr, test.code)
 		}
@@ -928,8 +942,9 @@ func (r *countingReader) Read([]byte) (int, error) {
 }
 
 func TestEveryRemoteCommandBuildsAndExecutesARequest(t *testing.T) {
+	template := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
 	fixedNow := time.Date(2026, time.July, 23, 12, 0, 0, 0, time.UTC)
-	for _, command := range NewRegistry().Commands {
+	for _, command := range template.Registry.Commands {
 		command := command
 		if command.Local || command.CanonicalName == "listen" {
 			continue
@@ -965,7 +980,7 @@ func TestEveryRemoteCommandBuildsAndExecutesARequest(t *testing.T) {
 			}))
 			defer server.Close()
 
-			app, stdout, stderr := testApp(t, server.URL)
+			app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
 			app.Now = func() time.Time { return fixedNow }
 			app.Stdin = strings.NewReader(`{"input_marker":"present"}`)
 			argv := exhaustiveRemoteInvocation(command)
@@ -992,13 +1007,14 @@ func TestEveryRemoteCommandBuildsAndExecutesARequest(t *testing.T) {
 }
 
 func TestEveryMutationExecutesClientDryRunWithoutNetwork(t *testing.T) {
-	for _, command := range NewRegistry().Commands {
+	template := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
+	for _, command := range template.Registry.Commands {
 		command := command
 		if !command.Mutation {
 			continue
 		}
 		t.Run(command.CanonicalName, func(t *testing.T) {
-			app, stdout, stderr := testApp(t, "http://127.0.0.1:1")
+			app, stdout, stderr := testAppFromTemplate(t, "http://127.0.0.1:1", template)
 			app.Stdin = strings.NewReader(`{"input_marker":"present"}`)
 			argv := minimalInvocation(command)
 			argv = append(argv, "--dry-run", "client", "--output", "json")
@@ -1029,7 +1045,7 @@ func TestEveryMutationExecutesClientDryRunWithoutNetwork(t *testing.T) {
 	}
 
 	t.Run("raw API mutation", func(t *testing.T) {
-		app, stdout, stderr := testApp(t, "http://127.0.0.1:1")
+		app, stdout, stderr := testAppFromTemplate(t, "http://127.0.0.1:1", template)
 		app.Stdin = strings.NewReader(`{"name":"Dry Run"}`)
 		exit := app.Run([]string{
 			"api", "post", "/v1/customers",
@@ -1048,7 +1064,8 @@ func TestEveryMutationExecutesClientDryRunWithoutNetwork(t *testing.T) {
 }
 
 func TestEveryDestructiveMutationExecutesPreviewWithoutMutation(t *testing.T) {
-	for _, command := range NewRegistry().Commands {
+	template := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
+	for _, command := range template.Registry.Commands {
 		command := command
 		if !command.Mutation || !command.Destructive {
 			continue
@@ -1069,7 +1086,7 @@ func TestEveryDestructiveMutationExecutesPreviewWithoutMutation(t *testing.T) {
 				fmt.Fprint(w, `{"data":{}}`)
 			}))
 			defer server.Close()
-			app, stdout, stderr := testApp(t, server.URL)
+			app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
 			argv := append(minimalInvocation(command), "--preview", "--output", "json")
 			if environment == "live" {
 				argv = append(argv, "--live")
@@ -1109,7 +1126,7 @@ func TestEveryDestructiveMutationExecutesPreviewWithoutMutation(t *testing.T) {
 			fmt.Fprint(w, `{"data":{}}`)
 		}))
 		defer server.Close()
-		app, stdout, stderr := testApp(t, server.URL)
+		app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
 		exit := app.Run([]string{"api", "delete", "/v1/webhook-endpoints/whep_test", "--preview", "--output", "json"})
 		if exit != ExitOK || stderr.Len() != 0 || endpointCalls != 0 {
 			t.Fatalf("exit=%d calls=%d stdout=%s stderr=%s", exit, endpointCalls, stdout, stderr)
@@ -1118,7 +1135,8 @@ func TestEveryDestructiveMutationExecutesPreviewWithoutMutation(t *testing.T) {
 }
 
 func TestEveryWaitCapableCommandExecutesMatchingWait(t *testing.T) {
-	for _, command := range NewRegistry().Commands {
+	template := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
+	for _, command := range template.Registry.Commands {
 		command := command
 		if !command.Supports.WaitFor {
 			continue
@@ -1139,7 +1157,7 @@ func TestEveryWaitCapableCommandExecutesMatchingWait(t *testing.T) {
 				fmt.Fprint(w, `{"data":{"resource_id":"res_test","status":"succeeded"}}`)
 			}))
 			defer server.Close()
-			app, stdout, stderr := testApp(t, server.URL)
+			app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
 			argv := append(minimalInvocation(command),
 				"--wait-for", "status=succeeded",
 				"--for", "100ms",
@@ -1158,7 +1176,8 @@ func TestEveryWaitCapableCommandExecutesMatchingWait(t *testing.T) {
 }
 
 func TestEveryPaginatedCommandExecutesAllPages(t *testing.T) {
-	for _, command := range NewRegistry().Commands {
+	template := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
+	for _, command := range template.Registry.Commands {
 		command := command
 		if !command.Supports.Pagination || command.Stream {
 			continue
@@ -1203,7 +1222,7 @@ func TestEveryPaginatedCommandExecutesAllPages(t *testing.T) {
 				_ = json.NewEncoder(w).Encode(map[string]any{"data": data, "next_page_token": nextToken})
 			}))
 			defer server.Close()
-			app, stdout, stderr := testApp(t, server.URL)
+			app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
 			argv := append(minimalInvocation(command),
 				"--page-size", "1",
 				"--all",
@@ -1234,7 +1253,8 @@ func TestEveryPaginatedCommandExecutesAllPages(t *testing.T) {
 }
 
 func TestEveryLocalCommandExecutes(t *testing.T) {
-	for _, command := range NewRegistry().Commands {
+	template := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
+	for _, command := range template.Registry.Commands {
 		command := command
 		if !command.Local {
 			continue
@@ -1275,7 +1295,7 @@ func TestEveryLocalCommandExecutes(t *testing.T) {
 				fmt.Fprint(w, exhaustiveAuthContextJSON("sandbox"))
 			}))
 			defer server.Close()
-			app, stdout, stderr := testApp(t, server.URL)
+			app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
 			argv := append([]string(nil), command.Path[1:]...)
 
 			switch command.CanonicalName {
@@ -1469,9 +1489,9 @@ func minimalInvocation(command *Command) []string {
 	return argv
 }
 
-func historyReferenceOptions(t *testing.T, command *Command, argument Arg, reference string) Options {
+func historyReferenceOptions(t *testing.T, registry *Registry, command *Command, argument Arg, reference string) Options {
 	t.Helper()
-	_, options, _, cliErr := parseInvocation(NewRegistry(), minimalInvocation(command))
+	_, options, _, cliErr := parseInvocation(registry, minimalInvocation(command))
 	if cliErr != nil {
 		t.Fatalf("parse minimal %s invocation: %v", command.CanonicalName, cliErr)
 	}
