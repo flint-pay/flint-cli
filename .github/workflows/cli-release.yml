@@ -177,21 +177,121 @@ jobs:
         run: |
           (cd dist && sha256sum --check checksums.txt)
           node scripts/package-npm.mjs
-          for package in dist/npm/*; do
-            npm pack "$package" --dry-run --json >/dev/null
-          done
+          node scripts/pack-npm.mjs
           node scripts/render-homebrew-formula.mjs \
             "$FLINT_CLI_VERSION" \
             "$GITHUB_REF_NAME" \
-            dist/checksums.txt >/tmp/flint.rb
-          test -s /tmp/flint.rb
-          docker build \
-            --file Dockerfile \
-            --build-arg VERSION="$FLINT_CLI_VERSION" \
-            --build-arg COMMIT="$GITHUB_SHA" \
-            --build-arg BUILD_DATE="${{ needs.release.outputs.build_date }}" \
-            --build-arg SCHEMA_HASH="${{ needs.release.outputs.schema_hash }}" \
-            .
+            dist/checksums.txt >dist/flint.rb
+          test -s dist/flint.rb
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: flint-cli-channels
+          path: |
+            dist/npm-packages/*.tgz
+            dist/flint.rb
+          if-no-files-found: error
+
+  container-build:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Prepare the OCI export directory
+        run: mkdir -p "$RUNNER_TEMP/container"
+      - name: Build the reviewable container without registry writes
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+          outputs: type=oci,dest=${{ runner.temp }}/container/container.oci.tar
+          tags: ghcr.io/flint-pay/flint-cli:v${{ needs.release.outputs.cli_version }}
+          provenance: mode=max
+          sbom: true
+          build-args: |
+            VERSION=${{ needs.release.outputs.cli_version }}
+            COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ needs.release.outputs.build_date }}
+            SCHEMA_HASH=${{ needs.release.outputs.schema_hash }}
+      - name: Record the exported OCI manifest digest
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes skopeo
+          skopeo inspect --raw "oci-archive:$RUNNER_TEMP/container/container.oci.tar" > "$RUNNER_TEMP/container/manifest.json"
+          printf 'sha256:%s\n' "$(sha256sum "$RUNNER_TEMP/container/manifest.json" | awk '{print $1}')" > "$RUNNER_TEMP/container/container-digest.txt"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: flint-cli-container
+          path: |
+            ${{ runner.temp }}/container/container.oci.tar
+            ${{ runner.temp }}/container/container-digest.txt
+          if-no-files-found: error
+
+  frozen-compare:
+    needs: [release, channel-preflight, install-preflight, container-build]
+    runs-on: ubuntu-latest
+    outputs:
+      review_sha256: ${{ steps.compare.outputs.review_sha256 }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "26.7.0"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: flint-cli-release
+          path: dist
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: flint-cli-channels
+          path: dist
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: flint-cli-container
+          path: dist
+      - name: Capture the candidate publication manifest
+        run: |
+          node scripts/release-manifest.mjs create dist \
+            "$GITHUB_REF_NAME" "$GITHUB_SHA" \
+            "${{ needs.release.outputs.build_date }}" \
+            "${{ needs.release.outputs.schema_hash }}" > dist/candidate-release.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: flint-cli-candidate-manifest
+          path: dist/candidate-release.json
+          if-no-files-found: error
+          overwrite: true
+      - name: Require the externally frozen review to match every channel
+        id: compare
+        env:
+          CLI_RELEASE_REVIEW_MANIFEST: ${{ vars.CLI_RELEASE_REVIEW_MANIFEST }}
+          CLI_RELEASE_REVIEW_SHA256: ${{ vars.CLI_RELEASE_REVIEW_SHA256 }}
+        run: node scripts/release-manifest.mjs compare dist
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: flint-cli-reviewed-manifest
+          path: dist/reviewed-release.json
+          if-no-files-found: error
+          overwrite: true
+
+  publication-approval:
+    needs: frozen-compare
+    runs-on: ubuntu-latest
+    # Reuse the protected npm environment as the approval barrier for every
+    # publisher. Repository configuration must require maintainer review here.
+    environment: npm
+    steps:
+      - name: Record the approved frozen comparison
+        env:
+          REVIEW_SHA256: ${{ needs.frozen-compare.outputs.review_sha256 }}
+        run: |
+          test -n "$REVIEW_SHA256"
+          printf 'Approved frozen publication manifest SHA-256: %s\n' "$REVIEW_SHA256" >> "$GITHUB_STEP_SUMMARY"
 
   install-preflight:
     needs: release
@@ -203,7 +303,7 @@ jobs:
   publish-github:
     # GitHub releases drive CLI update discovery, so npm must be installable
     # before this version becomes visible to existing npm installations.
-    needs: [release, channel-preflight, install-preflight, npm-readiness]
+    needs: [release, frozen-compare, publication-approval, npm-readiness]
     if: ${{ startsWith(github.ref, 'refs/tags/cli/v') }}
     runs-on: ubuntu-latest
     permissions:
@@ -212,10 +312,19 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "26.7.0"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: flint-cli-release
           path: dist
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: flint-cli-reviewed-manifest
+          path: dist
+      - name: Verify approved GitHub publication bytes
+        run: node scripts/release-manifest.mjs verify dist archives "${{ needs.frozen-compare.outputs.review_sha256 }}" "$GITHUB_REF_NAME" "$GITHUB_SHA"
       - uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
         with:
           subject-path: |
@@ -261,7 +370,7 @@ jobs:
             "${release_flags[@]}"
 
   homebrew:
-    needs: [release, npm, docker, publish-github]
+    needs: [release, frozen-compare, publication-approval, npm, docker, publish-github]
     if: ${{ needs.release.outputs.is_prerelease == 'false' }}
     runs-on: ubuntu-latest
     permissions:
@@ -273,8 +382,14 @@ jobs:
           node-version: "26.7.0"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: flint-cli-release
+          name: flint-cli-channels
           path: dist
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: flint-cli-reviewed-manifest
+          path: dist
+      - name: Verify approved Homebrew formula
+        run: node scripts/release-manifest.mjs verify dist homebrew "${{ needs.frozen-compare.outputs.review_sha256 }}" "$GITHUB_REF_NAME" "$GITHUB_SHA"
       - name: Publish Homebrew formula
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
@@ -284,10 +399,7 @@ jobs:
           gh auth setup-git
           gh repo clone flint-pay/homebrew-tap "$tap_dir"
           mkdir -p "$tap_dir/Formula"
-          node scripts/render-homebrew-formula.mjs \
-            "$CLI_VERSION" \
-            "$GITHUB_REF_NAME" \
-            dist/checksums.txt > "$tap_dir/Formula/flint.rb"
+          cp dist/flint.rb "$tap_dir/Formula/flint.rb"
           git -C "$tap_dir" config user.name github-actions[bot]
           git -C "$tap_dir" config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git -C "$tap_dir" add Formula/flint.rb
@@ -299,7 +411,7 @@ jobs:
           fi
 
   npm:
-    needs: [release, channel-preflight, install-preflight]
+    needs: [release, frozen-compare, publication-approval]
     runs-on: ubuntu-latest
     environment: npm
     permissions:
@@ -309,7 +421,11 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: flint-cli-release
+          name: flint-cli-channels
+          path: dist
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: flint-cli-reviewed-manifest
           path: dist
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -317,43 +433,8 @@ jobs:
           registry-url: https://registry.npmjs.org
       - name: Enable npm trusted publishing
         run: npm install --global npm@12.0.1
-      - name: Package npm platform binaries
-        env:
-          FLINT_CLI_VERSION: ${{ needs.release.outputs.cli_version }}
-        run: node scripts/package-npm.mjs
       - name: Publish npm platform packages
-        working-directory: dist/npm
-        env:
-          NPM_TAG: ${{ needs.release.outputs.npm_tag }}
-        run: |
-          publish_if_missing() {
-            package_dir="$1"
-            package_name="$(node -p "require('./${package_dir}/package.json').name")"
-            package_version="$(node -p "require('./${package_dir}/package.json').version")"
-            set +e
-            view_output="$(npm view "${package_name}@${package_version}" dist.integrity 2>&1)"
-            view_status=$?
-            set -e
-            if [ "$view_status" -eq 0 ]; then
-              published_integrity="$view_output"
-              local_integrity="$(npm pack "./${package_dir}" --dry-run --json | node "$GITHUB_WORKSPACE/scripts/npm-pack-result.mjs")"
-              if [ "$published_integrity" != "$local_integrity" ]; then
-                echo "Published ${package_name}@${package_version} does not match the local package" >&2
-                exit 1
-              fi
-              echo "Verified existing ${package_name}@${package_version}"
-              return
-            fi
-            if ! grep -q 'E404' <<<"$view_output"; then
-              echo "$view_output" >&2
-              return "$view_status"
-            fi
-            npm publish "./${package_dir}" --access public --provenance --tag "$NPM_TAG"
-          }
-          for package in darwin-arm64 darwin-amd64 linux-arm64 linux-amd64 windows-amd64; do
-            publish_if_missing "$package"
-          done
-          publish_if_missing wrapper
+        run: node scripts/publish-npm.mjs dist "${{ needs.frozen-compare.outputs.review_sha256 }}" "$GITHUB_REF_NAME" "$GITHUB_SHA"
 
   npm-readiness:
     needs: [release, npm]
@@ -376,7 +457,7 @@ jobs:
         run: bash scripts/verify-npm-install.sh
 
   docker:
-    needs: [release, channel-preflight, install-preflight]
+    needs: [release, frozen-compare, publication-approval]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -388,28 +469,28 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          context: .
-          file: Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ needs.release.outputs.docker_tags }}
-          provenance: mode=max
-          sbom: true
-          build-args: |
-            VERSION=${{ needs.release.outputs.cli_version }}
-            COMMIT=${{ github.sha }}
-            BUILD_DATE=${{ needs.release.outputs.build_date }}
-            SCHEMA_HASH=${{ needs.release.outputs.schema_hash }}
+          node-version: "26.7.0"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: flint-cli-container
+          path: dist
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: flint-cli-reviewed-manifest
+          path: dist
+      - name: Publish or verify the immutable reviewed container
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes skopeo
+          node scripts/publish-container.mjs dist "${{ needs.frozen-compare.outputs.review_sha256 }}" "$GITHUB_REF_NAME" "$GITHUB_SHA" "$HOME/.docker/config.json"
 
   verify-published:
-    needs: [release, publish-github, npm, homebrew]
+    needs: [release, publish-github, npm, docker, homebrew]
     if: >-
       ${{ !cancelled() && needs.release.result == 'success' &&
-          needs.publish-github.result == 'success' && needs.npm.result == 'success' &&
+          needs.publish-github.result == 'success' && needs.npm.result == 'success' && needs.docker.result == 'success' &&
           (needs.homebrew.result == 'success' || needs.homebrew.result == 'skipped') }}
     strategy:
       fail-fast: false

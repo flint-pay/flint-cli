@@ -31,12 +31,23 @@ builds:
 
 archives:
   - id: binaries
+    builds_info:
+      owner: root
+      group: root
+      mode: 0755
+      mtime: "{{ .CommitDate }}"
     files:
       - src: LICENSE
         info:
+          owner: root
+          group: root
+          mode: 0644
           mtime: "{{ .CommitDate }}"
       - src: README.md
         info:
+          owner: root
+          group: root
+          mode: 0644
           mtime: "{{ .CommitDate }}"
     formats: [tar.gz]
     format_overrides:
