@@ -1,0 +1,84 @@
+name: Reviewed CLI container readback
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_run_id:
+        description: Retained CLI Release artifact run (prepared attempt 1)
+        required: true
+        default: "37567921498"
+        type: string
+      manifest_sha256:
+        description: Externally reviewed full candidate manifest SHA-256
+        required: true
+        type: string
+      tag:
+        description: Reviewed CLI release tag
+        required: true
+        default: cli/v0.6.0-beta.20261007033000
+        type: string
+      source:
+        description: Reviewed release source commit SHA
+        required: true
+        default: 87e474ecc9986356f423a8b9bef2a91e59fba18d
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  packages: read
+
+jobs:
+  readback:
+    if: github.repository == 'flint-pay/flint-cli'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
+      REVIEW_SHA256: ${{ inputs.manifest_sha256 }}
+      REVIEW_TAG: ${{ inputs.tag }}
+      REVIEW_SOURCE: ${{ inputs.source }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Bind the retained original artifact producer
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 scripts/verify-container-readback.py origin \
+            --run-id "$ARTIFACT_RUN_ID" --manifest-sha256 "$REVIEW_SHA256" \
+            --tag "$REVIEW_TAG" --source "$REVIEW_SOURCE"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          repository: flint-pay/flint-cli
+          run-id: ${{ inputs.artifact_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          name: flint-cli-candidate-manifest
+          path: ${{ runner.temp }}/reviewed-container
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          repository: flint-pay/flint-cli
+          run-id: ${{ inputs.artifact_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          name: flint-cli-container
+          path: ${{ runner.temp }}/reviewed-container
+      - name: Install the registry reader
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes skopeo
+      - name: Compare actual registry bytes with the reviewed original OCI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TMPDIR: ${{ runner.temp }}
+        run: |
+          python3 scripts/verify-container-readback.py verify \
+            --run-id "$ARTIFACT_RUN_ID" --manifest-sha256 "$REVIEW_SHA256" \
+            --tag "$REVIEW_TAG" --source "$REVIEW_SOURCE" \
+            --directory "$RUNNER_TEMP/reviewed-container" \
+            --evidence "$RUNNER_TEMP/container-readback-evidence.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cli-container-readback-evidence
+          path: ${{ runner.temp }}/container-readback-evidence.json
+          if-no-files-found: error
