@@ -95,6 +95,9 @@ func TestBrowserLoginSuccess(t *testing.T) {
 	if opened != "https://app.withflintpay.com/cli/activate?user_code=ABCD-EFGH" {
 		t.Fatalf("opened=%s", opened)
 	}
+	if !strings.Contains(stderr.String(), "Open "+opened+"\n") || !strings.Contains(stderr.String(), "Confirm this code on the website: ABCD-EFGH\n") {
+		t.Fatalf("login instructions = %s", stderr)
+	}
 	credential, e := decodeOAuthCredential(stored)
 	if e != nil || credential.AccessToken != testOAuthAccess || credential.RefreshToken != testOAuthRefresh || credential.BaseURL != server.URL {
 		t.Fatal("OAuth session not saved correctly")
@@ -247,8 +250,8 @@ func TestBrowserLoginURLs(t *testing.T) {
 	if _, ok := loginVerificationURL(good, "", defaultAPIBaseURL, "BAD\nCODE"); ok {
 		t.Error("accepted control character")
 	}
-	if target, ok := loginVerificationURL(good, "", defaultAPIBaseURL, "ABCD-EFGH"); !ok || target != good {
-		t.Error("client invented a complete URI")
+	if target, ok := loginVerificationURL(good, "", defaultAPIBaseURL, "ABCD-EFGH"); !ok || target != good+"?user_code=ABCD-EFGH" {
+		t.Error("approval link omitted the pairing code")
 	}
 }
 

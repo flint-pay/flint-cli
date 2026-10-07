@@ -539,7 +539,7 @@ func (a *App) localInit(cmd *Command, opts Options) int {
 		return a.fail(configError("CREDENTIAL_LOOKUP_FAILED", err.Error(), err), opts)
 	}
 	if key == "" {
-		return a.outputLocal(map[string]any{"data": map[string]any{"authenticated": false, "recommended_auth": "flint auth login", "existing_account": "flint auth login", "manual_api_key": "flint auth import", "new_account": "flint signup", "dashboard_api_keys_url": dashboardAPIKeysURL}}, cmd, opts)
+		return a.outputLocal(map[string]any{"data": map[string]any{"authenticated": false, "recommended_auth": "flint login", "existing_account": "flint login", "manual_api_key": "flint auth import", "new_account": "flint signup", "dashboard_api_keys_url": dashboardAPIKeysURL}}, cmd, opts)
 	}
 	checks, exit := a.doctorChecks(opts)
 	value := map[string]any{"data": map[string]any{
@@ -588,7 +588,7 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 		return checks, ExitAuth
 	}
 	if key == "" {
-		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": "Run flint auth login (recommended), or flint auth import to use an API key."})
+		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": "Run flint login (recommended), or flint auth import to use an API key."})
 		return checks, ExitAuth
 	}
 	checks = append(checks, map[string]any{"name": "credential", "status": "pass", "source": source, "note": "Credential found; API validation follows."})
@@ -602,9 +602,9 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 			return checks, e.ExitCode
 		}
 		if e.ExitCode == ExitAuth {
-			fix := "Run flint auth login --profile " + resolved.ProfileName + " to sign in again (recommended), or flint auth import --profile " + resolved.ProfileName + " to replace the saved API key."
+			fix := "Run flint login --profile " + resolved.ProfileName + " to sign in again (recommended), or flint auth import --profile " + resolved.ProfileName + " to replace the saved API key."
 			if source == "environment_access_token" {
-				fix = "Replace or unset FLINT_ACCESS_TOKEN. To save an OAuth session, unset the override and run flint auth login --profile " + resolved.ProfileName + "."
+				fix = "Replace or unset FLINT_ACCESS_TOKEN. To save an OAuth session, unset the override and run flint login --profile " + resolved.ProfileName + "."
 			} else if source != "keychain" {
 				fix = "Replace or unset FLINT_API_KEY. To save a valid API key, run flint auth import --profile " + resolved.ProfileName + "."
 			}

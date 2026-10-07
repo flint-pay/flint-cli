@@ -11,7 +11,7 @@ func additionalCommands(page []Arg, input Arg) []*Command {
 		apiCommand("email-preference-links.lookup", "Look up an email preference link", "POST", "/v1/email-preference-links/lookup", "lookupEmailPreferenceLink", "EmailPreferenceLinkRequest", "EmailPreferenceLinkResponse", []Arg{input}, false, false, false, false, "flint email-preference-links lookup --input -"),
 		apiCommand("email-preference-links.unsubscribe", "Unsubscribe through an email preference link", "POST", "/v1/email-preference-links/unsubscribe", "unsubscribeEmailPreferenceLink", "EmailPreferenceLinkRequest", "EmailPreferenceLinkResponse", []Arg{input}, true, true, false, false, "flint email-preference-links unsubscribe --input -"),
 		apiCommand("settings.custom-domains.validate", "Recheck a custom domain", "POST", "/v1/settings/custom-domains/{domain_type}/validate", "validateCustomDomain", "", "", []Arg{pos("domain_type", "", "checkout or customer_account")}, true, true, false, false, "flint settings custom-domains validate checkout"),
-		apiCommand("payment-links.create", "Create a payment link", "POST", "/v1/payment-links", "createPaymentLink", "CreatePaymentLinkRequest", "PaymentLinkResponse", []Arg{flag("name", "string", "name", "", "Payment link name", true), flag("item_name", "string", "line_items.0.name", "", "Item name", false), flag("amount", "integer", "line_items.0.unit_price_money.amount", "", "Item price in minor units", false), flag("currency", "string", "line_items.0.unit_price_money.currency", "", "ISO currency code", false), input}, true, false, false, false, "flint payment-links create --name T-shirt --item-name T-shirt --amount 2500 --currency USD"),
+		apiCommand("payment-links.create", "Create a payment link; --open launches its URL in an interactive terminal with human output", "POST", "/v1/payment-links", "createPaymentLink", "CreatePaymentLinkRequest", "PaymentLinkResponse", []Arg{flag("name", "string", "name", "", "Payment link name", true), flag("item_name", "string", "line_items.0.name", "", "Item name", false), flag("amount", "integer", "line_items.0.unit_price_money.amount", "", "Item price in minor units", false), flag("currency", "string", "line_items.0.unit_price_money.currency", "", "ISO currency code", false), input}, true, false, false, false, "flint payment-links create --name T-shirt --item-name T-shirt --amount 2500 --currency USD --open"),
 		apiCommand("payment-links.list", "List payment links", "GET", "/v1/payment-links", "listPaymentLinks", "", "PaymentLinkListResponse", page, false, false, false, false, "flint payment-links list --page-size 25"),
 		apiCommand("invoices.create", "Create an invoice", "POST", "/v1/invoices", "createInvoice", "CreateInvoiceRequest", "InvoiceResponse", []Arg{idFlag("order", "ord_", "order_id", "", "Order ID", false), flag("recipient_email", "string", "recipient_email", "", "Invoice recipient email", false), input}, true, false, false, false, "flint invoices create --order ord_123 --recipient-email jane@example.com"),
 		apiCommand("invoices.issue", "Issue an invoice", "POST", "/v1/invoices/{invoice_id}/issue", "issueInvoice", "IssueInvoiceRequest", "IssueInvoiceResponse", []Arg{pos("invoice_id", "inv_", "Flint invoice ID"), flag("delivery_mode", "string", "delivery_mode", "", "Invoice delivery mode", false), input}, true, true, false, false, "flint invoices issue inv_123 --delivery-mode email"),
@@ -90,13 +90,13 @@ func additionalCommands(page []Arg, input Arg) []*Command {
 		},
 		{
 			Name: "signup", CanonicalName: "signup", Path: pathWithFlint("signup"),
-			Description: "Create a merchant and initial sandbox key through API-first onboarding",
+			Description: "Create an account and sandbox key. Without a code, email a verification code and save progress; finish with --verification-code. MCP and --no-input use two calls.",
 			Local:       true,
 			Arguments: []Arg{
 				flag("email", "string", "", "", "Email address", false),
 				flag("first_name", "string", "", "", "First name", false),
 				flag("last_name", "string", "", "", "Last name", false),
-				flag("verification_code", "string", "", "", "Email verification code", false),
+				flag("verification_code", "string", "", "", "Email verification code; resumes signup saved in this profile", false),
 				flag("country", "string", "", "", "ISO 3166-1 alpha-2 business country", false),
 				flag("website_url", "string", "", "", "Public business website URL", false),
 				flag("support_email", "string", "", "", "Customer support email", false),
@@ -106,7 +106,8 @@ func additionalCommands(page []Arg, input Arg) []*Command {
 			},
 			Examples: ex(
 				"flint signup",
-				"flint signup --email dev@example.com --first-name Ada --last-name Lovelace --verification-code 482193 --no-input --output json",
+				"flint signup --email dev@example.com --first-name Ada --last-name Lovelace --no-input --output json",
+				"flint signup --verification-code 482193 --no-input --output json",
 			),
 		},
 	}

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 )
 
@@ -16,64 +15,34 @@ var initialCLIScopes = embeddedInitialCLIScopes()
 func (a *App) runSignup(opts Options) int {
 	// Validate the local destination before creating remote account resources or
 	// issuing a one-time API key that this process may be unable to persist.
-	resolved, _, err := a.resolveConfig(opts)
+	resolved, cfg, err := a.resolveConfig(opts)
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
+	}
+	project, _, err := a.findProjectConfig()
+	if err != nil {
+		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
+	}
+	if project.ContextID != "" {
+		return a.fail(configError("SIGNUP_PROJECT_CONTEXT", "This project pins an OAuth context in .flint/config.json. Run signup outside the project or remove the pinned context before signing up.", nil), opts)
 	}
 	_, previousErr := a.LoadCredential(resolved.ProfileName)
 	if previousErr != nil {
 		return a.fail(configError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before signup.", previousErr), opts)
 	}
 	reader := bufio.NewReader(&contextInputReader{ctx: a.commandContext(), reader: a.Stdin})
-	email, e := a.signupValue(reader, opts, "email", "Email")
+	pending, e := a.signupChallenge(reader, opts, resolved.ProfileName, cfg.Profiles[resolved.ProfileName].PendingSignup)
 	if e != nil {
 		return a.fail(e, opts)
 	}
-	if !strings.Contains(email, "@") {
-		return a.fail(usageError("INVALID_EMAIL", "Enter a valid email address.", "email"), opts)
+	if lastSignupOption(opts, "verification-code") == "" && (opts.NoInput || !a.IsTTY()) {
+		return a.signupVerificationRequired(resolved.ProfileName, pending.BaseURL, opts)
 	}
-	firstName, e := a.signupValue(reader, opts, "first-name", "First name")
+	verify, e := a.verifySignupChallenge(reader, opts, resolved.ProfileName, pending)
 	if e != nil {
 		return a.fail(e, opts)
 	}
-	lastName, e := a.signupValue(reader, opts, "last-name", "Last name")
-	if e != nil {
-		return a.fail(e, opts)
-	}
-	baseURL := strings.TrimSpace(os.Getenv("FLINT_BASE_URL"))
-	if baseURL == "" {
-		baseURL = defaultAPIBaseURL
-	}
-	baseURL, err = validateBaseURL(baseURL)
-	if err != nil {
-		return a.fail(configError("INVALID_BASE_URL", err.Error(), err), opts)
-	}
-	startBody, _ := json.Marshal(map[string]any{"email": email, "first_name": firstName, "last_name": lastName})
-	idempotency, err := newIdempotencyKey()
-	if err != nil {
-		return a.fail(networkError("IDEMPOTENCY_KEY_GENERATION_FAILED", "Could not generate an idempotency key.", err), opts)
-	}
-	start, e := a.doSignupRequest(baseURL, "", http.MethodPost, "/v1/onboarding/start", startBody, idempotency, opts)
-	if e != nil {
-		return a.fail(e, opts)
-	}
-	verificationToken, ok := firstStringAt(start.Value, "data.verification_token")
-	if !ok {
-		return a.fail(invalidResponseError("INVALID_SIGNUP_RESPONSE", "Flint did not return an email verification token.", nil), opts)
-	}
-	code, inputErr := a.signupValue(reader, opts, "verification-code", "Verification code")
-	if inputErr != nil {
-		return a.fail(inputErr, opts)
-	}
-	verifyBody, _ := json.Marshal(map[string]any{"verification_token": verificationToken, "verification_code": code})
-	verifyKey, err := newIdempotencyKey()
-	if err != nil {
-		return a.fail(networkError("IDEMPOTENCY_KEY_GENERATION_FAILED", "Could not generate an idempotency key.", err), opts)
-	}
-	verify, e := a.doSignupRequest(baseURL, "", http.MethodPost, "/v1/onboarding/verify-email", verifyBody, verifyKey, opts)
-	if e != nil {
-		return a.fail(e, opts)
-	}
+	baseURL, email := pending.BaseURL, pending.Email
 	sessionToken, ok := firstStringAt(verify.Value, "data.onboarding_session_token")
 	if !ok {
 		return a.fail(invalidResponseError("INVALID_SIGNUP_RESPONSE", "Flint did not return an onboarding session token.", nil), opts)
@@ -82,7 +51,7 @@ func (a *App) runSignup(opts Options) int {
 	if e != nil {
 		return a.fail(e, opts)
 	}
-	state, e = a.advanceSignupUntilKeyAvailable(baseURL, sessionToken, state, reader, email, opts)
+	state, e = a.advanceSignupUntilKeyAvailable(baseURL, sessionToken, state, reader, email, mergeSignupInputs(opts, pending.Inputs))
 	if e != nil {
 		return a.fail(e, opts)
 	}
@@ -135,6 +104,12 @@ func (a *App) runSignup(opts Options) int {
 			cfg.Profiles = map[string]Profile{}
 		}
 		p := cfg.Profiles[resolved.ProfileName]
+		p.ContextID = ""
+		p.MerchantGuard = ""
+		if sameSignupChallenge(p.PendingSignup, pending) {
+			p.PendingSignup = nil
+		}
+		p.MerchantID = ""
 		p.Environment = "sandbox"
 		p.SandboxID = sandboxID
 		p.APIKeyID = apiKeyID
@@ -163,11 +138,21 @@ func (a *App) runSignup(opts Options) int {
 			delete(data, "secret_key")
 		}
 	}
+	nextCommand := a.signupCommand(signupNextCommand, resolved.ProfileName, baseURL)
 	result := map[string]any{"data": map[string]any{
 		"api_key":          valueAt(created.Value, "data"),
 		"onboarding":       valueAt(state.Value, "data"),
 		"credential_saved": true,
+		"next_command":     nextCommand,
 	}}
+	if opts.Output == "human" && opts.Field == "" && len(opts.Select) == 0 && opts.JQ == "" {
+		if !opts.Quiet {
+			if _, err := fmt.Fprintf(a.Stdout, "You're signed up. Your sandbox is ready for test payments.\n\nMake a test payment:\n  %s\n\nPay with card 4242 4242 4242 4242, any future expiry date, and any CVC.\n", nextCommand); err != nil {
+				return a.fail(networkError("OUTPUT_WRITE_FAILED", "Could not display signup instructions.", err), opts)
+			}
+		}
+		return ExitOK
+	}
 	return a.outputLocal(result, nilCommand("signup"), opts)
 }
 
@@ -408,7 +393,11 @@ func (a *App) doSignupRequest(baseURL, token, method, path string, body []byte, 
 	}
 	ctx, cancel := context.WithTimeout(parent, opts.Timeout)
 	defer cancel()
-	return a.doRequest(ctx, baseURL, token, method, path, body, idempotencyKey, opts.Debug)
+	response, e := a.doRequest(ctx, baseURL, token, method, path, body, idempotencyKey, opts.Debug)
+	if e != nil {
+		return nil, signupAccountError(e)
+	}
+	return response, nil
 }
 
 func (a *App) signupValue(reader *bufio.Reader, opts Options, flagName, label string) (string, *CLIError) {

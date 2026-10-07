@@ -27,9 +27,30 @@ FLINT_INSTALL_DIR="$HOME/.local/bin" sh /tmp/flint-install.sh
 
 Add `$HOME/.local/bin` to your `PATH` if needed. Set `FLINT_CLI_VERSION=X.Y.Z` to install a specific version. On Windows, download the ZIP and `checksums.txt` from the same release, verify the ZIP with `Get-FileHash -Algorithm SHA256`, and extract `flint.exe` into a directory on `PATH`.
 
+## Sign up and make a test payment
+
+`flint signup` creates an account without an invitation. In an interactive terminal it asks for your name, email, and the emailed verification code. Incorrect codes can be retried up to five times per code; expired codes offer to send a new one.
+
+For scripts, start signup first, then finish after receiving the email:
+
+```sh
+flint signup --email dev@example.com --first-name Ada --last-name Lovelace --no-input --output json
+flint signup --verification-code 482193 --no-input --output json
+```
+
+The first command succeeds with `data.status` set to `verification_required`. The CLI stores the temporary verification token, email, and name in the private profile config and prints the command to finish. Resume using the same profile and API server; no name or email flags are needed. Successful verification saves the onboarding session and its expiry until signup finishes, so retrying after a later failure does not consume another code attempt. If progress is missing, the code expires, or five attempts are used, start again without `--verification-code`. MCP's `signup` tool uses the same two calls: first pass `email`, `first_name`, and `last_name`, then pass only `verification_code` (and the same profile when selected).
+
+Successful signup saves and activates the new sandbox key, replacing the profile's previous login context. JSON output includes `data.next_command`. For a custom API server, the printed continuation and payment commands include the required `FLINT_BASE_URL`; keep that environment setting when using the saved key. If the project pins an OAuth context in `.flint/config.json`, run signup outside the project or remove that pin first. Make your first test payment with:
+
+```sh
+flint payment-links create --name "Test payment" --item-name "Test payment" --amount 1000 --currency USD --open
+```
+
+`--open` opens the payment link in your browser in an interactive terminal with human output. The URL is printed either way; JSON output, non-interactive runs, and `--no-input` never open a browser. Pay with card 4242 4242 4242 4242, any future expiry date, and any CVC.
+
 ## Sign in (recommended)
 
-For local development, start with `flint auth login`. It opens the Flint website, displays a confirmation code, and saves OAuth access and refresh tokens in your OS keychain. Use `--no-open` to open the printed link yourself, `--profile NAME` to use an existing profile, or `--live` to explicitly request production access. Login waits up to 10 minutes by default; `--timeout 5m` overrides that limit.
+For local development, start with `flint login`. It opens the Flint website, displays a confirmation code, and saves OAuth access and refresh tokens in your OS keychain. The printed approval link includes the pairing code, and the code also appears on its own line. Use `--no-open` to open the printed link yourself, `--profile NAME` to use an existing profile, or `--live` to explicitly request production access. Login waits up to 10 minutes by default; `--timeout 5m` overrides that limit.
 
 If browser login is unavailable, use `flint auth import` instead. Browser approval requires a person; automation should use an API key through `FLINT_API_KEY` or `flint auth import --stdin`.
 
@@ -70,9 +91,9 @@ For manual setup, create a key in the [Flint dashboard](https://app.withflintpay
 ## Use
 
 ```bash
-flint auth login    # recommended: approve browser sign-in; credential saved in the OS keychain
+flint login         # recommended: approve browser sign-in; credential saved in the OS keychain
 flint doctor        # config, credential, connectivity, environment, merchant, scopes, version
-flint checkout create --quick-pay-name T-shirt --amount 2500 --currency USD --open
+flint payment-links create --name T-shirt --item-name T-shirt --amount 2500 --currency USD --open
 flint listen --forward-to http://localhost:8080/webhooks/flint
 ```
 

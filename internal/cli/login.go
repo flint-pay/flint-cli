@@ -196,7 +196,7 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	}
 	pollCtx, stopPolling := context.WithTimeout(ctx, time.Duration(device.ExpiresIn)*time.Second)
 	defer stopPolling()
-	if _, err := fmt.Fprintf(a.Stderr, "Open %s\nConfirm this code on the website: %s\nWaiting for approval…\n", device.VerificationURI, device.UserCode); err != nil {
+	if _, err := fmt.Fprintf(a.Stderr, "Open %s\nConfirm this code on the website: %s\nWaiting for approval…\n", target, device.UserCode); err != nil {
 		return a.fail(networkError("OUTPUT_WRITE_FAILED", "Could not display browser login instructions.", err), opts)
 	}
 	if !booleanRawOption(opts, "no-open") {
@@ -465,7 +465,11 @@ func loginVerificationURL(raw, complete, baseURL, code string) (string, bool) {
 		return "", false
 	}
 	if complete == "" {
-		return raw, true
+		u, _ := url.Parse(raw)
+		query := u.Query()
+		query.Set("user_code", code)
+		u.RawQuery = query.Encode()
+		return u.String(), true
 	}
 	if !validate(complete) {
 		return "", false

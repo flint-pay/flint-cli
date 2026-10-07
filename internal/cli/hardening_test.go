@@ -852,7 +852,7 @@ func TestSignupTransportTimeoutDoesNotIncludeHumanInputDelay(t *testing.T) {
 	app.IsTTY = func() bool { return true }
 	app.Stdin = &delayedReader{delay: 40 * time.Millisecond, reader: strings.NewReader("482193\n")}
 	exit := app.Run([]string{"signup", "--email", "dev@example.com", "--first-name", "Ada", "--last-name", "Lovelace", "--timeout", "20ms", "--output", "human"})
-	if exit != ExitOK || requests != 5 || !strings.Contains(stdout.String(), "Credential saved") {
+	if exit != ExitOK || requests != 5 || !strings.Contains(stdout.String(), "Your sandbox is ready for test payments.") {
 		t.Fatalf("exit=%d requests=%d stdout=%s stderr=%s", exit, requests, stdout, stderr)
 	}
 }
@@ -920,6 +920,9 @@ func TestSignupRevokesIssuedKeyAndRestoresCredentialWhenConfigWriteFails(t *test
 		if len(stored) == 1 {
 			path, err := app.configPath()
 			if err != nil {
+				return err
+			}
+			if err := os.Remove(path); err != nil {
 				return err
 			}
 			return os.Mkdir(path, 0700)
