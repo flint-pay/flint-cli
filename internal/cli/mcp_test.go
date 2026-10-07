@@ -60,6 +60,84 @@ func TestMCPDoesNotExposeCredentialImport(t *testing.T) {
 	}
 }
 
+func TestMCPSparseDeliveryConfigurationUpdates(t *testing.T) {
+	for _, family := range []struct {
+		command string
+		idField string
+		id      string
+		valid   []map[string]any
+		invalid []any
+	}{
+		{
+			command: "delivery-methods.update", idField: "delivery_method_id", id: "dmet_123",
+			valid: []map[string]any{
+				{"taxable": false}, {"taxable": nil}, {"charge_tax_category": nil},
+				{"eligibility": nil}, {"recipient_requirements": []any{}},
+			},
+			invalid: []any{
+				nil, map[string]any{}, map[string]any{"taxable": "false"},
+				map[string]any{"origin": nil}, map[string]any{"pricing": nil},
+				map[string]any{"recipient_requirements": nil}, map[string]any{"unknown": true},
+			},
+		},
+		{
+			command: "delivery-rate-callbacks.update", idField: "delivery_rate_callback_id", id: "dcb_123",
+			valid: []map[string]any{
+				{"preview_enabled": false}, {"preview_enabled": nil}, {"request_timeout_seconds": nil},
+				{"maximum_request_bytes": nil}, {"maximum_response_bytes": nil}, {"redirect_policy": nil},
+			},
+			invalid: []any{
+				nil, map[string]any{}, map[string]any{"url": nil},
+				map[string]any{"preview_enabled": "false"}, map[string]any{"request_timeout_seconds": -1},
+				map[string]any{"redirect_policy": "follow"}, map[string]any{"unknown": true},
+			},
+		},
+	} {
+		t.Run(family.command, func(t *testing.T) {
+			check := func(t *testing.T, configuration any, version any, valid bool) {
+				t.Helper()
+				app, _, _ := testApp(t, "")
+				for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_CHECKOUT_SESSION_SECRET", "FLINT_CONTEXT"} {
+					t.Setenv(name, "")
+				}
+				credentialReads := 0
+				app.LoadCredential = func(string) (string, error) {
+					credentialReads++
+					return "", nil
+				}
+				arguments := map[string]any{family.idField: family.id, "configuration": configuration}
+				if version != nil {
+					arguments["expected_version"] = version
+				}
+				response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{
+					"name": family.command, "arguments": arguments,
+				}}, defaultOptions())
+				result := response["result"].(map[string]any)
+				raw, err := json.Marshal(result)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if valid {
+					if credentialReads != 1 || !strings.Contains(string(raw), "API_KEY_REQUIRED") || strings.Contains(string(raw), "advertised input schema") {
+						t.Fatalf("valid sparse update did not reach authentication: reads=%d result=%s", credentialReads, raw)
+					}
+				} else if credentialReads != 0 || !strings.Contains(string(raw), "advertised input schema") {
+					t.Fatalf("invalid update was not rejected before authentication: reads=%d result=%s", credentialReads, raw)
+				}
+			}
+			for index, configuration := range family.valid {
+				t.Run(fmt.Sprintf("valid/%d", index), func(t *testing.T) { check(t, configuration, float64(1), true) })
+			}
+			for index, configuration := range family.invalid {
+				t.Run(fmt.Sprintf("invalid/%d", index), func(t *testing.T) { check(t, configuration, float64(1), false) })
+			}
+			for _, version := range []any{nil, float64(0), "1"} {
+				t.Run(fmt.Sprintf("invalid version/%v", version), func(t *testing.T) { check(t, family.valid[0], version, false) })
+			}
+		})
+	}
+}
+
 func TestMCPListenRequiresAndCapsStreamBounds(t *testing.T) {
 	t.Parallel()
 	registry := NewRegistry()
