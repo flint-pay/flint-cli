@@ -716,24 +716,35 @@ func TestMCPServerEnforcesLifecycle(t *testing.T) {
 	if len(lines) != 4 {
 		t.Fatalf("responses=%d: %s", len(lines), stdout)
 	}
-	var responses []map[string]any
+	// Validate each complete JSON response without allocating the tool catalog
+	// again. Full tool schemas are checked by the registry contract tests.
+	type lifecycleResponse struct {
+		Error struct {
+			Code int `json:"code"`
+		} `json:"error"`
+		Result struct {
+			ProtocolVersion string          `json:"protocolVersion"`
+			Tools           json.RawMessage `json:"tools"`
+		} `json:"result"`
+	}
+	var responses []lifecycleResponse
 	for _, line := range lines {
-		var response map[string]any
+		var response lifecycleResponse
 		if err := json.Unmarshal([]byte(line), &response); err != nil {
 			t.Fatal(err)
 		}
 		responses = append(responses, response)
 	}
-	if code, _ := lookupPath(responses[0], "error.code"); code != float64(-32002) {
+	if responses[0].Error.Code != -32002 {
 		t.Fatalf("pre-initialize response = %#v", responses[0])
 	}
-	if version, _ := lookupPath(responses[1], "result.protocolVersion"); version != "2025-11-25" {
+	if responses[1].Result.ProtocolVersion != "2025-11-25" {
 		t.Fatalf("initialize response = %#v", responses[1])
 	}
-	if _, ok := lookupPath(responses[2], "result.tools"); !ok {
+	if len(responses[2].Result.Tools) == 0 {
 		t.Fatalf("tools response = %#v", responses[2])
 	}
-	if code, _ := lookupPath(responses[3], "error.code"); code != float64(-32600) {
+	if responses[3].Error.Code != -32600 {
 		t.Fatalf("reinitialize response = %#v", responses[3])
 	}
 }
