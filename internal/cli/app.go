@@ -338,7 +338,7 @@ func (a *App) printRootHelp() {
 	fmt.Fprintln(a.Stdout, "  --context ID  Use an authorized browser-session context")
 	fmt.Fprintln(a.Stdout)
 	fmt.Fprintln(a.Stdout, "Start here:")
-	for _, line := range []string{"flint auth login  (recommended for local development)", "flint context list", "flint context switch", "flint reauth", "flint doctor", "flint upgrade", "flint init", "flint auth import", "flint signup", "flint schema commands --output json", "flint help test-cards", "flint help search <question>", "flint support open --request-id <id>"} {
+	for _, line := range []string{"flint signup", "flint login  (alias for flint auth login)", "flint payment-links create", "flint payment-intents", "flint context list", "flint context switch", "flint reauth", "flint doctor", "flint upgrade", "flint init", "flint auth import", "flint schema commands --output json", "flint help test-cards", "flint help search <question>", "flint support open --request-id <id>"} {
 		fmt.Fprintln(a.Stdout, "  "+line)
 	}
 	fmt.Fprintln(a.Stdout)
@@ -367,7 +367,8 @@ func (a *App) printRootHelp() {
 	fmt.Fprintln(a.Stdout)
 	fmt.Fprintln(a.Stdout, "API resource groups (run flint <resource> --help):")
 	seen := map[string]bool{}
-	var resources []string
+	resources := []string{"checkout-sessions", "payment-intents"}
+	seen["checkout-sessions"], seen["payment-intents"] = true, true
 	for _, command := range a.Registry.Commands {
 		if command.Local || command.APIPath == "" || len(command.Path) < 3 || seen[command.Path[1]] {
 			continue

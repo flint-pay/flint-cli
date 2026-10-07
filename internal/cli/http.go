@@ -401,7 +401,7 @@ func apiErrorFromResponse(resp *apiResponse) *CLIError {
 	if message == "" {
 		message = fmt.Sprintf("Flint returned HTTP %d.", resp.Status)
 	}
-	e := &CLIError{ExitCode: exit, Type: "api_error", Code: "HTTP_" + strconv.Itoa(resp.Status), Message: message}
+	e := &CLIError{HTTPStatus: resp.Status, ExitCode: exit, Type: "api_error", Code: "HTTP_" + strconv.Itoa(resp.Status), Message: message}
 	if m, ok := resp.Value.(map[string]any); ok {
 		if raw, ok := m["error"].(map[string]any); ok {
 			if v, ok := raw["type"].(string); ok {

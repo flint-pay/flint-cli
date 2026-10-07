@@ -20,12 +20,13 @@ type Config struct {
 }
 
 type Profile struct {
-	ContextID     string `json:"context,omitempty"`
-	MerchantGuard string `json:"merchant_guard,omitempty"`
-	Environment   string `json:"environment,omitempty"`
-	APIKeyID      string `json:"api_key_id,omitempty"`
-	MerchantID    string `json:"merchant_id,omitempty"`
-	SandboxID     string `json:"sandbox_id,omitempty"`
+	PendingSignup *SignupChallenge `json:"pending_signup,omitempty"`
+	ContextID     string           `json:"context,omitempty"`
+	MerchantGuard string           `json:"merchant_guard,omitempty"`
+	Environment   string           `json:"environment,omitempty"`
+	APIKeyID      string           `json:"api_key_id,omitempty"`
+	MerchantID    string           `json:"merchant_id,omitempty"`
+	SandboxID     string           `json:"sandbox_id,omitempty"`
 }
 
 // UnmarshalJSON accepts the retired feedback setting so existing profiles keep

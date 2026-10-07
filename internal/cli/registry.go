@@ -80,7 +80,7 @@ func NewRegistry() *Registry {
 			c.Supports.NDJSON = true
 		}
 		switch c.CanonicalName {
-		case "checkout-sessions.create":
+		case "checkout-sessions.create", "payment-links.create":
 			c.Render = "checkout"
 			c.Supports.Open = true
 		case "request-logs.get", "request-logs.list":

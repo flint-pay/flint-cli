@@ -37,9 +37,13 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 	if e != nil {
 		return nil, e
 	}
-	if opts.Open && a.IsTTY() {
+	if opts.Open && opts.Output == "human" && !opts.NoInput && a.IsTTY() {
 		if target, ok := firstStringAt(resp.Value, "data.url", "data.checkout_session.url", "data.checkout_session.checkout_url"); ok {
-			if err := openBrowser(target); err != nil && !opts.Quiet {
+			opener := a.OpenBrowser
+			if opener == nil {
+				opener = openBrowser
+			}
+			if err := opener(target); err != nil && !opts.Quiet {
 				fmt.Fprintln(a.Stderr, "warning: could not open browser: "+err.Error())
 			}
 		}
