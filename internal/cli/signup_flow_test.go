@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -100,7 +101,11 @@ func TestSignupFlowTwoPhase(t *testing.T) {
 			}
 			path, _ := app.configPath()
 			info, err := os.Stat(path)
-			if err != nil || info.Mode().Perm() != 0600 {
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Windows does not expose Unix permission bits through os.FileMode.
+			if runtime.GOOS != "windows" && info.Mode().Perm() != 0600 {
 				t.Fatalf("config permissions: %v %v", info, err)
 			}
 			out.Reset()
