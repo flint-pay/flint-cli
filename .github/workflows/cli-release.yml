@@ -43,6 +43,7 @@ jobs:
     env:
       FLINT_API_KEY: ${{ secrets.FLINT_TEST_API_KEY }}
       FLINT_NO_INPUT: "1"
+      FLINT_BASE_URL: "https://api.staging.withflintpay.com"
     steps:
       - name: Record release-specific sandbox waiver
         id: waiver
