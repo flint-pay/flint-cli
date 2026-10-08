@@ -5,51 +5,36 @@ access tokens, API keys, or other sensitive information.
 
 ## Deferred findings in Linear
 
-Finish the user's task. A Linear ticket records independent future work; it never
-substitutes for required implementation, investigation, root-cause fixes, or validation.
+Complete required implementation, investigation, root-cause fixes, and validation;
+fix regressions introduced by your changes. Tickets never replace this work, regardless of
+difficulty, size, time spent, failed checks, or unfamiliar systems. Respect existing
+authorization boundaries; report genuine access/approval blockers as unfinished work.
 
-- Keep work needed for the requested outcome, acceptance criteria, or relevant checks in
-  the current task. Fix regressions introduced by your changes. Difficulty, size, elapsed
-  time, failing tests, or an unfamiliar subsystem are not reasons to offload required work.
-- Before deferring, establish that the requested outcome will be correct, complete, and
-  verified without addressing the finding, and explain why it is independently out of scope.
-  If it is required or blocking, continue working under the existing authorization boundaries.
-  If access or approval actually blocks you, report the blocker and unfinished work plainly;
-  creating a ticket does not resolve the blocker or make the task complete.
-- Automatically capture substantial, actionable bugs, reliability or performance problems,
-  and maintenance obstacles encountered during authorized work. Require concrete evidence
-  and a clear next step. Skip minor unrelated cleanup, stylistic preferences, and speculative
-  concerns. Do not expand the task into a general audit to generate tickets.
-- Search Linear for the same underlying problem before creating anything. Add materially
-  new evidence to an existing issue when appropriate; do not repeat comments, reopen issues,
-  or change their ownership, scheduling, priority, or review labels just because they recur.
-- A create error or timeout does not prove that creation failed. Before retrying, search for
-  the same problem and source task, inspect matches, and reuse a confirmed existing issue.
-  If the result remains ambiguous or search is unavailable, report the unconfirmed creation
-  instead of blindly retrying or claiming that a ticket was saved.
-- Create new findings in the **Flint Pay** team (`FLI`, team ID
-  `3a7d17d9-34c8-42c4-b298-02f82f5e508c`), status **Backlog**, with both
-  **agent-discovered** and **needs-triage**. Leave assignee, delegate, cycle, due date,
-  priority, and estimate unset. Link an existing project only when the association is clear.
-  Filing does not authorize scheduling, delegation, or implementation of the deferred work.
-- Use a specific problem title. Include the observed behavior, expected behavior, evidence
-  or reproduction, likely impact, repository and code references, source task or PR when
-  available, the explicit reason for deferral, and acceptance criteria or an investigation
-  next step. Distinguish confirmed facts from hypotheses; never include secrets or private
-  customer data. Prefer commit permalinks for code references when available.
-- Continue the original task and report created or updated ticket links in the final response,
-  separately from completed work and genuine blockers. If Linear or duplicate search is
-  unavailable, finish the authorized work and report the unfiled finding without claiming
-  that a ticket exists. Routine eligible findings do not require per-ticket confirmation.
-- The shared **Agent findings** view is the review queue: unresolved issues with both labels.
-  **Agent backlog** shows all unresolved **agent-discovered** issues, including reviewed ones.
-  After an authorized review decision, remove **needs-triage** and retain **agent-discovered**.
-  Do not mark findings reviewed merely because they were filed or automatically summarized.
-- Use authenticated Linear tools in the current agent environment. When first using Linear
-  in a session, verify access to the Flint Pay team. Repository guidance does not install
-  tools or authenticate another client or machine; use that environment's normal MCP setup
-  and login flow. Never put credentials in repository files or copy tokens between machines.
-- Agents may search, summarize, and group tickets freely. Apply explicitly requested bulk
-  metadata changes and report the affected issues. Resolve ambiguous target sets before
-  mutation; closing, assigning, scheduling, or starting work requires the requested action
-  or an applicable standing instruction.
+- Automatically capture substantial, evidenced, actionable bugs, reliability/performance
+  problems, or maintenance obstacles found during authorized work only if the requested
+  outcome remains correct, complete, and verified without fixing them. Explain their
+  independent scope. Skip unrelated minor cleanup, preferences, speculation, and
+  ticket-generating audits. Eligible findings need no per-ticket confirmation.
+- Before creating or retrying a failed/timed-out create, search for the underlying problem
+  and source task; inspect matches and reuse confirmed issues. Add only materially new evidence. Recurrence
+  does not authorize repeated comments, reopening, or ownership/scheduling/priority/review-label
+  changes. Report ambiguous creation outcomes or unavailable search without blind retries or claims of success.
+- Create in **Flint Pay** (`FLI`), **Backlog**, with **agent-discovered** and **needs-triage**;
+  leave assignee, delegate, cycle, due date, priority, and estimate unset. Attach an existing
+  project only when clearly applicable. Filing authorizes no scheduling, delegation, or implementation.
+- Use a specific problem title; include observed/expected behavior, evidence/reproduction,
+  likely impact, repository/code references (prefer commit permalinks), source task/PR when
+  available, why deferred, and acceptance criteria or an investigation next step. Separate
+  facts from hypotheses; omit secrets and private customer data.
+- Continue the original task. Final responses distinguish completed work, genuine blockers,
+  and created/updated ticket links. If Linear or duplicate search is unavailable, finish
+  authorized work and truthfully report unfiled or unconfirmed findings.
+- **Agent findings**: unresolved issues with both labels. **Agent backlog**: all unresolved
+  **agent-discovered** issues, including reviewed ones. Only an authorized review removes
+  **needs-triage**; retain **agent-discovered**. Filing or automatic summaries are not review.
+- On first Linear use each session, verify authenticated team access. Setup/login is per
+  client/machine; guidance does not install or authenticate tools. No repository credentials
+  or copying tokens between machines.
+- Search, summarize, and group freely. Apply explicitly requested bulk metadata changes and
+  report affected issues; resolve ambiguous targets before mutation. Closing, assigning,
+  scheduling, or starting work requires the requested action or an applicable standing instruction.
