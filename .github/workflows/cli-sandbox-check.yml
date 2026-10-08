@@ -10,7 +10,7 @@ jobs:
   sandbox:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    environment: cli-release-sandbox
+    environment: cli-release-staging-sandbox
     env:
       FLINT_API_KEY: ${{ secrets.FLINT_TEST_API_KEY }}
       FLINT_NO_INPUT: "1"
