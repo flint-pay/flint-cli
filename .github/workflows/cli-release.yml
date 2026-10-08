@@ -37,7 +37,7 @@ jobs:
     needs: verify
     if: ${{ startsWith(github.ref, 'refs/tags/cli/v') }}
     runs-on: ubuntu-latest
-    environment: cli-release-sandbox
+    environment: cli-release-staging-sandbox
     outputs:
       waiver_reason: ${{ steps.waiver.outputs.waived == 'true' && vars.CLI_SANDBOX_WAIVER_REASON || '' }}
     env:
