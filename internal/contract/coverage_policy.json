@@ -3319,5 +3319,131 @@
     "path": "/v1/subscriptions/{subscription_id}/access-links",
     "operation_id": "createSubscriptionAccessLink",
     "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscription-previews",
+    "operation_id": "createMeSubscriptionPreview",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/billing-interval",
+    "operation_id": "changeMeSubscriptionBillingInterval",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/delivery",
+    "operation_id": "changeMeSubscriptionDelivery",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/me/subscriptions/{subscription_id}/line-items/{subscription_line_item_id}",
+    "operation_id": "updateMeSubscriptionLineItem",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/quantity",
+    "operation_id": "changeMeSubscriptionQuantity",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/renew",
+    "operation_id": "renewMeSubscription",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/skip-cycle",
+    "operation_id": "skipMeSubscriptionCycle",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscription-delivery-migrations",
+    "operation_id": "listSubscriptionDeliveryMigrations",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscription-delivery-migrations",
+    "operation_id": "createSubscriptionDeliveryMigration",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscription-delivery-migrations/{subscription_delivery_migration_id}",
+    "operation_id": "getSubscriptionDeliveryMigration",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscription-delivery-migrations/{subscription_delivery_migration_id}/failures",
+    "operation_id": "listSubscriptionDeliveryMigrationFailures",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscription-offers",
+    "operation_id": "listSubscriptionOffers",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscription-offers",
+    "operation_id": "createSubscriptionOffer",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/subscription-offers/{subscription_offer_id}",
+    "operation_id": "deleteSubscriptionOffer",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscription-offers/{subscription_offer_id}",
+    "operation_id": "getSubscriptionOffer",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/subscription-offers/{subscription_offer_id}",
+    "operation_id": "updateSubscriptionOffer",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscription-previews",
+    "operation_id": "createSubscriptionPreview",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/line-items",
+    "operation_id": "createSubscriptionLineItem",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/subscriptions/{subscription_id}/line-items/{subscription_line_item_id}",
+    "operation_id": "deleteSubscriptionLineItem",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/subscriptions/{subscription_id}/line-items/{subscription_line_item_id}",
+    "operation_id": "updateSubscriptionLineItem",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/renew",
+    "operation_id": "renewSubscription",
+    "classification": "resource"
   }
 ]

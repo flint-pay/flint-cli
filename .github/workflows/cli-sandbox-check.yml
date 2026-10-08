@@ -14,6 +14,7 @@ jobs:
     env:
       FLINT_API_KEY: ${{ secrets.FLINT_TEST_API_KEY }}
       FLINT_NO_INPUT: "1"
+      FLINT_BASE_URL: "https://api.staging.withflintpay.com"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
@@ -29,7 +30,7 @@ jobs:
           with open("internal/spec/openapi.json", encoding="utf-8") as spec:
               api_version = json.load(spec)["x-flint-api-version"]
           request = urllib.request.Request(
-              "https://api.withflintpay.com/v1/webhook-events/stream?event_type=customer.created",
+              os.environ["FLINT_BASE_URL"] + "/v1/webhook-events/stream?event_type=customer.created",
               headers={"Authorization": "Bearer " + os.environ["FLINT_API_KEY"], "Accept": "text/event-stream", "Flint-Version": api_version},
           )
           try:
