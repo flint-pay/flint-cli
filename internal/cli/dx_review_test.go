@@ -134,7 +134,8 @@ func TestConnectionFailureReportsCause(t *testing.T) {
 	server.Close()
 	app, stdout, _ := testApp(t, url)
 	exit := app.Run([]string{"customers", "list", "--timeout", "1s", "--output", "json"})
-	if exit != ExitNetwork || !strings.Contains(stdout.String(), `"code":"NETWORK_ERROR"`) || !strings.Contains(stdout.String(), "connection refused") {
+	// The dial error wording differs by OS; it must name the failed dial, not a timeout.
+	if exit != ExitNetwork || !strings.Contains(stdout.String(), `"code":"NETWORK_ERROR"`) || !strings.Contains(stdout.String(), "dial tcp") || strings.Contains(stdout.String(), "timed out") {
 		t.Fatalf("exit=%d stdout=%s", exit, stdout)
 	}
 }
