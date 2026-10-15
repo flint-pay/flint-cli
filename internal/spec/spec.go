@@ -7,8 +7,8 @@ import (
 )
 
 // OpenAPI is the public API contract snapshot used to generate CLI schemas and coverage checks.
-// Source: flint-pay/flint@1b78cd7b1b13e82eb2ece5e03428c76d7f5671b7
-// SHA-256: 72381565eeec892a7f05cdf4c495f60def22d97374090090ffd6dd32dddd0a83
+// Source: flint-pay/flint@ef924c4fb76580e3a7bb50dd7bcbe9bad3fa5888
+// SHA-256: da782a4138b4497b7a7bdac996c8ecfd07bad1b2dfe584940a3390b64a5700b1
 //
 //go:embed openapi.json
 var OpenAPI []byte
