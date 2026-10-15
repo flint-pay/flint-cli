@@ -36,5 +36,7 @@ authorization boundaries; report genuine access/approval blockers as unfinished 
   client/machine; guidance does not install or authenticate tools. No repository credentials
   or copying tokens between machines.
 - Search, summarize, and group freely. Apply explicitly requested bulk metadata changes and
-  report affected issues; resolve ambiguous targets before mutation. Closing, assigning,
-  scheduling, or starting work requires the requested action or an applicable standing instruction.
+  report affected issues; resolve ambiguous targets before mutation. Close an issue when
+  your work fully resolves it and you have verified the fix, with a comment linking the change.
+  Other closing, assigning, scheduling, or starting work requires the requested action or an
+  applicable standing instruction.
