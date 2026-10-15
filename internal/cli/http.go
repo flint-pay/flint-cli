@@ -222,15 +222,11 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 					idempotencyKey,
 				)
 			}
-			if !retryBudgetAllows(ctx, attempt) {
+			if !retryBudgetAllows(ctx, attempt) || !sleepContext(ctx, retryDelay(attempt, "")) {
+				// Report the connection failure itself; calling it a timeout sends
+				// people to raise --timeout when the server cannot be reached.
 				return nil, withIdempotencyRetryContext(
-					networkError("NETWORK_ERROR", "The request failed before Flint returned a response.", err),
-					idempotencyKey,
-				)
-			}
-			if !sleepContext(ctx, retryDelay(attempt, "")) {
-				return nil, withIdempotencyRetryContext(
-					networkError("REQUEST_TIMEOUT", "The request timed out.", ctx.Err()),
+					networkError("NETWORK_ERROR", "The request failed before Flint returned a response: "+transportErrorReason(err)+". Check FLINT_BASE_URL and your network connection.", err),
 					idempotencyKey,
 				)
 			}
@@ -437,6 +433,14 @@ func apiErrorFromResponse(resp *apiResponse) *CLIError {
 	}
 	return e
 }
+func transportErrorReason(err error) string {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		err = urlErr.Err
+	}
+	return terminalSafe(err.Error())
+}
+
 func networkError(code, message string, cause error) *CLIError {
 	return &CLIError{ExitCode: ExitNetwork, Type: "network_error", Code: code, Message: message, Cause: cause}
 }

@@ -464,7 +464,27 @@ func (a *App) localSchema(cmd *Command, opts Options) int {
 	var value any
 	switch cmd.CanonicalName {
 	case "schema.commands":
-		value = map[string]any{"data": commandList(a.Registry)}
+		commands := commandList(a.Registry)
+		if prefix := commandNameFromWords(opts.Positionals); prefix != "" {
+			filtered := []map[string]any{}
+			for _, command := range commands {
+				if name := command["name"].(string); name == prefix || strings.HasPrefix(name, prefix+".") {
+					filtered = append(filtered, command)
+				}
+			}
+			if len(filtered) == 0 {
+				suggestions := commandNameSuggestions(a.Registry, prefix, true)
+				message := "No commands under " + prefix + "."
+				if len(suggestions) > 0 {
+					message += " Did you mean " + suggestions[0] + "?"
+				}
+				e := usageError("UNKNOWN_COMMAND_PREFIX", message, "prefix")
+				e.Details = []map[string]any{{"input": prefix, "suggestions": suggestions}}
+				return a.fail(e, opts)
+			}
+			commands = filtered
+		}
+		value = map[string]any{"data": commands}
 	case "schema.errors":
 		value = errorCatalog()
 	case "schema.events":
@@ -474,19 +494,31 @@ func (a *App) localSchema(cmd *Command, opts Options) int {
 		}
 		value = v
 	default:
-		requested := opts.Positionals[0]
+		requested := commandNameFromWords(opts.Positionals)
 		target, ok := a.Registry.ByName(requested)
 		if !ok {
-			return a.fail(usageError("UNKNOWN_COMMAND_SCHEMA", "Unknown command: "+requested, "command"), opts)
-		}
-		if cmd.CanonicalName == "schema.command" {
-			value = commandDocument(target, requested)
-		} else {
-			schema, e := schemaForCommand(target, cmd.CanonicalName == "schema.input")
-			if e != nil {
-				return a.fail(e, opts)
+			suggestions := commandNameSuggestions(a.Registry, requested, false)
+			message := "Unknown command: " + requested + "."
+			if requested != "" && len(a.Registry.commandsUnder(pathWithFlint(strings.Split(requested, ".")...))) > 0 {
+				message = requested + " is a command group, not a command. Run flint schema commands " + requested + " to list its commands."
+			} else if len(suggestions) > 0 {
+				message += " Did you mean " + suggestions[0] + "?"
 			}
-			value = schema
+			e := usageError("UNKNOWN_COMMAND_SCHEMA", message, "command")
+			e.Details = []map[string]any{{"input": requested, "suggestions": suggestions}}
+			return a.fail(e, opts)
+		}
+		var e *CLIError
+		switch cmd.CanonicalName {
+		case "schema.command":
+			value = commandDocument(target, requested)
+		case "schema.input":
+			value, e = requestBodySchema(target)
+		default:
+			value, e = schemaForCommand(target, false)
+		}
+		if e != nil {
+			return a.fail(e, opts)
 		}
 	}
 	opts.Output = "json"
@@ -516,8 +548,8 @@ func (a *App) localHelp(cmd *Command, opts Options) int {
 	if !ok {
 		// The offline topics are a short fixed list. Anything else is a question,
 		// and questions belong in Flint Help rather than in a dead end here.
-		unknown := usageError("UNKNOWN_HELP_TOPIC", "Unknown help topic: "+topic, "topic")
-		unknown.Details = map[string]any{"remediation": map[string]any{"next_actions": []any{
+		unknown := usageError("UNKNOWN_HELP_TOPIC", "Unknown help topic: "+topic+". Topics: "+strings.Join(helpTopicNames, ", ")+".", "topic")
+		unknown.Details = map[string]any{"topics": helpTopicNames, "remediation": map[string]any{"next_actions": []any{
 			map[string]any{"command": "flint help search " + topic},
 		}}}
 		return a.fail(unknown, opts)
@@ -704,6 +736,8 @@ func (a *App) applyDoctorFixes() ([]string, error) {
 }
 
 func (a *App) localSignup(cmd *Command, opts Options) int { return a.runSignup(opts) }
+
+var helpTopicNames = []string{"exit-codes", "errors", "events", "test-cards"}
 
 func helpTopic(topic string) (map[string]any, bool) {
 	switch topic {

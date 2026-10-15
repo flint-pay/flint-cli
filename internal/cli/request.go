@@ -22,6 +22,7 @@ type preparedRequest struct {
 	Body           []byte
 	BodyValue      map[string]any
 	IdempotencyKey string
+	Warnings       []map[string]any
 }
 
 func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, resolved ResolvedConfig, key, baseURL string) (preparedRequest, *CLIError) {
@@ -192,6 +193,11 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 			}
 			req.Body = []byte(form.Encode())
 		} else {
+			if mediaType == "application/json" || operation.RequestBody == nil {
+				if e := a.validateBody(cmd, opts, body, &req); e != nil {
+					return req, e
+				}
+			}
 			raw, e := json.Marshal(body)
 			if e != nil {
 				return req, usageError("INVALID_INPUT", e.Error(), "input")
@@ -201,6 +207,36 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		req.BodyValue = body
 	}
 	return req, nil
+}
+
+// validateBody checks the merged JSON body locally. The raw api command is the
+// unvalidated escape hatch.
+func (a *App) validateBody(cmd *Command, opts Options, body map[string]any, req *preparedRequest) *CLIError {
+	if cmd.CanonicalName == "api" || cmd.OperationID == "" {
+		return nil
+	}
+	target, label := cmd, cmd.CanonicalName
+	if resolved := permissionCommand(cmd, opts); resolved.OperationID != cmd.OperationID {
+		// payment-intents.create --order sends the order-scoped request.
+		operation, _ := openAPIOperationByID(resolved.OperationID)
+		resolved.InputSchema = requestSchemaName(operation.RequestBody)
+		target, label = resolved, cmd.CanonicalName+" --order"
+	}
+	warnings, e := validateRequestBody(target, label, body)
+	if e != nil {
+		return e
+	}
+	req.Warnings = warnings
+	if !opts.Quiet {
+		for _, warning := range warnings {
+			line := fmt.Sprintf("warning: request body field %s is not a documented %s request field and will be sent as-is.", warning["path"], label)
+			if suggestion, ok := warning["suggestion"].(string); ok {
+				line += " Did you mean " + suggestion + "?"
+			}
+			fmt.Fprintln(a.Stderr, line)
+		}
+	}
+	return nil
 }
 
 func (a *App) readInput(path string) (map[string]any, *CLIError) {
@@ -235,20 +271,52 @@ func (a *App) readInput(path string) (map[string]any, *CLIError) {
 	var body map[string]any
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.UseNumber()
+	valueStart := int64(len(raw) - len(bytes.TrimLeft(raw, " \t\r\n")))
 	if err := dec.Decode(&body); err != nil {
-		return nil, usageError("INVALID_INPUT_JSON", err.Error(), "input")
+		return nil, invalidInputJSON(raw, err, valueStart)
 	}
+	if body == nil {
+		return nil, invalidInputJSON(raw, errors.New("input must be a JSON object, not null"), valueStart)
+	}
+	firstEnd := dec.InputOffset()
 	var extra any
 	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
 		if err == nil {
-			return nil, usageError("INVALID_INPUT_JSON", "Input must contain exactly one JSON object.", "input")
+			rest := raw[firstEnd:]
+			err = errors.New("input must contain exactly one JSON object")
+			return nil, invalidInputJSON(raw, err, firstEnd+int64(len(rest)-len(bytes.TrimLeft(rest, " \t\r\n"))))
 		}
-		return nil, usageError("INVALID_INPUT_JSON", err.Error(), "input")
-	}
-	if body == nil {
-		return nil, usageError("INVALID_INPUT_JSON", "Input must be a JSON object.", "input")
+		return nil, invalidInputJSON(raw, err, valueStart)
 	}
 	return body, nil
+}
+
+// invalidInputJSON reports the 1-based line and column of the offending byte;
+// position is used when the decoder error carries no offset.
+func invalidInputJSON(raw []byte, err error, position int64) *CLIError {
+	message := strings.TrimPrefix(err.Error(), "json: ")
+	var syntaxErr *json.SyntaxError
+	var typeErr *json.UnmarshalTypeError
+	switch {
+	case errors.As(err, &syntaxErr):
+		position = syntaxErr.Offset - 1
+	case errors.As(err, &typeErr):
+		message = "input must be a JSON object, not " + typeErr.Value
+	case errors.Is(err, io.ErrUnexpectedEOF):
+		message = "unexpected end of input"
+		position = int64(len(bytes.TrimRight(raw, " \t\r\n")))
+	}
+	line, column := 1, 1
+	for _, c := range raw[:min(max(position, 0), int64(len(raw)))] {
+		if c == '\n' {
+			line, column = line+1, 1
+		} else if c&0xC0 != 0x80 {
+			column++
+		}
+	}
+	e := usageError("INVALID_INPUT_JSON", fmt.Sprintf("Input JSON is invalid at line %d, column %d: %s.", line, column, message), "input")
+	e.Details = map[string]any{"line": line, "column": column}
+	return e
 }
 
 func convertValue(value, typ string) (any, error) {
@@ -256,12 +324,18 @@ func convertValue(value, typ string) (any, error) {
 	case "integer":
 		n, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
-			return nil, err
+			if _, floatErr := strconv.ParseFloat(value, 64); floatErr == nil {
+				return nil, fmt.Errorf("%q is not a whole number; money amounts use the smallest currency unit, so 10.00 USD is 1000", value)
+			}
+			return nil, fmt.Errorf("%q is not a whole number", value)
 		}
 		return n, nil
 	case "boolean":
 		b, err := strconv.ParseBool(value)
-		return b, err
+		if err != nil {
+			return nil, fmt.Errorf("%q is not true or false", value)
+		}
+		return b, nil
 	default:
 		return value, nil
 	}

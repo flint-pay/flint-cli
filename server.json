@@ -21,6 +21,59 @@
         {
           "type": "positional",
           "value": "serve"
+        },
+        {
+          "type": "named",
+          "name": "--tools",
+          "description": "Expose only tools named PREFIX or PREFIX.*, comma-separated (for example customers,payment-intents,payment-links,help). Omit to expose every tool.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "type": "named",
+          "name": "--allow-live",
+          "description": "Let tools act on live (production) credentials and contexts. Agents must still acknowledge each live call.",
+          "isRequired": false,
+          "format": "boolean",
+          "default": "false",
+          "choices": ["true", "false"]
+        },
+        {
+          "type": "named",
+          "name": "--allow-destructive",
+          "description": "Let agents confirm destructive operations, and sensitive operations in live mode, themselves. Otherwise the server asks you.",
+          "isRequired": false,
+          "format": "boolean",
+          "default": "false",
+          "choices": ["true", "false"]
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "FLINT_API_KEY",
+          "description": "Flint API key. Prefer a sandbox key (flint_test_...). Omit to use a saved flint login.",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "FLINT_PROFILE",
+          "description": "Named Flint CLI profile whose saved credential and configuration to use.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "FLINT_MERCHANT",
+          "description": "Merchant guard: refuse to run unless the credential belongs to this mer_ ID.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "FLINT_ACCESS_TOKEN",
+          "description": "Session or partner access token, as an alternative to an API key.",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
         }
       ]
     }

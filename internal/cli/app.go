@@ -242,8 +242,22 @@ func (a *App) printCommandHelp(cmd *Command) {
 	}
 	fmt.Fprintln(a.Stdout, cmd.Description)
 	fmt.Fprintln(a.Stdout)
+	usage := append([]string{}, cmd.Path...)
+	for _, arg := range cmd.Arguments {
+		if arg.Positional == 0 {
+			continue
+		}
+		name := "<" + arg.Name + ">"
+		if arg.Variadic {
+			name += "..."
+		}
+		if !arg.Required {
+			name = "[" + name + "]"
+		}
+		usage = append(usage, name)
+	}
 	fmt.Fprintln(a.Stdout, "Usage:")
-	fmt.Fprintln(a.Stdout, "  "+strings.Join(cmd.Path, " ")+" [flags]")
+	fmt.Fprintln(a.Stdout, "  "+strings.Join(usage, " ")+" [flags]")
 	if len(cmd.Arguments) > 0 {
 		fmt.Fprintln(a.Stdout)
 		fmt.Fprintln(a.Stdout, "Arguments and flags:")
@@ -255,11 +269,18 @@ func (a *App) printCommandHelp(cmd *Command) {
 					label += "..."
 				}
 			}
-			required := ""
-			if arg.Required {
-				required = " (required)"
+			description := arg.Description
+			if arg.AcceptsHistoryRef {
+				ref := "@last"
+				if arg.IDPrefix != "" {
+					ref = "@last." + strings.TrimSuffix(arg.IDPrefix, "_")
+				}
+				description += "; accepts " + ref + " for the most recent one"
 			}
-			fmt.Fprintf(a.Stdout, "  %-28s %s%s\n", label, arg.Description, required)
+			if arg.Required {
+				description += " (required)"
+			}
+			fmt.Fprintf(a.Stdout, "  %-28s %s\n", label, strings.TrimPrefix(description, "; "))
 		}
 	}
 	fmt.Fprintln(a.Stdout)
@@ -338,7 +359,7 @@ func (a *App) printRootHelp() {
 	fmt.Fprintln(a.Stdout, "  --context ID  Use an authorized browser-session context")
 	fmt.Fprintln(a.Stdout)
 	fmt.Fprintln(a.Stdout, "Start here:")
-	for _, line := range []string{"flint signup", "flint login  (alias for flint auth login)", "flint payment-links create", "flint payment-intents", "flint context list", "flint context switch", "flint reauth", "flint doctor", "flint upgrade", "flint init", "flint auth import", "flint schema commands --output json", "flint help test-cards", "flint help search <question>", "flint support open --request-id <id>"} {
+	for _, line := range []string{"flint signup", "flint login  (alias for flint auth login)", "flint payment-links create", "flint payment-intents", "flint context list", "flint context switch", "flint reauth", "flint doctor", "flint upgrade", "flint init", "flint auth import", "flint schema commands <resource> --output json", "flint help test-cards", "flint help search <question>", "flint support open --request-id <id>"} {
 		fmt.Fprintln(a.Stdout, "  "+line)
 	}
 	fmt.Fprintln(a.Stdout)
@@ -385,6 +406,27 @@ func (a *App) printRootHelp() {
 		}
 	}
 	fmt.Fprintln(a.Stdout)
+	fmt.Fprintln(a.Stdout, "Scripts and AI agents:")
+	fmt.Fprintln(a.Stdout, "  Use --output json (or FLINT_OUTPUT=json) for JSON results and errors on stdout; it never prompts.")
+	fmt.Fprintln(a.Stdout, "  Exit codes: 0 ok, 1 API error, 2 usage, 3 auth or config, 4 confirmation required, 5 network, 6 wait unmet.")
+	fmt.Fprintln(a.Stdout, "  Lists return one page; check has_more and pass --page-token, or use --all.")
+	fmt.Fprintln(a.Stdout, "  Reuse --idempotency-key when retrying a create or update that timed out.")
+	fmt.Fprintln(a.Stdout, "  Pass @last or @last.<prefix> (for example @last.pi) as an ID to reuse the newest resource.")
+	fmt.Fprintln(a.Stdout)
+	fmt.Fprintln(a.Stdout, "Environment:")
+	for _, line := range [][2]string{
+		{"FLINT_API_KEY", "API key; overrides saved credentials"},
+		{"FLINT_OUTPUT", "Default output format: human or json"},
+		{"FLINT_NO_INPUT", "Set to 1 to disable prompts"},
+		{"FLINT_PROFILE", "Profile to use, like --profile"},
+		{"FLINT_MERCHANT", "Merchant guard, like --merchant"},
+		{"FLINT_COLOR", "auto, always, or never"},
+		{"FLINT_ACCESS_TOKEN", "Session or partner access token"},
+		{"FLINT_BASE_URL", "API server for development; sign in with a separate profile"},
+	} {
+		fmt.Fprintf(a.Stdout, "  %-20s %s\n", line[0], line[1])
+	}
+	fmt.Fprintln(a.Stdout)
 	fmt.Fprintln(a.Stdout, "Run flint <command> --help for help with a specific command.")
-	fmt.Fprintln(a.Stdout, "Run flint schema commands --output json for the complete command catalog.")
+	fmt.Fprintln(a.Stdout, "Run flint schema commands <resource> --output json for a resource's command schemas.")
 }

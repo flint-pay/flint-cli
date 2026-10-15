@@ -591,7 +591,7 @@ func TestOAuthTokenErrorPreservesProtocolDetails(t *testing.T) {
 	}))
 	defer server.Close()
 	app, out, _ := testApp(t, server.URL)
-	app.Stdin = strings.NewReader(`{}`)
+	app.Stdin = strings.NewReader(`{"grant_type":"refresh_token","client_id":"client_test","client_secret":"secret_test","refresh_token":"refresh_test"}`)
 	if exit := app.Run([]string{"oauth", "token", "--input", "-", "--output", "json"}); exit != ExitAuth {
 		t.Fatalf("exit=%d: %s", exit, out)
 	}

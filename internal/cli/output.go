@@ -174,10 +174,29 @@ func applyOutputTransforms(ctx context.Context, value any, opts Options) (any, *
 		if len(values) == 1 {
 			value = values[0]
 		} else {
-			value = values
+			value = jqResults(values)
 		}
 	}
 	return value, nil
+}
+
+// jqResults holds a --jq expression that produced zero or several values. The
+// CLI writes one value per line like jq; embedded callers still see an array.
+type jqResults []any
+
+func (a *App) writeJQResults(values jqResults, opts Options) *CLIError {
+	for _, v := range values {
+		var err error
+		if s, ok := v.(string); ok && opts.Output != "json" && opts.Output != "ndjson" {
+			_, err = fmt.Fprintln(a.Stdout, s)
+		} else {
+			err = writeJSON(a.Stdout, v)
+		}
+		if err != nil {
+			return networkError("OUTPUT_WRITE_FAILED", "Could not write command output.", err)
+		}
+	}
+	return nil
 }
 
 func (a *App) writeResult(value any, cmd *Command, opts Options) *CLIError {
@@ -193,6 +212,9 @@ func (a *App) writeResult(value any, cmd *Command, opts Options) *CLIError {
 			return networkError("OUTPUT_WRITE_FAILED", "Could not write command output.", err)
 		}
 		return nil
+	}
+	if values, ok := value.(jqResults); ok {
+		return a.writeJQResults(values, opts)
 	}
 	if opts.Output == "json" || opts.Output == "ndjson" {
 		if err := writeJSON(a.Stdout, value); err != nil {
@@ -211,6 +233,13 @@ func (a *App) writeResult(value any, cmd *Command, opts Options) *CLIError {
 	}
 	if output.err != nil {
 		return networkError("OUTPUT_WRITE_FAILED", "Could not write command output.", output.err)
+	}
+	if cmd != nil && cmd.Supports.Pagination && !opts.Quiet {
+		if envelope, ok := value.(map[string]any); ok && envelope["has_more"] == true {
+			if token, _ := envelope["next_page_token"].(string); token != "" {
+				fmt.Fprintf(a.Stderr, "More results are available. Run the same command with --page-token %s for the next page, or --all for every page.\n", terminalSafe(token))
+			}
+		}
 	}
 	return nil
 }

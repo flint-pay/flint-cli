@@ -97,11 +97,11 @@ flint payment-links create --name T-shirt --item-name T-shirt --amount 2500 --cu
 flint listen --forward-to http://localhost:8080/webhooks/flint
 ```
 
-`flint`, `flint --help`, and `flint help` list starting points, API resource groups, and examples for creating primitives. `flint schema commands --output json` returns the whole catalog as data.
+`flint`, `flint --help`, and `flint help` list starting points, API resource groups, and examples for creating primitives. `flint schema commands customers --output json` returns the commands under one group as data, such as `customers` or `customers addresses`; without a group, `flint schema commands --output json` returns the whole catalog, which is large. `flint schema command customers create --output json` describes one command; dotted names such as `customers.create` work too.
 
 Primitives use their resource names, such as `customers`, `products`, `orders`, and `subscription-plans`. Start with `flint <resource> --help` to list operations, then `flint <resource> create --help` to see flags and examples when creation is supported. Some groups are read-only or use nested command paths; their resource help lists the exact commands.
 
-Commands with convenience flags can create a resource directly. Other commands take a JSON request body through `--input FILE.json`. Use `flint schema input <resource>.create --output json` to see the body's fields and requirements, prepare the file, then run the create command:
+Commands with convenience flags can create a resource directly. Other commands take a JSON request body through `--input FILE.json`, which the CLI sends as the API request body. Use `flint schema input <resource>.create --output json` to see the JSON Schema of that body, prepare the file, then run the create command. Path arguments such as IDs and execution controls such as `--live` or `--idempotency-key` are not part of the body; pass them as arguments and flags. Convenience flags set their body fields on top of the file.
 
 ```bash
 flint customers create --email jane@example.com
@@ -120,13 +120,15 @@ JSON
 flint products create --input product.json
 ```
 
-The product example sets a $25.00 USD price; money amounts use the smallest currency unit. With credentials configured, add `--dry-run=client` to validate the request body and inspect the prepared request without making an API request or creating a resource:
+The product example sets a $25.00 USD price; money amounts use the smallest currency unit. Before sending, the CLI checks the final JSON body, after merging convenience flags, against the same schema `flint schema input` prints. A missing required field, a wrong type, or a value outside an allowed set fails with exit code 2 and `INVALID_REQUEST_BODY`; `error.details` lists each problem with its JSON path, such as `$.default_variant.unit_price_money.currency`. A schema that forbids extra fields rejects unknown ones; otherwise top-level fields the schema does not document are still sent, with a warning on stderr (unless `--quiet`) that suggests a close match for a likely misspelling. An `_flint` key, which only MCP tool calls use, is rejected; pass those controls as flags. Invalid JSON reports its line and column. The raw `flint api` command sends bodies without these checks.
+
+With credentials configured, add `--dry-run=client` to run the same checks and inspect the prepared request without making an API request or creating a resource. The dry-run result lists undocumented fields under `data.warnings`:
 
 ```bash
 flint products create --input product.json --dry-run=client --output json
 ```
 
-Client dry runs use the saved or environment credential locally; sign in first if no credential is configured. They do not check server permissions or server-side business rules. Remove `--dry-run=client` to submit the create request.
+Client dry runs use the saved or environment credential locally; sign in first if no credential is configured. They do not check server permissions or server-side business rules, such as whether referenced IDs exist. Remove `--dry-run=client` to submit the create request.
 
 The same workflow applies to other primitives. Inspect each schema, prepare the corresponding JSON request body file, then create it:
 
@@ -151,6 +153,41 @@ The CLI includes `--title` and `--body` as URL parameters, preserving multiline 
 Add `--ai-agent` to identify the reporter as an AI agent. It defaults to false and accepts `--ai-agent=false`. The CLI emits `ai_agent=true` in the link when enabled and a boolean `ai_agent` in JSON output. The Help web app must read this parameter too; it is self-reported metadata, not verified identity.
 
 Live partner OAuth installs require `--mode live --live` and confirmation (`--confirm` for scripts), including when using `flint api get /v1/oauth/authorize`. Raw API pagination (`--all` or `--paginate`) accepts only read-only GET operations.
+
+## MCP server
+
+`flint mcp serve` exposes each canonical command as a Model Context Protocol tool over stdio, so an AI agent can call the Flint API with your credential. Tools are named `<resource>.<action>`, such as `customers.create`. The server uses the same credential as the CLI: a saved `flint login`, the profile named by `FLINT_PROFILE`, or `FLINT_API_KEY`.
+
+Claude Code:
+
+```bash
+claude mcp add --transport stdio flint -- flint mcp serve --tools customers,payment-intents,payment-links,help
+claude mcp add --transport stdio --env FLINT_PROFILE=staging flint-staging -- flint mcp serve
+```
+
+Cursor (`.cursor/mcp.json`) and other clients that read an `mcpServers` JSON file:
+
+```json
+{
+  "mcpServers": {
+    "flint": {
+      "command": "npx",
+      "args": ["-y", "@flintpay/cli", "mcp", "serve", "--tools", "customers,payment-intents,payment-links,help"],
+      "env": { "FLINT_API_KEY": "flint_test_..." }
+    }
+  }
+}
+```
+
+Use a sandbox key (`flint_test_...`) or `FLINT_PROFILE` rather than a live key in shared config files.
+
+Server flags:
+
+- `--tools PREFIX[,PREFIX...]` exposes only tools whose name is `PREFIX` or starts with `PREFIX.`, and can be repeated. The full catalog has about 590 tools and a 1.8 MB `tools/list` response; filtering keeps agent context small. An unknown prefix stops the server at startup.
+- `--allow-live` lets tools act on live (production) credentials and contexts. Without it, any call that would use a live credential or a selected live context fails, and agents cannot pass `_flint.live`. With it, agents must still acknowledge each live call with `_flint.live`.
+- `--allow-destructive` lets agents confirm destructive operations, and sensitive operations in live mode, with `_flint.confirm`. Without it, the server asks you through MCP elicitation when the client supports it, and otherwise refuses with instructions for you.
+
+Agents can always inspect a write first with `_flint.dry_run: "client"` or, for destructive operations, `_flint.preview`. Successful results that reached the API include a `Flint environment: sandbox|live` line. The `help` tool returns a short index without a topic; `schema.input` and `schema.output` return a tool's full schemas on demand.
 
 ## Develop
 

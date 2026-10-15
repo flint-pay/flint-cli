@@ -1,0 +1,375 @@
+package cli
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/flint-pay/flint-cli/internal/schemafixture"
+)
+
+func minimalRequestBody(t testing.TB, command *Command) map[string]any {
+	t.Helper()
+	schema, e := requestBodySchema(command)
+	if e != nil {
+		t.Fatal(e)
+	}
+	value, err := schemafixture.Minimal(schema)
+	if err != nil {
+		t.Fatalf("%s: %v", command.CanonicalName, err)
+	}
+	body, _ := value.(map[string]any)
+	if body == nil {
+		body = map[string]any{}
+	}
+	return body
+}
+
+// exhaustiveInputBody is the --input body for invocations that pass every
+// argument: a minimal valid body plus an undocumented marker field wherever
+// the schema admits undeclared fields, so tests can see the input forwarded.
+func exhaustiveInputBody(t testing.TB, command *Command) map[string]any {
+	t.Helper()
+	marker := map[string]any{"input_marker": "present"}
+	operation, _ := openAPIOperationByID(command.OperationID)
+	if mediaType, _ := requestContentSchema(operation.RequestBody); command.CanonicalName == "api" || mediaType != "application/json" {
+		return marker
+	}
+	if command.CanonicalName == "orders.pay" {
+		// --payment-source-token supplies the whole confirm_payment_intents body.
+		return map[string]any{}
+	}
+	// Mirror prepareRequest: body flags overwrite their paths in the input, and
+	// repeatable flags append to whatever list the input already holds.
+	withoutRepeats := func(value any) map[string]any {
+		body, _ := value.(map[string]any)
+		body = deepCopyMap(body)
+		for _, arg := range command.Arguments {
+			if arg.Repeat && arg.BodyPath != "" {
+				delete(body, strings.Split(arg.BodyPath, ".")[0])
+			}
+		}
+		return body
+	}
+	withFlags := func(body map[string]any) map[string]any {
+		body = deepCopyMap(body)
+		for _, arg := range command.Arguments {
+			if arg.BodyPath == "" || arg.Name == "input" || arg.Positional > 0 || arg.Query != "" || (command.CanonicalName == "payment-intents.create" && arg.Name == "order") {
+				continue
+			}
+			for _, value := range exhaustiveArgumentValues(arg) {
+				converted, err := convertValue(value, arg.Type)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if arg.Repeat {
+					existing, _ := lookupPath(body, arg.BodyPath)
+					list, _ := existing.([]any)
+					converted = append(list, converted)
+				}
+				_ = setBodyPath(body, arg.BodyPath, converted)
+			}
+		}
+		return body
+	}
+	schema, e := requestBodySchema(command)
+	if e != nil {
+		t.Fatal(e)
+	}
+	value, err := schemafixture.MinimalMatching(schema, func(v any) any { return withFlags(withoutRepeats(v)) })
+	if err != nil {
+		t.Fatalf("%s: no input body is valid with the exhaustive flags: %v", command.CanonicalName, err)
+	}
+	body := withoutRepeats(value)
+	body["input_marker"] = "present"
+	if _, e := validateRequestBody(command, command.CanonicalName, withFlags(body)); e != nil {
+		delete(body, "input_marker")
+	}
+	return body
+}
+
+func jsonString(t testing.TB, value any) string {
+	t.Helper()
+	raw, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(raw)
+}
+
+func TestEveryBodyFlagTargetsADocumentedRequestField(t *testing.T) {
+	for _, command := range NewRegistry().Commands {
+		if command.OperationID == "" || command.CanonicalName != command.Name {
+			continue
+		}
+		v, e := requestBodyValidator(command)
+		if e != nil {
+			t.Fatal(e)
+		}
+		for _, arg := range command.Arguments {
+			if arg.BodyPath == "" || arg.Name == "input" || arg.Positional > 0 || arg.Query != "" {
+				continue
+			}
+			if (command.CanonicalName == "payment-intents.create" && arg.Name == "order") || (command.CanonicalName == "orders.pay" && arg.Name == "payment_source_token") {
+				continue // Rewritten into a route or payment_intents before sending.
+			}
+			if field := strings.Split(arg.BodyPath, ".")[0]; !v.open && !containsString(v.declared, field) {
+				t.Errorf("%s %s writes undocumented body field %s", command.CanonicalName, arg.Flag, field)
+			}
+		}
+	}
+}
+
+func TestEveryRequestBodySchemaHasALocallyValidMinimalBody(t *testing.T) {
+	for _, command := range NewRegistry().Commands {
+		if command.OperationID == "" || command.CanonicalName != command.Name {
+			continue
+		}
+		operation, _ := openAPIOperationByID(command.OperationID)
+		if mediaType, _ := requestContentSchema(operation.RequestBody); mediaType != "application/json" {
+			continue
+		}
+		body := minimalRequestBody(t, command)
+		if _, e := validateRequestBody(command, command.CanonicalName, body); e != nil {
+			raw, _ := json.Marshal(body)
+			t.Errorf("%s minimal body %s: %s", command.CanonicalName, raw, e.Message)
+		}
+	}
+}
+
+func runJSON(t *testing.T, app *App, stdout *bytes.Buffer, argv ...string) (int, map[string]any) {
+	t.Helper()
+	stdout.Reset()
+	exit := app.Run(append(argv, "--output", "json"))
+	var result map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("argv=%v stdout is not JSON: %v: %s", argv, err, stdout)
+	}
+	return exit, result
+}
+
+func TestSchemaInputDescribesTheInputBody(t *testing.T) {
+	app, stdout, _ := testApp(t, "http://127.0.0.1:1")
+	for _, name := range []string{"customers.addresses.create", "payment-intents.create", "orders.pay", "sandboxes.reset"} {
+		exit, schema := runJSON(t, app, stdout, "schema", "input", name)
+		if exit != ExitOK {
+			t.Fatalf("%s exit=%d: %v", name, exit, schema)
+		}
+		properties, _ := schema["properties"].(map[string]any)
+		for _, leaked := range []string{"_flint", "customer_id", "order_id", "sandbox_id", "order", "amount", "currency"} {
+			if _, ok := properties[leaked]; ok && (leaked != "customer_id" || name != "payment-intents.create") {
+				t.Errorf("%s input schema contains CLI-only %s", name, leaked)
+			}
+		}
+		if raw, _ := json.Marshal(schema); strings.Contains(string(raw), `"_flint"`) {
+			t.Errorf("%s input schema mentions _flint: %s", name, raw)
+		}
+	}
+	command, _ := app.Registry.ByName("payment-intents.create")
+	body, _ := requestBodySchema(command)
+	if body["required"] == nil || body["oneOf"] != nil {
+		t.Errorf("payment-intents.create body schema should keep the public request shape: %v", body)
+	}
+	// The MCP tool schema keeps its CLI arguments and execution controls.
+	tool, _ := schemaForMCPCommand(command)
+	properties, _ := tool["properties"].(map[string]any)
+	if properties["_flint"] == nil || properties["order"] == nil || tool["oneOf"] == nil {
+		t.Errorf("MCP tool schema lost CLI arguments: %v", properties)
+	}
+}
+
+func TestClientDryRunValidatesTheRequestBody(t *testing.T) {
+	cases := []struct {
+		name, input, path, contains string
+	}{
+		{"missing required", `{"name":"Ada"}`, "$.email", "required field is missing"},
+		{"wrong type", `{"email":123}`, "$.email", "got number, want string"},
+		{"misspelled required", `{"emial":"a@example.com"}`, "$.emial", "did you mean email?"},
+		{"nested", `{"email":"a@example.com","billing_address":{"city":"X"}}`, "$.billing_address.country", "required field is missing"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app, stdout, _ := testApp(t, "http://127.0.0.1:1")
+			app.Stdin = strings.NewReader(tc.input)
+			exit, result := runJSON(t, app, stdout, "customers", "create", "--input", "-", "--dry-run", "client")
+			errorBody, _ := result["error"].(map[string]any)
+			if exit != ExitUsage || errorBody["code"] != "INVALID_REQUEST_BODY" {
+				t.Fatalf("exit=%d result=%v", exit, result)
+			}
+			details, _ := errorBody["details"].([]any)
+			found := false
+			for _, raw := range details {
+				detail, _ := raw.(map[string]any)
+				found = found || (detail["path"] == tc.path && strings.Contains(fmt.Sprint(detail["message"]), tc.contains))
+			}
+			if !found || !strings.Contains(fmt.Sprint(errorBody["message"]), tc.path) {
+				t.Fatalf("details lack %s %q: %v", tc.path, tc.contains, errorBody)
+			}
+		})
+	}
+}
+
+func TestInvalidRequestBodyIsNeverSent(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/v1/developer/auth-context" {
+			fmt.Fprint(w, exhaustiveAuthContextJSON("sandbox"))
+			return
+		}
+		calls++
+		fmt.Fprint(w, `{"data":{"customer_id":"cus_test"}}`)
+	}))
+	defer server.Close()
+	app, stdout, _ := testApp(t, server.URL)
+	app.Stdin = strings.NewReader(`{"email":false}`)
+	if exit, _ := runJSON(t, app, stdout, "customers", "create", "--input", "-"); exit != ExitUsage || calls != 0 {
+		t.Fatalf("exit=%d calls=%d", exit, calls)
+	}
+	// Convenience flags merge before validation, so they can complete a body.
+	app.Stdin = strings.NewReader(`{"name":"Ada"}`)
+	if exit, result := runJSON(t, app, stdout, "customers", "create", "--input", "-", "--email", "ada@example.com"); exit != ExitOK || calls != 1 {
+		t.Fatalf("exit=%d calls=%d result=%v", exit, calls, result)
+	}
+	// The raw api command remains the unvalidated escape hatch.
+	app.Stdin = strings.NewReader(`{"emial":1}`)
+	if exit, result := runJSON(t, app, stdout, "api", "post", "/v1/customers", "--input", "-", "--dry-run", "client"); exit != ExitOK {
+		t.Fatalf("raw api dry-run exit=%d: %v", exit, result)
+	}
+}
+
+func TestUndocumentedBodyFieldsWarn(t *testing.T) {
+	app, stdout, stderr := testApp(t, "http://127.0.0.1:1")
+	app.Stdin = strings.NewReader(`{"email":"a@example.com","nmae":"Ada"}`)
+	exit, result := runJSON(t, app, stdout, "customers", "create", "--input", "-", "--dry-run", "client")
+	warnings, _ := lookupPath(result, "data.warnings")
+	list, _ := warnings.([]any)
+	if exit != ExitOK || len(list) != 1 {
+		t.Fatalf("exit=%d result=%v", exit, result)
+	}
+	if warning := list[0].(map[string]any); warning["path"] != "$.nmae" || warning["suggestion"] != "name" {
+		t.Fatalf("warning = %v", warning)
+	}
+	if body, _ := lookupPath(result, "data.body.nmae"); body != "Ada" {
+		t.Fatalf("undocumented field was not forwarded: %v", result)
+	}
+	if !strings.Contains(stderr.String(), "warning: request body field $.nmae") || !strings.Contains(stderr.String(), "Did you mean name?") {
+		t.Fatalf("stderr = %q", stderr)
+	}
+
+	stderr.Reset()
+	app.Stdin = strings.NewReader(`{"email":"a@example.com","nmae":"Ada"}`)
+	if exit, _ := runJSON(t, app, stdout, "customers", "create", "--input", "-", "--dry-run", "client", "--quiet"); exit != ExitOK || stderr.Len() != 0 {
+		t.Fatalf("--quiet exit=%d stderr=%q", exit, stderr)
+	}
+
+	// --order validates against the order-scoped request schema.
+	stderr.Reset()
+	app.Stdin = strings.NewReader(`{"tip_money":{"amount":1,"currency":"USD"}}`)
+	exit, result = runJSON(t, app, stdout, "payment-intents", "create", "--order", "ord_test", "--input", "-", "--dry-run", "client")
+	if path, _ := lookupPath(result, "data.path"); exit != ExitOK || path != "/v1/orders/ord_test/payment-intents" || !strings.Contains(stderr.String(), "payment-intents.create --order") {
+		t.Fatalf("exit=%d result=%v stderr=%q", exit, result, stderr)
+	}
+}
+
+func TestMCPControlsInInputAreRejected(t *testing.T) {
+	app, stdout, _ := testApp(t, "http://127.0.0.1:1")
+	app.Stdin = strings.NewReader(`{"email":"a@example.com","_flint":{"live":true,"idempotency_key":"idem_1","dry_run":"client"}}`)
+	exit, result := runJSON(t, app, stdout, "customers", "create", "--input", "-", "--dry-run", "client")
+	message, _ := lookupPath(result, "error.message")
+	if exit != ExitUsage || !strings.Contains(fmt.Sprint(message), "MCP tool calls only") {
+		t.Fatalf("exit=%d result=%v", exit, result)
+	}
+	for _, flag := range []string{"--live", "--idempotency-key", "--dry-run=client"} {
+		if !strings.Contains(fmt.Sprint(message), flag) {
+			t.Errorf("message does not name %s: %s", flag, message)
+		}
+	}
+}
+
+func TestInvalidInputJSONReportsLineAndColumn(t *testing.T) {
+	cases := []struct {
+		input, want string
+	}{
+		{"{\n  \"email\": \"a@example.com\",\n}", "line 3, column 1"},
+		{"{\"email\": tru}", "line 1, column 14"},
+		{"{\n  \"name\": \"é\" x}", "line 2, column 15"},
+		{"{\"email\":", "line 1, column 10: unexpected end of input"},
+		{"\n[1]", "line 2, column 1: input must be a JSON object, not array"},
+		{"{} {}", "line 1, column 4: input must contain exactly one JSON object"},
+		{"null", "line 1, column 1: input must be a JSON object, not null"},
+	}
+	for _, tc := range cases {
+		app, stdout, _ := testApp(t, "http://127.0.0.1:1")
+		app.Stdin = strings.NewReader(tc.input)
+		exit, result := runJSON(t, app, stdout, "customers", "create", "--input", "-", "--dry-run", "client")
+		message, _ := lookupPath(result, "error.message")
+		code, _ := lookupPath(result, "error.code")
+		if exit != ExitUsage || code != "INVALID_INPUT_JSON" || !strings.Contains(fmt.Sprint(message), tc.want) {
+			t.Errorf("input %q: exit=%d message=%v, want %q", tc.input, exit, message, tc.want)
+		}
+	}
+}
+
+func TestSchemaCommandsFiltersByPrefix(t *testing.T) {
+	app, stdout, _ := testApp(t, "http://127.0.0.1:1")
+	names := func(result map[string]any) []string {
+		var out []string
+		for _, raw := range result["data"].([]any) {
+			out = append(out, raw.(map[string]any)["name"].(string))
+		}
+		return out
+	}
+	_, all := runJSON(t, app, stdout, "schema", "commands")
+	if len(names(all)) != len(commandList(app.Registry)) {
+		t.Fatalf("unfiltered catalog changed: %d commands", len(names(all)))
+	}
+	exit, customers := runJSON(t, app, stdout, "schema", "commands", "customers")
+	if exit != ExitOK || len(names(customers)) == 0 {
+		t.Fatalf("exit=%d result=%v", exit, customers)
+	}
+	for _, name := range names(customers) {
+		if !strings.HasPrefix(name, "customers.") {
+			t.Errorf("customers filter returned %s", name)
+		}
+	}
+	_, dotted := runJSON(t, app, stdout, "schema", "commands", "customers.addresses")
+	_, spaced := runJSON(t, app, stdout, "schema", "commands", "customers", "addresses")
+	if !slices.Equal(names(dotted), names(spaced)) || !slices.Contains(names(dotted), "customers.addresses.create") || slices.Contains(names(dotted), "customers.create") {
+		t.Fatalf("dotted=%v spaced=%v", names(dotted), names(spaced))
+	}
+	exit, unknown := runJSON(t, app, stdout, "schema", "commands", "custmers")
+	suggestions, _ := lookupPath(unknown, "error.details")
+	if code, _ := lookupPath(unknown, "error.code"); exit != ExitUsage || code != "UNKNOWN_COMMAND_PREFIX" || !strings.Contains(fmt.Sprint(suggestions), "customers") {
+		t.Fatalf("exit=%d result=%v", exit, unknown)
+	}
+}
+
+func TestSchemaLookupsAcceptSpacedNamesAndSuggest(t *testing.T) {
+	app, stdout, stderr := testApp(t, "http://127.0.0.1:1")
+	for _, kind := range []string{"command", "input", "output"} {
+		_, dotted := runJSON(t, app, stdout, "schema", kind, "customers.addresses.create")
+		exit, spaced := runJSON(t, app, stdout, "schema", kind, "customers", "addresses", "create")
+		if exit != ExitOK || !reflect.DeepEqual(dotted, spaced) {
+			t.Fatalf("schema %s spaced exit=%d differs: %v", kind, exit, spaced)
+		}
+	}
+	exit, unknown := runJSON(t, app, stdout, "schema", "input", "customer.create")
+	if code, _ := lookupPath(unknown, "error.code"); exit != ExitUsage || code != "UNKNOWN_COMMAND_SCHEMA" || !strings.Contains(fmt.Sprint(unknown), "Did you mean customers.create?") {
+		t.Fatalf("exit=%d result=%v", exit, unknown)
+	}
+	exit, group := runJSON(t, app, stdout, "schema", "command", "customers")
+	if message, _ := lookupPath(group, "error.message"); exit != ExitUsage || !strings.Contains(fmt.Sprint(message), "flint schema commands customers") {
+		t.Fatalf("exit=%d result=%v", exit, group)
+	}
+	stderr.Reset()
+	if exit := app.Run([]string{"schema", "command", "customer", "create"}); exit != ExitUsage || !strings.Contains(stderr.String(), "Did you mean: customers.create") {
+		t.Fatalf("human exit=%d stderr=%q", exit, stderr)
+	}
+}
