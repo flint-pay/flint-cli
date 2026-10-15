@@ -51,15 +51,8 @@ func TestMCPPreviewResultsMatchAdvertisedSchemas(t *testing.T) {
 	}))
 	defer server.Close()
 	app, _, _ := testApp(t, server.URL)
-	catalog := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/list"}, defaultOptions())
-	rawTools, ok := lookupPath(catalog, "result.tools")
-	if !ok {
-		t.Fatalf("tools/list: %#v", catalog)
-	}
-	schemas := map[string]map[string]any{}
-	for _, tool := range rawTools.([]map[string]any) {
-		schemas[tool["name"].(string)] = tool["outputSchema"].(map[string]any)
-	}
+	// tools/list no longer advertises output schemas; results must still
+	// match each tool's public output contract.
 	for _, test := range []struct {
 		name, tool string
 		arguments  map[string]any
@@ -79,7 +72,12 @@ func TestMCPPreviewResultsMatchAdvertisedSchemas(t *testing.T) {
 			if got, ok := lookupPath(value, test.path); !ok || got != test.want {
 				t.Fatalf("%s = %#v, want %#v", test.path, got, test.want)
 			}
-			assertMCPOutputMatchesSchema(t, schemas[test.tool], value)
+			cmd, _ := app.Registry.ByName(test.tool)
+			schema, schemaErr := mcpOutputSchema(cmd)
+			if schemaErr != nil {
+				t.Fatal(schemaErr)
+			}
+			assertMCPOutputMatchesSchema(t, schema, value)
 		})
 	}
 }

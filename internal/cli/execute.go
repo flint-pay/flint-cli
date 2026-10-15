@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/url"
 	"os/exec"
 	"runtime"
@@ -56,6 +57,9 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 
 func previewRequest(req preparedRequest, cmd *Command, authContext AuthContext, preview bool) map[string]any {
 	data := map[string]any{"method": req.Method, "path": req.Path, "headers": map[string]any{"Idempotency-Key": req.IdempotencyKey}, "body": req.BodyValue, "persistent_side_effects": false}
+	if len(req.Warnings) > 0 {
+		data["warnings"] = req.Warnings
+	}
 	if preview {
 		data["preview"] = map[string]any{
 			"permission_check": permissionPreview(cmd, authContext),
@@ -303,6 +307,13 @@ func (a *App) executeWait(ctx context.Context, cmd *Command, opts Options, req p
 		if matched {
 			return last, nil
 		}
+		for _, c := range conditions {
+			if _, found := lookupResourcePath(last, c.Path); !found && !outputSchemaDeclaresPath(cmd, c.Path) {
+				err := usageError("WAIT_FIELD_UNKNOWN", fmt.Sprintf("--wait-for field %q is not part of this command's response, so the condition can never be met. Run flint schema output %s to list fields.", c.Path, cmd.CanonicalName), "wait-for")
+				err.Details = map[string]any{"conditions": opts.WaitFor, "last": last}
+				return last, err
+			}
+		}
 		if terminallyImpossible(cmd, conditions, observed) {
 			err := cliError(ExitWait, "wait_condition_unmet", "WAIT_CONDITION_IMPOSSIBLE", "The resource reached a terminal state that cannot satisfy the requested condition.")
 			err.Details = map[string]any{"conditions": opts.WaitFor, "observed": observed, "last": last}
@@ -340,6 +351,56 @@ func (a *App) writeProgress(opts Options, record map[string]any, plain string) *
 	}
 	fmt.Fprintln(a.Stderr, plain)
 	return nil
+}
+
+// outputSchemaDeclaresPath reports whether the first segment of a wait path is
+// a documented response field, either on the resource or one nested object
+// below it. Unknown or free-form schemas count as declared.
+func outputSchemaDeclaresPath(cmd *Command, path string) bool {
+	schema, err := schemaForCommand(cmd, false)
+	if err != nil {
+		return true
+	}
+	defs, _ := schema["$defs"].(map[string]any)
+	var properties func(node any, depth int) map[string]any
+	properties = func(node any, depth int) map[string]any {
+		m, _ := node.(map[string]any)
+		if m == nil || depth > 8 {
+			return nil
+		}
+		if ref, ok := m["$ref"].(string); ok {
+			return properties(defs[strings.TrimPrefix(ref, "#/$defs/")], depth+1)
+		}
+		out := map[string]any{}
+		if own, ok := m["properties"].(map[string]any); ok {
+			maps.Copy(out, own)
+		}
+		for _, key := range []string{"allOf", "anyOf", "oneOf"} {
+			branches, _ := m[key].([]any)
+			for _, branch := range branches {
+				maps.Copy(out, properties(branch, depth+1))
+			}
+		}
+		return out
+	}
+	first := strings.Split(strings.TrimPrefix(path, "data."), ".")[0]
+	root := properties(schema, 0)
+	if _, ok := root[first]; ok {
+		return true
+	}
+	data := properties(root["data"], 0)
+	if len(data) == 0 {
+		return true
+	}
+	if _, ok := data[first]; ok {
+		return true
+	}
+	for _, child := range data {
+		if _, ok := properties(child, 0)[first]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 type waitCondition struct{ Path, Expected string }

@@ -182,7 +182,22 @@ func commandDocument(c *Command, requested string) map[string]any {
 	return out
 }
 
+// schemaForCommand returns the output schema, or the MCP tool input schema:
+// the request body plus path arguments, CLI alternatives, and _flint controls.
 func schemaForCommand(c *Command, input bool) (map[string]any, *CLIError) {
+	schema, e := commandSchema(c, input, input)
+	if e != nil || !input {
+		return schema, e
+	}
+	return addCLIArgumentsToSchema(schema, c), nil
+}
+
+// requestBodySchema describes exactly the JSON object that --input supplies.
+func requestBodySchema(c *Command) (map[string]any, *CLIError) {
+	return commandSchema(c, true, false)
+}
+
+func commandSchema(c *Command, input, alternatives bool) (map[string]any, *CLIError) {
 	doc, err := loadOpenAPI()
 	if err != nil {
 		return nil, cliError(ExitUsage, "internal_error", "SCHEMA_SNAPSHOT_INVALID", err.Error())
@@ -233,12 +248,12 @@ func schemaForCommand(c *Command, input bool) (map[string]any, *CLIError) {
 	}
 	if root == nil {
 		if input {
-			return addCLIArgumentsToSchema(map[string]any{"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object", "additionalProperties": false}, c), nil
+			return map[string]any{"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object", "additionalProperties": false}, nil
 		}
 		return map[string]any{"$schema": "https://json-schema.org/draft/2020-12/schema"}, nil
 	}
 	out := deepCopyMap(root)
-	if input {
+	if alternatives {
 		applyCommandInputAlternatives(out, c, doc.Components.Schemas)
 	}
 	out["$schema"] = "https://json-schema.org/draft/2020-12/schema"
@@ -247,9 +262,6 @@ func schemaForCommand(c *Command, input bool) (map[string]any, *CLIError) {
 	out = rewriteSchemaRefs(out).(map[string]any)
 	if len(defs) > 0 {
 		out["$defs"] = defs
-	}
-	if input {
-		out = addCLIArgumentsToSchema(out, c)
 	}
 	return out, nil
 }
@@ -390,14 +402,34 @@ func addCLIArgumentsToSchema(schema map[string]any, c *Command) map[string]any {
 		if arg.Name == "input" || (arg.BodyPath != "" && arg.Positional == 0 && arg.Query == "") {
 			continue
 		}
-		property := map[string]any{"type": map[string]string{"integer": "integer", "boolean": "boolean"}[arg.Type], "description": arg.Description}
+		property := map[string]any{"type": map[string]string{"integer": "integer", "boolean": "boolean"}[arg.Type]}
 		if property["type"] == "" {
 			property["type"] = "string"
 		}
+		if arg.Type == "integer" && (arg.Name == "page_size" || arg.Query == "page_size") {
+			property["minimum"] = 1
+			property["maximum"] = 100
+		}
 		if arg.Repeat {
-			property = map[string]any{"type": "array", "items": property, "description": arg.Description}
+			property = map[string]any{"type": "array", "items": property}
 			if arg.Required {
 				property["minItems"] = 1
+			}
+		}
+		if arg.Description != "" {
+			property["description"] = arg.Description
+		}
+		if c.CanonicalName == "api" {
+			switch arg.Name {
+			case "method":
+				property["enum"] = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "get", "post", "put", "patch", "delete"}
+				if arg.Description == "" {
+					property["description"] = "HTTP method of the documented public API route."
+				}
+			case "path":
+				if arg.Description == "" {
+					property["description"] = "Documented /v1 path with IDs filled in, optionally with a query string, e.g. /v1/customers/cus_123."
+				}
 			}
 		}
 		properties[arg.Name] = property
@@ -405,61 +437,71 @@ func addCLIArgumentsToSchema(schema map[string]any, c *Command) map[string]any {
 			requiredSet[arg.Name] = true
 		}
 	}
+	// Every control carries a description: agents see these schemas without
+	// the CLI help text, and several controls change safety behavior.
+	control := func(schema map[string]any, description string) map[string]any {
+		schema["description"] = description
+		return schema
+	}
+	idempotencyKey := control(map[string]any{"type": "string", "minLength": 1}, "Idempotency key. Reuse the same key when retrying after a timeout, or the write may run twice.")
+	dryRun := control(map[string]any{"type": "string", "enum": []string{"client"}}, "\"client\": validate and return the request without sending it.")
+	confirm := control(map[string]any{"type": "boolean"}, "Confirm a destructive or live-sensitive operation.")
+	forDuration := control(map[string]any{"type": "string"}, "Maximum duration, e.g. 30s.")
 	controls := map[string]any{
-		"live":     map[string]any{"type": "boolean"},
-		"merchant": map[string]any{"type": "string"},
-		"profile":  map[string]any{"type": "string"},
-		"timeout":  map[string]any{"type": "string", "description": "Transport and retry timeout."},
-		"debug":    map[string]any{"type": "boolean"},
-		"quiet":    map[string]any{"type": "boolean"},
+		"live":     control(map[string]any{"type": "boolean"}, "Acknowledge a live (production) credential."),
+		"merchant": control(map[string]any{"type": "string"}, "Fail unless the credential's merchant is this mer_ ID."),
+		"profile":  control(map[string]any{"type": "string"}, "Flint CLI profile to use."),
+		"timeout":  control(map[string]any{"type": "string"}, "Request timeout, e.g. 30s."),
+		"debug":    control(map[string]any{"type": "boolean"}, "Log request diagnostics to stderr."),
+		"quiet":    control(map[string]any{"type": "boolean"}, "Suppress warnings."),
 	}
 	if c.Mutation {
-		controls["idempotency_key"] = map[string]any{"type": "string"}
-		controls["dry_run"] = map[string]any{"type": "string", "enum": []string{"client"}}
+		controls["idempotency_key"] = idempotencyKey
+		controls["dry_run"] = dryRun
 	}
 	if c.CanonicalName == "api" {
-		controls["idempotency_key"] = map[string]any{"type": "string"}
-		controls["dry_run"] = map[string]any{"type": "string", "enum": []string{"client"}}
-		controls["confirm"] = map[string]any{"type": "boolean"}
-		controls["preview"] = map[string]any{"type": "boolean"}
-		controls["paginate"] = map[string]any{"type": "boolean"}
-		controls["page_size"] = map[string]any{"type": "integer", "minimum": 1, "maximum": 100}
-		controls["page_token"] = map[string]any{"type": "string"}
-		controls["all"] = map[string]any{"type": "boolean"}
+		controls["idempotency_key"] = idempotencyKey
+		controls["dry_run"] = dryRun
+		controls["confirm"] = confirm
+		controls["preview"] = control(map[string]any{"type": "boolean"}, "Show a destructive request's effect without sending it.")
+		controls["paginate"] = control(map[string]any{"type": "boolean"}, "Return every page as records. GET only.")
+		controls["page_size"] = control(map[string]any{"type": "integer", "minimum": 1, "maximum": 100}, "Resources per page.")
+		controls["page_token"] = control(map[string]any{"type": "string"}, "next_page_token from a previous page.")
+		controls["all"] = control(map[string]any{"type": "boolean"}, "Fetch and merge every page. GET only.")
 	}
 	if c.Sensitive || c.Destructive {
-		controls["confirm"] = map[string]any{"type": "boolean"}
+		controls["confirm"] = confirm
 	}
 	if c.CanonicalName == "history" {
-		controls["confirm"] = map[string]any{"type": "boolean", "description": "Required when clear is true."}
+		controls["confirm"] = control(map[string]any{"type": "boolean"}, "Required when clear is true.")
 	}
 	if c.Mutation && c.Destructive {
-		controls["preview"] = map[string]any{"type": "boolean"}
+		controls["preview"] = control(map[string]any{"type": "boolean"}, "Show the effect without making the change.")
 	}
 	if c.Stream {
-		controls["max_events"] = map[string]any{"type": "integer", "minimum": 1}
-		controls["for"] = map[string]any{"type": "string"}
+		controls["max_events"] = control(map[string]any{"type": "integer", "minimum": 1}, "Stop after this many records.")
+		controls["for"] = forDuration
 	}
 	if c.Supports.WaitFor {
-		controls["wait_for"] = map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"type": "string"}}
-		controls["for"] = map[string]any{"type": "string"}
+		controls["wait_for"] = control(map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"type": "string"}}, "Poll until each FIELD=VALUE holds; bound with for.")
+		controls["for"] = forDuration
 	}
 	if c.Supports.Pagination && !c.Stream {
-		controls["all"] = map[string]any{"type": "boolean"}
+		controls["all"] = control(map[string]any{"type": "boolean"}, "Fetch and merge every page.")
 	}
 	if c.Stream || c.Supports.Pagination || c.Supports.WaitFor || c.CanonicalName == "api" || c.CanonicalName == "upgrade" {
-		controls["progress"] = map[string]any{"type": "string", "enum": []string{"auto", "plain", "json", "quiet"}}
+		controls["progress"] = control(map[string]any{"type": "string", "enum": []string{"auto", "plain", "json", "quiet"}}, "Progress reporting on stderr.")
 	}
 	if c.Supports.Open {
-		controls["open"] = map[string]any{"type": "boolean"}
+		controls["open"] = control(map[string]any{"type": "boolean"}, "Open the URL in a browser (interactive terminals only).")
 	}
 	if expansions, err := expansionValues(c.OperationID); err == nil && len(expansions) > 0 {
-		controls["expand"] = map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"type": "string", "enum": expansions}}
+		controls["expand"] = control(map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"type": "string", "enum": expansions}}, "Related resources to include inline.")
 	}
 	if c.Supports.Field {
-		controls["field"] = map[string]any{"type": "string"}
-		controls["select"] = map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"type": "string"}}
-		controls["jq"] = map[string]any{"type": "string"}
+		controls["field"] = control(map[string]any{"type": "string"}, "Return only the value at this dot path, e.g. data.id.")
+		controls["select"] = control(map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"type": "string"}}, "Keep only these fields of each resource.")
+		controls["jq"] = control(map[string]any{"type": "string"}, "jq expression applied to the response.")
 	}
 	properties["_flint"] = map[string]any{"type": "object", "description": "Optional CLI execution controls.", "additionalProperties": false, "properties": controls}
 	if len(requiredSet) > 0 {
@@ -526,6 +568,48 @@ func commandList(reg *Registry) []map[string]any {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i]["name"].(string) < out[j]["name"].(string) })
 	return out
+}
+
+// commandNameFromWords accepts customers.addresses.create, customers addresses
+// create, or a mix, including a leading flint.
+func commandNameFromWords(words []string) string {
+	fields := strings.Fields(strings.ReplaceAll(strings.Join(words, " "), ".", " "))
+	if len(fields) > 1 && fields[0] == "flint" {
+		fields = fields[1:]
+	}
+	return strings.Join(fields, ".")
+}
+
+// commandNameSuggestions ranks command names, or with groups also their dotted
+// group prefixes, by edit distance. A group named as a command yields its commands.
+func commandNameSuggestions(r *Registry, input string, groups bool) []string {
+	seen := map[string]bool{}
+	var candidates, within []string
+	for _, c := range r.Commands {
+		if strings.HasPrefix(c.Name, input+".") {
+			within = append(within, c.Name)
+		}
+		parts := strings.Split(c.Name, ".")
+		for n := len(parts); n >= 1; n-- {
+			candidate := strings.Join(parts[:n], ".")
+			if (groups || n == len(parts)) && !seen[candidate] {
+				seen[candidate] = true
+				candidates = append(candidates, candidate)
+			}
+		}
+	}
+	var out []string
+	for _, candidate := range candidates {
+		if editDistance(input, candidate) <= max(2, len(input)/4) {
+			out = append(out, candidate)
+		}
+	}
+	sortStringsByDistance(out, input)
+	if len(out) == 0 {
+		sort.Strings(within)
+		out = within
+	}
+	return out[:min(3, len(out))]
 }
 
 func errorCatalog() map[string]any {

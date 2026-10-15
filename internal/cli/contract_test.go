@@ -560,10 +560,10 @@ func TestMCPToolsMatchCanonicalRegistryAndInputSchemas(t *testing.T) {
 	byName := map[string]map[string]any{}
 	for _, tool := range tools {
 		byName[tool["name"].(string)] = tool
-		// MCP requires an explicit object root, even when anyOf is used.
-		outputSchema, ok := tool["outputSchema"].(map[string]any)
-		if !ok || outputSchema["type"] != "object" {
-			t.Errorf("MCP tool %s must advertise outputSchema.type object", tool["name"])
+		// Output schemas are fetched on demand with schema.output; embedding
+		// them made tools/list about 19 MB.
+		if _, ok := tool["outputSchema"]; ok {
+			t.Errorf("MCP tool %s must not embed an outputSchema", tool["name"])
 		}
 		inputSchema, ok := tool["inputSchema"].(map[string]any)
 		if !ok || inputSchema["type"] != "object" {
@@ -571,9 +571,9 @@ func TestMCPToolsMatchCanonicalRegistryAndInputSchemas(t *testing.T) {
 		}
 	}
 	want := 0
-	for _, cmd := range app.Registry.Commands {
-		if !mcpCommandExposed(cmd) {
-			continue
+	for _, cmd := range app.mcpAllTools() {
+		if cmd.CanonicalName != "history.clear" && !mcpCommandExposed(cmd) {
+			t.Errorf("MCP exposes non-canonical command %s", cmd.CanonicalName)
 		}
 		want++
 		tool, ok := byName[cmd.CanonicalName]
@@ -581,23 +581,23 @@ func TestMCPToolsMatchCanonicalRegistryAndInputSchemas(t *testing.T) {
 			t.Errorf("canonical command %s is missing from MCP", cmd.CanonicalName)
 			continue
 		}
-		schema, schemaErr := schemaForMCPCommand(cmd)
+		schema, schemaErr := schemaForMCPTool(cmd, mcpPolicy{})
 		if schemaErr != nil {
 			t.Fatal(schemaErr)
 		}
 		if fmt.Sprint(tool["inputSchema"]) != fmt.Sprint(schema) {
 			t.Errorf("MCP schema differs for %s", cmd.CanonicalName)
 		}
-		outputSchema, outputSchemaErr := mcpOutputSchema(cmd)
-		if outputSchemaErr != nil {
-			t.Fatal(outputSchemaErr)
-		}
-		if fmt.Sprint(tool["outputSchema"]) != fmt.Sprint(outputSchema) {
-			t.Errorf("MCP output schema differs for %s", cmd.CanonicalName)
-		}
 		annotations, ok := tool["annotations"].(map[string]any)
-		if !ok || fmt.Sprint(annotations) != fmt.Sprint(mcpToolAnnotations(cmd)) {
+		expected := mcpToolAnnotations(cmd)
+		expected["title"] = mcpToolTitle(cmd)
+		if !ok || fmt.Sprint(annotations) != fmt.Sprint(expected) {
 			t.Errorf("MCP annotations differ for %s: %#v", cmd.CanonicalName, tool["annotations"])
+		}
+	}
+	for _, cmd := range app.Registry.Commands {
+		if mcpCommandExposed(cmd) && byName[cmd.CanonicalName] == nil {
+			t.Errorf("canonical command %s is missing from MCP", cmd.CanonicalName)
 		}
 	}
 	if len(tools) != want {

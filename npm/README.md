@@ -98,7 +98,8 @@ In CI, pass the key through `FLINT_API_KEY` instead of the keychain, and set `FL
 - Guide: https://developers.withflintpay.com/docs/guides/cli
 - API reference: https://developers.withflintpay.com/docs/api
 - `flint help` for starting points, `flint <command> --help` for any single command
-- `flint schema commands --output json` for the complete machine-readable catalog
+- `flint schema commands customers --output json` for one group's machine-readable commands; omit the group for the complete, large catalog
+- `flint schema input customers create --output json` for the JSON Schema of a command's `--input` body
 
 ## License
 

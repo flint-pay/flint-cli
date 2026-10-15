@@ -15,6 +15,7 @@ var boolFlags = map[string]bool{
 	// that declares them accepts them, but the parser still has to know they
 	// take no value.
 	"new-session": true, "private": true, "no-open": true, "ai-agent": true,
+	"allow-live": true, "allow-destructive": true,
 }
 
 var globalFlags = map[string]bool{
@@ -35,6 +36,12 @@ func parseInvocation(r *Registry, argv []string) (*Command, Options, bool, *CLIE
 	flagsTerminated := len(remaining) > 0 && remaining[0] == "--"
 	if flagsTerminated {
 		remaining = remaining[1:]
+	}
+	if len(remaining) == 1 && remaining[0] == "--version" {
+		remaining = []string{"version"}
+	}
+	if len(remaining) > 0 && !flagsTerminated && strings.HasPrefix(remaining[0], "-") {
+		return nil, opts, false, unknownFlagError(remaining[0], globalFlags)
 	}
 	if len(remaining) == 0 {
 		if len(argv) == 0 || helpRequested(opts) {
@@ -61,10 +68,20 @@ func parseInvocation(r *Registry, argv []string) (*Command, Options, bool, *CLIE
 			return &Command{Name: name, CanonicalName: name, Path: groupPath, Local: true, Group: true}, opts, true, nil
 		}
 		input := remaining[0]
-		suggestions := r.NounSuggestions(input)
-		msg := "Unknown command: " + strings.Join(remaining[:min(2, len(remaining))], " ") + "."
-		if len(suggestions) > 0 {
-			msg += " Did you mean " + suggestions[0] + "?"
+		shown := 1
+		for shown < len(remaining) && len(r.commandsUnder(append([]string{"flint"}, remaining[:shown]...))) > 0 {
+			shown++
+		}
+		var suggestions []string
+		if shown > 1 {
+			suggestions = r.subcommandSuggestions(input, remaining[1:])
+			input = strings.Join(remaining[:shown], " ")
+		} else {
+			suggestions = r.NounSuggestions(input)
+		}
+		msg := "Unknown command: " + strings.Join(remaining[:max(shown, min(2, len(remaining)))], " ") + "."
+		if len(suggestions) == 0 {
+			msg += " Run flint --help to list commands."
 		}
 		e := usageError("UNKNOWN_COMMAND", msg, "")
 		e.Details = []map[string]any{{"input": input, "suggestions": suggestions}}
@@ -114,6 +131,12 @@ func extractFlags(args []string, allowed map[string]bool, opts *Options, rejectU
 	remaining := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {
 		token := args[i]
+		switch token {
+		case "-h":
+			token = "--help"
+		case "-o":
+			token = "--output"
+		}
 		if token == "--" {
 			// The command-specific pass must see the terminator too, so it
 			// cannot reinterpret literal positional values as flags.
@@ -124,6 +147,9 @@ func extractFlags(args []string, allowed map[string]bool, opts *Options, rejectU
 			break
 		}
 		if !strings.HasPrefix(token, "--") {
+			if rejectUnknown && isShortFlag(token) {
+				return nil, unknownFlagError(token, allowed)
+			}
 			remaining = append(remaining, token)
 			continue
 		}
@@ -134,9 +160,7 @@ func extractFlags(args []string, allowed map[string]bool, opts *Options, rejectU
 				remaining = append(remaining, token)
 				continue
 			}
-			e := usageError("UNKNOWN_FLAG", "Unknown flag: --"+key+".", key)
-			e.Details = []map[string]any{{"input": "--" + key, "suggestions": suggestFlags(key, allowed)}}
-			return nil, e
+			return nil, unknownFlagError(token, allowed)
 		}
 		if boolFlags[key] {
 			if !hasValue {
@@ -147,6 +171,9 @@ func extractFlags(args []string, allowed map[string]bool, opts *Options, rejectU
 			}
 		} else if !hasValue {
 			if i+1 >= len(args) || strings.HasPrefix(args[i+1], "--") {
+				if key == "dry-run" {
+					return nil, usageError("MISSING_FLAG_VALUE", "Missing value for --dry-run. Use --dry-run=client.", key)
+				}
 				return nil, usageError("MISSING_FLAG_VALUE", "Missing value for --"+key+".", key)
 			}
 			i++
@@ -416,10 +443,48 @@ func splitCSV(s string) []string {
 	return out
 }
 
+// Flags that people and agents commonly guess from other CLIs.
+var flagAliases = map[string]string{
+	"json": "--output json", "format": "--output", "version": "flint version",
+	"yes": "--confirm", "force": "--confirm", "limit": "--page-size", "verbose": "--debug",
+}
+
+// isShortFlag reports whether a single-dash token looks like a flag rather
+// than a positional value such as "-" (stdin) or a negative number.
+func isShortFlag(token string) bool {
+	if len(token) < 2 || token[0] != '-' || strings.HasPrefix(token, "--") {
+		return false
+	}
+	_, err := strconv.ParseFloat(token, 64)
+	return err != nil
+}
+
+func unknownFlagError(token string, allowed map[string]bool) *CLIError {
+	key, _, _ := strings.Cut(strings.TrimLeft(token, "-"), "=")
+	shown := "--" + key
+	message := "Unknown flag: " + shown + "."
+	if !strings.HasPrefix(token, "--") {
+		shown = token
+		message = "Unknown flag: " + token + ". Flint flags use the long form, such as --help or --output json."
+		if len(key) == 1 {
+			key = ""
+		}
+	}
+	e := usageError("UNKNOWN_FLAG", message, key)
+	e.Details = []map[string]any{{"input": shown, "suggestions": suggestFlags(key, allowed)}}
+	return e
+}
+
 func suggestFlags(input string, allowed map[string]bool) []string {
+	if input == "" {
+		return nil
+	}
+	if alias, ok := flagAliases[input]; ok {
+		return []string{alias}
+	}
 	var out []string
 	for candidate := range allowed {
-		if editDistance(input, candidate) <= 3 {
+		if editDistance(input, candidate) <= max(1, len(input)/3) || (len(input) >= 4 && strings.HasPrefix(candidate, input)) {
 			out = append(out, "--"+candidate)
 		}
 	}
@@ -444,13 +509,36 @@ func (r *Registry) NounSuggestions(input string) []string {
 				continue
 			}
 			candidate := path[1]
-			if !seen[candidate] && editDistance(normalized, candidate) <= 6 {
+			close := editDistance(normalized, candidate) <= max(2, len(normalized)/3) || (len(normalized) >= 4 && strings.Contains(candidate, normalized))
+			if !seen[candidate] && close {
 				seen[candidate] = true
 				out = append(out, candidate)
 			}
 		}
 	}
 	sortStringsByDistance(out, input)
+	if len(out) > 3 {
+		return out[:3]
+	}
+	return out
+}
+
+func (r *Registry) subcommandSuggestions(group string, rest []string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, c := range r.commandsUnder([]string{"flint", group}) {
+		sub := c.Path[2:]
+		typed := strings.Join(rest[:min(len(sub), len(rest))], " ")
+		name := strings.Join(sub, " ")
+		if !seen[name] && (editDistance(typed, name) <= max(1, len(name)/3) || (len(typed) >= 3 && strings.HasPrefix(name, typed))) {
+			seen[name] = true
+			out = append(out, name)
+		}
+	}
+	sortStringsByDistance(out, strings.Join(rest, " "))
+	for i := range out {
+		out[i] = group + " " + out[i]
+	}
 	if len(out) > 3 {
 		return out[:3]
 	}

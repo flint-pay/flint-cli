@@ -316,7 +316,7 @@ func TestEveryAliasExecutesLikeItsCanonicalCommand(t *testing.T) {
 
 				var canonicalArgs []string
 				if command.Local {
-					canonicalArgs = append(minimalInvocation(command), "--no-input", "--output", "json")
+					canonicalArgs = append(minimalInvocation(t, command), "--no-input", "--output", "json")
 				} else {
 					canonicalArgs = exhaustiveRemoteInvocation(command)
 				}
@@ -326,7 +326,7 @@ func TestEveryAliasExecutesLikeItsCanonicalCommand(t *testing.T) {
 
 				run := func(argv []string) (int, string, string) {
 					app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
-					app.Stdin = strings.NewReader(`{"input_marker":"present"}`)
+					app.Stdin = strings.NewReader(jsonString(t, exhaustiveInputBody(t, command)))
 					exit := app.Run(argv)
 					return exit, stdout.String(), stderr.String()
 				}
@@ -461,7 +461,7 @@ func TestEveryAdvertisedExecutionControlIsAcceptedByItsCommand(t *testing.T) {
 			for control := range controls {
 				control := control
 				t.Run(control, func(t *testing.T) {
-					argv := minimalInvocation(command)
+					argv := minimalInvocation(t, command)
 					if command.CanonicalName == "api" && control == "preview" {
 						argv[1] = "delete"
 						argv[2] = "/v1/webhook-endpoints/whep_test"
@@ -551,23 +551,25 @@ func TestEveryAdvertisedExecutionControlIsAcceptedByItsCommand(t *testing.T) {
 func TestEveryBooleanFlagAcceptsExplicitTrueAndFalse(t *testing.T) {
 	registry := NewRegistry()
 	cases := map[string][]string{
-		"new-session": {"auth", "login"},
-		"all":         {"customers", "list"},
-		"clear":       {"history"},
-		"confirm":     {"history", "--clear"},
-		"debug":       {"version"},
-		"fix":         {"doctor"},
-		"help":        {"version"},
-		"live":        {"sandboxes", "list"},
-		"no-input":    {"version"},
-		"open":        {"checkout-sessions", "create"},
-		"paginate":    {"api", "get", "/v1/customers"},
-		"preview":     {"webhook-endpoints", "delete", "whep_test"},
-		"quiet":       {"version"},
-		"stdin":       {"auth", "import"},
-		"private":     {"support", "open"},
-		"ai-agent":    {"support", "open"},
-		"no-open":     {"support", "open"},
+		"new-session":       {"auth", "login"},
+		"all":               {"customers", "list"},
+		"clear":             {"history"},
+		"confirm":           {"history", "--clear"},
+		"debug":             {"version"},
+		"fix":               {"doctor"},
+		"help":              {"version"},
+		"live":              {"sandboxes", "list"},
+		"no-input":          {"version"},
+		"open":              {"checkout-sessions", "create"},
+		"paginate":          {"api", "get", "/v1/customers"},
+		"preview":           {"webhook-endpoints", "delete", "whep_test"},
+		"quiet":             {"version"},
+		"stdin":             {"auth", "import"},
+		"private":           {"support", "open"},
+		"ai-agent":          {"support", "open"},
+		"no-open":           {"support", "open"},
+		"allow-live":        {"mcp", "serve"},
+		"allow-destructive": {"mcp", "serve"},
 	}
 	if len(cases) != len(boolFlags) {
 		t.Fatalf("boolean flag matrix has %d entries, parser has %d", len(cases), len(boolFlags))
@@ -982,7 +984,8 @@ func TestEveryRemoteCommandBuildsAndExecutesARequest(t *testing.T) {
 
 			app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
 			app.Now = func() time.Time { return fixedNow }
-			app.Stdin = strings.NewReader(`{"input_marker":"present"}`)
+			input := exhaustiveInputBody(t, command)
+			app.Stdin = strings.NewReader(jsonString(t, input))
 			argv := exhaustiveRemoteInvocation(command)
 			exit := app.Run(argv)
 			if exit != ExitOK {
@@ -1001,7 +1004,7 @@ func TestEveryRemoteCommandBuildsAndExecutesARequest(t *testing.T) {
 			if captured == nil {
 				t.Fatal("command made no API request")
 			}
-			assertExhaustiveRequest(t, command, captured, fixedNow)
+			assertExhaustiveRequest(t, command, captured, fixedNow, input)
 		})
 	}
 }
@@ -1015,8 +1018,7 @@ func TestEveryMutationExecutesClientDryRunWithoutNetwork(t *testing.T) {
 		}
 		t.Run(command.CanonicalName, func(t *testing.T) {
 			app, stdout, stderr := testAppFromTemplate(t, "http://127.0.0.1:1", template)
-			app.Stdin = strings.NewReader(`{"input_marker":"present"}`)
-			argv := minimalInvocation(command)
+			argv := minimalInvocation(t, command)
 			argv = append(argv, "--dry-run", "client", "--output", "json")
 			if strings.HasPrefix(command.CanonicalName, "sandboxes.") {
 				t.Setenv("FLINT_API_KEY", "flint_live_exhaustive")
@@ -1087,7 +1089,7 @@ func TestEveryDestructiveMutationExecutesPreviewWithoutMutation(t *testing.T) {
 			}))
 			defer server.Close()
 			app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
-			argv := append(minimalInvocation(command), "--preview", "--output", "json")
+			argv := append(minimalInvocation(t, command), "--preview", "--output", "json")
 			if environment == "live" {
 				argv = append(argv, "--live")
 			}
@@ -1158,7 +1160,7 @@ func TestEveryWaitCapableCommandExecutesMatchingWait(t *testing.T) {
 			}))
 			defer server.Close()
 			app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
-			argv := append(minimalInvocation(command),
+			argv := append(minimalInvocation(t, command),
 				"--wait-for", "status=succeeded",
 				"--for", "100ms",
 				"--progress", "quiet",
@@ -1223,7 +1225,7 @@ func TestEveryPaginatedCommandExecutesAllPages(t *testing.T) {
 			}))
 			defer server.Close()
 			app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
-			argv := append(minimalInvocation(command),
+			argv := append(minimalInvocation(t, command),
 				"--page-size", "1",
 				"--all",
 				"--progress", "quiet",
@@ -1471,7 +1473,7 @@ type exhaustiveHTTPRequest struct {
 	Body   []byte
 }
 
-func minimalInvocation(command *Command) []string {
+func minimalInvocation(t testing.TB, command *Command) []string {
 	argv := append([]string(nil), command.Path[1:]...)
 	for _, argument := range command.Arguments {
 		if argument.Positional > 0 {
@@ -1484,14 +1486,27 @@ func minimalInvocation(command *Command) []string {
 		argv = append(argv, argument.Flag, exhaustiveArgumentValues(argument)[0])
 	}
 	if command.CanonicalName == "payment-intents.create" {
-		argv = append(argv, "--amount", "2500", "--currency", "USD", "--payment-option", "card")
+		return append(argv, "--amount", "2500", "--currency", "USD", "--payment-option", "card")
+	}
+	// Required request fields that no required flag supplies come from a
+	// minimal body derived from the command's --input schema.
+	if body := minimalRequestBody(t, command); len(body) > 0 && slices.ContainsFunc(command.Arguments, func(a Arg) bool { return a.Name == "input" }) {
+		raw, err := json.Marshal(body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := t.TempDir() + "/body.json"
+		if err := os.WriteFile(path, raw, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		argv = append(argv, "--input", path)
 	}
 	return argv
 }
 
 func historyReferenceOptions(t *testing.T, registry *Registry, command *Command, argument Arg, reference string) Options {
 	t.Helper()
-	_, options, _, cliErr := parseInvocation(registry, minimalInvocation(command))
+	_, options, _, cliErr := parseInvocation(registry, minimalInvocation(t, command))
 	if cliErr != nil {
 		t.Fatalf("parse minimal %s invocation: %v", command.CanonicalName, cliErr)
 	}
@@ -1562,7 +1577,7 @@ func exhaustiveRemoteInvocation(command *Command) []string {
 	return argv
 }
 
-func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustiveHTTPRequest, now time.Time) {
+func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustiveHTTPRequest, now time.Time, input map[string]any) {
 	t.Helper()
 	wantMethod := command.Method
 	wantPath := command.APIPath
@@ -1669,8 +1684,10 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 		}
 	}
 	if hasInput {
-		if marker, ok := body["input_marker"]; !ok || marker != "present" {
-			t.Errorf("--input body marker missing from %#v", body)
+		for name := range input {
+			if _, ok := body[name]; !ok {
+				t.Errorf("--input field %s missing from %#v", name, body)
+			}
 		}
 	}
 	if command.CanonicalName == "orders.pay" {
@@ -1734,6 +1751,10 @@ func exhaustiveArgumentValues(argument Arg) []string {
 		value = "succeeded"
 	case "status_bucket":
 		value = "success"
+	case "purpose":
+		value = "link_guest_purchases"
+	case "delivery_mode":
+		value = "email"
 	case "request_id":
 		value = "req_test"
 	case "page_size":

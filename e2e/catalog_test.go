@@ -12,11 +12,13 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/flint-pay/flint-cli/internal/cli"
+	"github.com/flint-pay/flint-cli/internal/schemafixture"
 	apispec "github.com/flint-pay/flint-cli/internal/spec"
 )
 
@@ -63,8 +65,9 @@ func TestBuiltCLIExecutesEveryRemoteCommand(t *testing.T) {
 			defer server.Close()
 
 			canonicalArgs := builtRemoteInvocation(command)
+			input := builtInputBody(t, bin, command)
 			canonicalExit, canonicalStdout, canonicalStderr := runBuiltCLI(
-				t, bin, canonicalArgs, credential, server.URL,
+				t, bin, canonicalArgs, credential, server.URL, input,
 			)
 			if canonicalExit != cli.ExitOK {
 				t.Fatalf(
@@ -84,7 +87,7 @@ func TestBuiltCLIExecutesEveryRemoteCommand(t *testing.T) {
 				aliasArgs := append([]string(nil), aliasPath[1:]...)
 				aliasArgs = append(aliasArgs, canonicalArgs[len(command.Path)-1:]...)
 				aliasExit, aliasStdout, aliasStderr := runBuiltCLI(
-					t, bin, aliasArgs, credential, server.URL,
+					t, bin, aliasArgs, credential, server.URL, input,
 				)
 				if aliasExit != canonicalExit || aliasStdout != canonicalStdout || aliasStderr != canonicalStderr {
 					t.Fatalf(
@@ -176,7 +179,7 @@ func TestBuiltCLISchemaContainsEveryRegisteredCommand(t *testing.T) {
 	}
 }
 
-func runBuiltCLI(t *testing.T, bin string, argv []string, credential, baseURL string) (int, string, string) {
+func runBuiltCLI(t *testing.T, bin string, argv []string, credential, baseURL, stdin string) (int, string, string) {
 	t.Helper()
 	configHome := t.TempDir()
 	process := exec.Command(bin, argv...)
@@ -189,7 +192,7 @@ func runBuiltCLI(t *testing.T, bin string, argv []string, credential, baseURL st
 		"HOME="+configHome,
 		"AppData="+configHome,
 	)
-	process.Stdin = strings.NewReader(`{"input_marker":"present"}`)
+	process.Stdin = strings.NewReader(stdin)
 	var stdout, stderr bytes.Buffer
 	process.Stdout = &stdout
 	process.Stderr = &stderr
@@ -203,6 +206,94 @@ func runBuiltCLI(t *testing.T, bin string, argv []string, credential, baseURL st
 		exit = exitErr.ExitCode()
 	}
 	return exit, stdout.String(), stderr.String()
+}
+
+// builtInputBody derives a --input body from the built CLI's own
+// `schema input` output that stays valid once the invocation's flags merge in.
+func builtInputBody(t *testing.T, bin string, command *cli.Command) string {
+	t.Helper()
+	if command.CanonicalName == "api" {
+		return `{"input_marker":"present"}`
+	}
+	if command.CanonicalName == "orders.pay" {
+		return `{}` // --payment-source-token supplies the whole body.
+	}
+	output, err := exec.Command(bin, "schema", "input", command.CanonicalName, "--output", "json").Output()
+	if err != nil {
+		t.Fatalf("schema input %s: %v", command.CanonicalName, err)
+	}
+	var schema map[string]any
+	if err := json.Unmarshal(output, &schema); err != nil {
+		t.Fatal(err)
+	}
+	withoutRepeats := func(value any) map[string]any {
+		raw, _ := json.Marshal(value)
+		body := map[string]any{}
+		_ = json.Unmarshal(raw, &body)
+		for _, argument := range command.Arguments {
+			if argument.Repeat && argument.BodyPath != "" {
+				delete(body, strings.Split(argument.BodyPath, ".")[0])
+			}
+		}
+		return body
+	}
+	withFlags := func(body map[string]any) any {
+		for _, argument := range command.Arguments {
+			if argument.BodyPath == "" || argument.Name == "input" || argument.Positional > 0 || argument.Query != "" ||
+				(command.CanonicalName == "payment-intents.create" && argument.Name == "order") {
+				continue
+			}
+			var values []any
+			for _, value := range builtArgumentValues(argument) {
+				switch argument.Type {
+				case "integer":
+					values = append(values, json.Number(value))
+				case "boolean":
+					values = append(values, value == "true")
+				default:
+					values = append(values, value)
+				}
+			}
+			// Repeatable paths were removed above, so the flags supply the whole list.
+			var value any = values[len(values)-1]
+			if argument.Repeat {
+				value = values
+			}
+			body = setBuiltBodyPath(body, strings.Split(argument.BodyPath, "."), value).(map[string]any)
+		}
+		return body
+	}
+	value, err := schemafixture.MinimalMatching(schema, func(v any) any { return withFlags(withoutRepeats(v)) })
+	if err != nil {
+		t.Fatalf("%s: no input body is valid with the invocation's flags: %v", command.CanonicalName, err)
+	}
+	raw, err := json.Marshal(withoutRepeats(value))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(raw)
+}
+
+// setBuiltBodyPath mirrors the CLI's body paths, where numeric segments
+// address array elements.
+func setBuiltBodyPath(container any, parts []string, value any) any {
+	if len(parts) == 0 {
+		return value
+	}
+	if index, err := strconv.Atoi(parts[0]); err == nil {
+		list, _ := container.([]any)
+		for len(list) <= index {
+			list = append(list, nil)
+		}
+		list[index] = setBuiltBodyPath(list[index], parts[1:], value)
+		return list
+	}
+	object, _ := container.(map[string]any)
+	if object == nil {
+		object = map[string]any{}
+	}
+	object[parts[0]] = setBuiltBodyPath(object[parts[0]], parts[1:], value)
+	return object
 }
 
 func builtRemoteInvocation(command *cli.Command) []string {
@@ -285,6 +376,8 @@ func builtArgumentValues(argument cli.Arg) []string {
 			"scope":                "customers.read",
 			"status":               "succeeded",
 			"status_bucket":        "success",
+			"purpose":              "link_guest_purchases",
+			"delivery_mode":        "email",
 			"transaction_purpose":  "services",
 			"url":                  "https://example.com/webhooks/flint",
 		}[argument.Name]

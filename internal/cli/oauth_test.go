@@ -240,7 +240,7 @@ func TestOAuthOfflineDryRunAndHistory(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if exit := app.Run([]string{"customers", "create", "--dry-run", "client", "--output", "json"}); exit != ExitOK {
+	if exit := app.Run([]string{"customers", "create", "--email", "dev@example.com", "--dry-run", "client", "--output", "json"}); exit != ExitOK {
 		t.Fatalf("exit=%d out=%s stderr=%s", exit, out, stderr)
 	}
 	if strings.Contains(out.String(), testOAuthAccess) || strings.Contains(out.String(), testOAuthRefresh) {
