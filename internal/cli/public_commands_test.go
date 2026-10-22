@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestPublicVerificationArgumentsUseOperationIDPrefixes(t *testing.T) {
+func TestPublicVerificationArgumentsUseResourceIDPrefixes(t *testing.T) {
 	for _, scenario := range []struct {
 		operationID string
 		prefix      string
@@ -25,7 +25,7 @@ func TestPublicVerificationArgumentsUseOperationIDPrefixes(t *testing.T) {
 				t.Fatal("verification operation missing")
 			}
 			for _, argument := range publicAPIArguments("", operation) {
-				if argument.Name == "customer_verification_id" {
+				if argument.Name == "customer_verification_id" || argument.Name == "checkout_session_customer_verification_id" {
 					if argument.IDPrefix != scenario.prefix || !argument.AcceptsHistoryRef {
 						t.Fatalf("verification argument = %#v", argument)
 					}
@@ -58,7 +58,7 @@ func TestVerificationCreateResponsesRecordHistoryAndResolveReferences(t *testing
 			name: "checkout", createOperation: "createCheckoutSessionCustomerVerification", confirmOperation: "confirmCheckoutSessionCustomerVerification",
 			id: "cscv_created", resourceType: "checkout_session_customer_verification", checkout: true,
 			createBody: `{"email":"buyer@example.com","purpose":"save_payment_method"}`,
-			response:   `{"data":{"customer_verification_id":"cscv_created","checkout_session_id":"cs_test","channel":"email","email":"buyer@example.com","purpose":"save_payment_method","created_at":"2026-03-17T14:30:00Z","expires_at":"2026-03-17T14:45:00Z"}}`,
+			response:   `{"data":{"checkout_session_customer_verification_id":"cscv_created","checkout_session_id":"cs_test","channel":"email","email":"buyer@example.com","purpose":"save_payment_method","created_at":"2026-03-17T14:30:00Z","expires_at":"2026-03-17T14:45:00Z"}}`,
 		},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
@@ -78,6 +78,7 @@ func TestVerificationCreateResponsesRecordHistoryAndResolveReferences(t *testing
 			createPath := strings.ReplaceAll(create.APIPath, "{checkout_session_id}", "cs_test")
 			confirmPath := strings.ReplaceAll(confirm.APIPath, "{checkout_session_id}", "cs_test")
 			confirmPath = strings.ReplaceAll(confirmPath, "{customer_verification_id}", scenario.id)
+			confirmPath = strings.ReplaceAll(confirmPath, "{checkout_session_customer_verification_id}", scenario.id)
 			confirmCalls, linkCalls := 0, 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
@@ -271,6 +272,9 @@ func TestEveryPublicOperationHasCompleteCommandContract(t *testing.T) {
 			if command == nil {
 				t.Errorf("%s %s has no command", method, path)
 				continue
+			}
+			if command.APIPath != path || command.Method != strings.ToUpper(method) {
+				t.Errorf("%s route %s %s differs from OpenAPI %s %s", command.Name, command.Method, command.APIPath, method, path)
 			}
 			if command.AuthRequired != (len(operation.Security) > 0) {
 				t.Errorf("%s authentication differs from OpenAPI", command.Name)

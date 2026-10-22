@@ -260,7 +260,7 @@ func TestMCPToolAnnotationsReflectSafety(t *testing.T) {
 		readOnly, destructive, idempotent, world bool
 	}{
 		{"refunds.create", false, true, false, true},
-		{"gift-cards.cash-outs.create", false, true, false, true},
+		{"gift-cards.cash-out", false, true, false, true},
 		{"developer.partner.apps.rotate-secret", false, true, false, true},
 		{"customer-sessions.revoke", false, true, false, true},
 		{"customers.list", true, false, true, true},

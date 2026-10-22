@@ -114,7 +114,7 @@ func TestDXHelpAndSchemaShapes(t *testing.T) {
 	}
 	out.Reset()
 	app.Run([]string{"customers", "create", "--help"})
-	for _, want := range []string{"Request body:", "Required top-level fields: email", "--input takes FILE.json, - for stdin, or inline JSON"} {
+	for _, want := range []string{"Request body:", "--input takes FILE.json, - for stdin, or inline JSON"} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("missing %s: %s", want, out)
 		}

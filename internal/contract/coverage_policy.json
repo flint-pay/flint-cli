@@ -103,12 +103,6 @@
   },
   {
     "method": "GET",
-    "path": "/v1/capabilities",
-    "operation_id": "listCapabilities",
-    "classification": "resource"
-  },
-  {
-    "method": "GET",
     "path": "/v1/categories",
     "operation_id": "listCategories",
     "classification": "resource"
@@ -1179,18 +1173,6 @@
     "classification": "resource"
   },
   {
-    "method": "PATCH",
-    "path": "/v1/locations/{location_id}/geography",
-    "operation_id": "publishLocationGeography",
-    "classification": "resource"
-  },
-  {
-    "method": "PATCH",
-    "path": "/v1/locations/{location_id}/inventory",
-    "operation_id": "updateLocationInventory",
-    "classification": "resource"
-  },
-  {
     "method": "GET",
     "path": "/v1/me",
     "operation_id": "getMe",
@@ -1476,18 +1458,6 @@
     "method": "GET",
     "path": "/v1/merchant-billing-balances/{merchant_billing_balance_id}",
     "operation_id": "getMerchantBillingBalance",
-    "classification": "resource"
-  },
-  {
-    "method": "GET",
-    "path": "/v1/merchant-subscription-invoices",
-    "operation_id": "listMerchantSubscriptionInvoices",
-    "classification": "resource"
-  },
-  {
-    "method": "GET",
-    "path": "/v1/merchant-subscription-invoices/{merchant_subscription_invoice_id}",
-    "operation_id": "getMerchantSubscriptionInvoice",
     "classification": "resource"
   },
   {
@@ -1815,12 +1785,6 @@
     "classification": "resource"
   },
   {
-    "method": "POST",
-    "path": "/v1/organizations/{organization_id}/transfer-ownership",
-    "operation_id": "transferOrganizationOwnership",
-    "classification": "resource"
-  },
-  {
     "method": "GET",
     "path": "/v1/packages",
     "operation_id": "listPackages",
@@ -2070,12 +2034,6 @@
     "method": "POST",
     "path": "/v1/payouts/{payout_id}/cancel",
     "operation_id": "cancelPayout",
-    "classification": "resource"
-  },
-  {
-    "method": "GET",
-    "path": "/v1/payouts/{payout_id}/entries",
-    "operation_id": "listPayoutEntries",
     "classification": "resource"
   },
   {
@@ -2926,7 +2884,7 @@
   },
   {
     "method": "GET",
-    "path": "/v1/webhook-events/{webhook_event_id}/deliveries",
+    "path": "/v1/webhook-deliveries",
     "operation_id": "listWebhookDeliveries",
     "classification": "resource"
   },
@@ -2956,7 +2914,7 @@
   },
   {
     "method": "POST",
-    "path": "/v1/checkout-sessions/{checkout_session_id}/customer-verifications/{customer_verification_id}/confirm",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/customer-verifications/{checkout_session_customer_verification_id}/confirm",
     "operation_id": "confirmCheckoutSessionCustomerVerification",
     "classification": "resource"
   },
@@ -3072,18 +3030,6 @@
     "method": "PATCH",
     "path": "/v1/gift-cards/{gift_card_id}",
     "operation_id": "updateGiftCard",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/gift-cards/{gift_card_id}/adjustments",
-    "operation_id": "createGiftCardAdjustment",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/gift-cards/{gift_card_id}/cash-outs",
-    "operation_id": "createGiftCardCashOut",
     "classification": "resource"
   },
   {
@@ -3444,6 +3390,150 @@
     "method": "POST",
     "path": "/v1/subscriptions/{subscription_id}/renew",
     "operation_id": "renewSubscription",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards/{gift_card_id}/adjust-balance",
+    "operation_id": "adjustGiftCardBalance",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards/{gift_card_id}/cash-out",
+    "operation_id": "cashOutGiftCard",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/files/{file_id}/complete",
+    "operation_id": "completeFile",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/access-links",
+    "operation_id": "createCustomerAccessLink",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/disputes/{dispute_id}/response-sessions",
+    "operation_id": "createDisputeResponseSession",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/files",
+    "operation_id": "createFile",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-quotes/{delivery_quote_id}",
+    "operation_id": "getDeliveryQuote",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-funding-dispositions/{gift_card_funding_disposition_id}",
+    "operation_id": "getGiftCardFundingDisposition",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-adjustments/{inventory_adjustment_id}",
+    "operation_id": "getInventoryAdjustment",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-allocation-policies/{inventory_allocation_policy_id}/revisions/{inventory_allocation_policy_revision_id}",
+    "operation_id": "getInventoryAllocationPolicyRevision",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-counts/{inventory_count_id}",
+    "operation_id": "getInventoryCount",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-levels/{inventory_level_id}",
+    "operation_id": "getInventoryLevel",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-movements/{inventory_movement_id}",
+    "operation_id": "getInventoryMovement",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-receipts/{inventory_receipt_id}",
+    "operation_id": "getInventoryReceipt",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-reservations/{inventory_reservation_id}",
+    "operation_id": "getInventoryReservation",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-transfers/{inventory_transfer_id}",
+    "operation_id": "getInventoryTransfer",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/merchant-billing-invoices/{merchant_billing_invoice_id}",
+    "operation_id": "getMerchantBillingInvoice",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/promotions/{promotion_id}/codes/{promotion_code_id}",
+    "operation_id": "getPromotionCode",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/partner/installs",
+    "operation_id": "listDeveloperPartnerInstalls",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-funding-dispositions",
+    "operation_id": "listGiftCardFundingDispositions",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-allocation-policies/{inventory_allocation_policy_id}/revisions",
+    "operation_id": "listInventoryAllocationPolicyRevisions",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/merchant-billing-invoices",
+    "operation_id": "listMerchantBillingInvoices",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-intents/{payment_intent_id}/activities",
+    "operation_id": "listPaymentIntentActivities",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-intents/{payment_intent_id}/receipts",
+    "operation_id": "sendPaymentIntentReceipt",
     "classification": "resource"
   }
 ]

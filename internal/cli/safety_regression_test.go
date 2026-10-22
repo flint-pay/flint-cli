@@ -41,8 +41,8 @@ func TestOAuthAuthorizationSafetyForCanonicalAndRawCommands(t *testing.T) {
 					if r.URL.Path != "/v1/oauth/authorize" || r.URL.Query().Get("mode") != scenario.mode {
 						t.Errorf("unexpected request: %s", r.URL)
 					}
-					if r.Header.Get("Authorization") != "Bearer synthetic_session" || r.Header.Get("Idempotency-Key") == "" {
-						t.Error("authorization must send its session credential and mutation idempotency key")
+					if r.Header.Get("Authorization") != "" || r.Header.Get("Idempotency-Key") == "" {
+						t.Error("public authorization must omit credentials and send its mutation idempotency key")
 					}
 					w.Header().Set("Location", "https://example.com/callback?code=synthetic")
 					w.WriteHeader(http.StatusFound)

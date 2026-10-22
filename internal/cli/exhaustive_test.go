@@ -72,6 +72,8 @@ func TestEveryRegisteredCommandAcceptsEveryDeclaredArgument(t *testing.T) {
 
 func TestEveryResourceIDArgumentDeclaresHistoryReference(t *testing.T) {
 	resourcePrefixesByName := map[string]string{
+		"checkout_session_customer_verification_id": "cscv_",
+
 		"api_key_id":                         "key_",
 		"api_request_log_id":                 "rlog_",
 		"checkout_session_id":                "cs_",
@@ -126,9 +128,6 @@ func TestEveryResourceIDArgumentDeclaresHistoryReference(t *testing.T) {
 	for _, command := range NewRegistry().Commands {
 		for _, argument := range command.Arguments {
 			wantPrefix, isResourceID := resourcePrefixesByName[argument.Name]
-			if argument.Name == "customer_verification_id" && command.OperationID == "confirmCheckoutSessionCustomerVerification" {
-				wantPrefix = "cscv_"
-			}
 			if argument.Name == "order" && (argument.BodyPath == "order_id" || argument.Query == "order_id") {
 				wantPrefix, isResourceID = "ord_", true
 			}
@@ -1537,7 +1536,15 @@ func historyReferenceOptions(t *testing.T, registry *Registry, command *Command,
 		delete(options.Raw, "payment-option")
 		delete(options.Raw, "transaction-purpose")
 	}
+	if command.CanonicalName == "payment-intents.confirm" {
+		options.Input = "{}"
+	}
 	return options
+}
+
+// Confirmation credentials are exclusive in the public API contract.
+func skipExhaustiveConfirmationFlag(command *Command, argument Arg) bool {
+	return command.CanonicalName == "payment-intents.confirm" && (argument.Name == "payment_method" || argument.Name == "payment_source_token")
 }
 
 func historyQualifierForPrefix(prefix string) string {
@@ -1559,6 +1566,9 @@ func resourceTypeForPrefix(prefix string) string {
 func exhaustiveRemoteInvocation(command *Command) []string {
 	argv := append([]string(nil), command.Path[1:]...)
 	for _, argument := range command.Arguments {
+		if skipExhaustiveConfirmationFlag(command, argument) {
+			continue
+		}
 		if command.CanonicalName == "payment-intents.create" && argument.Name == "order" {
 			continue
 		}
@@ -1602,6 +1612,9 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 		wantPath = "/v1/payment-intents"
 	}
 	for _, argument := range command.Arguments {
+		if skipExhaustiveConfirmationFlag(command, argument) {
+			continue
+		}
 		if argument.Positional == 0 || command.CanonicalName == "api" {
 			continue
 		}
@@ -1627,6 +1640,9 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 	}
 
 	for _, argument := range command.Arguments {
+		if skipExhaustiveConfirmationFlag(command, argument) {
+			continue
+		}
 		if argument.Query == "" {
 			continue
 		}
@@ -1668,6 +1684,9 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 	}
 	hasInput := false
 	for _, argument := range command.Arguments {
+		if skipExhaustiveConfirmationFlag(command, argument) {
+			continue
+		}
 		if argument.Name == "input" {
 			hasInput = true
 			continue
@@ -1795,6 +1814,8 @@ func exhaustiveArgumentValues(argument Arg) []string {
 		value = "services"
 	case "cancellation_reason":
 		value = "abandoned"
+	case "refund_type":
+		value = "amount"
 	case "reason":
 		value = "requested_by_customer"
 	case "scope":

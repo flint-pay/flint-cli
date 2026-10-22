@@ -364,7 +364,7 @@ func TestPaymentIntentConfirmSendsConfirmationToken(t *testing.T) {
 
 	app, stdout, stderr := testApp(t, server.URL)
 	exit := app.Run([]string{"payment-intents", "confirm", "pi_123", "--confirmation-token", "ctoken_123", "--output", "json"})
-	if exit != ExitOK || stderr.Len() != 0 || body["confirmation_token"] != "ctoken_123" {
+	if exit != ExitOK || stderr.Len() != 0 || body["stripe"].(map[string]any)["confirmation_token"] != "ctoken_123" {
 		t.Fatalf("exit=%d body=%#v stdout=%s stderr=%s", exit, body, stdout, stderr)
 	}
 }
@@ -912,6 +912,11 @@ func TestListenForwardsExactPayloadWithCanonicalSignatureAndCheckpoint(t *testin
 	if forwardedHeaders.Get("webhook-id") != eventID || forwardedHeaders.Get("webhook-timestamp") != "1700000000" {
 		t.Fatalf("forward headers = %#v", forwardedHeaders)
 	}
+	for _, header := range []string{"X-Flint-Signature", "X-Flint-Webhook-ID", "X-Flint-Event-Type"} {
+		if forwardedHeaders.Get(header) != "" {
+			t.Errorf("retired header %s was forwarded", header)
+		}
+	}
 	if streamVersion != "1.2.3" {
 		t.Fatalf("stream CLI version = %q", streamVersion)
 	}
@@ -1197,7 +1202,7 @@ func TestPayOrderActionInputAndTokenShortcut(t *testing.T) {
 	command, _ := NewRegistry().ByName("orders.pay")
 	for _, body := range []string{
 		`{"action":"pay"}`,
-		`{"action":"pay","payment_source":{"confirmation_token":"ctoken_test"}}`,
+		`{"action":"pay","payment_source":{"stripe":{"confirmation_token":"ctoken_test"}}}`,
 		`{"action":"confirm_payment_intents","payment_intents":[{"payment_intent_id":"pi_test"}],"completion_behavior":"partial_payment"}`,
 		`{"action":"setup","setup_payment_source":{"token":"src_test"}}`,
 		`{"action":"resume","order_payment_attempt_id":"opat_test"}`,

@@ -376,7 +376,7 @@ func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) *CLIError 
 		return nil
 	}
 	if cmd != nil && cmd.Render == "request_log" {
-		for _, path := range []string{"data.recommended_action", "data.retryable", "data.error_category"} {
+		for _, path := range []string{"data.recommended_action", "data.retry", "data.error_category"} {
 			if v, ok := lookupPath(value, path); ok {
 				fmt.Fprintf(w, "%-20s %v\n", humanLabel(path), v)
 			}

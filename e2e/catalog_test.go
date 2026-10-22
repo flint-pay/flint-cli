@@ -230,7 +230,14 @@ func builtInputBody(t *testing.T, bin string, command *cli.Command) string {
 		raw, _ := json.Marshal(value)
 		body := map[string]any{}
 		_ = json.Unmarshal(raw, &body)
+		if command.CanonicalName == "payment-intents.confirm" {
+			delete(body, "payment_source_token")
+			delete(body, "payment_method_id")
+		}
 		for _, argument := range command.Arguments {
+			if command.CanonicalName == "payment-intents.confirm" && (argument.Name == "payment_method" || argument.Name == "payment_source_token") {
+				continue
+			}
 			if argument.Repeat && argument.BodyPath != "" {
 				delete(body, strings.Split(argument.BodyPath, ".")[0])
 			}
@@ -239,6 +246,9 @@ func builtInputBody(t *testing.T, bin string, command *cli.Command) string {
 	}
 	withFlags := func(body map[string]any) any {
 		for _, argument := range command.Arguments {
+			if command.CanonicalName == "payment-intents.confirm" && (argument.Name == "payment_method" || argument.Name == "payment_source_token") {
+				continue
+			}
 			if argument.BodyPath == "" || argument.Name == "input" || argument.Positional > 0 || argument.Query != "" ||
 				(command.CanonicalName == "payment-intents.create" && argument.Name == "order") {
 				continue
@@ -299,6 +309,9 @@ func setBuiltBodyPath(container any, parts []string, value any) any {
 func builtRemoteInvocation(command *cli.Command) []string {
 	argv := append([]string(nil), command.Path[1:]...)
 	for _, argument := range command.Arguments {
+		if command.CanonicalName == "payment-intents.confirm" && (argument.Name == "payment_method" || argument.Name == "payment_source_token") {
+			continue
+		}
 		if command.CanonicalName == "payment-intents.create" && argument.Name == "order" {
 			continue
 		}
@@ -371,6 +384,7 @@ func builtArgumentValues(argument cli.Arg) []string {
 			"payment_source_token": "pi_test=pm_card_visa",
 			"quick_pay_name":       "Test",
 			"reason":               "requested_by_customer",
+			"refund_type":          "amount",
 			"recipient_email":      "dev@example.com",
 			"request_id":           "req_test",
 			"scope":                "customers.read",

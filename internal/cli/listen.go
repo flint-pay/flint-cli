@@ -945,9 +945,6 @@ func (a *App) forwardListenPayload(ctx context.Context, timeout time.Duration, f
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", listenUserAgent)
-	req.Header.Set("X-Flint-Signature", webhooksigning.LegacySignatureHeader(timestamp, event.Payload, secret))
-	req.Header.Set("X-Flint-Webhook-ID", event.WebhookEventID)
-	req.Header.Set("X-Flint-Event-Type", event.EventType)
 	req.Header.Set("webhook-id", event.WebhookEventID)
 	req.Header.Set("webhook-timestamp", fmt.Sprintf("%d", timestamp))
 	req.Header.Set("webhook-signature", webhooksigning.StandardWebhookSignatureHeader(event.WebhookEventID, timestamp, event.Payload, secret))

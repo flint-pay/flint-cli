@@ -507,7 +507,7 @@ func lookupResourcePath(value any, path string) (any, bool) {
 
 var terminalStates = map[string]map[string]bool{
 	"payment-intents.get":   {"succeeded": true, "canceled": true, "expired": true},
-	"refunds.get":           {"succeeded": true, "failed": true, "canceled": true, "partially_succeeded": true},
+	"refunds.get":           {"failed": true},
 	"checkout-sessions.get": {"paid": true, "expired": true, "closed": true, "invalidated": true},
 	"orders.get":            {"closed": true},
 }

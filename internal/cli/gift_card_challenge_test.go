@@ -137,9 +137,6 @@ func TestGiftCardChallengeAndAccountOutputSchemaBoundaries(t *testing.T) {
 	definitions := checkoutSchema["$defs"].(map[string]any)
 	session := definitions["CheckoutSession"].(map[string]any)
 	challenge := session["properties"].(map[string]any)["gift_card_challenge"].(map[string]any)
-	if challenge["readOnly"] != true {
-		t.Fatal("gift card challenge lost readOnly metadata")
-	}
 	validateExportedPropertyFixtures(t, challenge, definitions,
 		[]any{map[string]any{"url": "https://checkout.example.com/gift-card-challenge/opaque"}},
 		[]any{nil, map[string]any{}, map[string]any{"url": true}, map[string]any{"url": "https://example.com", "extra": true}})
@@ -185,7 +182,7 @@ func TestGiftCardChallengeErrorPreservesRemediation(t *testing.T) {
 			t.Setenv("FLINT_API_KEY", "")
 			t.Setenv("FLINT_CHECKOUT_SESSION_ID", "cs_test")
 			t.Setenv("FLINT_CHECKOUT_SESSION_SECRET", "secret_test")
-			app.Stdin = strings.NewReader(`{"gift_card_code":"synthetic-code","order_revision":7}`)
+			app.Stdin = strings.NewReader(`{"code":"synthetic-code","expected_version":7}`)
 			if exit := app.Run([]string{"orders", "gift-cards", "ord_test", "--input", "-", "--output", "json"}); exit != ExitAPI || stderr.Len() != 0 {
 				t.Fatalf("exit=%d stdout=%s stderr=%s", exit, out, stderr)
 			}
