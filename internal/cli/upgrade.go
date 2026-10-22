@@ -775,7 +775,7 @@ func githubReleaseAPIError(response *http.Response) *CLIError {
 		return failure
 	}
 	header := response.Header
-	if header.Get("X-RateLimit-Remaining") != "0" && header.Get("Retry-After") == "" && header.Get("X-RateLimit-Reset") == "" {
+	if status == http.StatusForbidden && header.Get("X-RateLimit-Remaining") != "0" && header.Get("Retry-After") == "" {
 		failure.Message = fmt.Sprintf("GitHub refused the latest Flint CLI release lookup (HTTP %d). Check GITHUB_TOKEN permissions or retry later.", status)
 		return failure
 	}
@@ -784,12 +784,16 @@ func githubReleaseAPIError(response *http.Response) *CLIError {
 	failure.Message = "GitHub API rate limit reached while looking up the latest Flint CLI release."
 	details := map[string]any{}
 	var reset time.Time
-	if seconds, err := strconv.ParseInt(header.Get("X-RateLimit-Reset"), 10, 64); err == nil && seconds > 0 {
-		reset = time.Unix(seconds, 0)
-	} else if seconds, err := strconv.ParseUint(header.Get("Retry-After"), 10, 32); err == nil {
-		reset = time.Now().Add(time.Duration(seconds) * time.Second)
-	} else if date, err := http.ParseTime(header.Get("Retry-After")); err == nil {
-		reset = date
+	if retryAfter := header.Get("Retry-After"); retryAfter != "" {
+		if seconds, err := strconv.ParseUint(retryAfter, 10, 32); err == nil {
+			reset = time.Now().Add(time.Duration(seconds) * time.Second)
+		} else if date, err := http.ParseTime(retryAfter); err == nil {
+			reset = date
+		}
+	} else if header.Get("X-RateLimit-Remaining") == "0" {
+		if seconds, err := strconv.ParseInt(header.Get("X-RateLimit-Reset"), 10, 64); err == nil && seconds > 0 {
+			reset = time.Unix(seconds, 0)
+		}
 	}
 	remediation := "Set GITHUB_TOKEN to raise the API limit, or retry after the rate limit resets."
 	if !reset.IsZero() {

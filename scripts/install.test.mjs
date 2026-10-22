@@ -120,7 +120,7 @@ exit 9
     delete env.GITHUB_TOKEN;
     if (options.githubToken) env.GITHUB_TOKEN = options.githubToken;
     if (options.defaultInstallDir) delete env.FLINT_INSTALL_DIR;
-    const result = spawnSync("sh", [installer], { encoding: "utf8", env });
+    const result = spawnSync("sh", [...(options.xtrace ? ["-x"] : []), installer], { encoding: "utf8", env });
     const read = name => existsSync(join(temp, name)) ? readFileSync(join(temp, name), "utf8") : "";
     return {
       ...result,
@@ -134,7 +134,7 @@ exit 9
       systemDir,
       oldInstallPreserved: options.existingInstall && readFileSync(join(installDir, "flint"), "utf8") === oldBinary,
       installedOutput: existsSync(join(installDir, "flint"))
-        ? spawnSync(join(installDir, "flint"), ["version"], { encoding: "utf8" }).stdout
+        ? spawnSync(join(installDir, "flint"), ["version"], { encoding: "utf8", env }).stdout
         : "",
       leftoverStaging: existsSync(installDir) ? readdirSync(installDir).filter(name => name.startsWith(".flint-install.")) : [],
     };
@@ -145,6 +145,24 @@ exit 9
 }
 
 const shellTest = process.platform === "win32" ? test.skip : test;
+
+shellTest("curl is required before any network activity", () => {
+  const temp = mkdtempSync(join(tmpdir(), "flint-install-no-curl-"));
+  try {
+    // An empty PATH also omits uname and all download tools, so the dependency
+    // check must run before platform detection or any possible network request.
+    const result = spawnSync("/bin/sh", [installer], {
+      encoding: "utf8",
+      env: { PATH: temp, HOME: temp, FLINT_API_KEY: "flint_test_xxx", FLINT_INSTALL_DIR: join(temp, "installed") },
+    });
+    assert.equal(result.status, 2, result.stderr);
+    assert.equal(result.stderr, "curl is required to install Flint CLI. Install curl and try again.\n");
+    assert.equal(result.stdout, "");
+    assert.equal(existsSync(join(temp, "installed")), false);
+  } finally {
+    rmSync(temp, { recursive: true, force: true });
+  }
+});
 
 shellTest("latest installs the highest stable version even when a backport was published last", () => {
   for (const releases of [[release("1.0.1"), release("2.0.0")], [release("2.0.0"), release("1.0.1")]]) {
@@ -316,8 +334,25 @@ shellTest("latest authenticates the release lookup with GITHUB_TOKEN without exp
   assert.equal(result.curlConfig, `header = "Authorization: Bearer ${token}"\n`);
   assert.equal(result.curlArguments.includes(token), false, "the token must not appear in curl's arguments");
   assert.equal(`${result.stdout}${result.stderr}`.includes(token), false, "the token must not be printed");
+  assert.doesNotMatch(result.stderr, /^\+ /m, "tracing must remain disabled when the caller did not enable it");
   // Only the API lookup reads the credential; release downloads never receive it.
   assert.equal(result.curlArguments.trim().split("\n").filter(line => line.includes("-K -")).length, 1);
+});
+
+shellTest("shell tracing hides GITHUB_TOKEN throughout API fallback and restores tracing", () => {
+  const token = "installer-xtrace-test-token";
+  for (const feedHTTPStatus of [200, 401, 403, 429, 500]) {
+    const result = runInstaller([release("2.0.0")], "2.0.0", "latest", {
+      githubToken: token, xtrace: true, feedHTTPStatus,
+    });
+    assert.equal(result.status, feedHTTPStatus === 200 ? 0 : 5, result.stderr);
+    assert.equal(result.stdout.includes(token), false, "stdout must not expose the token");
+    assert.equal(result.stderr.includes(token), false, "xtrace must not expose the token");
+    assert.equal(result.curlConfig, `header = "Authorization: Bearer ${token}"\n`);
+    assert.match(result.stderr, /\+ set \+x/);
+    // The status handler runs after the credential guard restores xtrace.
+    assert.match(result.stderr, feedHTTPStatus === 200 ? /\+ tag=/ : /\+ echo GitHub|\+ echo Could not download/);
+  }
 });
 
 shellTest("latest sends no credential when GITHUB_TOKEN is unset", () => {
@@ -330,9 +365,10 @@ shellTest("latest sends no credential when GITHUB_TOKEN is unset", () => {
 shellTest("latest explains GitHub rate limiting before touching an existing installation", () => {
   const token = "installer-test-token";
   for (const [feedHTTPStatus, githubToken, message] of [
-    [403, undefined, /HTTP 403\), usually because its API rate limit for anonymous requests was reached\. Set GITHUB_TOKEN to a GitHub token to raise the limit, or set FLINT_CLI_VERSION/],
+    [403, undefined, /HTTP 403: forbidden or rate limited\)\. Check GITHUB_TOKEN permissions or retry later, or set FLINT_CLI_VERSION/],
     [429, undefined, /HTTP 429\), usually because its API rate limit for anonymous requests was reached\. Set GITHUB_TOKEN/],
-    [403, token, /HTTP 403\), usually because the API rate limit for GITHUB_TOKEN was reached\. Wait for the limit to reset, or set FLINT_CLI_VERSION/],
+    [403, token, /HTTP 403: forbidden or rate limited\)\. Check GITHUB_TOKEN permissions or retry later, or set FLINT_CLI_VERSION/],
+    [429, token, /HTTP 429\), usually because the API rate limit for GITHUB_TOKEN was reached\. Wait for the limit to reset, or set FLINT_CLI_VERSION/],
     [401, token, /GitHub rejected GITHUB_TOKEN \(HTTP 401\)/],
     [500, undefined, /Could not download the Flint CLI release feed \(HTTP 500\)\./],
   ]) {

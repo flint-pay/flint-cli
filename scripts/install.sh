@@ -1,6 +1,11 @@
 #!/bin/sh
 set -eu
 
+if ! command -v curl >/dev/null 2>&1; then
+  echo "curl is required to install Flint CLI. Install curl and try again." >&2
+  exit 2
+fi
+
 repository="flint-pay/flint-cli"
 version="${FLINT_CLI_VERSION:-latest}"
 # Tests replace the system directory. Set FLINT_INSTALL_DIR to choose where to install.
@@ -73,24 +78,35 @@ fi
 if [ "$version" = latest ]; then
   release_url="https://api.github.com/repos/${repository}/releases?per_page=100"
   # GITHUB_TOKEN raises GitHub's API rate limit. curl reads the header from
-  # stdin, which keeps the token out of the process list.
+  # stdin, which keeps the token out of the process list. Disable tracing before
+  # any credential expansion, then restore the caller's previous tracing state.
+  case "$-" in
+    *x*) restore_xtrace=true; set +x ;;
+    *) restore_xtrace=false ;;
+  esac
+  github_token_set=false
   if [ -n "${GITHUB_TOKEN:-}" ]; then
+    github_token_set=true
     feed_status="$(printf 'header = "Authorization: Bearer %s"\n' "$GITHUB_TOKEN" |
       curl -sSL -K - -w '%{http_code}' -o "${temp_dir}/releases.json" "$release_url")" || feed_status=failed
   else
     feed_status="$(curl -sSL -w '%{http_code}' -o "${temp_dir}/releases.json" "$release_url")" || feed_status=failed
   fi
+  if "$restore_xtrace"; then set -x; fi
   case "$feed_status" in
     200) ;;
     401)
-      if [ -n "${GITHUB_TOKEN:-}" ]; then
+      if "$github_token_set"; then
         echo "GitHub rejected GITHUB_TOKEN (HTTP 401) while looking up the latest Flint CLI release. Use a valid token, or unset GITHUB_TOKEN." >&2
       else
         echo "Could not download the Flint CLI release feed (HTTP 401)." >&2
       fi
       exit 5 ;;
-    403|429)
-      if [ -n "${GITHUB_TOKEN:-}" ]; then
+    403)
+      echo "GitHub refused the latest Flint CLI release lookup (HTTP 403: forbidden or rate limited). Check GITHUB_TOKEN permissions or retry later, or set FLINT_CLI_VERSION to install a specific version without the lookup." >&2
+      exit 5 ;;
+    429)
+      if "$github_token_set"; then
         echo "GitHub refused the latest Flint CLI release lookup (HTTP ${feed_status}), usually because the API rate limit for GITHUB_TOKEN was reached. Wait for the limit to reset, or set FLINT_CLI_VERSION to install a specific version without the lookup." >&2
       else
         echo "GitHub refused the latest Flint CLI release lookup (HTTP ${feed_status}), usually because its API rate limit for anonymous requests was reached. Set GITHUB_TOKEN to a GitHub token to raise the limit, or set FLINT_CLI_VERSION to install a specific version without the lookup." >&2

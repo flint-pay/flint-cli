@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -103,18 +104,30 @@ func TestUpgradeCheckReleaseDiscovery(t *testing.T) {
 
 func TestUpgradeCheckGitHubRateLimitOutput(t *testing.T) {
 	const resetAt = "2030-01-02T03:04:05Z"
+	const retryAt = "2030-01-02T02:06:05Z"
 	reset, _ := time.Parse(time.RFC3339, resetAt)
+	retry, _ := time.Parse(time.RFC3339, retryAt)
+	timestamp := regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z`)
 	for _, tc := range []struct {
-		name   string
-		status int
-		header http.Header
-		reset  string
+		name         string
+		status       int
+		header       http.Header
+		forbidden    bool
+		reset        string
+		retrySeconds bool
 	}{
-		{"forbidden with reset", 403, http.Header{"X-Ratelimit-Remaining": {"0"}, "X-Ratelimit-Reset": {fmt.Sprint(reset.Unix())}}, resetAt},
-		{"too many requests with reset", 429, http.Header{"X-Ratelimit-Reset": {fmt.Sprint(reset.Unix())}}, resetAt},
-		{"retry after date", 403, http.Header{"Retry-After": {reset.Format(http.TimeFormat)}}, resetAt},
-		{"unknown reset", 429, http.Header{"X-Ratelimit-Remaining": {"0"}}, ""},
-		{"other forbidden", 403, http.Header{}, ""},
+		{name: "forbidden with remaining quota and reset", status: 403, header: http.Header{"X-Ratelimit-Remaining": {"4999"}, "X-Ratelimit-Reset": {fmt.Sprint(reset.Unix())}}, forbidden: true},
+		{name: "forbidden with reset only", status: 403, header: http.Header{"X-Ratelimit-Reset": {fmt.Sprint(reset.Unix())}}, forbidden: true},
+		{name: "primary limit", status: 403, header: http.Header{"X-Ratelimit-Remaining": {"0"}, "X-Ratelimit-Reset": {fmt.Sprint(reset.Unix())}}, reset: resetAt},
+		{name: "secondary limit seconds overrides reset", status: 403, header: http.Header{"Retry-After": {"120"}, "X-Ratelimit-Remaining": {"4999"}, "X-Ratelimit-Reset": {fmt.Sprint(reset.Unix())}}, retrySeconds: true},
+		{name: "secondary limit date overrides reset", status: 403, header: http.Header{"Retry-After": {retry.Format(http.TimeFormat)}, "X-Ratelimit-Remaining": {"0"}, "X-Ratelimit-Reset": {fmt.Sprint(reset.Unix())}}, reset: retryAt},
+		{name: "too many requests with retry seconds", status: 429, header: http.Header{"Retry-After": {"120"}}, retrySeconds: true},
+		{name: "too many requests with retry date", status: 429, header: http.Header{"Retry-After": {retry.Format(http.TimeFormat)}}, reset: retryAt},
+		{name: "too many requests without headers", status: 429, header: http.Header{}},
+		{name: "too many requests with reset only", status: 429, header: http.Header{"X-Ratelimit-Reset": {fmt.Sprint(reset.Unix())}}},
+		{name: "invalid retry after does not use primary reset", status: 403, header: http.Header{"Retry-After": {"invalid"}, "X-Ratelimit-Remaining": {"0"}, "X-Ratelimit-Reset": {fmt.Sprint(reset.Unix())}}},
+		{name: "unknown reset", status: 403, header: http.Header{"X-Ratelimit-Remaining": {"0"}}},
+		{name: "other forbidden", status: 403, header: http.Header{}, forbidden: true},
 	} {
 		for _, output := range []string{"json", "human"} {
 			t.Run(tc.name+"/"+output, func(t *testing.T) {
@@ -139,56 +152,73 @@ func TestUpgradeCheckGitHubRateLimitOutput(t *testing.T) {
 				if output == "json" {
 					argv = append(argv, "--output", "json")
 				}
+				before := time.Now()
 				if exit := app.Run(argv); exit != ExitNetwork {
 					t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 				}
+				after := time.Now()
 				if strings.Contains(stdout.String()+stderr.String(), token) {
 					t.Fatal("error output exposed GITHUB_TOKEN")
 				}
+				var reportedReset string
 				if output == "human" {
-					for _, want := range []string{"GitHub", "GITHUB_TOKEN", tc.reset} {
-						if !strings.Contains(stderr.String(), want) {
-							t.Fatalf("missing %q: %s", want, stderr)
+					want := "GitHub API rate limit reached"
+					if tc.forbidden {
+						want = "GitHub refused the latest Flint CLI release lookup (HTTP 403)"
+						if strings.Contains(stderr.String(), "rate limit") {
+							t.Fatalf("forbidden response reported as rate limited: %s", stderr)
 						}
 					}
-					return
+					if !strings.Contains(stderr.String(), want) || !strings.Contains(stderr.String(), "GITHUB_TOKEN") {
+						t.Fatalf("unexpected human error: %s", stderr)
+					}
+					reportedReset = timestamp.FindString(stderr.String())
+				} else {
+					var got struct {
+						Error struct {
+							Type        string         `json:"type"`
+							Code        string         `json:"code"`
+							HTTPStatus  int            `json:"http_status"`
+							Retryable   bool           `json:"retryable"`
+							Details     map[string]any `json:"details"`
+							Remediation struct {
+								NextActions []struct {
+									ReasonMessage string `json:"reason_message"`
+								} `json:"next_actions"`
+							} `json:"remediation"`
+						} `json:"error"`
+					}
+					if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+						t.Fatal(err)
+					}
+					code := "GITHUB_RATE_LIMITED"
+					if tc.forbidden {
+						code = "RELEASE_DOWNLOAD_FAILED"
+					} else if got.Error.Type != "rate_limit_error" || len(got.Error.Remediation.NextActions) == 0 {
+						t.Fatalf("missing rate limit type or remediation: %s", stdout)
+					}
+					if got.Error.Code != code || !got.Error.Retryable || got.Error.HTTPStatus != tc.status || got.Error.Details == nil {
+						t.Fatalf("unexpected error envelope: %s", stdout)
+					}
+					reportedReset, _ = got.Error.Details["reset_at"].(string)
+					if reportedReset == "" {
+						if _, exists := got.Error.Details["reset_at"]; exists {
+							t.Fatalf("unexpected reset time: %s", stdout)
+						}
+					} else if timestamp.FindString(got.Error.Remediation.NextActions[0].ReasonMessage) != reportedReset {
+						t.Fatalf("remediation and details disagree on reset time: %s", stdout)
+					}
 				}
-				var got struct {
-					Error struct {
-						Code        string         `json:"code"`
-						HTTPStatus  int            `json:"http_status"`
-						Retryable   bool           `json:"retryable"`
-						Details     map[string]any `json:"details"`
-						Remediation map[string]any `json:"remediation"`
-					} `json:"error"`
-				}
-				if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
-					t.Fatal(err)
-				}
-				code := "GITHUB_RATE_LIMITED"
-				if tc.name == "other forbidden" {
-					code = "RELEASE_DOWNLOAD_FAILED"
-				} else if got.Error.Remediation["next_actions"] == nil {
-					t.Fatalf("missing remediation: %s", stdout)
-				}
-				if got.Error.Code != code || !got.Error.Retryable || got.Error.HTTPStatus != tc.status || got.Error.Details == nil {
-					t.Fatalf("unexpected error envelope: %s", stdout)
-				}
-				if tc.reset != "" && got.Error.Details["reset_at"] != tc.reset {
-					t.Fatalf("missing reset time: %s", stdout)
+				if tc.retrySeconds {
+					retryTime, err := time.Parse(time.RFC3339, reportedReset)
+					if err != nil || retryTime.Before(before.Add(119*time.Second)) || retryTime.After(after.Add(120*time.Second)) {
+						t.Fatalf("invalid retry time: %q (%v)", reportedReset, err)
+					}
+				} else if reportedReset != tc.reset {
+					t.Fatalf("reset time=%q, want %q", reportedReset, tc.reset)
 				}
 			})
 		}
-	}
-}
-
-func TestUpgradeGitHubRetryAfterSeconds(t *testing.T) {
-	before := time.Now().UTC()
-	failure := githubReleaseAPIError(&http.Response{StatusCode: 429, Header: http.Header{"Retry-After": {"120"}}})
-	details := failure.Details.(map[string]any)
-	reset, err := time.Parse(time.RFC3339, details["reset_at"].(string))
-	if err != nil || reset.Before(before.Add(119*time.Second)) || reset.After(time.Now().Add(120*time.Second)) {
-		t.Fatalf("invalid retry time: %v (%v)", details["reset_at"], err)
 	}
 }
 
