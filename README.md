@@ -249,7 +249,7 @@ Push a `cli/vX.Y.Z` tag. [`.github/workflows/cli-release.yml`](.github/workflows
 
 GitHub and npm publication verify the contents of an existing release before accepting a rerun.
 
-Before tagging a release, create `flint-pay/homebrew-tap` and configure `FLINT_TEST_API_KEY` in the `cli-release-sandbox` GitHub environment, npm trusted publishing for the six packages, and `HOMEBREW_TAP_TOKEN` for the tap. Use a disposable sandbox for the listener check, which creates a customer. Configure the environment to require release approval.
+Before tagging a release, create `flint-pay/homebrew-tap` and configure `FLINT_TEST_API_KEY` in the `cli-release-staging-sandbox` GitHub environment, npm trusted publishing for the six packages, and `HOMEBREW_TAP_TOKEN` for the tap. Use a disposable staging sandbox key for the listener check against `https://api.staging.withflintpay.com`, which creates a customer; never use a live key. Configure the environment to require release approval as described in [RELEASING.md](RELEASING.md#one-time-setup).
 
 The npm trusted publisher must name the `npm` GitHub environment and the `cli-release.yml` workflow. Release installation tests run before publication; public npm, manual, and stable Homebrew installations are verified afterward.
 
