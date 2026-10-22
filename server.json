@@ -25,7 +25,7 @@
         {
           "type": "named",
           "name": "--tools",
-          "description": "Choose comma-separated tool groups (customers) or tool names (payment-intents_create); dotted names also work. Omit or leave empty for 32 curated tools (about 104 KB of tools/list). Use all for all 588 tools (about 1.6 MB), or default,invoices to add groups to the default set. help and schema_* are always exposed.",
+          "description": "Without --tools (or with an empty value), the server exposes a curated core set; help and schema_* are always on. Use --tools all to expose every tool, or --tools default,GROUP to add groups to the default set. Choose comma-separated tool groups (customers) or tool names (payment-intents_create); dotted names are accepted.",
           "isRequired": false,
           "format": "string"
         },

@@ -8,6 +8,8 @@ The embedded snapshot is copied byte-for-byte from [`web/apps/developers/src/gen
 
 The catalog changes from 598 to 613 commands. MCP changes from 588 to 603 tools with `--tools all`; the default set keeps its 32 tool names and integration intent. Updated request schemas increase its compact tools/list result from 103,561 to 149,676 bytes. The all-tools result changes from 1,612,665 to 1,837,922 bytes.
 
+See the [MCP payload comparison](mcp-payload-0.9.md) for the per-tool measurements and the contract changes behind the increase.
+
 The disjoint changes are **5 removed, 5 renamed, and 20 added** commands and MCP tools. Thus 10 old names disappear and 25 new names appear. Removed names use ordinary unknown-command suggestions. MCP tool names replace every dot in the command name with an underscore.
 
 ### Removed (5)
