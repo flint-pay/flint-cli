@@ -296,6 +296,30 @@ func TestRetryAfterDeadlinePreservesLastError(t *testing.T) {
 	}
 }
 
+func TestResponseReadFailurePreservesRetryAfterBeyondDeadline(t *testing.T) {
+	app, out, _ := testApp(t, "")
+	synctest.Test(t, func(t *testing.T) {
+		attempts := 0
+		started := time.Now()
+		app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(*http.Request) (*http.Response, error) {
+			attempts++
+			return &http.Response{StatusCode: http.StatusTooManyRequests, Header: http.Header{"Retry-After": []string{"120"}}, Body: io.NopCloser(&listenTerminalErrorReader{reader: strings.NewReader(`{"error":`), err: io.ErrUnexpectedEOF})}, nil
+		})}
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+		defer cancel()
+		_, err := app.doRequest(ctx, "https://api.example.com", "", http.MethodGet, "/v1/test", nil, "", false)
+		if err == nil || err.Code != "RESPONSE_READ_FAILED" || err.HTTPStatus != 429 || !errors.Is(err.Cause, io.ErrUnexpectedEOF) || err.RetryAfterMs == nil || *err.RetryAfterMs != 120000 || attempts != 1 || time.Since(started) != 0 {
+			t.Fatalf("attempts=%d elapsed=%s error=%+v", attempts, time.Since(started), err)
+		}
+		opts := defaultOptions()
+		opts.Output = "json"
+		app.writeError(err, opts)
+		if !strings.Contains(out.String(), `"retry_after_ms":120000`) {
+			t.Fatal(out.String())
+		}
+	})
+}
+
 func TestRetryBackoffAndRetryAfter(t *testing.T) {
 	for attempt := 1; attempt <= 6; attempt++ {
 		base := min(500*time.Millisecond*time.Duration(1<<(attempt-1)), 5*time.Second)

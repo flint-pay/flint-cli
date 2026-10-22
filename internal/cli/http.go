@@ -264,7 +264,12 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 				return nil, networkError("REQUEST_CANCELED", "The request was canceled while reading the response.", readErr)
 			}
 			e := networkError("RESPONSE_READ_FAILED", "The Flint response could not be read.", readErr)
-			if replaySafe && retryRequest(ctx, attempt, "") {
+			retryAfter := resp.Header.Get("Retry-After")
+			if delay, ok := parseRetryAfter(retryAfter); ok {
+				milliseconds := delay.Milliseconds()
+				e.RetryAfterMs = &milliseconds
+			}
+			if replaySafe && retryRequest(ctx, attempt, retryAfter) {
 				continue
 			}
 			return nil, e
