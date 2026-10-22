@@ -202,9 +202,10 @@ func TestClientDryRunValidatesTheRequestBody(t *testing.T) {
 			if exit != ExitUsage || errorBody["code"] != "INVALID_REQUEST_BODY" {
 				t.Fatalf("exit=%d result=%v", exit, result)
 			}
-			details, _ := errorBody["details"].([]any)
+			details, _ := lookupPath(errorBody, "details.problems")
+			problems, _ := details.([]any)
 			found := false
-			for _, raw := range details {
+			for _, raw := range problems {
 				detail, _ := raw.(map[string]any)
 				found = found || (detail["path"] == tc.path && strings.Contains(fmt.Sprint(detail["message"]), tc.contains))
 			}
@@ -244,37 +245,20 @@ func TestInvalidRequestBodyIsNeverSent(t *testing.T) {
 	}
 }
 
-func TestUndocumentedBodyFieldsWarn(t *testing.T) {
-	app, stdout, stderr := testApp(t, "http://127.0.0.1:1")
-	app.Stdin = strings.NewReader(`{"email":"a@example.com","nmae":"Ada"}`)
-	exit, result := runJSON(t, app, stdout, "customers", "create", "--input", "-", "--dry-run", "client")
-	warnings, _ := lookupPath(result, "data.warnings")
-	list, _ := warnings.([]any)
-	if exit != ExitOK || len(list) != 1 {
-		t.Fatalf("exit=%d result=%v", exit, result)
+func TestUndocumentedBodyFieldsAreRejected(t *testing.T) {
+	app, stdout, _ := testApp(t, "http://127.0.0.1:1")
+	for _, extra := range [][]string{nil, {"--quiet"}} {
+		app.Stdin = strings.NewReader(`{"email":"a@example.com","nmae":"Ada"}`)
+		argv := append([]string{"customers", "create", "--input", "-", "--dry-run", "client"}, extra...)
+		exit, result := runJSON(t, app, stdout, argv...)
+		if code, _ := lookupPath(result, "error.code"); exit != ExitUsage || code != "INVALID_REQUEST_BODY" || !strings.Contains(fmt.Sprint(result), "did you mean name?") || !strings.Contains(fmt.Sprint(result), "flint api") {
+			t.Fatalf("exit=%d result=%v", exit, result)
+		}
 	}
-	if warning := list[0].(map[string]any); warning["path"] != "$.nmae" || warning["suggestion"] != "name" {
-		t.Fatalf("warning = %v", warning)
-	}
-	if body, _ := lookupPath(result, "data.body.nmae"); body != "Ada" {
-		t.Fatalf("undocumented field was not forwarded: %v", result)
-	}
-	if !strings.Contains(stderr.String(), "warning: request body field $.nmae") || !strings.Contains(stderr.String(), "Did you mean name?") {
-		t.Fatalf("stderr = %q", stderr)
-	}
-
-	stderr.Reset()
-	app.Stdin = strings.NewReader(`{"email":"a@example.com","nmae":"Ada"}`)
-	if exit, _ := runJSON(t, app, stdout, "customers", "create", "--input", "-", "--dry-run", "client", "--quiet"); exit != ExitOK || stderr.Len() != 0 {
-		t.Fatalf("--quiet exit=%d stderr=%q", exit, stderr)
-	}
-
-	// --order validates against the order-scoped request schema.
-	stderr.Reset()
 	app.Stdin = strings.NewReader(`{"tip_money":{"amount":1,"currency":"USD"}}`)
-	exit, result = runJSON(t, app, stdout, "payment-intents", "create", "--order", "ord_test", "--input", "-", "--dry-run", "client")
-	if path, _ := lookupPath(result, "data.path"); exit != ExitOK || path != "/v1/orders/ord_test/payment-intents" || !strings.Contains(stderr.String(), "payment-intents.create --order") {
-		t.Fatalf("exit=%d result=%v stderr=%q", exit, result, stderr)
+	exit, result := runJSON(t, app, stdout, "payment-intents", "create", "--order", "ord_test", "--input", "-", "--dry-run", "client")
+	if exit != ExitUsage || !strings.Contains(fmt.Sprint(result), "payment-intents.create --order") {
+		t.Fatalf("exit=%d result=%v", exit, result)
 	}
 }
 

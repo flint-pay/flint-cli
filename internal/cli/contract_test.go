@@ -514,8 +514,11 @@ func TestWaitBoundPrintsLastResourceAndExitSix(t *testing.T) {
 	if json.Unmarshal(stdout.Bytes(), &result) != nil {
 		t.Fatalf("last resource is not JSON: %s", stdout)
 	}
-	if !strings.Contains(stderr.String(), "wait bound") {
-		t.Fatalf("missing wait diagnostic: %s", stderr)
+	if code, _ := lookupPath(result, "error.code"); code != "WAIT_CONDITION_UNMET" {
+		t.Fatalf("missing wait error: %s", stdout)
+	}
+	if last, _ := lookupPath(result, "error.details.last.data.payment_intent.payment_intent_id"); last != "pi_123" {
+		t.Fatalf("missing last resource: %s", stdout)
 	}
 }
 
@@ -554,13 +557,13 @@ func TestUnknownCommandReturnsCanonicalSuggestions(t *testing.T) {
 
 func TestMCPToolsMatchCanonicalRegistryAndInputSchemas(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/list"}, defaultOptions())
+	response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/list"}, mcpAllToolsOptions(t))
 	result := response["result"].(map[string]any)
 	tools := result["tools"].([]map[string]any)
 	byName := map[string]map[string]any{}
 	for _, tool := range tools {
-		byName[tool["name"].(string)] = tool
-		// Output schemas are fetched on demand with schema.output; embedding
+		byName[mcpCanonicalToolName(tool["name"].(string))] = tool
+		// Output schemas are fetched on demand with schema_output; embedding
 		// them made tools/list about 19 MB.
 		if _, ok := tool["outputSchema"]; ok {
 			t.Errorf("MCP tool %s must not embed an outputSchema", tool["name"])
@@ -610,7 +613,7 @@ func TestMCPToolsMatchCanonicalRegistryAndInputSchemas(t *testing.T) {
 
 func TestMCPCallUsesJSONEnvelope(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{"name": "version", "arguments": map[string]any{}}}, defaultOptions())
+	response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{"name": "version", "arguments": map[string]any{}}}, mcpAllToolsOptions(t))
 	result := response["result"].(map[string]any)
 	if result["isError"] == true {
 		t.Fatalf("MCP call failed: %#v", result)
@@ -638,7 +641,7 @@ func TestMCPCallRejectsArgumentsOutsideAdvertisedSchema(t *testing.T) {
 		response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{
 			"name":      "version",
 			"arguments": arguments,
-		}}, defaultOptions())
+		}}, mcpAllToolsOptions(t))
 		result := response["result"].(map[string]any)
 		if result["isError"] != true {
 			t.Fatalf("MCP accepted out-of-schema arguments %#v: %#v", arguments, result)
@@ -1135,6 +1138,7 @@ func testAppFromTemplate(t *testing.T, baseURL string, template *App) (*App, *by
 	t.Setenv("FLINT_BASE_URL", baseURL)
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 	app := *template
+	app.Registry.ensureAPICommands()
 	app.Stdout = stdout
 	app.Stderr = stderr
 	app.Stdin = strings.NewReader("")
@@ -1315,7 +1319,7 @@ func TestDoctorRejectsMissingReleaseDiscovery(t *testing.T) {
 	}))
 	defer server.Close()
 	app, stdout, _ := testApp(t, server.URL)
-	if exit := app.Run([]string{"doctor", "--output", "json"}); exit != ExitAPI || !strings.Contains(stdout.String(), "OpenAPI release catalog") {
+	if exit := app.Run([]string{"doctor", "--output", "json"}); exit != ExitOK || !strings.Contains(stdout.String(), "OpenAPI release catalog") || !strings.Contains(stdout.String(), `"status":"warning"`) {
 		t.Fatalf("exit=%d stdout=%s", exit, stdout)
 	}
 }
@@ -1345,9 +1349,9 @@ func TestVersionHumanOutputRendersBuildInfoFields(t *testing.T) {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
 	for _, want := range []string{
-		"Api version",
+		"API version",
 		"Build date",
-		"Cli version",
+		"CLI version",
 		"Git commit",
 		"Schema hash",
 		"1.2.3",

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/zalando/go-keyring"
 )
@@ -37,7 +39,7 @@ func (p *Profile) UnmarshalJSON(data []byte) error {
 		profileFields
 		LegacyFeedback json.RawMessage `json:"agent_feedback_submission"`
 	}
-	if err := strictJSON(data, &decoded); err != nil {
+	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
 	}
 	*p = Profile(decoded.profileFields)
@@ -99,7 +101,7 @@ func (a *App) loadConfig() (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
-	if err := strictJSON(b, &cfg); err != nil {
+	if err := lenientConfigJSON(b, &cfg); err != nil {
 		return cfg, fmt.Errorf("parse %s: %w", path, err)
 	}
 	if cfg.DefaultProfile == "" {
@@ -109,6 +111,13 @@ func (a *App) loadConfig() (Config, error) {
 		cfg.Profiles = map[string]Profile{}
 	}
 	return cfg, nil
+}
+
+func lenientConfigJSON(data []byte, target any) error {
+	if strings.TrimSpace(string(data)) == "" {
+		return nil
+	}
+	return json.Unmarshal(data, target)
 }
 
 func strictJSON(data []byte, target any) error {
@@ -213,7 +222,7 @@ func (a *App) findProjectConfig() (ProjectConfig, string, error) {
 		b, err := os.ReadFile(path)
 		if err == nil {
 			var cfg ProjectConfig
-			if err := strictJSON(b, &cfg); err != nil {
+			if err := lenientConfigJSON(b, &cfg); err != nil {
 				return cfg, path, fmt.Errorf("parse %s: %w", path, err)
 			}
 			return cfg, path, nil
@@ -256,8 +265,9 @@ func (a *App) resolveConfig(opts Options) (ResolvedConfig, Config, error) {
 		profile = "default"
 	}
 	p, ok := cfg.Profiles[profile]
-	if !ok && profile != "default" {
-		return ResolvedConfig{}, cfg, fmt.Errorf("unknown profile %q", profile)
+	if !ok && profile != "default" && !opts.allowMissingProfile && credentialFromEnvironment() == "" && strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) == "" {
+		source := configSource("profile", sources["profile"], projectPath)
+		return ResolvedConfig{}, cfg, fmt.Errorf("unknown profile %q from %s; create it with flint login --profile %s, flint auth import --profile %s, or flint signup --profile %s", profile, source, profile, profile, profile)
 	}
 	merchant := p.MerchantGuard
 	if merchant != "" {
@@ -310,8 +320,36 @@ func (a *App) resolveConfig(opts Options) (ResolvedConfig, Config, error) {
 
 func credentialFromEnvironment() string { return strings.TrimSpace(os.Getenv("FLINT_API_KEY")) }
 
+// keyringTimeout bounds each OS keyring call. A locked keyring in an SSH,
+// container, or agent session can wait forever for an unlock prompt nobody
+// sees, and the keyring library offers no cancellation.
+var keyringTimeout = 5 * time.Second
+
+var errKeyringTimeout = errors.New("the OS keyring did not respond; it may be locked or unavailable in this session")
+
+func withKeyringTimeout[T any](call func() (T, error)) (T, error) {
+	type result struct {
+		value T
+		err   error
+	}
+	done := make(chan result, 1)
+	go func() {
+		value, err := call()
+		done <- result{value, err}
+	}()
+	timer := time.NewTimer(keyringTimeout)
+	defer timer.Stop()
+	select {
+	case r := <-done:
+		return r.value, r.err
+	case <-timer.C:
+		var zero T
+		return zero, errKeyringTimeout
+	}
+}
+
 func loadKeychainCredential(profile string) (string, error) {
-	value, err := keyring.Get(keyringService, profile)
+	value, err := withKeyringTimeout(func() (string, error) { return keyring.Get(keyringService, profile) })
 	if errors.Is(err, keyring.ErrNotFound) {
 		return "", nil
 	}
@@ -319,14 +357,29 @@ func loadKeychainCredential(profile string) (string, error) {
 }
 
 func storeKeychainCredential(profile, key string) error {
-	return keyring.Set(keyringService, profile, key)
+	_, err := withKeyringTimeout(func() (struct{}, error) { return struct{}{}, keyring.Set(keyringService, profile, key) })
+	return err
 }
 func deleteKeychainCredential(profile string) error {
-	err := keyring.Delete(keyringService, profile)
+	_, err := withKeyringTimeout(func() (struct{}, error) { return struct{}{}, keyring.Delete(keyringService, profile) })
 	if errors.Is(err, keyring.ErrNotFound) {
 		return nil
 	}
 	return err
+}
+
+// credentialStoreError explains a keyring failure with its cause and the
+// environment-variable alternative that works without a keyring.
+func credentialStoreError(code, message string, err error) *CLIError {
+	if err != nil && !errors.Is(err, context.Canceled) {
+		message = strings.TrimSuffix(message, ".") + ": " + terminalSafe(err.Error()) + "."
+	}
+	e := configError(code, message+" Without a usable OS keyring (for example over SSH, in containers, or in CI), set FLINT_API_KEY instead.", err)
+	e.Details = map[string]any{"remediation": map[string]any{"next_actions": []any{
+		map[string]any{"reason_message": "Set FLINT_API_KEY to a Flint API key; it overrides saved credentials and needs no keyring."},
+		map[string]any{"command": "flint auth import", "url": dashboardAPIKeysURL},
+	}}}
+	return e
 }
 
 func (a *App) resolveCredential(profile string) (string, string, error) {
@@ -341,6 +394,17 @@ func (a *App) resolveCredential(profile string) (string, string, error) {
 		return key, "keychain", nil
 	}
 	return "", "", nil
+}
+
+func invalidCredentialError(key string, err error) *CLIError {
+	message := err.Error()
+	if strings.HasPrefix(message, "FLINT_BASE_URL") {
+		return configError("INVALID_BASE_URL", message, err)
+	}
+	if key != "" && key == credentialFromEnvironment() {
+		message = "The key from FLINT_API_KEY is invalid: " + message
+	}
+	return configError("INVALID_CREDENTIAL", message, err)
 }
 
 func credentialEnvironment(key string) (string, error) {

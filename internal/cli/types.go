@@ -112,6 +112,7 @@ type Options struct {
 	Field          string
 	Expand         []string
 	Open           bool
+	Limit          int
 	PageSize       int
 	PageToken      string
 	All            bool
@@ -128,7 +129,10 @@ type Options struct {
 	Fix            bool
 	Raw            map[string][]string
 	Positionals    []string
-	outputLimit    int // MCP transform output budget; zero leaves CLI output unbounded.
+
+	allowMissingProfile   bool
+	outputFromEnvironment bool
+	outputLimit           int // MCP transform output budget; zero leaves CLI output unbounded.
 }
 
 type App struct {

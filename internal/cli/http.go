@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	apispec "github.com/flint-pay/flint-cli/internal/spec"
 	"io"
 	"math"
 	mathrand "math/rand/v2"
@@ -19,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	apispec "github.com/flint-pay/flint-cli/internal/spec"
 )
 
 type AuthContext struct {
@@ -68,15 +69,14 @@ var defaultAPIHTTPClient = &http.Client{
 }
 
 func (a *App) baseURLForCredential(key string) (string, error) {
+	if _, err := credentialEnvironment(key); err != nil {
+		return "", err
+	}
 	if a.BaseURL != "" {
 		return validateBaseURL(a.BaseURL)
 	}
 	if value := strings.TrimSpace(os.Getenv("FLINT_BASE_URL")); value != "" {
 		return validateBaseURL(value)
-	}
-	_, err := credentialEnvironment(key)
-	if err != nil {
-		return "", err
 	}
 	return defaultAPIBaseURL, nil
 }
@@ -101,7 +101,7 @@ func validateBaseURL(value string) (string, error) {
 	default:
 		return "", errors.New("FLINT_BASE_URL must use HTTP or HTTPS")
 	}
-	return strings.TrimRight(value, "/"), nil
+	return strings.TrimSuffix(strings.TrimRight(value, "/"), "/v1"), nil
 }
 
 func (a *App) fetchAuthContext(ctx context.Context, baseURL, key string, debug bool) (AuthContext, *CLIError) {
@@ -113,6 +113,10 @@ func (a *App) fetchAuthContext(ctx context.Context, baseURL, key string, debug b
 }
 
 func (a *App) fetchAuthContextResponse(ctx context.Context, baseURL, key string, debug bool) (authContextEnvelope, *CLIError) {
+	if envelope, ok := a.cachedAuthContext(baseURL, key); ok {
+		a.observeCachedAuthContext(envelope.Data)
+		return envelope, nil
+	}
 	resp, e := a.doRequest(ctx, baseURL, key, http.MethodGet, "/v1/developer/auth-context", nil, "", debug)
 	if e != nil {
 		return authContextEnvelope{}, e
@@ -125,6 +129,7 @@ func (a *App) fetchAuthContextResponse(ctx context.Context, baseURL, key string,
 	if err := json.Unmarshal(b, &envelope); err != nil || envelope.Data.MerchantID == "" || envelope.Data.Environment == "" {
 		return authContextEnvelope{}, invalidResponseError("INVALID_RESPONSE", "Flint returned an invalid auth context response.", err)
 	}
+	a.cacheAuthContext(baseURL, key, envelope)
 	return envelope, nil
 }
 
@@ -142,7 +147,13 @@ func (a *App) fetchCurrentAPIVersion(ctx context.Context, baseURL string, debug 
 	return version, nil
 }
 
-func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, body []byte, idempotencyKey string, debug bool) (*apiResponse, *CLIError) {
+func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, body []byte, idempotencyKey string, debug bool) (result *apiResponse, requestErr *CLIError) {
+	responseStatus := 0
+	defer func() {
+		if requestErr != nil && requestErr.HTTPStatus == 0 {
+			requestErr.HTTPStatus = responseStatus
+		}
+	}()
 	if !strings.HasPrefix(path, "/v1/") && path != "/v1" {
 		return nil, usageError("NON_PUBLIC_API_PATH", "Only documented /v1 public API paths are allowed.", "path")
 	}
@@ -156,6 +167,7 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 	}
 	attempt := 0
 	for {
+		responseStatus = 0
 		attempt++
 		currentKey, tokenErr := a.oauthRequestToken(ctx, key, baseURL)
 		if tokenErr != nil {
@@ -232,6 +244,10 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 			}
 			continue
 		}
+		responseStatus = resp.StatusCode
+		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+			a.invalidateAuthContext(baseURL, key)
+		}
 		raw, readErr := io.ReadAll(io.LimitReader(resp.Body, (16<<20)+1))
 		resp.Body.Close()
 		if readErr != nil {
@@ -255,7 +271,7 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 				e.Code = "RESPONSE_TOO_LARGE"
 				e.Message = fmt.Sprintf("Flint returned an oversized response with HTTP %d.", resp.StatusCode)
 				e.RequestID = resp.Header.Get("X-Request-Id")
-				if retryableStatus(resp.StatusCode) {
+				if retryableErrorStatus(resp.StatusCode) {
 					e = withIdempotencyRetryContext(e, idempotencyKey)
 				}
 				return nil, e
@@ -300,7 +316,7 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 				if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 					e := apiErrorFromResponse(&apiResponse{Status: resp.StatusCode, Headers: resp.Header.Clone()})
 					e.Cause = err
-					if retryableStatus(resp.StatusCode) {
+					if retryableErrorStatus(resp.StatusCode) {
 						e = withIdempotencyRetryContext(e, idempotencyKey)
 					}
 					return nil, e
@@ -317,7 +333,7 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			e := apiErrorFromResponse(result)
-			if retryableStatus(resp.StatusCode) {
+			if retryableErrorStatus(resp.StatusCode) {
 				e = withIdempotencyRetryContext(e, idempotencyKey)
 			}
 			return nil, e
@@ -341,6 +357,8 @@ func (a *App) doRequestWithin(ctx context.Context, timeout time.Duration, baseUR
 func isSensitivePath(path string) bool {
 	return strings.Contains(path, "/api-keys") || strings.Contains(path, "/test-key")
 }
+func retryableErrorStatus(status int) bool { return status == 429 || status >= 500 && status <= 599 }
+
 func retryableStatus(status int) bool {
 	return status == 429 || status == 502 || status == 503 || status == 504
 }
@@ -390,7 +408,7 @@ func sleepContext(ctx context.Context, d time.Duration) bool {
 
 func apiErrorFromResponse(resp *apiResponse) *CLIError {
 	exit := ExitAPI
-	if resp.Status == http.StatusUnauthorized {
+	if resp.Status == http.StatusUnauthorized || resp.Status == http.StatusForbidden {
 		exit = ExitAuth
 	}
 	message := http.StatusText(resp.Status)
@@ -452,12 +470,34 @@ func withIdempotencyRetryContext(err *CLIError, idempotencyKey string) *CLIError
 	}
 	// A response can be lost after Flint commits a mutation. Preserve the logical
 	// request key in both JSON and human output so a retry cannot duplicate it.
-	err.Details = map[string]any{
-		"idempotency_key": idempotencyKey,
-		"remediation": map[string]any{"next_actions": []any{
-			map[string]any{"reason_message": "Retry the same command with --idempotency-key " + idempotencyKey + "."},
-		}},
+	details, _ := err.Details.(map[string]any)
+	if details == nil {
+		details = map[string]any{}
+	} else {
+		details = copyMap(details)
 	}
+	// API errors retain their original envelope in Details.
+	target := details
+	if _, serverEnvelope := details["type"]; serverEnvelope {
+		target, _ = details["details"].(map[string]any)
+		if target == nil {
+			target = map[string]any{}
+		} else {
+			target = copyMap(target)
+		}
+		details["details"] = target
+	}
+	target["idempotency_key"] = idempotencyKey
+	remediation, _ := target["remediation"].(map[string]any)
+	if remediation == nil {
+		remediation = map[string]any{}
+	} else {
+		remediation = copyMap(remediation)
+	}
+	actions, _ := remediation["next_actions"].([]any)
+	remediation["next_actions"] = append(append([]any(nil), actions...), map[string]any{"reason_message": "Retry the same command with --idempotency-key " + idempotencyKey + "."})
+	target["remediation"] = remediation
+	err.Details = details
 	return err
 }
 

@@ -45,6 +45,36 @@ func (a *App) writeError(err *CLIError, opts Options) {
 			}
 			body = map[string]any{"error": e}
 		}
+		e := body["error"].(map[string]any)
+		if err.HTTPStatus != 0 {
+			e["http_status"] = err.HTTPStatus
+		}
+		e["retryable"] = retryableErrorStatus(err.HTTPStatus) || err.ExitCode == ExitNetwork
+		if details, ok := e["details"].(map[string]any); ok {
+			if remediation, exists := details["remediation"]; exists {
+				if server, ok := e["remediation"].(map[string]any); ok {
+					merged := copyMap(server)
+					if added, ok := remediation.(map[string]any); ok {
+						for key, value := range added {
+							if key == "next_actions" {
+								existing, _ := merged[key].([]any)
+								actions, _ := value.([]any)
+								merged[key] = append(append([]any(nil), existing...), actions...)
+							} else {
+								merged[key] = value
+							}
+						}
+					}
+					e["remediation"] = merged
+				} else {
+					e["remediation"] = remediation
+				}
+			}
+		} else if e["details"] != nil {
+			e["details"] = map[string]any{"problems": e["details"]}
+		} else {
+			e["details"] = map[string]any{}
+		}
 		_ = writeJSON(a.Stdout, body)
 		return
 	}
@@ -56,12 +86,15 @@ func (a *App) writeError(err *CLIError, opts Options) {
 		if remediation, ok := details["remediation"].(map[string]any); ok {
 			renderNextActions(a.Stderr, remediation["next_actions"])
 		}
-	}
-	if err.Details != nil && strings.HasPrefix(err.Code, "UNKNOWN_") {
-		if list, ok := err.Details.([]map[string]any); ok && len(list) > 0 {
-			if s, ok := list[0]["suggestions"].([]string); ok && len(s) > 0 {
-				fmt.Fprintln(a.Stderr, "Did you mean: "+strings.Join(s, ", "))
+		if nested, ok := details["details"].(map[string]any); ok {
+			if remediation, ok := nested["remediation"].(map[string]any); ok {
+				renderNextActions(a.Stderr, remediation["next_actions"])
 			}
+		}
+	}
+	if details, ok := err.Details.(map[string]any); ok && strings.HasPrefix(err.Code, "UNKNOWN_") {
+		if suggestions, ok := details["suggestions"].([]string); ok && len(suggestions) > 0 {
+			fmt.Fprintln(a.Stderr, "Did you mean: "+strings.Join(suggestions, ", "))
 		}
 	}
 }
@@ -199,8 +232,19 @@ func (a *App) writeJQResults(values jqResults, opts Options) *CLIError {
 	return nil
 }
 
+func applyCommandOutputTransforms(ctx context.Context, value any, cmd *Command, opts Options) (any, *CLIError) {
+	if len(opts.Select) > 0 || opts.Field != "" {
+		var e *CLIError
+		value, e = prepareOptionalFields(value, cmd, opts)
+		if e != nil {
+			return nil, e
+		}
+	}
+	return applyOutputTransforms(ctx, value, opts)
+}
+
 func (a *App) writeResult(value any, cmd *Command, opts Options) *CLIError {
-	value, err := applyOutputTransforms(a.commandContext(), value, opts)
+	value, err := applyCommandOutputTransforms(a.commandContext(), value, cmd, opts)
 	if err != nil {
 		return err
 	}
@@ -235,7 +279,7 @@ func (a *App) writeResult(value any, cmd *Command, opts Options) *CLIError {
 		return networkError("OUTPUT_WRITE_FAILED", "Could not write command output.", output.err)
 	}
 	if cmd != nil && cmd.Supports.Pagination && !opts.Quiet {
-		if envelope, ok := value.(map[string]any); ok && envelope["has_more"] == true {
+		if envelope, ok := value.(map[string]any); ok && envelope != nil {
 			if token, _ := envelope["next_page_token"].(string); token != "" {
 				fmt.Fprintf(a.Stderr, "More results are available. Run the same command with --page-token %s for the next page, or --all for every page.\n", terminalSafe(token))
 			}
@@ -368,6 +412,8 @@ func renderDoctorHuman(w io.Writer, value any) {
 			marker = "✗"
 		} else if check["status"] == "info" {
 			marker = "i"
+		} else if check["status"] == "warning" {
+			marker = "!"
 		}
 		label := humanLabel(fmt.Sprint(check["name"]))
 		if check["name"] == "config" && check["status"] == "pass" {
@@ -421,27 +467,52 @@ func renderCheckoutHuman(w io.Writer, value any, now time.Time) {
 }
 
 func renderHumanValue(w io.Writer, value any, prefix string, now time.Time, depth int) {
-	if depth > 3 {
+	indent := strings.Repeat("  ", depth)
+	if depth > 12 {
+		fmt.Fprintln(w, indent+"…")
 		return
 	}
 	switch v := value.(type) {
 	case map[string]any:
+		if len(v) == 0 {
+			fmt.Fprintln(w, indent+"(none)")
+			return
+		}
 		keys := make([]string, 0, len(v))
-		for k := range v {
-			keys = append(keys, k)
+		for key := range v {
+			keys = append(keys, key)
 		}
 		sort.Strings(keys)
-		for _, k := range keys {
-			x := v[k]
+		for _, key := range keys {
+			x := v[key]
 			switch x.(type) {
 			case map[string]any, []any:
-				fmt.Fprintln(w, humanLabel(k))
-				renderHumanValue(w, x, k, now, depth+1)
+				fmt.Fprintln(w, indent+humanLabel(key))
+				renderHumanValue(w, x, key, now, depth+1)
 			default:
-				fmt.Fprintf(w, "%-20s %s\n", humanLabel(k), formatHumanScalar(x, now))
+				fmt.Fprintf(w, "%s%-20s %s\n", indent, humanLabel(key), formatHumanScalar(x, now))
 			}
 		}
 	case []any:
+		if len(v) == 0 {
+			fmt.Fprintln(w, indent+"(none)")
+			return
+		}
+		parts := make([]string, 0, len(v))
+		for _, x := range v {
+			switch x.(type) {
+			case map[string]any, []any:
+				parts = nil
+			default:
+				if parts != nil {
+					parts = append(parts, formatHumanScalar(x, now))
+				}
+			}
+		}
+		if parts != nil {
+			fmt.Fprintln(w, indent+strings.Join(parts, ", "))
+			return
+		}
 		for i, x := range v {
 			if i > 0 {
 				fmt.Fprintln(w)
@@ -449,27 +520,30 @@ func renderHumanValue(w io.Writer, value any, prefix string, now time.Time, dept
 			renderHumanValue(w, x, prefix, now, depth+1)
 		}
 	default:
-		fmt.Fprintln(w, formatHumanScalar(v, now))
+		fmt.Fprintln(w, indent+formatHumanScalar(v, now))
 	}
 }
 func humanLabel(path string) string {
 	parts := strings.Split(path, ".")
-	s := strings.ReplaceAll(parts[len(parts)-1], "_", " ")
-	if s == "" {
+	words := strings.Fields(strings.ReplaceAll(parts[len(parts)-1], "_", " "))
+	if len(words) == 0 {
 		if path != "" {
 			return path
 		}
 		return "(empty key)"
 	}
-	first, size := utf8.DecodeRuneInString(s)
-	label := string(unicode.ToUpper(first)) + s[size:]
-	if label == "Id" {
-		return "ID"
+	for i, word := range words {
+		switch strings.ToLower(word) {
+		case "id", "api", "cli", "url":
+			words[i] = strings.ToUpper(word)
+		default:
+			if i == 0 {
+				first, size := utf8.DecodeRuneInString(word)
+				words[i] = string(unicode.ToUpper(first)) + word[size:]
+			}
+		}
 	}
-	if strings.HasSuffix(label, " id") {
-		return strings.TrimSuffix(label, " id") + " ID"
-	}
-	return label
+	return strings.Join(words, " ")
 }
 func humanScalar(v any) string { return fmt.Sprint(v) }
 func formatHumanScalar(v any, now time.Time) string {
@@ -539,11 +613,29 @@ func selectFields(value any, fields []string) (any, error) {
 	}
 	data, hasData := m["data"]
 	if resources, ok := data.([]any); ok {
+		for _, field := range fields {
+			found := false
+			for _, resource := range resources {
+				if _, ok := lookupPath(resource, field); ok {
+					found = true
+					break
+				}
+			}
+			if !found && len(resources) > 0 {
+				return nil, fmt.Errorf("selected field does not exist: %s", field)
+			}
+		}
 		projected := make([]any, 0, len(resources))
 		for _, resource := range resources {
 			resourceMap, ok := resource.(map[string]any)
 			if !ok {
 				return nil, fmt.Errorf("--select requires object resources")
+			}
+			resourceMap = copyMap(resourceMap)
+			for _, field := range fields {
+				if _, ok := lookupPath(resourceMap, field); !ok {
+					setNested(resourceMap, strings.Split(field, "."), nil)
+				}
 			}
 			item, err := projectObject(resourceMap, fields)
 			if err != nil {

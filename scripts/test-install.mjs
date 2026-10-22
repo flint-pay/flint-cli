@@ -40,6 +40,9 @@ try {
 
   // Install real tarballs in a clean consumer, without registry access or scripts.
   run(process.execPath, [join(root, "scripts/package-npm.mjs")]);
+  const serverManifest = JSON.parse(readFileSync(join(dist, "server.json"), "utf8"));
+  assert.equal(serverManifest.version, version);
+  assert.deepEqual(serverManifest.packages.map(entry => entry.version), [version]);
   const packs = join(temp, "packs");
   mkdirSync(packs);
   const tarballs = [target, "wrapper"].map(name => {
@@ -74,6 +77,7 @@ const args = process.argv.slice(2);
 const url = args.find(arg => arg.startsWith('https://'));
 if (url === 'https://api.github.com/repos/flint-pay/flint-cli/releases?per_page=100') {
   fs.writeFileSync(args[args.indexOf('-o') + 1], JSON.stringify([{tag_name:'cli/v99.0.0-beta.1',prerelease:true},{tag_name:'cli/v${version}',prerelease:false}], null, 2));
+  if (args[args.indexOf('-w') + 1] === '%{http_code}') process.stdout.write('200');
 } else {
   const prefix = 'https://github.com/flint-pay/flint-cli/releases/download/cli%2Fv${version}/';
   if (!url?.startsWith(prefix)) throw new Error('Unexpected download URL: ' + url);
@@ -88,6 +92,7 @@ if (url === 'https://api.github.com/repos/flint-pay/flint-cli/releases?per_page=
 `);
     chmodSync(curl, 0o755);
     const env = { ...process.env, PATH: `${mockBin}${delimiter}${process.env.PATH}`, FLINT_TEST_DIST: dist };
+    delete env.GITHUB_TOKEN;
     for (const selected of [version, ...(version.includes("-") ? [] : ["latest"])]) {
       const installDir = join(temp, `installed-${selected}`);
       run("sh", [join(root, "scripts/install.sh")], { env: { ...env, FLINT_CLI_VERSION: selected, FLINT_INSTALL_DIR: installDir } });

@@ -412,7 +412,7 @@ func TestCustomerFulfillmentEventsRequireOrderBeforeRequest(t *testing.T) {
 				if got := r.URL.Query().Get("fulfillment_id"); got != "ful_test" {
 					t.Errorf("fulfillment_id=%q", got)
 				}
-				fmt.Fprint(w, `{"data":[],"has_more":false}`)
+				fmt.Fprint(w, `{"data":[]}`)
 			}))
 			defer server.Close()
 			app, out, stderr := testApp(t, server.URL)

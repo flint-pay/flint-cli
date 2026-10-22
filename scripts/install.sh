@@ -3,7 +3,19 @@ set -eu
 
 repository="flint-pay/flint-cli"
 version="${FLINT_CLI_VERSION:-latest}"
-install_dir="${FLINT_INSTALL_DIR:-/usr/local/bin}"
+# Tests replace the system directory. Set FLINT_INSTALL_DIR to choose where to install.
+system_dir="${FLINT_TEST_SYSTEM_INSTALL_DIR:-/usr/local/bin}"
+if [ -n "${FLINT_INSTALL_DIR:-}" ]; then
+  install_dir="$FLINT_INSTALL_DIR"
+elif { [ -d "$system_dir" ] && [ -w "$system_dir" ]; } || { [ ! -e "$system_dir" ] && [ -w "$(dirname "$system_dir")" ]; }; then
+  install_dir="$system_dir"
+elif [ -n "${HOME:-}" ]; then
+  install_dir="${HOME}/.local/bin"
+  echo "${system_dir} is not writable, so Flint CLI will be installed in ${install_dir}. Set FLINT_INSTALL_DIR to choose another directory." >&2
+else
+  echo "${system_dir} is not writable and HOME is not set. Set FLINT_INSTALL_DIR to a writable directory." >&2
+  exit 2
+fi
 
 case "$(uname -s)" in
   Darwin) os=darwin ;;
@@ -29,10 +41,37 @@ trap 'exit 143' TERM
 
 if [ "$version" = latest ]; then
   release_url="https://api.github.com/repos/${repository}/releases?per_page=100"
-  if ! curl -fsSL "$release_url" -o "${temp_dir}/releases.json"; then
-    echo "Could not download the Flint CLI release feed." >&2
-    exit 5
+  # GITHUB_TOKEN raises GitHub's API rate limit. curl reads the header from
+  # stdin, which keeps the token out of the process list.
+  if [ -n "${GITHUB_TOKEN:-}" ]; then
+    feed_status="$(printf 'header = "Authorization: Bearer %s"\n' "$GITHUB_TOKEN" |
+      curl -sSL -K - -w '%{http_code}' -o "${temp_dir}/releases.json" "$release_url")" || feed_status=failed
+  else
+    feed_status="$(curl -sSL -w '%{http_code}' -o "${temp_dir}/releases.json" "$release_url")" || feed_status=failed
   fi
+  case "$feed_status" in
+    200) ;;
+    401)
+      if [ -n "${GITHUB_TOKEN:-}" ]; then
+        echo "GitHub rejected GITHUB_TOKEN (HTTP 401) while looking up the latest Flint CLI release. Use a valid token, or unset GITHUB_TOKEN." >&2
+      else
+        echo "Could not download the Flint CLI release feed (HTTP 401)." >&2
+      fi
+      exit 5 ;;
+    403|429)
+      if [ -n "${GITHUB_TOKEN:-}" ]; then
+        echo "GitHub refused the latest Flint CLI release lookup (HTTP ${feed_status}), usually because the API rate limit for GITHUB_TOKEN was reached. Wait for the limit to reset, or set FLINT_CLI_VERSION to install a specific version without the lookup." >&2
+      else
+        echo "GitHub refused the latest Flint CLI release lookup (HTTP ${feed_status}), usually because its API rate limit for anonymous requests was reached. Set GITHUB_TOKEN to a GitHub token to raise the limit, or set FLINT_CLI_VERSION to install a specific version without the lookup." >&2
+      fi
+      exit 5 ;;
+    [0-9][0-9][0-9])
+      echo "Could not download the Flint CLI release feed (HTTP ${feed_status})." >&2
+      exit 5 ;;
+    *)
+      echo "Could not download the Flint CLI release feed." >&2
+      exit 5 ;;
+  esac
   if ! tag="$(awk '
     # Decode ASCII JSON escapes for the field names and release tags we use.
     function decoded(value, result, i, character, escaped, j, code) {
@@ -184,3 +223,10 @@ if [ "$installed_version" != "$tag" ]; then
 fi
 mv -f "${staging_dir}/flint" "${install_dir}/flint"
 "${install_dir}/flint" version
+case ":${PATH:-}:" in
+  *":${install_dir}:"*|*":${install_dir}/:"*) ;;
+  *)
+    echo "${install_dir} is not on your PATH. Add it to your shell profile, for example:" >&2
+    # shellcheck disable=SC2016 # The profile line keeps $PATH unexpanded.
+    printf '  export PATH="%s:$PATH"\n' "$install_dir" >&2 ;;
+esac

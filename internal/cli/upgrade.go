@@ -145,8 +145,11 @@ func (a *App) localUpgrade(cmd *Command, opts Options) int {
 		}, opts)
 	}
 
+	// --check only reads the release list, so it keeps the ordinary request
+	// timeout; installing can take minutes.
+	check := booleanRawOption(opts, "check")
 	upgradeTimeout := opts.Timeout
-	if len(opts.Raw["timeout"]) == 0 {
+	if len(opts.Raw["timeout"]) == 0 && !check {
 		upgradeTimeout = 5 * time.Minute
 	}
 	ctx, cancel := context.WithTimeout(a.commandContext(), upgradeTimeout)
@@ -158,6 +161,9 @@ func (a *App) localUpgrade(cmd *Command, opts Options) int {
 	})
 	if upgradeErr != nil {
 		return a.fail(upgradeErr, opts)
+	}
+	if check {
+		return a.outputLocal(upgradeCheckResult(installed, latest), cmd, opts)
 	}
 	if compareReleaseVersions(installed, latest) >= 0 {
 		return a.outputLocal(map[string]any{"data": map[string]any{
@@ -247,6 +253,23 @@ func (a *App) localUpgrade(cmd *Command, opts Options) int {
 		}}, cmd, opts)
 	}
 	return a.outputLocal(upgradeResult(installed.raw, latest.raw, "standalone"), cmd, opts)
+}
+
+// upgradeCheckResult reports whether a newer stable release exists without
+// changing the installation. Either answer is a successful check.
+func upgradeCheckResult(current, latest releaseVersion) map[string]any {
+	available := compareReleaseVersions(current, latest) < 0
+	data := map[string]any{
+		"status":           "current",
+		"current_version":  current.raw,
+		"latest_version":   latest.raw,
+		"update_available": available,
+	}
+	if available {
+		data["status"] = "update_available"
+		data["upgrade_command"] = "flint upgrade"
+	}
+	return map[string]any{"data": data}
 }
 
 func upgradeResult(previous, latest, method string) map[string]any {

@@ -15,14 +15,14 @@ var boolFlags = map[string]bool{
 	// that declares them accepts them, but the parser still has to know they
 	// take no value.
 	"new-session": true, "private": true, "no-open": true, "ai-agent": true,
-	"allow-live": true, "allow-destructive": true,
+	"allow-live": true, "allow-destructive": true, "no-wait": true, "check": true, "print-secret": true,
 }
 
 var globalFlags = map[string]bool{
 	"output": true, "quiet": true, "debug": true, "no-input": true, "live": true,
 	"context": true, "merchant": true, "profile": true, "color": true, "confirm": true, "dry-run": true,
 	"idempotency-key": true, "jq": true, "select": true, "field": true, "expand": true,
-	"open": true, "page-size": true, "page-token": true, "all": true, "timeout": true,
+	"limit": true, "open": true, "page-size": true, "page-token": true, "all": true, "timeout": true,
 	"max-events": true, "for": true, "wait-for": true, "progress": true, "input": true,
 	"paginate": true, "preview": true, "clear": true, "stdin": true, "fix": true, "help": true,
 }
@@ -44,10 +44,8 @@ func parseInvocation(r *Registry, argv []string) (*Command, Options, bool, *CLIE
 		return nil, opts, false, unknownFlagError(remaining[0], globalFlags)
 	}
 	if len(remaining) == 0 {
-		if len(argv) == 0 || helpRequested(opts) {
-			if cmd, ok := r.ByName("help"); ok {
-				return cmd, opts, false, nil
-			}
+		if cmd, ok := r.ByName("help"); ok {
+			return cmd, opts, false, nil
 		}
 		return nil, opts, false, usageError("MISSING_COMMAND", "A command is required.", "")
 	}
@@ -84,7 +82,7 @@ func parseInvocation(r *Registry, argv []string) (*Command, Options, bool, *CLIE
 			msg += " Run flint --help to list commands."
 		}
 		e := usageError("UNKNOWN_COMMAND", msg, "")
-		e.Details = []map[string]any{{"input": input, "suggestions": suggestions}}
+		e.Details = suggestionDetails(input, suggestions)
 		return nil, opts, false, e
 	}
 	commandFlags := map[string]bool{}
@@ -104,6 +102,15 @@ func parseInvocation(r *Registry, argv []string) (*Command, Options, bool, *CLIE
 		}
 	}
 	opts.Positionals = tail
+	for _, arg := range cmd.Arguments {
+		if arg.Positional > 0 && arg.IDPrefix != "" && len(opts.Positionals) >= arg.Positional {
+			value := strings.TrimSpace(opts.Positionals[arg.Positional-1])
+			opts.Positionals[arg.Positional-1] = value
+			if e := validateIDPrefix(value, arg); e != nil {
+				return nil, opts, false, e
+			}
+		}
+	}
 	help := helpRequested(opts)
 	if opts.Output == "json" || opts.Output == "ndjson" {
 		opts.NoInput = true
@@ -119,8 +126,10 @@ func helpRequested(opts Options) bool {
 	return len(values) > 0 && values[len(values)-1] == "true"
 }
 
+var defaultRequestTimeout = 30 * time.Second
+
 func defaultOptions() Options {
-	return Options{Output: "human", Color: "auto", Progress: "auto", Timeout: 30 * time.Second, Input: "", Raw: map[string][]string{}}
+	return Options{Output: "human", Color: "auto", Progress: "auto", Timeout: defaultRequestTimeout, Input: "", Raw: map[string][]string{}}
 }
 
 func extractKnownFlags(args []string, allowed map[string]bool, opts *Options) ([]string, *CLIError) {
@@ -165,6 +174,10 @@ func extractFlags(args []string, allowed map[string]bool, opts *Options, rejectU
 		if boolFlags[key] {
 			if !hasValue {
 				value = "true"
+				if i+1 < len(args) && (args[i+1] == "true" || args[i+1] == "false") {
+					i++
+					value = args[i]
+				}
 			}
 			if value != "true" && value != "false" {
 				return nil, usageError("INVALID_FLAG_VALUE", "--"+key+" must be true or false.", key)
@@ -174,7 +187,7 @@ func extractFlags(args []string, allowed map[string]bool, opts *Options, rejectU
 				if key == "dry-run" {
 					return nil, usageError("MISSING_FLAG_VALUE", "Missing value for --dry-run. Use --dry-run=client.", key)
 				}
-				return nil, usageError("MISSING_FLAG_VALUE", "Missing value for --"+key+".", key)
+				return nil, usageError("MISSING_FLAG_VALUE", "Missing value for --"+key+". If the value starts with --, use --"+key+"=VALUE.", key)
 			}
 			i++
 			value = args[i]
@@ -224,6 +237,12 @@ func setOption(o *Options, key, value string) *CLIError {
 		o.Expand = append(o.Expand, splitCSV(value)...)
 	case "open":
 		o.Open = boolValue
+	case "limit":
+		n, e := strconv.Atoi(value)
+		if e != nil || n < 1 {
+			return usageError("INVALID_LIMIT", "--limit must be a positive integer.", key)
+		}
+		o.Limit = n
 	case "page-size":
 		n, e := strconv.Atoi(value)
 		if e != nil || n < 1 || n > 100 {
@@ -279,13 +298,17 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 		return nil
 	}
 	if o.Output != "human" && o.Output != "json" && o.Output != "ndjson" {
-		return usageError("INVALID_OUTPUT", "--output must be human, json, or ndjson.", "output")
+		source := "--output"
+		if o.outputFromEnvironment {
+			source = "FLINT_OUTPUT"
+		}
+		return usageError("INVALID_OUTPUT", source+" must be human, json, or ndjson.", "output")
+	}
+	if o.Output == "ndjson" && !cmd.Stream && o.outputFromEnvironment {
+		o.Output = "json"
 	}
 	if o.Output == "ndjson" && !cmd.Stream {
 		return usageError("UNSUPPORTED_FLAG", "--output ndjson applies only to streaming commands.", "output")
-	}
-	if o.Color != "auto" && o.Color != "always" && o.Color != "never" {
-		return usageError("INVALID_COLOR", "--color must be auto, always, or never.", "color")
 	}
 	if o.Progress != "auto" && o.Progress != "plain" && o.Progress != "json" && o.Progress != "quiet" {
 		return usageError("INVALID_PROGRESS", "--progress must be auto, plain, json, or quiet.", "progress")
@@ -324,6 +347,9 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	if used("expand") && len(o.Expand) == 0 {
 		return usageError("INVALID_FLAG_VALUE", "--expand must contain at least one relationship.", "expand")
 	}
+	if o.DryRun != "" && cmd.CanonicalName == "upgrade" {
+		return usageError("UNSUPPORTED_FLAG", "Use flint upgrade --check to check for an upgrade.", "dry-run")
+	}
 	if o.DryRun != "" && !cmd.Mutation && !rawMutation {
 		return usageError("UNSUPPORTED_FLAG", "--dry-run applies only to mutations.", "dry-run")
 	}
@@ -337,9 +363,9 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 		return usageError("UNSUPPORTED_FLAG", "--context does not apply to this command.", "context")
 	}
 
-	confirmApplies := cmd.Sensitive || cmd.Destructive || rawMutation || (cmd.CanonicalName == "history" && o.Clear)
+	confirmApplies := cmd.Mutation || cmd.Sensitive || cmd.Destructive || rawMutation || (cmd.CanonicalName == "history" && o.Clear)
 	if used("confirm") && !confirmApplies {
-		return usageError("UNSUPPORTED_FLAG", "--confirm applies only to sensitive or destructive mutations.", "confirm")
+		return usageError("UNSUPPORTED_FLAG", "--confirm applies only to mutations.", "confirm")
 	}
 	if used("input") && !cmd.Mutation && !rawMutation && cmd.InputSchema == "" {
 		return usageError("UNSUPPORTED_FLAG", "--input requires a command with a request body.", "input")
@@ -370,13 +396,16 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	if o.All && o.PageToken != "" {
 		return usageError("CONFLICTING_FLAGS", "--all and --page-token cannot be used together.", "page-token")
 	}
+	if used("limit") && (!cmd.Supports.Pagination || cmd.Stream || cmd.CanonicalName == "api") {
+		return usageError("UNSUPPORTED_FLAG", "--limit applies only to paginated list commands.", "limit")
+	}
 	if used("all") && cmd.Stream {
 		return usageError("UNSUPPORTED_FLAG", "--all does not apply to streaming commands, which traverse pages continuously.", "all")
 	}
 	if used("open") && !cmd.Supports.Open {
 		return usageError("UNSUPPORTED_FLAG", "--open is not supported by this command.", "open")
 	}
-	if (used("all") || used("page-size") || used("page-token")) && !cmd.Supports.Pagination && !cmd.Stream && cmd.CanonicalName != "api" {
+	if (used("limit") || used("all") || used("page-size") || used("page-token")) && !cmd.Supports.Pagination && !cmd.Stream && cmd.CanonicalName != "api" {
 		return usageError("UNSUPPORTED_FLAG", "Pagination flags are not supported by this command.", "page-size")
 	}
 	if used("paginate") && cmd.CanonicalName != "api" {
@@ -402,7 +431,7 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	if used("fix") && cmd.CanonicalName != "doctor" {
 		return usageError("UNSUPPORTED_FLAG", "--fix applies only to flint doctor.", "fix")
 	}
-	if used("progress") && !cmd.Stream && !o.All && !o.Paginate && len(o.WaitFor) == 0 && cmd.CanonicalName != "upgrade" {
+	if used("progress") && !cmd.Stream && !o.All && !o.Paginate && o.Limit == 0 && len(o.WaitFor) == 0 && cmd.CanonicalName != "upgrade" {
 		return usageError("UNSUPPORTED_FLAG", "--progress applies only to pagination, streams, waits, and upgrades.", "progress")
 	}
 	maxPositional := 0
@@ -445,8 +474,8 @@ func splitCSV(s string) []string {
 
 // Flags that people and agents commonly guess from other CLIs.
 var flagAliases = map[string]string{
-	"json": "--output json", "format": "--output", "version": "flint version",
-	"yes": "--confirm", "force": "--confirm", "limit": "--page-size", "verbose": "--debug",
+	"data": "--input", "body": "--input", "json-body": "--input", "json": "--output json", "format": "--output", "version": "flint version",
+	"yes": "--confirm", "force": "--confirm", "verbose": "--debug",
 }
 
 // isShortFlag reports whether a single-dash token looks like a flag rather
@@ -471,8 +500,15 @@ func unknownFlagError(token string, allowed map[string]bool) *CLIError {
 		}
 	}
 	e := usageError("UNKNOWN_FLAG", message, key)
-	e.Details = []map[string]any{{"input": shown, "suggestions": suggestFlags(key, allowed)}}
+	e.Details = suggestionDetails(shown, suggestFlags(key, allowed))
 	return e
+}
+
+func suggestionDetails(input string, suggestions []string) map[string]any {
+	if suggestions == nil {
+		suggestions = []string{}
+	}
+	return map[string]any{"input": input, "suggestions": suggestions}
 }
 
 func suggestFlags(input string, allowed map[string]bool) []string {

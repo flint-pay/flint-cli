@@ -136,7 +136,7 @@ func TestVerifiedMCPPreservesFlagLikeValues(t *testing.T) {
 	for _, name := range []string{"--help", "--live", "--", "--name=value"} {
 		response := a.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{
 			"name": "organizations.create", "arguments": map[string]any{"name": name, "_flint": map[string]any{"dry_run": "client"}},
-		}}, defaultOptions())
+		}}, mcpAllToolsOptions(t))
 		if got, _ := lookupPath(response, "result.structuredContent.data.body.name"); got != name {
 			t.Fatalf("name=%q response=%v", name, response)
 		}
@@ -151,7 +151,7 @@ func TestVerifiedMCPPreservesFlagLikeValues(t *testing.T) {
 	t.Setenv("FLINT_HELP_URL", server.URL)
 	response := a.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 2, Method: "tools/call", Params: map[string]any{
 		"name": "help.search", "arguments": map[string]any{"query": "--help"},
-	}}, defaultOptions())
+	}}, mcpAllToolsOptions(t))
 	if got, _ := lookupPath(response, "result.structuredContent.data.query"); got != "--help" {
 		t.Fatalf("response=%v", response)
 	}

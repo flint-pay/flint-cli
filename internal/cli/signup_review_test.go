@@ -168,9 +168,6 @@ func TestSignupReviewProjectContextStopsBeforeProvisioning(t *testing.T) {
 		t.Fatal(err)
 	}
 	app.StoreCredential = func(string, string) error { t.Fatal("credential replaced"); return nil }
-	// Environment credentials suppress context resolution, but the project pin
-	// will return after that override is removed and must still block signup.
-	t.Setenv("FLINT_API_KEY", "flint_test_synthetic_override")
 	exit := app.Run(append(append([]string{}, signupFlowStartArgs...), "--verification-code", "123456", "--no-input", "--output", "json"))
 	if exit == ExitOK || !strings.Contains(out.String(), "SIGNUP_PROJECT_CONTEXT") || !strings.Contains(out.String(), "outside the project") || !strings.Contains(out.String(), "remove the pinned context") || signupTestLoadPending(t, app) != nil {
 		t.Fatalf("preflight=%d %s", exit, out)

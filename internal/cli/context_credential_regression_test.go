@@ -122,7 +122,7 @@ func TestLegacyLoginRecoversRejectedCachedToken(t *testing.T) {
 				argv = append(argv, "--no-input")
 			}
 			exit := app.Run(argv)
-			if scenario == "revoked" {
+			if scenario == "revoked" || scenario == "no-input" {
 				if exit != ExitOK || state.devices != 1 {
 					t.Fatalf("login did not recover: exit=%d devices=%d out=%s", exit, state.devices, out)
 				}

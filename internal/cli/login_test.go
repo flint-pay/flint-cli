@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -92,10 +93,11 @@ func TestBrowserLoginSuccess(t *testing.T) {
 	if exit := app.Run([]string{"auth", "login", "--profile", "browser", "--output", "json", "--debug"}); exit != ExitOK {
 		t.Fatalf("exit=%d out=%s stderr=%s", exit, out, stderr)
 	}
-	if opened != "https://app.withflintpay.com/cli/activate?user_code=ABCD-EFGH" {
-		t.Fatalf("opened=%s", opened)
+	if opened != "" {
+		t.Fatalf("non-interactive login opened %s", opened)
 	}
-	if !strings.Contains(stderr.String(), "Open "+opened+"\n") || !strings.Contains(stderr.String(), "Confirm this code on the website: ABCD-EFGH\n") {
+	var pending map[string]any
+	if json.Unmarshal(stderr.Bytes(), &pending) != nil || pending["type"] != "login_pending" || pending["user_code"] != "ABCD-EFGH" {
 		t.Fatalf("login instructions = %s", stderr)
 	}
 	credential, e := decodeOAuthCredential(stored)
@@ -312,7 +314,7 @@ func TestBrowserLoginFailureRevokesOAuthGrant(t *testing.T) {
 			if exit := app.Run([]string{"auth", "login", "--output", "json"}); exit != ExitAuth || !revoked {
 				t.Fatalf("exit=%d revoked=%t out=%s", exit, revoked, out)
 			}
-			if !strings.Contains(stderr.String(), "Open the link above") {
+			if !strings.Contains(stderr.String(), `"type":"login_pending"`) {
 				t.Error("missing browser fallback")
 			}
 		})
@@ -324,10 +326,11 @@ func TestBrowserLoginCancellationWhilePolling(t *testing.T) {
 	defer cancel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { writeTestDevice(w) }))
 	defer server.Close()
-	app, out, _ := testApp(t, server.URL)
+	app, out, stderr := testApp(t, server.URL)
 	t.Setenv("FLINT_API_KEY", "")
 	app.Context = ctx
-	app.OpenBrowser = func(string) error { cancel(); return nil }
+	app.Stderr = cancelOnLoginPending{writer: stderr, cancel: cancel}
+	app.OpenBrowser = func(string) error { t.Error("JSON login opened browser"); return nil }
 	start := time.Now()
 	if exit := app.Run([]string{"auth", "login", "--output", "json"}); exit != ExitAuth || !strings.Contains(out.String(), "LOGIN_CANCELED") || time.Since(start) > time.Second {
 		t.Fatalf("exit=%d out=%s", exit, out)
@@ -423,4 +426,17 @@ func TestSavedLoginOutput(t *testing.T) {
 			}
 		})
 	}
+}
+
+type cancelOnLoginPending struct {
+	writer io.Writer
+	cancel context.CancelFunc
+}
+
+func (w cancelOnLoginPending) Write(p []byte) (int, error) {
+	n, err := w.writer.Write(p)
+	if strings.Contains(string(p), `"type":"login_pending"`) {
+		w.cancel()
+	}
+	return n, err
 }

@@ -3,11 +3,16 @@ package cli
 import (
 	"context"
 	"encoding/base64"
+	"errors"
+	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 type responseContractKey struct{}
@@ -61,7 +66,7 @@ func (a *App) followReportDownload(ctx context.Context, location string) (*apiRe
 	return &apiResponse{Status: response.StatusCode, Raw: raw, Headers: response.Header.Clone(), Value: fileResponse(raw, "text/csv")}, nil
 }
 
-func saveDownload(value any, destination string) (any, *CLIError) {
+func (a *App) saveDownload(value any, destination string) (any, *CLIError) {
 	envelope, _ := value.(map[string]any)
 	data, _ := envelope["data"].(map[string]any)
 	encoded, ok := data["content_base64"].(string)
@@ -73,19 +78,60 @@ func saveDownload(value any, destination string) (any, *CLIError) {
 		return nil, invalidResponseError("INVALID_DOWNLOAD_RESPONSE", "The file response could not be decoded.", err)
 	}
 	if strings.TrimSpace(destination) == "" {
-		return nil, usageError("INVALID_DESTINATION", "--save-to requires a file path.", "save_to")
+		return nil, usageError("INVALID_DESTINATION", "--save-to requires a file path, or - for stdout.", "save_to")
+	}
+	if destination == "-" {
+		// An MCP tool result is JSON, so it cannot carry raw file bytes.
+		if mcpSessionFrom(a.commandContext()) != nil {
+			return nil, usageError("INVALID_DESTINATION", `save_to "-" writes raw file bytes to stdout, which an MCP tool result cannot carry. Omit save_to to receive content_base64, or pass a file path.`, "save_to")
+		}
+		if _, err := a.Stdout.Write(raw); err != nil {
+			return nil, networkError("OUTPUT_WRITE_FAILED", "Could not write the downloaded file to stdout.", err)
+		}
+		return outputHandled{}, nil
 	}
 	file, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
-		return nil, configError("FILE_WRITE_FAILED", "Could not create the download file. Choose a new, writable path.", err)
+		mediaType, _ := data["content_type"].(string)
+		return nil, downloadDestinationError(destination, mediaType, err)
 	}
 	_, writeErr := file.Write(raw)
 	closeErr := file.Close()
 	if writeErr != nil || closeErr != nil {
 		_ = os.Remove(destination)
-		return nil, configError("FILE_WRITE_FAILED", "Could not write the download file.", writeErr)
+		cause := errors.Join(writeErr, closeErr)
+		return nil, configError("FILE_WRITE_FAILED", "Could not write the download file: "+terminalSafe(cause.Error())+".", cause)
 	}
 	delete(data, "content_base64")
 	data["path"] = destination
 	return envelope, nil
+}
+
+// downloadDestinationError names why --save-to could not create its file.
+// Downloads never overwrite, so an existing path is a usage error too.
+func downloadDestinationError(destination, mediaType string, err error) *CLIError {
+	path := terminalSafe(destination)
+	switch {
+	case errors.Is(err, fs.ErrExist):
+		if info, statErr := os.Stat(destination); statErr == nil && info.IsDir() {
+			name := map[string]string{"application/pdf": "download.pdf", "text/csv": "download.csv"}[mediaType]
+			if name == "" {
+				name = "download"
+			}
+			return usageError("DESTINATION_IS_DIRECTORY", fmt.Sprintf("%s is a directory. Pass a file path inside it, such as %s.", path, filepath.Join(path, name)), "save_to")
+		}
+		return usageError("DESTINATION_EXISTS", fmt.Sprintf("%s already exists, and downloads never overwrite files. Choose a new path or remove the existing file.", path), "save_to")
+	case errors.Is(err, fs.ErrNotExist):
+		return usageError("DESTINATION_DIRECTORY_NOT_FOUND", fmt.Sprintf("The directory %s does not exist. Create it or choose another path.", terminalSafe(filepath.Dir(destination))), "save_to")
+	case errors.Is(err, syscall.ENOTDIR):
+		return usageError("DESTINATION_DIRECTORY_NOT_FOUND", fmt.Sprintf("Part of the directory path %s is a file, not a directory. Choose another path.", terminalSafe(filepath.Dir(destination))), "save_to")
+	case errors.Is(err, fs.ErrPermission):
+		return usageError("DESTINATION_NOT_WRITABLE", fmt.Sprintf("Permission denied creating %s. Choose a directory you can write to.", path), "save_to")
+	}
+	reason := err
+	var pathErr *fs.PathError
+	if errors.As(err, &pathErr) {
+		reason = pathErr.Err
+	}
+	return usageError("INVALID_DESTINATION", fmt.Sprintf("Could not create %s: %s.", path, terminalSafe(reason.Error())), "save_to")
 }

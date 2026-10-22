@@ -27,7 +27,7 @@ func TestVerifiedMCPProcessHelper(t *testing.T) {
 	a.ConfigDir = os.Getenv("FLINT_TEST_MCP_CONFIG_DIR")
 	a.WorkingDir = a.ConfigDir
 	a.Context = ctx
-	os.Exit(a.Run([]string{"mcp", "serve", "--no-input"}))
+	os.Exit(a.Run([]string{"mcp", "serve", "--tools", "all", "--no-input"}))
 }
 
 func TestVerifiedMCPProcessShutdown(t *testing.T) {
@@ -90,8 +90,14 @@ func TestVerifiedMCPProcessShutdown(t *testing.T) {
 				// testing cancellation or process shutdown.
 				time.Sleep(100 * time.Millisecond)
 				if shutdownAction == "cancel" {
-					if err := encoder.Encode(map[string]any{"jsonrpc": "2.0", "method": "notifications/cancelled", "params": map[string]any{"requestId": 2}}); err != nil {
-						t.Fatal(err)
+					// A cancelled request gets no response; the server keeps serving.
+					for _, message := range []map[string]any{
+						{"jsonrpc": "2.0", "method": "notifications/cancelled", "params": map[string]any{"requestId": 2}},
+						{"jsonrpc": "2.0", "id": 3, "method": "ping"},
+					} {
+						if err := encoder.Encode(message); err != nil {
+							t.Fatal(err)
+						}
 					}
 					go readLine()
 					select {
@@ -100,12 +106,11 @@ func TestVerifiedMCPProcessShutdown(t *testing.T) {
 						if err := json.Unmarshal(line, &response); err != nil {
 							t.Fatal(err)
 						}
-						code, _ := lookupPath(response, "error.code")
-						if response["id"] != float64(2) || code != float64(-32800) {
-							t.Fatalf("cancellation response: %s", line)
+						if response["id"] != float64(3) {
+							t.Fatalf("expected only the ping response after cancellation: %s", line)
 						}
 					case <-time.After(4 * time.Second):
-						t.Fatal("jq tool did not respond to cancellation")
+						t.Fatal("server did not answer after cancellation")
 					}
 				}
 			}

@@ -193,6 +193,8 @@ func TestGiftCardChallengeErrorPreservesRemediation(t *testing.T) {
 			if err := json.Unmarshal(out.Bytes(), &output); err != nil {
 				t.Fatal(err)
 			}
+			apiError["http_status"] = float64(http.StatusBadRequest)
+			apiError["details"] = map[string]any{}
 			if calls != 1 || !reflect.DeepEqual(output["error"], apiError) {
 				t.Fatalf("calls=%d challenge error changed: %s", calls, out)
 			}

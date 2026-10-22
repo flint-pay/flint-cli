@@ -94,7 +94,7 @@ func (a *App) savedContextSession(opts Options) (ResolvedConfig, oauthCredential
 	}
 	raw, err := a.LoadCredential(resolved.ProfileName)
 	if err != nil {
-		return resolved, oauthCredential{}, configError("CREDENTIAL_LOOKUP_FAILED", "Could not read the saved session.", err)
+		return resolved, oauthCredential{}, credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the saved session.", err)
 	}
 	if !isOAuthCredential(raw) {
 		return resolved, oauthCredential{}, contextSessionRequired()
@@ -117,7 +117,7 @@ func (a *App) listOAuthContexts(ctx context.Context, profile string) (contextLis
 	err := locked.withConfigLock(func() error {
 		raw, err := a.LoadCredential(profile)
 		if err != nil {
-			result = configError("CREDENTIAL_LOOKUP_FAILED", "Could not read the saved session.", err)
+			result = credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the saved session.", err)
 			return result
 		}
 		c, e := decodeOAuthCredential(raw)
@@ -239,7 +239,7 @@ func (a *App) localContext(cmd *Command, opts Options) int {
 		intent.Live = true
 	}
 	auth := AuthContext{Environment: selected.Environment, MerchantID: selected.MerchantID, SandboxID: selected.SandboxID}
-	if e := validateCredentialIntent(auth, intent, resolved.MerchantGuard, resolved.SandboxGuard); e != nil {
+	if e := validateResolvedCredentialIntent(auth, intent, resolved, ""); e != nil {
 		return a.fail(e, opts)
 	}
 	next, e := a.oauthAccess(withOAuthContext(ctx, id), resolved.ProfileName)

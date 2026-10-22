@@ -35,7 +35,7 @@ func publicAPICommands(existing []*Command) []*Command {
 			input := requestSchemaName(operation.RequestBody)
 			arguments := publicAPIArguments(apiPath, operation)
 			if operation.RequestBody != nil {
-				arguments = append(arguments, flag("input", "string", "", "", "JSON request body file, or - for stdin", false))
+				arguments = append(arguments, flag("input", "string", "", "", "JSON body: FILE.json, - for stdin, or inline JSON", false))
 			}
 			description := strings.TrimSpace(operation.Summary)
 			if description == "" {
@@ -542,7 +542,7 @@ func applyPublicOperationMetadata(command *Command) {
 		command.Supports.WaitFor = false
 	}
 	if command.ResponseMediaType != "" {
-		command.Arguments = append(command.Arguments, flag("save_to", "string", "", "", "Save the downloaded file to a new path", false))
+		command.Arguments = append(command.Arguments, flag("save_to", "string", "", "", "Save the downloaded file to a new path, or - for stdout", false))
 		command.Get = false
 		command.Supports.WaitFor = false
 	}

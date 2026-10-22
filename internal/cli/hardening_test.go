@@ -174,9 +174,9 @@ func TestLocalConfigAndSchemaCommands(t *testing.T) {
 		{argv: []string{"config", "get", "--output", "json"}, want: `"merchant_guard":"mer_guard"`},
 		{argv: []string{"config", "validate", "--output", "json"}, want: `"status":"not_configured"`},
 		{argv: []string{"schema", "commands"}, want: `"name":"customers.list"`},
-		{argv: []string{"schema", "command", "customers.list"}, want: `"canonical_name":"customers.list"`},
-		{argv: []string{"schema", "input", "customers.list"}, want: `"$schema":"https://json-schema.org/draft/2020-12/schema"`},
-		{argv: []string{"schema", "output", "customers.list"}, want: `"$schema":"https://json-schema.org/draft/2020-12/schema"`},
+		{argv: []string{"schema", "command", "customers.list"}, want: `"canonical_name": "customers.list"`},
+		{argv: []string{"schema", "input", "customers.list"}, want: `"$schema": "https://json-schema.org/draft/2020-12/schema"`},
+		{argv: []string{"schema", "output", "customers.list"}, want: `"$schema": "https://json-schema.org/draft/2020-12/schema"`},
 		{argv: []string{"schema", "errors"}, want: `"wait_condition_unmet"`},
 		{argv: []string{"schema", "events"}, want: `"webhooks"`},
 	} {
@@ -501,24 +501,39 @@ func TestPaginationRejectsRepeatedTokens(t *testing.T) {
 }
 
 func TestDurationBoundedListenLimitsInFlightRequest(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	const duration = 100 * time.Millisecond
+	requestCanceled := make(chan struct{})
+	app, stdout, stderr := testApp(t, "https://api.example.test")
+	app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(r *http.Request) (*http.Response, error) {
 		if r.URL.Path == "/v1/developer/auth-context" {
-			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, authContextJSON("sandbox"))
-			return
+			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(authContextJSON("sandbox")))}, nil
 		}
-		time.Sleep(150 * time.Millisecond)
-		w.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprint(w, "event: ready\ndata: {}\n\n")
-	}))
-	defer server.Close()
-
-	app, stdout, stderr := testApp(t, server.URL)
-	start := time.Now()
-	exit := app.Run([]string{"listen", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", "25ms", "--timeout", "1s", "--output", "json"})
-	elapsed := time.Since(start)
-	if exit != ExitOK || elapsed >= 125*time.Millisecond || stderr.Len() != 0 || !strings.Contains(stdout.String(), `"type":"checkpoint"`) {
-		t.Fatalf("exit=%d elapsed=%s stdout=%s stderr=%s", exit, elapsed, stdout, stderr)
+		// Check the request's bound directly, independent of scheduler delays.
+		// Without --for propagation this would be the one-hour --timeout.
+		deadline, ok := r.Context().Deadline()
+		if !ok || time.Until(deadline) > duration {
+			t.Errorf("stream request did not inherit --for: deadline=%v present=%t", deadline, ok)
+			return nil, context.DeadlineExceeded
+		}
+		select {
+		case <-r.Context().Done():
+			close(requestCanceled)
+			return nil, r.Context().Err()
+		case <-time.After(5 * time.Second):
+			t.Error("stream request was not canceled")
+			return nil, context.DeadlineExceeded
+		}
+	})}
+	exit := app.Run([]string{"listen", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", duration.String(), "--timeout", "1h", "--output", "json"})
+	select {
+	case <-requestCanceled:
+	case <-time.After(5 * time.Second):
+		t.Fatal("listen returned without canceling its in-flight request")
+	}
+	// The bound passed before the stream opened, so the run reports that it
+	// never connected rather than an empty, successful listen.
+	if exit != ExitNetwork || stderr.Len() != 0 || !strings.Contains(stdout.String(), `"type":"checkpoint"`) || !strings.Contains(stdout.String(), `"code":"STREAM_NOT_CONNECTED"`) {
+		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
 }
 
@@ -544,7 +559,7 @@ func TestListenIdleTimeoutJoinsBlockedForwardBeforeReturning(t *testing.T) {
 	opts.Timeout = 25 * time.Millisecond
 	state := &listenStreamState{}
 	streamErr := app.consumeListenStreamWithIdleTimeout(context.Background(), reader, opts, "http://127.0.0.1/webhooks", "whsec_dGVzdA==", state)
-	if streamErr == nil || streamErr.Code != "REQUEST_TIMEOUT" {
+	if streamErr == nil || streamErr.Code != "STREAM_IDLE_TIMEOUT" {
 		t.Fatalf("stream error = %#v", streamErr)
 	}
 	select {
@@ -779,7 +794,7 @@ func TestMCPOutputTransformsRemainStructuredAndSchemaCompatible(t *testing.T) {
 		"arguments": map[string]any{
 			"_flint": map[string]any{"field": "data.cli_version"},
 		},
-	}}, defaultOptions())
+	}}, mcpAllToolsOptions(t))
 	result := response["result"].(map[string]any)
 	if result["isError"] == true {
 		t.Fatalf("MCP transform failed: %#v", result)
@@ -796,7 +811,7 @@ func TestMCPOutputTransformsRemainStructuredAndSchemaCompatible(t *testing.T) {
 	malformed := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 2, Method: "tools/call", Params: map[string]any{
 		"name":      "version",
 		"arguments": map[string]any{"_flint": map[string]any{"select": []any{true}}},
-	}}, defaultOptions())
+	}}, mcpAllToolsOptions(t))
 	malformedResult := malformed["result"].(map[string]any)
 	if malformedResult["isError"] != true || strings.Contains(fmt.Sprint(malformedResult), "structuredContent") {
 		t.Fatalf("malformed transform result = %#v", malformedResult)
@@ -849,6 +864,7 @@ func TestSignupTransportTimeoutDoesNotIncludeHumanInputDelay(t *testing.T) {
 	defer server.Close()
 
 	app, stdout, stderr := testApp(t, server.URL)
+	t.Setenv("FLINT_API_KEY", "")
 	app.IsTTY = func() bool { return true }
 	app.Stdin = &delayedReader{delay: 40 * time.Millisecond, reader: strings.NewReader("482193\n")}
 	exit := app.Run([]string{"signup", "--email", "dev@example.com", "--first-name", "Ada", "--last-name", "Lovelace", "--timeout", "20ms", "--output", "human"})
@@ -994,7 +1010,7 @@ func TestMCPRejectsMalformedToolCallsAsProtocolErrors(t *testing.T) {
 		{JSONRPC: "2.0", ID: 2, Method: "tools/call", Params: map[string]any{"name": "missing"}},
 		{JSONRPC: "2.0", ID: 3, Method: "tools/call", Params: map[string]any{"name": "version", "arguments": "invalid"}},
 	} {
-		response := app.handleMCP(req, defaultOptions())
+		response := app.handleMCP(req, mcpAllToolsOptions(t))
 		if code, _ := lookupPath(response, "error.code"); code != -32602 {
 			t.Fatalf("response = %#v", response)
 		}
@@ -1003,7 +1019,7 @@ func TestMCPRejectsMalformedToolCallsAsProtocolErrors(t *testing.T) {
 
 func TestMCPOlderProtocolOmitsNewStructuredOutputFields(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	listed := app.handleMCPVersion(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/list"}, defaultOptions(), "2025-03-26")
+	listed := app.handleMCPVersion(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/list"}, mcpAllToolsOptions(t), "2025-03-26")
 	tools, ok := listed["result"].(map[string]any)["tools"].([]map[string]any)
 	if !ok || len(tools) == 0 {
 		t.Fatalf("tools/list response = %#v", listed)
@@ -1011,7 +1027,7 @@ func TestMCPOlderProtocolOmitsNewStructuredOutputFields(t *testing.T) {
 	if _, exists := tools[0]["outputSchema"]; exists {
 		t.Fatalf("2025-03-26 tool unexpectedly includes outputSchema: %#v", tools[0])
 	}
-	called := app.handleMCPVersion(jsonRPCRequest{JSONRPC: "2.0", ID: 2, Method: "tools/call", Params: map[string]any{"name": "version", "arguments": map[string]any{}}}, defaultOptions(), "2025-03-26")
+	called := app.handleMCPVersion(jsonRPCRequest{JSONRPC: "2.0", ID: 2, Method: "tools/call", Params: map[string]any{"name": "version", "arguments": map[string]any{}}}, mcpAllToolsOptions(t), "2025-03-26")
 	if _, exists := called["result"].(map[string]any)["structuredContent"]; exists {
 		t.Fatalf("2025-03-26 result unexpectedly includes structuredContent: %#v", called)
 	}
@@ -1034,6 +1050,7 @@ func TestCustomerAPIRouting(t *testing.T) {
 
 func TestSignupDefaultsToCustomerAPI(t *testing.T) {
 	app, _, _ := testApp(t, "")
+	t.Setenv("FLINT_API_KEY", "")
 	called := false
 	app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		called = true

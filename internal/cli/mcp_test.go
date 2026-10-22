@@ -26,7 +26,7 @@ func TestMCPStreamOutputSchemaIncludesListenRecords(t *testing.T) {
 	for _, value := range values {
 		available[value] = struct{}{}
 	}
-	for _, required := range []string{"listener", "ready", "gap", "withheld", "forward", "disconnect", "checkpoint"} {
+	for _, required := range []string{"event", "listener", "ready", "gap", "withheld", "forward", "reconnect", "disconnect", "checkpoint"} {
 		if _, ok := available[required]; !ok {
 			t.Fatalf("MCP stream output schema is missing %q: %#v", required, values)
 		}
@@ -111,7 +111,7 @@ func TestMCPSparseDeliveryConfigurationUpdates(t *testing.T) {
 				}
 				response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{
 					"name": family.command, "arguments": arguments,
-				}}, defaultOptions())
+				}}, mcpAllToolsOptions(t))
 				result := response["result"].(map[string]any)
 				raw, err := json.Marshal(result)
 				if err != nil {
@@ -192,6 +192,7 @@ func TestMCPClientCanCancelInFlightListen(t *testing.T) {
 	stdinReader, stdinWriter := io.Pipe()
 	var stdout bytes.Buffer
 	app := New(BuildInfo{Version: "test", APIVersion: "2026-02-01"})
+	app.Registry = NewRegistry()
 	app.Stdin = stdinReader
 	app.Stdout = &stdout
 	app.Stderr = &bytes.Buffer{}
@@ -203,7 +204,7 @@ func TestMCPClientCanCancelInFlightListen(t *testing.T) {
 
 	done := make(chan int, 1)
 	go func() {
-		done <- app.serveMCP(defaultOptions())
+		done <- app.serveMCP(mcpServeOptions(t, "--tools", "listen"))
 	}()
 	requests := json.NewEncoder(stdinWriter)
 	if err := requests.Encode(jsonRPCRequest{
@@ -252,6 +253,11 @@ func TestMCPClientCanCancelInFlightListen(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("MCP cancellation did not close the webhook stream")
 	}
+	if err := requests.Encode(jsonRPCRequest{JSONRPC: "2.0", ID: 8, Method: "ping"}); err != nil {
+		t.Fatal(err)
+	}
+	// Give a stray response to the cancelled call time to appear.
+	time.Sleep(200 * time.Millisecond)
 	if err := stdinWriter.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -260,21 +266,84 @@ func TestMCPClientCanCancelInFlightListen(t *testing.T) {
 	}
 
 	scanner := bufio.NewScanner(bytes.NewReader(stdout.Bytes()))
-	cancelled := false
+	pinged := false
 	for scanner.Scan() {
 		var response map[string]any
 		if err := json.Unmarshal(scanner.Bytes(), &response); err != nil {
 			t.Fatalf("decode MCP response: %v", err)
 		}
 		if response["id"] == float64(7) {
-			code, _ := lookupPath(response, "error.code")
-			cancelled = code == float64(-32800)
+			t.Fatalf("server responded to a cancelled request: %s", scanner.Text())
 		}
+		pinged = pinged || response["id"] == float64(8)
 	}
 	if err := scanner.Err(); err != nil {
 		t.Fatal(err)
 	}
-	if !cancelled {
-		t.Fatalf("MCP responses did not include cancellation: %s", stdout.String())
+	if !pinged {
+		t.Fatalf("server stopped serving after the cancellation: %s", stdout.String())
+	}
+}
+
+func TestMCPListenPrintSecretMatchesOutputSchema(t *testing.T) {
+	server, api := newMCPTestAPI(t, "sandbox")
+	app, _, _ := testApp(t, server.URL)
+	result := mcpCall(t, app, mcpAllToolsOptions(t), "listen", map[string]any{"print_secret": true})
+	if result["isError"] == true {
+		t.Fatalf("print_secret failed: %s", mcpResultText(result))
+	}
+	cmd, _ := app.Registry.ByName("listen")
+	schema, err := mcpOutputSchema(cmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertMCPOutputMatchesSchema(t, schema, result["structuredContent"])
+	if len(api.seen()) != 0 {
+		t.Fatalf("print_secret opened a stream: %v", api.seen())
+	}
+}
+
+func TestMCPListenDurationAndExplicitEventCounts(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		events    int
+		controls  map[string]any
+		wantError bool
+	}{
+		{"duration only has no event cap", 101, map[string]any{"for": "200ms"}, false},
+		{"explicit 100 is an expected count", 1, map[string]any{"for": "200ms", "max_events": 100}, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server := listenAPI(t, func(w http.ResponseWriter, r *http.Request, _ int) {
+				w.Header().Set("Content-Type", "text/event-stream")
+				fmt.Fprint(w, "event: ready\ndata: {\"cursor\":\"\"}\n\n")
+				for i := 0; i < test.events; i++ {
+					fmt.Fprint(w, listenEventFrame(fmt.Sprintf("whev_%026d", i), "customer.created", `{}`))
+				}
+				w.(http.Flusher).Flush()
+				<-r.Context().Done()
+			})
+			app, _, _ := testApp(t, server.URL)
+			result := mcpCall(t, app, mcpAllToolsOptions(t), "listen", map[string]any{"_flint": test.controls})
+			if test.wantError {
+				if result["isError"] != true || !strings.Contains(mcpResultText(result), "EXPECTED_EVENTS_NOT_RECEIVED") {
+					t.Fatalf("missing expected-count error: %s", mcpResultText(result))
+				}
+				return
+			}
+			if result["isError"] == true {
+				t.Fatalf("duration-only listen failed: %s", mcpResultText(result))
+			}
+			records := result["structuredContent"].(map[string]any)["records"].([]any)
+			events := 0
+			for _, record := range records {
+				if record.(map[string]any)["type"] == "event" {
+					events++
+				}
+			}
+			if events != test.events {
+				t.Fatalf("received %d events, want %d", events, test.events)
+			}
+		})
 	}
 }

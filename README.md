@@ -13,7 +13,7 @@ npm install -g @flintpay/cli      # resolves a prebuilt binary for your platform
 brew install flint-pay/tap/flint   # macOS and Linux
 ```
 
-After installation, `flint upgrade` (or its alias `flint update`) checks for the latest stable release. On macOS and Linux it uses npm or Homebrew when they own the installation, or securely replaces a standalone binary after verifying the release checksum. On Windows it prints the exact npm or manual update step to run after closing the CLI. Progress appears on stderr, with an elapsed-time update every 10 seconds during longer steps. Use `--quiet` to hide it, or `--output json --progress json` for structured results and progress on separate streams.
+After installation, `flint upgrade` (or its alias `flint update`) checks for the latest stable release. Run `flint upgrade --check` to see the current and latest stable versions without changing anything; it exits 0 whether or not an update is available, and `--output json` reports `update_available`. On macOS and Linux it uses npm or Homebrew when they own the installation, or securely replaces a standalone binary after verifying the release checksum. On Windows it prints the exact npm or manual update step to run after closing the CLI. Progress appears on stderr, with an elapsed-time update every 10 seconds during longer steps. Use `--quiet` to hide it, or `--output json --progress json` for structured results and progress on separate streams.
 
 Prebuilt archives for macOS, Linux, and Windows are attached to each `cli/v*` [release](https://github.com/flint-pay/flint-cli/releases) with a `checksums.txt`. [`scripts/install.sh`](scripts/install.sh) downloads and verifies the right one. The release workflow also publishes a container image to `ghcr.io/flint-pay/flint-cli`.
 
@@ -21,11 +21,10 @@ For manual installation on macOS or Linux:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/flint-pay/flint-cli/main/scripts/install.sh -o /tmp/flint-install.sh
-FLINT_INSTALL_DIR="$HOME/.local/bin" sh /tmp/flint-install.sh
-"$HOME/.local/bin/flint" version
+sh /tmp/flint-install.sh
 ```
 
-Add `$HOME/.local/bin` to your `PATH` if needed. Set `FLINT_CLI_VERSION=X.Y.Z` to install a specific version. On Windows, download the ZIP and `checksums.txt` from the same release, verify the ZIP with `Get-FileHash -Algorithm SHA256`, and extract `flint.exe` into a directory on `PATH`.
+The installer uses `/usr/local/bin` when you can write to it and `$HOME/.local/bin` otherwise, and tells you if that directory is not on your `PATH`. Set `FLINT_INSTALL_DIR` to choose another directory, or `FLINT_CLI_VERSION=X.Y.Z` to install a specific version. Without `FLINT_CLI_VERSION`, the installer asks the GitHub API for the latest release; if GitHub rate-limits the request, set `GITHUB_TOKEN` to a GitHub token, which is sent only with that request. On Windows, download the ZIP and `checksums.txt` from the same release, verify the ZIP with `Get-FileHash -Algorithm SHA256`, and extract `flint.exe` into a directory on `PATH`.
 
 ## Sign up and make a test payment
 
@@ -38,7 +37,7 @@ flint signup --email dev@example.com --first-name Ada --last-name Lovelace --no-
 flint signup --verification-code 482193 --no-input --output json
 ```
 
-The first command succeeds with `data.status` set to `verification_required`. The CLI stores the temporary verification token, email, and name in the private profile config and prints the command to finish. Resume using the same profile and API server; no name or email flags are needed. Successful verification saves the onboarding session and its expiry until signup finishes, so retrying after a later failure does not consume another code attempt. If progress is missing, the code expires, or five attempts are used, start again without `--verification-code`. MCP's `signup` tool uses the same two calls: first pass `email`, `first_name`, and `last_name`, then pass only `verification_code` (and the same profile when selected).
+The first command succeeds with `data.status` set to `verification_required`. The CLI stores the temporary verification token, email, and name in the private profile config and prints the command to finish. Resume using the same profile and API server; no name or email flags are needed. Successful verification saves the onboarding session and its expiry until signup finishes, so retrying after a later failure does not consume another code attempt. If progress is missing, the code expires, or five attempts are used, start again without `--verification-code`. MCP's `signup` tool (enable it with `--tools signup` or `--tools all`) uses the same two calls: first pass `email`, `first_name`, and `last_name`, then pass only `verification_code`. It uses the server's profile and refuses to run when that profile already has a saved credential.
 
 Successful signup saves and activates the new sandbox key, replacing the profile's previous login context. JSON output includes `data.next_command`. For a custom API server, the printed continuation and payment commands include the required `FLINT_BASE_URL`; keep that environment setting when using the saved key. If the project pins an OAuth context in `.flint/config.json`, run signup outside the project or remove that pin first. Make your first test payment with:
 
@@ -50,7 +49,9 @@ flint payment-links create --name "Test payment" --item-name "Test payment" --am
 
 ## Sign in (recommended)
 
-For local development, start with `flint login`. It opens the Flint website, displays a confirmation code, and saves OAuth access and refresh tokens in your OS keychain. The printed approval link includes the pairing code, and the code also appears on its own line. Use `--no-open` to open the printed link yourself, `--profile NAME` to use an existing profile, or `--live` to explicitly request production access. Login waits up to 10 minutes by default; `--timeout 5m` overrides that limit.
+For local development, start with `flint login`. It opens the Flint website, displays a confirmation code, and saves OAuth access and refresh tokens in your OS keychain. The printed approval link includes the pairing code, and the code also appears on its own line. Use `--no-open` to open the printed link yourself, `--profile NAME` to use or create a profile without changing the default profile, or `--live` to explicitly request production access. Login waits up to 10 minutes by default; `--timeout 5m` overrides that limit. With `--no-input`, JSON output, or no TTY, it prints the approval link and code without opening a browser. JSON polling emits a `login_pending` JSON record on stderr with `verification_url`, `user_code`, and `expires_at`.
+
+Use `flint login --no-wait --output json` to start approval and exit successfully with `data.status: "approval_pending"`, the link, code, expiry, and `next_command`. Run `next_command` to resume polling with the same profile, `--live` acknowledgement, scopes, and context guards; keep the same API server and project sandbox guard. Conflicting environment or guard flags fail before redeeming approval and preserve the pending login. Pending device approval is saved in its own private 0600 file in the config directory and removed when completed or expired. Saved OAuth tokens remain in the OS keyring.
 
 If browser login is unavailable, use `flint auth import` instead. Browser approval requires a person; automation should use an API key through `FLINT_API_KEY` or `flint auth import --stdin`.
 
@@ -86,7 +87,13 @@ If `flint context list` reports that contexts are unavailable, your existing log
 
 ### API keys and automation
 
-For manual setup, create a key in the [Flint dashboard](https://app.withflintpay.com/developers/api-keys) and run `flint auth import`. For CI, supply `FLINT_API_KEY` through your secret store and set `FLINT_NO_INPUT=1`. `flint signup` remains available for creating an account from the terminal.
+For manual setup, create a key in the [Flint dashboard](https://app.withflintpay.com/developers/api-keys) and run `flint auth import`. For CI, supply `FLINT_API_KEY` through your secret store and set `FLINT_NO_INPUT=1`. `flint signup` remains available for creating an account from the terminal; unset `FLINT_API_KEY` before signup or browser login.
+
+A locked or unavailable OS keyring fails with guidance after a bounded wait. For SSH, containers, CI, and agents, use `FLINT_API_KEY`; there is no file-based API-key or OAuth credential store. `flint auth import --profile NAME`, `flint login --profile NAME`, and `flint signup --profile NAME` create missing profiles without changing the default profile.
+
+API-key auth-context metadata is cached in memory and in a separate 0600 file for five minutes, keyed by a SHA-256 hash of the key and API base URL. The cache contains no API key. A later HTTP 401 or 403 invalidates it; OAuth credential handling is unchanged.
+
+Configuration selection uses `--profile`, `FLINT_PROFILE`, a project pin in `.flint/config.json`, then the default profile. With `FLINT_API_KEY` or `FLINT_ACCESS_TOKEN`, a missing profile is allowed and scopes resource history. Empty config files are accepted and unknown fields are ignored; `flint config validate` reports unknown fields as warnings. Use `flint config unset merchant` to clear the selected profile's saved merchant guard. Project and environment guards still apply, and mismatch errors identify their source.
 
 ## Use
 
@@ -97,11 +104,13 @@ flint payment-links create --name T-shirt --item-name T-shirt --amount 2500 --cu
 flint listen --forward-to http://localhost:8080/webhooks/flint
 ```
 
-`flint`, `flint --help`, and `flint help` list starting points, API resource groups, and examples for creating primitives. `flint schema commands customers --output json` returns the commands under one group as data, such as `customers` or `customers addresses`; without a group, `flint schema commands --output json` returns the whole catalog, which is large. `flint schema command customers create --output json` describes one command; dotted names such as `customers.create` work too.
+`flint listen` signs forwarded events with a secret it saves and reuses across runs; print it with `flint listen --print-secret`, or pin your own with `--webhook-secret` or `FLINT_WEBHOOK_SECRET`. Without `--forward-to` it prints events instead. `--forward-to` accepts localhost, loopback IPs, and `host.docker.internal`. With `--max-events` or `--for`, it exits 1 if any delivery failed, 5 if it never connected, and 6 if fewer than `--max-events` events arrived before `--for` ended; the checkpoint's `replay_cursor` resumes from the first failure with `--cursor`. `--save-to -` writes a downloaded file to stdout.
 
-Primitives use their resource names, such as `customers`, `products`, `orders`, and `subscription-plans`. Start with `flint <resource> --help` to list operations, then `flint <resource> create --help` to see flags and examples when creation is supported. Some groups are read-only or use nested command paths; their resource help lists the exact commands.
+`flint`, `flint --help`, and `flint help` list starting points, API resource groups, and examples for creating primitives. `flint schema commands customers --output json` returns the commands under one group as data, such as `customers` or `customers addresses`; without a group, `flint schema commands --output json` returns the whole catalog, which is large. Root help with `--output json` or `FLINT_OUTPUT=json` returns a compact index instead. `flint schema command customers create --output json` describes one command; dotted names such as `customers.create` work too. Command descriptions and offline help topics return a `{"data": ...}` envelope in JSON mode. `schema input` and `schema output` are exceptions: they return raw JSON Schema documents. Human schema output is indented. `flint help events` lists event types with short descriptions; `flint help events customer.created` shows one event's details. `flint help errors` describes the error envelope; `flint help exit-codes` lists exit codes.
 
-Commands with convenience flags can create a resource directly. Other commands take a JSON request body through `--input FILE.json`, which the CLI sends as the API request body. Use `flint schema input <resource>.create --output json` to see the JSON Schema of that body, prepare the file, then run the create command. Path arguments such as IDs and execution controls such as `--live` or `--idempotency-key` are not part of the body; pass them as arguments and flags. Convenience flags set their body fields on top of the file.
+Primitives use their resource names, such as `customers`, `products`, `orders`, and `subscription-plans`. Start with `flint <resource> --help` to list operations, then `flint <resource> create --help` to see flags, examples, and required top-level request fields when creation is supported. Some groups are read-only or use nested command paths; their resource help lists the exact commands.
+
+Commands with convenience flags can create a resource directly. Other commands take a JSON request body through `--input FILE.json`, `--input -` for stdin, or inline JSON such as `--input '{"email":"jane@example.com"}'`, which the CLI sends as the API request body. Use `flint schema input <resource>.create --output json` to see the JSON Schema of that body, prepare the file, then run the create command. Path arguments such as IDs and execution controls such as `--live` or `--idempotency-key` are not part of the body; pass them as arguments and flags. Convenience flags set their body fields on top of the file.
 
 ```bash
 flint customers create --email jane@example.com
@@ -120,9 +129,9 @@ JSON
 flint products create --input product.json
 ```
 
-The product example sets a $25.00 USD price; money amounts use the smallest currency unit. Before sending, the CLI checks the final JSON body, after merging convenience flags, against the same schema `flint schema input` prints. A missing required field, a wrong type, or a value outside an allowed set fails with exit code 2 and `INVALID_REQUEST_BODY`; `error.details` lists each problem with its JSON path, such as `$.default_variant.unit_price_money.currency`. A schema that forbids extra fields rejects unknown ones; otherwise top-level fields the schema does not document are still sent, with a warning on stderr (unless `--quiet`) that suggests a close match for a likely misspelling. An `_flint` key, which only MCP tool calls use, is rejected; pass those controls as flags. Invalid JSON reports its line and column. The raw `flint api` command sends bodies without these checks.
+The product example sets a $25.00 USD price; money amounts use the smallest currency unit. Before sending, the CLI checks the final JSON body, after merging convenience flags, against the same schema `flint schema input` prints. A missing required field, wrong type, invalid value, or unknown field fails locally with exit code 2 and `INVALID_REQUEST_BODY`. `error.details.problems` lists each problem and its JSON path, such as `$.default_variant.unit_price_money.currency`; likely misspellings include a “did you mean” suggestion. Problems caused by convenience flags identify the flag and set `error.param` to its name. Currency convenience flags accept lowercase values and send uppercase currency codes. An `_flint` key, which only MCP tool calls use, is rejected; pass those controls as flags. Invalid JSON reports its line and column. Use the raw `flint api` command to send undocumented fields without local schema validation.
 
-With credentials configured, add `--dry-run=client` to run the same checks and inspect the prepared request without making an API request or creating a resource. The dry-run result lists undocumented fields under `data.warnings`:
+With credentials configured, add `--dry-run=client` to run the same checks and inspect the prepared request without making an API request or creating a resource:
 
 ```bash
 flint products create --input product.json --dry-run=client --output json
@@ -154,14 +163,29 @@ Add `--ai-agent` to identify the reporter as an AI agent. It defaults to false a
 
 Live partner OAuth installs require `--mode live --live` and confirmation (`--confirm` for scripts), including when using `flint api get /v1/oauth/authorize`. Raw API pagination (`--all` or `--paginate`) accepts only read-only GET operations.
 
+### Scripts and agents
+
+Lists return one page. Check `next_page_token`; it is omitted when no more pages remain. Pass it with `--page-token TOKEN`, use `--all` for every page, or `--limit N` to collect up to N resources automatically. `--limit` requests `min(remaining, 100)` items on each page and preserves the exact continuation token. If a server returns more items than requested, the CLI truncates the result and omits the token to avoid skipping resources.
+
+Use `--expand a,b` for documented relationships; command help lists valid expansions, and `flint schema command <name> --output json` includes an `expansions` array. Time filters accept RFC3339 timestamps, `YYYY-MM-DD` at UTC midnight, durations such as `2h`, `7d` or `2w`, and `yesterday`.
+
+`@last` and `@last.<prefix>` (for example `@last.pi`) refer to the most recent matching resource this profile created or changed. Reads do not update history. History is shared by every process using the profile; use explicit IDs when running commands in parallel. `--select` and `--field` render missing optional fields as null; a field absent from every resource and the output schema is an error.
+
+`FLINT_OUTPUT` accepts human, json, or ndjson (streams), case-insensitively. Its ndjson setting falls back to JSON for non-streaming commands; explicit `--output ndjson` still requires a stream. `FLINT_NO_INPUT` accepts `1`, `true`, `yes`, and `on`, case-insensitively. Boolean flags accept `--flag=true` and `--flag true` forms.
+
+JSON errors use `{"error": {...}}` with `type`, `code`, `message`, optional `param`, object-shaped `details`, and `request_id` when available. HTTP responses add `http_status`. `retryable` is true for 429, 5xx, network errors, and timeouts. CLI remediation appears at `error.remediation` and also at `error.details.remediation` for compatibility. Unknown-command and unknown-flag details contain `input` and a `suggestions` array, which can be empty. Failed waits return `WAIT_CONDITION_UNMET` or `WAIT_CONDITION_IMPOSSIBLE` with `details.conditions`, `details.observed`, and `details.last`. Exit codes are 0 success, 1 API or webhook delivery error, 2 usage, 3 auth/config (including HTTP 403), 4 confirmation required, 5 network/timeout (including streams that never connect), 6 wait or expected event count unmet, and 70 internal error.
+
+Mutation network failures and all 5xx responses include the idempotency key and retry guidance; retry the same request with that key. `--confirm` is accepted on every mutation, so agents can pass it defensively. Existing confirmation requirements still apply. Before merchant-route mutations, `FLINT_ACCESS_TOKEN` is introspected for environment and guard checks. If introspection cannot verify the environment, sensitive operations require `--confirm` with `UNVERIFIED_ENVIRONMENT_CONFIRMATION_REQUIRED`; network failures stop the command.
+
+
 ## MCP server
 
-`flint mcp serve` exposes each canonical command as a Model Context Protocol tool over stdio, so an AI agent can call the Flint API with your credential. Tools are named `<resource>.<action>`, such as `customers.create`. The server uses the same credential as the CLI: a saved `flint login`, the profile named by `FLINT_PROFILE`, or `FLINT_API_KEY`.
+`flint mcp serve` exposes Flint commands as Model Context Protocol tools over stdio, so an AI agent can call the Flint API with your credential. Tools are named `<resource>_<action>`, such as `customers_create`; dotted names such as `customers.create` are still accepted in tool calls and `--tools`. The server uses the same credential as the CLI: a saved `flint login`, the profile named by `FLINT_PROFILE`, or `FLINT_API_KEY`.
 
 Claude Code:
 
 ```bash
-claude mcp add --transport stdio flint -- flint mcp serve --tools customers,payment-intents,payment-links,help
+claude mcp add --transport stdio flint -- flint mcp serve
 claude mcp add --transport stdio --env FLINT_PROFILE=staging flint-staging -- flint mcp serve
 ```
 
@@ -183,11 +207,11 @@ Use a sandbox key (`flint_test_...`) or `FLINT_PROFILE` rather than a live key i
 
 Server flags:
 
-- `--tools PREFIX[,PREFIX...]` exposes only tools whose name is `PREFIX` or starts with `PREFIX.`, and can be repeated. The full catalog has about 590 tools and a 1.8 MB `tools/list` response; filtering keeps agent context small. An unknown prefix stops the server at startup.
+- `--tools GROUP[,GROUP...]` chooses which tools to expose, and can be repeated. Each entry is a tool group such as `customers` or a single tool such as `payment-intents_create`. Without `--tools` (or with an empty value), the server exposes a curated set for typical integrations: customers, products, payment intents, refunds, webhook endpoints and events, and core checkout session and payment link tools (32 tools, about 104 KB of compact `tools/list` result JSON). `--tools all` exposes all 588 tools (about 1.6 MB), and `--tools default,invoices` adds groups to the default set. `help` and the `schema_*` tools are always exposed. Order tools and `auth_status` are opt-in with `--tools default,orders,auth_status`. An unknown entry stops the server at startup.
 - `--allow-live` lets tools act on live (production) credentials and contexts. Without it, any call that would use a live credential or a selected live context fails, and agents cannot pass `_flint.live`. With it, agents must still acknowledge each live call with `_flint.live`.
 - `--allow-destructive` lets agents confirm destructive operations, and sensitive operations in live mode, with `_flint.confirm`. Without it, the server asks you through MCP elicitation when the client supports it, and otherwise refuses with instructions for you.
 
-Agents can always inspect a write first with `_flint.dry_run: "client"` or, for destructive operations, `_flint.preview`. Successful results that reached the API include a `Flint environment: sandbox|live` line. The `help` tool returns a short index without a topic; `schema.input` and `schema.output` return a tool's full schemas on demand.
+Agents can always inspect a write first with `_flint.dry_run: "client"` or, for destructive operations, `_flint.preview`. Successful results that reached the API include a `Flint environment: sandbox|live` line, followed by a `Warnings:` block when the CLI printed warnings. The `help` tool returns a short index without a topic, a tool's arguments and required fields when given a tool name, and control details for `controls`. `schema_input` and `schema_output` return a tool's full schemas on demand, and `schema_events` lists webhook event types (pass `event_type` for payload schemas). Agents can add a `_flint.merchant` guard but cannot replace the profile, merchant guard, or context the server uses. `config set`, `config unset`, and `auth logout` are not available over MCP.
 
 ## Develop
 
@@ -211,7 +235,7 @@ Layout:
 | `internal/contract` | Coverage report generation. |
 | `e2e` | Tests that run the built binary against a local server. |
 
-Sandbox and live requests both use `https://api.withflintpay.com`. Browser login binds the OAuth session to the approved environment; imported API keys retain their own environment. Imported API keys and legacy sessions require `--live` to acknowledge production access; multi-context sessions use the selected context. Set `FLINT_BASE_URL` before signing in to a development server, using a separate profile. Saved OAuth sessions stay bound to that server and reject a conflicting URL override.
+Sandbox and live requests both use `https://api.withflintpay.com`. Browser login binds the OAuth session to the approved environment; imported API keys retain their own environment. Imported API keys and legacy sessions require `--live` to acknowledge production access; multi-context sessions use the selected context. Set `FLINT_BASE_URL` before signing in to a development server, using a separate profile. Saved OAuth sessions stay bound to that server and reject a conflicting URL override. A trailing `/v1` in `FLINT_BASE_URL` is stripped with a warning on stderr unless `--quiet`.
 
 `internal/spec/openapi.json` is the public API snapshot used to build the command catalog. When updating it, replace it with a reviewed public OpenAPI export, run `make coverage`, and run `make contract`. The coverage report checks that every public operation has a dedicated command or an explicit exclusion with a reason. Feedback commands are retired; use `flint support open` to start a thread on Flint Help.
 

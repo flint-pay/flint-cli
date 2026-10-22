@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -92,6 +94,84 @@ func TestBuiltCLIListenForwardsSignedWebhook(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), `"type":"checkpoint"`) || !strings.Contains(stdout.String(), `"events":1`) {
 		t.Fatalf("listener checkpoint missing from output: %s", stdout.String())
+	}
+}
+
+func TestBuiltCLIListenReusesSavedSigningSecret(t *testing.T) {
+	t.Parallel()
+	const eventID = "whev_01ABCDEFGHIJKLMNOPQRSTUVWX"
+	payload := []byte(`{"customer_id":"cus_test"}`)
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/developer/auth-context":
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(w, `{"data":{"auth_type":"api_key","api_key_id":"key_test","environment":"sandbox","merchant_id":"mer_test","sandbox_id":"test_test","scopes":["webhooks.read","customers.read"]},"request_id":"req_test","meta":{"api_version":"2026-02-01"}}`)
+		case "/v1/webhook-events/stream":
+			w.Header().Set("Content-Type", "text/event-stream")
+			fmt.Fprint(w, "event: ready\ndata: {\"cursor\":\"\"}\n\n")
+			fmt.Fprintf(w, "id: %s\nevent: webhook.event\ndata: {\"webhook_event_id\":%q,\"event_type\":\"customer.created\",\"payload\":%s}\n\n", eventID, eventID, payload)
+			w.(http.Flusher).Flush()
+			<-r.Context().Done()
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer api.Close()
+
+	bin := buildCLI(t)
+	// Isolate every platform's config directory: the secret is saved there.
+	home := t.TempDir()
+	env := append(os.Environ(),
+		"FLINT_API_KEY=flint_test_test",
+		"FLINT_BASE_URL="+api.URL,
+		"FLINT_NO_INPUT=1",
+		"FLINT_WEBHOOK_SECRET=",
+		"HOME="+home,
+		"XDG_CONFIG_HOME="+home,
+		"APPDATA="+home,
+	)
+	run := func(args ...string) (int, string) {
+		t.Helper()
+		command := exec.Command(bin, args...)
+		command.Env = env
+		var stdout, stderr bytes.Buffer
+		command.Stdout = &stdout
+		command.Stderr = &stderr
+		err := command.Run()
+		var exitErr *exec.ExitError
+		if err != nil && !errors.As(err, &exitErr) {
+			t.Fatalf("run built CLI: %v", err)
+		}
+		return command.ProcessState.ExitCode(), stdout.String() + stderr.String()
+	}
+
+	exit, output := run("listen", "--print-secret")
+	secret := strings.TrimSpace(output)
+	if exit != 0 || !strings.HasPrefix(secret, "whsec_") {
+		t.Fatalf("print-secret exit=%d output=%q", exit, output)
+	}
+	var status atomic.Int32
+	status.Store(http.StatusNoContent)
+	local := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if err := webhooksigning.VerifyStandardWebhook(secret, r.Header.Get("webhook-id"), r.Header.Get("webhook-timestamp"), r.Header.Get("webhook-signature"), body, time.Now(), 5*time.Minute); err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(int(status.Load()))
+	}))
+	defer local.Close()
+
+	// A separate process signs with the secret the first one printed.
+	exit, output = run("listen", "--forward-to", local.URL, "--max-events", "1", "--timeout", "2s", "--output", "ndjson")
+	if exit != 0 || !strings.Contains(output, `"forwarded":1`) || !strings.Contains(output, `"signing_secret_source":"saved"`) {
+		t.Fatalf("listen exit=%d output=%s", exit, output)
+	}
+
+	status.Store(http.StatusInternalServerError)
+	exit, output = run("listen", "--forward-to", local.URL, "--max-events", "1", "--timeout", "2s", "--output", "ndjson")
+	if exit != 1 || !strings.Contains(output, `"failed":1`) || !strings.Contains(output, `"code":"WEBHOOK_FORWARD_FAILED"`) {
+		t.Fatalf("failing handler exit=%d output=%s", exit, output)
 	}
 }
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "com.withflintpay/cli",
-  "description": "Every Flint CLI command as an MCP tool, acting on your account behind live and confirmation gates.",
+  "description": "Flint CLI commands as MCP tools, acting on your account behind live and confirmation gates.",
   "version": "0.0.0-development",
   "websiteUrl": "https://withflintpay.com/mcp",
   "packages": [
@@ -25,14 +25,14 @@
         {
           "type": "named",
           "name": "--tools",
-          "description": "Expose only tools named PREFIX or PREFIX.*, comma-separated (for example customers,payment-intents,payment-links,help). Omit to expose every tool.",
+          "description": "Choose comma-separated tool groups (customers) or tool names (payment-intents_create); dotted names also work. Omit or leave empty for 32 curated tools (about 104 KB of tools/list). Use all for all 588 tools (about 1.6 MB), or default,invoices to add groups to the default set. help and schema_* are always exposed.",
           "isRequired": false,
           "format": "string"
         },
         {
           "type": "named",
           "name": "--allow-live",
-          "description": "Let tools act on live (production) credentials and contexts. Agents must still acknowledge each live call.",
+          "description": "Set to true to let tools act on live (production) credentials and contexts. Agents must still acknowledge each live call.",
           "isRequired": false,
           "format": "boolean",
           "default": "false",
@@ -41,7 +41,7 @@
         {
           "type": "named",
           "name": "--allow-destructive",
-          "description": "Let agents confirm destructive operations, and sensitive operations in live mode, themselves. Otherwise the server asks you.",
+          "description": "Set to true to let agents confirm destructive operations, and sensitive operations in live mode, themselves. Otherwise the server asks you.",
           "isRequired": false,
           "format": "boolean",
           "default": "false",

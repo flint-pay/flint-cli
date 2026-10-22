@@ -11,6 +11,7 @@ import (
 )
 
 func (a *App) localAuthLogin(cmd *Command, opts Options) int {
+	opts.allowMissingProfile = true
 	for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_CHECKOUT_SESSION_SECRET"} {
 		if strings.TrimSpace(os.Getenv(name)) != "" {
 			return a.fail(configError("ENVIRONMENT_CREDENTIAL_ACTIVE", "Unset "+name+" before browser login; it would override the saved credential.", nil), opts)
@@ -22,7 +23,7 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	}
 	previousRaw, err := a.LoadCredential(resolved.ProfileName)
 	if err != nil {
-		return a.fail(configError("CREDENTIAL_LOOKUP_FAILED", "Could not read the existing profile credential before login.", err), opts)
+		return a.fail(credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the existing profile credential before login.", err), opts)
 	}
 	baseURL := a.BaseURL
 	if baseURL == "" {
@@ -46,6 +47,33 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	if scopeErr != nil {
 		return a.fail(scopeErr, opts)
 	}
+	var saved *pendingLogin
+	if !reauthorize {
+		if booleanRawOption(opts, "new-session") {
+			pendingPath, err := a.pendingLoginPath(resolved.ProfileName)
+			if err != nil {
+				return a.fail(configError("PENDING_LOGIN_READ_FAILED", err.Error(), err), opts)
+			}
+			if err := os.Remove(pendingPath); err != nil && !os.IsNotExist(err) {
+				return a.fail(configError("PENDING_LOGIN_WRITE_FAILED", "Could not clear pending login.", err), opts)
+			}
+		} else {
+			var err error
+			saved, err = a.loadPendingLogin(resolved.ProfileName, baseURL)
+			if err != nil {
+				return a.fail(configError("PENDING_LOGIN_READ_FAILED", err.Error(), err), opts)
+			}
+			if saved != nil {
+				if opts.Live != saved.Live || resolved.MerchantGuard != saved.MerchantGuard || resolved.SandboxGuard != saved.SandboxGuard || resolved.ContextID != saved.ContextID {
+					return a.fail(usageError("PENDING_LOGIN_OPTIONS_MISMATCH", "Pending login has different environment or context guards. Resume with "+saved.nextCommand()+", keeping the original FLINT_BASE_URL and context/guard configuration, or use --new-session.", "login"), opts)
+				}
+				if len(requestedScopes) > 0 && !sameScopeSet(requestedScopes, saved.AdditionalScopes) {
+					return a.fail(usageError("PENDING_LOGIN_SCOPE_MISMATCH", "Pending login has different requested scopes. Resume without --scope, or use --new-session.", "scope"), opts)
+				}
+				requestedScopes = saved.AdditionalScopes
+			}
+		}
+	}
 	var previous oauthCredential
 	if isOAuthCredential(previousRaw) {
 		var e *CLIError
@@ -61,8 +89,8 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 				return a.fail(e, opts)
 			}
 			baseURL = previous.BaseURL
-			if !reauthorize && !booleanRawOption(opts, "new-session") {
-				_, _, envelope, e := a.fetchCredentialContext(withOAuthContext(ctx, resolved.ContextID), resolved.ProfileName, previousRaw, false)
+			if !reauthorize && !booleanRawOption(opts, "new-session") && saved == nil {
+				_, _, envelope, e := a.fetchCredentialContext(withOAuthContext(ctx, resolved.ContextID), opts.Timeout, resolved.ProfileName, previousRaw, false)
 				expired := e != nil && e.Code == "OAUTH_SESSION_EXPIRED"
 				// A legacy grant has only one context. An authoritative rejection
 				// of its cached token needs a new login, even before local expiry.
@@ -87,7 +115,7 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 					if len(requestedScopes) > 0 {
 						return a.fail(usageError("SCOPES_REQUIRE_REAUTH", "A browser session is already active. Use flint reauth with the requested --scope values, or add --new-session to replace it.", "scope"), opts)
 					}
-					if e := validateCredentialIntent(envelope.Data, opts, resolved.MerchantGuard, resolved.SandboxGuard); e != nil {
+					if e := validateResolvedCredentialIntent(envelope.Data, opts, resolved, ""); e != nil {
 						return a.fail(e, opts)
 					}
 					next := "flint context list or flint reauth"
@@ -105,12 +133,6 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	}
 	if reauthorize && opts.ContextID != "" && previous.Version != 2 {
 		return a.fail(contextSessionRequired(), opts)
-	}
-	// JSON output implicitly disables terminal input elsewhere. This flow reads
-	// no terminal input, so only an explicit automation setting blocks approval.
-	noInputEnv := strings.TrimSpace(os.Getenv("FLINT_NO_INPUT"))
-	if booleanRawOption(opts, "no-input") || noInputEnv == "1" || strings.EqualFold(noInputEnv, "true") {
-		return a.fail(usageError("LOGIN_REQUIRES_APPROVAL", "Browser login requires your approval on the website. For automation, use FLINT_API_KEY or flint auth import --stdin.", "no-input"), opts)
 	}
 	mode := "sandbox"
 	if opts.Live {
@@ -145,44 +167,42 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	}
 	var response []byte
 	var e *CLIError
-	if path == oauthReauthorizePath {
-		locked := *a
-		locked.Context = ctx
-		err := locked.withConfigLock(func() error {
-			raw, err := a.LoadCredential(resolved.ProfileName)
-			if err != nil {
-				return err
-			}
-			current, decodeErr := decodeOAuthCredential(raw)
-			if decodeErr != nil {
-				return decodeErr
-			}
-			if current.SessionID != previous.SessionID || current.BaseURL != baseURL {
-				return fmt.Errorf("the session changed")
-			}
-			body.Set("refresh_token", current.RefreshToken)
-			response, e = a.oauthRequest(ctx, baseURL, path, body)
-			return nil
-		})
-		if err != nil {
-			return a.fail(configError("OAUTH_SESSION_CHANGED", "Could not start reauthorization for the saved session.", err), opts)
-		}
+	var device loginDevice
+	if saved != nil {
+		device = saved.Device
+		response, _ = json.Marshal(device)
 	} else {
-		response, e = a.oauthRequest(ctx, baseURL, path, body)
-	}
-	if e != nil {
-		if reauthorize && e.Code == "LOGIN_UNAVAILABLE" {
-			return a.fail(contextEndpointError(e), opts)
+		if path == oauthReauthorizePath {
+			locked := *a
+			locked.Context = ctx
+			err := locked.withConfigLock(func() error {
+				raw, err := a.LoadCredential(resolved.ProfileName)
+				if err != nil {
+					return err
+				}
+				current, decodeErr := decodeOAuthCredential(raw)
+				if decodeErr != nil {
+					return decodeErr
+				}
+				if current.SessionID != previous.SessionID || current.BaseURL != baseURL {
+					return fmt.Errorf("the session changed")
+				}
+				body.Set("refresh_token", current.RefreshToken)
+				response, e = a.oauthRequest(ctx, baseURL, path, body)
+				return nil
+			})
+			if err != nil {
+				return a.fail(configError("OAUTH_SESSION_CHANGED", "Could not start reauthorization for the saved session.", err), opts)
+			}
+		} else {
+			response, e = a.oauthRequest(ctx, baseURL, path, body)
 		}
-		return a.fail(loginRequestError(ctx, e), opts)
-	}
-	var device struct {
-		DeviceCode              string `json:"device_code"`
-		UserCode                string `json:"user_code"`
-		VerificationURI         string `json:"verification_uri"`
-		VerificationURIComplete string `json:"verification_uri_complete"`
-		ExpiresIn               int64  `json:"expires_in"`
-		Interval                int64  `json:"interval"`
+		if e != nil {
+			if reauthorize && e.Code == "LOGIN_UNAVAILABLE" {
+				return a.fail(contextEndpointError(e), opts)
+			}
+			return a.fail(loginRequestError(ctx, e), opts)
+		}
 	}
 	if json.Unmarshal(response, &device) != nil {
 		return a.fail(invalidResponseError("INVALID_LOGIN_RESPONSE", "Flint returned an invalid browser login response.", nil), opts)
@@ -194,12 +214,39 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	if !valid || device.DeviceCode == "" || (strings.Contains(target, device.DeviceCode) || strings.Contains(device.VerificationURI, device.DeviceCode) || strings.Contains(device.UserCode, device.DeviceCode)) || len(device.DeviceCode) > 4096 || device.ExpiresIn < 1 || device.ExpiresIn > 1800 || device.Interval < 1 || device.Interval > 60 {
 		return a.fail(invalidResponseError("INVALID_LOGIN_RESPONSE", "Flint returned invalid browser login details. Run flint auth import instead.", nil), opts)
 	}
-	pollCtx, stopPolling := context.WithTimeout(ctx, time.Duration(device.ExpiresIn)*time.Second)
-	defer stopPolling()
-	if _, err := fmt.Fprintf(a.Stderr, "Open %s\nConfirm this code on the website: %s\nWaiting for approval…\n", target, device.UserCode); err != nil {
-		return a.fail(networkError("OUTPUT_WRITE_FAILED", "Could not display browser login instructions.", err), opts)
+	expiresAt := a.Now().Add(time.Duration(device.ExpiresIn) * time.Second)
+	if saved != nil {
+		expiresAt = saved.ExpiresAt
 	}
-	if !booleanRawOption(opts, "no-open") {
+	if booleanRawOption(opts, "no-wait") {
+		if opts.Output == "json" {
+			if err := writeJSON(a.Stderr, map[string]any{"type": "login_pending", "verification_url": target, "user_code": device.UserCode, "expires_at": expiresAt}); err != nil {
+				return a.fail(networkError("OUTPUT_WRITE_FAILED", "Could not display browser login instructions.", err), opts)
+			}
+		}
+		pending := pendingLogin{Device: device, ExpiresAt: expiresAt, BaseURL: baseURL, RequestedScopes: scopes, AdditionalScopes: requestedScopes, Profile: resolved.ProfileName, Live: opts.Live, MerchantGuard: resolved.MerchantGuard, SandboxGuard: resolved.SandboxGuard, ContextID: resolved.ContextID}
+		pendingPath, err := a.pendingLoginPath(resolved.ProfileName)
+		if err == nil {
+			err = writePrivateJSON(pendingPath, pending)
+		}
+		if err != nil {
+			return a.fail(configError("PENDING_LOGIN_WRITE_FAILED", "Could not save pending login.", err), opts)
+		}
+		opts.Output = "json"
+		return a.outputLocal(map[string]any{"data": map[string]any{"status": "approval_pending", "verification_url": target, "user_code": device.UserCode, "expires_at": expiresAt, "next_command": pending.nextCommand()}}, cmd, opts)
+	}
+	pollCtx, stopPolling := context.WithTimeout(ctx, expiresAt.Sub(a.Now()))
+	defer stopPolling()
+	var outputErr error
+	if opts.Output == "json" {
+		outputErr = writeJSON(a.Stderr, map[string]any{"type": "login_pending", "verification_url": target, "user_code": device.UserCode, "expires_at": expiresAt})
+	} else {
+		_, outputErr = fmt.Fprintf(a.Stderr, "Open %s\nConfirm this code on the website: %s\nWaiting for approval…\n", target, device.UserCode)
+	}
+	if outputErr != nil {
+		return a.fail(networkError("OUTPUT_WRITE_FAILED", "Could not display browser login instructions.", outputErr), opts)
+	}
+	if !opts.NoInput && opts.Output == "human" && a.IsTTY() && !booleanRawOption(opts, "no-open") {
 		opener := a.OpenBrowser
 		if opener == nil {
 			opener = openBrowser
@@ -248,6 +295,12 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 			_ = attempt()
 		}
 		if completed {
+			if saved != nil {
+				pendingPath, _ := a.pendingLoginPath(resolved.ProfileName)
+				if err := os.Remove(pendingPath); err != nil && !os.IsNotExist(err) {
+					fmt.Fprintln(a.Stderr, "warning: could not remove completed pending login:", err)
+				}
+			}
 			return result
 		}
 		if e != nil {
@@ -261,8 +314,16 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 				interval += 5 * time.Second
 				continue
 			case "access_denied":
+				if saved != nil {
+					pendingPath, _ := a.pendingLoginPath(resolved.ProfileName)
+					_ = os.Remove(pendingPath)
+				}
 				return a.fail(configError("LOGIN_DENIED", "Browser login was declined. Run flint login to try again.", nil), opts)
 			case "expired_token":
+				if saved != nil {
+					pendingPath, _ := a.pendingLoginPath(resolved.ProfileName)
+					_ = os.Remove(pendingPath)
+				}
 				return a.fail(configError("LOGIN_EXPIRED", "The sign-in code expired. Run flint login to try again.", nil), opts)
 			default:
 				return a.fail(loginRequestError(pollCtx, e), opts)
@@ -320,7 +381,7 @@ func (a *App) finishBrowserLogin(ctx context.Context, cmd *Command, opts Options
 	if locked && credential.ContextID == resolved.ContextID {
 		auth.SelectedContext = true
 	}
-	if e = validateCredentialIntent(auth, opts, resolved.MerchantGuard, resolved.SandboxGuard); e != nil {
+	if e = validateResolvedCredentialIntent(auth, opts, resolved, ""); e != nil {
 		return a.fail(a.cleanupOAuth(credential, e), opts)
 	}
 	credential.Auth = auth
@@ -416,7 +477,12 @@ func partitionScopes(requested, granted []string) ([]string, []string) {
 	return approved, unapproved
 }
 
-func loginRequestError(ctx context.Context, e *CLIError) *CLIError {
+func loginRequestError(ctx context.Context, e *CLIError) (result *CLIError) {
+	defer func() {
+		if e != nil && result != nil {
+			result.HTTPStatus = e.HTTPStatus
+		}
+	}()
 	if ctx.Err() == context.Canceled {
 		return configError("LOGIN_CANCELED", "Browser login was canceled.", nil)
 	}

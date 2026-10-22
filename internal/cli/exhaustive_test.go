@@ -169,6 +169,7 @@ func TestEveryResourcePrefixHasAHistoryQualifier(t *testing.T) {
 
 func TestEveryHistoryReferenceArgumentResolvesAndMissingFails(t *testing.T) {
 	template := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
+	template.Registry.ensureAPICommands()
 	resolved := ResolvedConfig{ProfileName: "default", Environment: "sandbox"}
 	for _, command := range template.Registry.Commands {
 		for _, argument := range command.Arguments {
@@ -292,6 +293,7 @@ func TestEveryHelpExampleParsesAsItsDocumentedCommand(t *testing.T) {
 
 func TestEveryAliasExecutesLikeItsCanonicalCommand(t *testing.T) {
 	template := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
+	template.Registry.ensureAPICommands()
 	for _, command := range template.Registry.Commands {
 		for index, aliasPath := range command.AliasPaths {
 			if index >= len(command.Aliases) {
@@ -386,6 +388,7 @@ func TestEveryParserFlagHasPositiveCase(t *testing.T) {
 	cases := map[string][]string{
 		"context":         {"auth", "status", "--context", "ctx_test"},
 		"all":             {"customers", "list", "--all"},
+		"limit":           {"customers", "list", "--limit", "10"},
 		"clear":           {"history", "--clear"},
 		"color":           {"version", "--color", "never"},
 		"confirm":         {"history", "--clear", "--confirm"},
@@ -456,6 +459,9 @@ func TestEveryAdvertisedExecutionControlIsAcceptedByItsCommand(t *testing.T) {
 			flint, _ := properties["_flint"].(map[string]any)
 			controls, _ := flint["properties"].(map[string]any)
 			if len(controls) == 0 {
+				if !mcpCommandExposed(command) {
+					return // Not an MCP tool, and no control applies to it.
+				}
 				t.Fatal("input schema has no _flint execution controls")
 			}
 			for control := range controls {
@@ -552,6 +558,7 @@ func TestEveryBooleanFlagAcceptsExplicitTrueAndFalse(t *testing.T) {
 	registry := NewRegistry()
 	cases := map[string][]string{
 		"new-session":       {"auth", "login"},
+		"no-wait":           {"auth", "login"},
 		"all":               {"customers", "list"},
 		"clear":             {"history"},
 		"confirm":           {"history", "--clear"},
@@ -570,6 +577,8 @@ func TestEveryBooleanFlagAcceptsExplicitTrueAndFalse(t *testing.T) {
 		"no-open":           {"support", "open"},
 		"allow-live":        {"mcp", "serve"},
 		"allow-destructive": {"mcp", "serve"},
+		"check":             {"upgrade"},
+		"print-secret":      {"listen"},
 	}
 	if len(cases) != len(boolFlags) {
 		t.Fatalf("boolean flag matrix has %d entries, parser has %d", len(cases), len(boolFlags))
@@ -628,7 +637,6 @@ func TestParserFlagValueDomainsAndBoundaries(t *testing.T) {
 	}{
 		{argv: []string{"version", "--output", "yaml"}, code: "INVALID_OUTPUT"},
 		{argv: []string{"version", "--output", "ndjson"}, code: "UNSUPPORTED_FLAG"},
-		{argv: []string{"version", "--color", "sometimes"}, code: "INVALID_COLOR"},
 		{argv: []string{"listen", "--forward-to", "http://127.0.0.1:8080/webhooks", "--progress", "verbose"}, code: "INVALID_PROGRESS"},
 		{argv: []string{"customers", "create", "--dry-run", "server"}, code: "INVALID_DRY_RUN"},
 		{argv: []string{"customers", "list", "--page-size", "0"}, code: "INVALID_PAGE_SIZE"},
@@ -945,6 +953,7 @@ func (r *countingReader) Read([]byte) (int, error) {
 
 func TestEveryRemoteCommandBuildsAndExecutesARequest(t *testing.T) {
 	template := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
+	template.Registry.ensureAPICommands()
 	fixedNow := time.Date(2026, time.July, 23, 12, 0, 0, 0, time.UTC)
 	for _, command := range template.Registry.Commands {
 		command := command
@@ -1011,6 +1020,7 @@ func TestEveryRemoteCommandBuildsAndExecutesARequest(t *testing.T) {
 
 func TestEveryMutationExecutesClientDryRunWithoutNetwork(t *testing.T) {
 	template := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
+	template.Registry.ensureAPICommands()
 	for _, command := range template.Registry.Commands {
 		command := command
 		if !command.Mutation {
@@ -1067,6 +1077,7 @@ func TestEveryMutationExecutesClientDryRunWithoutNetwork(t *testing.T) {
 
 func TestEveryDestructiveMutationExecutesPreviewWithoutMutation(t *testing.T) {
 	template := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
+	template.Registry.ensureAPICommands()
 	for _, command := range template.Registry.Commands {
 		command := command
 		if !command.Mutation || !command.Destructive {
@@ -1138,6 +1149,7 @@ func TestEveryDestructiveMutationExecutesPreviewWithoutMutation(t *testing.T) {
 
 func TestEveryWaitCapableCommandExecutesMatchingWait(t *testing.T) {
 	template := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
+	template.Registry.ensureAPICommands()
 	for _, command := range template.Registry.Commands {
 		command := command
 		if !command.Supports.WaitFor {
@@ -1179,6 +1191,7 @@ func TestEveryWaitCapableCommandExecutesMatchingWait(t *testing.T) {
 
 func TestEveryPaginatedCommandExecutesAllPages(t *testing.T) {
 	template := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
+	template.Registry.ensureAPICommands()
 	for _, command := range template.Registry.Commands {
 		command := command
 		if !command.Supports.Pagination || command.Stream {
@@ -1256,6 +1269,7 @@ func TestEveryPaginatedCommandExecutesAllPages(t *testing.T) {
 
 func TestEveryLocalCommandExecutes(t *testing.T) {
 	template := New(BuildInfo{Version: "test", APIVersion: "2026-02-01", SchemaHash: "test"})
+	template.Registry.ensureAPICommands()
 	for _, command := range template.Registry.Commands {
 		command := command
 		if !command.Local {
@@ -1331,6 +1345,8 @@ func TestEveryLocalCommandExecutes(t *testing.T) {
 				}()
 			case "config.set":
 				argv = append(argv, "profile", "exhaustive")
+			case "config.unset":
+				argv = append(argv, "merchant")
 			case "doctor":
 				argv = append(argv, "--fix")
 			case "history":

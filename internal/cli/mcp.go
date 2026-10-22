@@ -13,7 +13,9 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 )
@@ -21,18 +23,59 @@ import (
 const latestMCPProtocolVersion = "2025-11-25"
 
 const (
-	mcpMaxStreamEvents      = 100
-	mcpMaxStreamDuration    = 2 * time.Minute
-	mcpMaxOutputBytes       = 32 << 20
+	mcpMaxStreamEvents   = 100
+	mcpMaxStreamDuration = 2 * time.Minute
+	mcpMaxOutputBytes    = 32 << 20
+	// Read results larger than this are refused with advice to narrow them:
+	// clients truncate far smaller results, and the agent pays for every byte.
+	// Writes always return their result so a completed write is never hidden.
+	mcpMaxResultBytes       = 1 << 20
 	mcpMaxStderrBytes       = 1 << 20
 	mcpMaxLineBytes         = 8 << 20
 	mcpConfirmationDeadline = 10 * time.Minute
 )
 
+// The server only offers tools, which every listed version supports. Fields a
+// version predates (annotations, titles, structured results, elicitation,
+// progress messages) are omitted for it.
 var supportedMCPProtocolVersions = map[string]bool{
 	"2025-11-25": true,
 	"2025-06-18": true,
 	"2025-03-26": true,
+	"2024-11-05": true,
+}
+
+// mcpToolName is the MCP name of a canonical command. Dots become underscores
+// because clients such as the Claude API accept only [a-zA-Z0-9_-] in tool
+// names; no canonical name contains an underscore, so the mapping reverses.
+func mcpToolName(canonical string) string { return strings.ReplaceAll(canonical, ".", "_") }
+
+// mcpCanonicalToolName accepts an MCP tool name or the older dotted form.
+func mcpCanonicalToolName(name string) string {
+	return strings.ReplaceAll(strings.TrimSpace(name), "_", ".")
+}
+
+// mcpDefaultToolPrefixes is the tool set served without --tools: the resources
+// most integrations start with. Large groups contribute only their core
+// tools, since every tool costs the agent context. --tools all serves every
+// tool, and --tools default,GROUP adds whole groups to this set.
+var mcpDefaultToolPrefixes = []string{
+	"customers.create", "customers.get", "customers.list", "customers.update",
+	"products.create", "products.get", "products.list",
+	"payment-intents.create", "payment-intents.get", "payment-intents.list", "payment-intents.confirm", "payment-intents.capture", "payment-intents.cancel",
+	"payment-links.create", "payment-links.get", "payment-links.list",
+	"checkout-sessions.create", "checkout-sessions.get",
+	"refunds.create", "refunds.get", "refunds.list",
+	"webhook-events.list", "webhook-events.get",
+	"webhook-endpoints.create", "webhook-endpoints.list",
+}
+
+const mcpDefaultToolSetSummary = "customers, products, payment intents, refunds, webhook endpoints and events, and the core checkout session and payment link tools"
+
+// mcpAlwaysEnabled names the tools every server offers, whatever --tools
+// says, so the guidance in help and the instructions always resolves.
+func mcpAlwaysEnabled(name string) bool {
+	return name == "help" || strings.HasPrefix(name, "schema.")
 }
 
 type jsonRPCRequest struct {
@@ -69,7 +112,11 @@ func (b *mcpCappedBuffer) Write(value []byte) (int, error) {
 type mcpPolicy struct {
 	allowLive        bool
 	allowDestructive bool
-	toolPrefixes     []string
+	// allTools is --tools all. Otherwise toolPrefixes holds the canonical
+	// prefixes --tools named, and no --tools at all means the default set.
+	allTools     bool
+	toolPrefixes []string
+	toolsFlag    []string // the --tools entries as the human wrote them
 }
 
 func mcpBoolOption(opts Options, name string) bool {
@@ -80,8 +127,19 @@ func mcpBoolOption(opts Options, name string) bool {
 func mcpPolicyFromOptions(opts Options) mcpPolicy {
 	policy := mcpPolicy{allowLive: mcpBoolOption(opts, "allow-live"), allowDestructive: mcpBoolOption(opts, "allow-destructive")}
 	for _, raw := range opts.Raw["tools"] {
-		for _, prefix := range strings.Split(raw, ",") {
-			if prefix = strings.TrimSuffix(strings.TrimSpace(prefix), "."); prefix != "" {
+		for _, entry := range strings.Split(raw, ",") {
+			entry = strings.TrimSpace(entry)
+			prefix := strings.TrimRight(mcpCanonicalToolName(entry), ".")
+			if prefix == "" {
+				continue
+			}
+			policy.toolsFlag = append(policy.toolsFlag, entry)
+			switch prefix {
+			case "all":
+				policy.allTools = true
+			case "default":
+				policy.toolPrefixes = append(policy.toolPrefixes, mcpDefaultToolPrefixes...)
+			default:
 				policy.toolPrefixes = append(policy.toolPrefixes, prefix)
 			}
 		}
@@ -93,11 +151,18 @@ func mcpPrefixMatches(prefix, name string) bool {
 	return name == prefix || strings.HasPrefix(name, prefix+".")
 }
 
+// defaultToolSet reports whether the server runs without --tools.
+func (p mcpPolicy) defaultToolSet() bool { return len(p.toolsFlag) == 0 }
+
 func (p mcpPolicy) includes(name string) bool {
-	if len(p.toolPrefixes) == 0 {
+	if p.allTools || mcpAlwaysEnabled(name) {
 		return true
 	}
-	for _, prefix := range p.toolPrefixes {
+	prefixes := p.toolPrefixes
+	if p.defaultToolSet() {
+		prefixes = mcpDefaultToolPrefixes
+	}
+	for _, prefix := range prefixes {
 		if mcpPrefixMatches(prefix, name) {
 			return true
 		}
@@ -105,10 +170,22 @@ func (p mcpPolicy) includes(name string) bool {
 	return false
 }
 
+// toolSetDescription names the active tool set for instructions and errors.
+func (p mcpPolicy) toolSetDescription() string {
+	switch {
+	case p.allTools:
+		return "every Flint tool (--tools all)"
+	case p.defaultToolSet():
+		return "the default tool set (" + mcpDefaultToolSetSummary + ")"
+	default:
+		return "the tools selected with --tools " + strings.Join(p.toolsFlag, ",")
+	}
+}
+
 func (a *App) validateMCPServeOptions(opts Options) *CLIError {
 	policy := mcpPolicyFromOptions(opts)
-	if len(opts.Raw["tools"]) > 0 && len(policy.toolPrefixes) == 0 {
-		return usageError("INVALID_FLAG_VALUE", "--tools must name at least one tool prefix, such as customers.", "tools")
+	if len(policy.toolsFlag) == 0 && strings.TrimSpace(strings.Join(opts.Raw["tools"], "")) != "" {
+		return usageError("INVALID_FLAG_VALUE", "--tools must name at least one tool group or tool, such as customers, or default or all.", "tools")
 	}
 	all := a.mcpAllTools()
 	var unknown []string
@@ -125,12 +202,22 @@ func (a *App) validateMCPServeOptions(opts Options) *CLIError {
 		}
 	}
 	if len(unknown) > 0 {
-		e := usageError("UNKNOWN_TOOL_PREFIX", "--tools "+strings.Join(unknown, ",")+" matches no MCP tool. Use canonical names or prefixes such as customers or payment-intents.create.", "tools")
-		details := []map[string]any{}
+		var names []string
 		for _, prefix := range unknown {
-			details = append(details, map[string]any{"input": prefix, "suggestions": mcpNameSuggestions(prefix, mcpToolGroups(all))})
+			names = append(names, mcpToolName(prefix))
 		}
-		e.Details = details
+		e := usageError("UNKNOWN_TOOL_PREFIX", "--tools "+strings.Join(names, ",")+" matches no MCP tool. Use tool groups such as customers or payment-intents, tool names such as payment-intents_create, default for the default set, or all.", "tools")
+		suggestions := []string{}
+		for _, prefix := range unknown {
+			candidates := mcpToolGroups(all)
+			if strings.Contains(prefix, ".") {
+				for _, tool := range all {
+					candidates = append(candidates, tool.CanonicalName)
+				}
+			}
+			suggestions = append(suggestions, mcpToolNames(mcpNameSuggestions(prefix, candidates))...)
+		}
+		e.Details = suggestionDetails(strings.Join(names, ","), suggestions)
 		return e
 	}
 	if opts.Live && !policy.allowLive {
@@ -150,6 +237,13 @@ type mcpSession struct {
 }
 
 type mcpSessionKey struct{}
+
+// mcpInFlightCall is a running tools/call. clientCancelled records that the
+// client sent notifications/cancelled for it, so it gets no response.
+type mcpInFlightCall struct {
+	cancel          context.CancelFunc
+	clientCancelled atomic.Bool
+}
 
 func newMCPSession(write func(map[string]any) error) *mcpSession {
 	return &mcpSession{write: write, pending: map[string]chan map[string]any{}}
@@ -302,7 +396,7 @@ func (a *App) serveMCP(opts Options) int {
 	}
 	session := newMCPSession(writeResponse)
 	var inFlightMu sync.Mutex
-	inFlight := map[string]context.CancelFunc{}
+	inFlight := map[string]*mcpInFlightCall{}
 	var workers sync.WaitGroup
 	startToolCall := func(req jsonRPCRequest, negotiatedVersion string) {
 		key := mcpRequestKey(req.ID)
@@ -314,7 +408,8 @@ func (a *App) serveMCP(opts Options) int {
 				baseCtx = context.Background()
 			}
 			toolCtx, cancel := context.WithCancel(context.WithValue(baseCtx, mcpSessionKey{}, session))
-			inFlight[key] = cancel
+			call := &mcpInFlightCall{cancel: cancel}
+			inFlight[key] = call
 			workers.Add(1)
 			go func(req jsonRPCRequest, protocolVersion, key string) {
 				defer workers.Done()
@@ -326,6 +421,11 @@ func (a *App) serveMCP(opts Options) int {
 				delete(inFlight, key)
 				inFlightMu.Unlock()
 				cancel()
+				// The receiver of notifications/cancelled should not respond to
+				// the cancelled request; only a server shutdown reports -32800.
+				if call.clientCancelled.Load() {
+					return
+				}
 				if err := writeResponse(response); err != nil {
 					fmt.Fprintln(a.Stderr, "MCP output failed: "+err.Error())
 				}
@@ -339,8 +439,8 @@ func (a *App) serveMCP(opts Options) int {
 	cancelInFlight := func() {
 		inFlightMu.Lock()
 		defer inFlightMu.Unlock()
-		for _, cancel := range inFlight {
-			cancel()
+		for _, call := range inFlight {
+			call.cancel()
 		}
 	}
 	defer func() {
@@ -393,10 +493,11 @@ func (a *App) serveMCP(opts Options) int {
 				if requestID, ok := req.Params["requestId"]; ok {
 					key := mcpRequestKey(requestID)
 					inFlightMu.Lock()
-					cancel := inFlight[key]
+					call := inFlight[key]
 					inFlightMu.Unlock()
-					if cancel != nil {
-						cancel()
+					if call != nil {
+						call.clientCancelled.Store(true)
+						call.cancel()
 					}
 				}
 			}
@@ -572,15 +673,18 @@ func (a *App) handleMCPVersionContext(ctx context.Context, req jsonRPCRequest, o
 		for _, cmd := range a.mcpTools(policy) {
 			schema, e := schemaForMCPTool(cmd, policy)
 			if e != nil {
-				return rpcError(req.ID, -32603, "Could not generate tool input schema for "+cmd.CanonicalName)
+				return rpcError(req.ID, -32603, "Could not generate tool input schema for "+mcpToolName(cmd.CanonicalName))
 			}
 			title := mcpToolTitle(cmd)
-			annotations := mcpToolAnnotations(cmd)
-			annotations["title"] = title
-			tool := map[string]any{"name": cmd.CanonicalName, "description": cmd.Description, "inputSchema": schema, "annotations": annotations}
+			tool := map[string]any{"name": mcpToolName(cmd.CanonicalName), "description": mcpToolDescription(cmd, schema), "inputSchema": schema}
 			// Output schemas are optional in MCP. Each embedded its full
 			// component closure (about 19 MB in total), so agents fetch one on
-			// demand with the schema.output tool instead.
+			// demand with the schema_output tool instead.
+			if protocolVersion >= "2025-03-26" {
+				annotations := mcpToolAnnotations(cmd)
+				annotations["title"] = title
+				tool["annotations"] = annotations
+			}
 			if protocolVersion >= "2025-06-18" {
 				tool["title"] = title
 			}
@@ -610,12 +714,21 @@ func (a *App) handleMCPVersionContext(ctx context.Context, req jsonRPCRequest, o
 		if err := validateMCPToolArguments(cmd, arguments, policy); err != nil {
 			return rpcResult(req.ID, mcpToolError("Tool arguments do not match the advertised input schema: "+err.Error(), nil))
 		}
-		if cmd.CanonicalName == "help" {
-			if topic, _ := arguments["topic"].(string); strings.TrimSpace(topic) == "" {
-				return rpcResult(req.ID, mcpToolResult(mcpHelpIndex(a.mcpTools(policy)), protocolVersion >= "2025-06-18", false, ""))
+		if message := a.mcpSelectionViolation(arguments, opts); message != "" {
+			return rpcResult(req.ID, mcpToolError(message, nil))
+		}
+		structured := protocolVersion >= "2025-06-18"
+		arguments = mcpCanonicalArguments(cmd, arguments)
+		if result, handled := a.mcpLocalToolResult(ctx, cmd, arguments, opts, policy, structured); handled {
+			return rpcResult(req.ID, result)
+		}
+		meta, _ := req.Params["_meta"].(map[string]any)
+		if token, ok := meta["progressToken"]; ok && token != nil {
+			if session := mcpSessionFrom(ctx); session != nil {
+				ctx = context.WithValue(ctx, mcpProgressKey{}, &mcpProgress{session: session, token: token, messages: protocolVersion >= "2025-03-26"})
 			}
 		}
-		return rpcResult(req.ID, a.runMCPTool(ctx, cmd, arguments, opts, policy, protocolVersion >= "2025-06-18"))
+		return rpcResult(req.ID, a.runMCPTool(ctx, cmd, arguments, opts, policy, structured))
 	default:
 		return rpcError(req.ID, -32601, "Method not found")
 	}
@@ -630,34 +743,57 @@ func mcpInstructions(policy mcpPolicy) string {
 	if policy.allowDestructive {
 		confirm = "Destructive operations, and sensitive ones in live mode, require _flint.confirm=true."
 	}
+	tools := "This server exposes " + policy.toolSetDescription() + "; help and the schema tools are always available."
+	if !policy.allTools {
+		tools += " The user can expose more with flint mcp serve --tools all, or --tools default,<group>."
+	}
 	return strings.Join([]string{
-		"Flint Pay MCP server. Each tool runs one Flint CLI command against the Flint public API, named <resource>.<action> (for example customers.create), using the credential configured for this server (FLINT_API_KEY, FLINT_PROFILE, or a saved flint login).",
-		"Results that reached the API name the credential environment, sandbox or live, in a \"Flint environment:\" text line.",
+		"Flint Pay MCP server. Each tool runs one Flint CLI command against the Flint public API, named <resource>_<action> (for example customers_create, or customers_addresses_create for nested resources), using the credential configured for this server (FLINT_API_KEY, FLINT_PROFILE, or a saved flint login).",
+		tools,
+		"Results that reached the API name the credential environment, sandbox or live, in a \"Flint environment:\" text line; CLI warnings follow in a \"Warnings:\" line.",
 		live,
 		confirm,
+		"Money amounts are integer minor units (2500 is 25.00 USD). Lists return one page and a next_page_token (empty on the last page; there is no has_more): pass it as page_token, or set _flint.all.",
 		"Before a write, use _flint.dry_run=\"client\" (or _flint.preview for destructive operations) to inspect the request without making it. Set _flint.idempotency_key on writes and reuse the same key when retrying after a timeout, or the operation may run twice.",
-		"Call help without a topic for an index, help with a tool name for its arguments, and schema.output for a tool's response schema. The human can expose fewer tools with flint mcp serve --tools customers,payment-intents.",
+		"Call help without a topic for an index, help with a tool name for its arguments and required fields, schema_input for a tool's full input schema, and schema_output for its result schema.",
 	}, " ")
 }
 
+// mcpHiddenLocalTools are local commands that change the human's own setup.
+// Agents must not rewrite the default profile or merchant guard (config set/unset)
+// or remove the server's credential (auth logout); the human runs these.
+var mcpHiddenLocalTools = map[string]bool{"config.set": true, "config.unset": true, "auth.logout": true}
+
 func mcpCommandExposed(cmd *Command) bool {
-	return cmd != nil && cmd.CanonicalName == cmd.Name && cmd.CanonicalName != "mcp.serve" && !cmd.MCPHidden
+	return cmd != nil && cmd.CanonicalName == cmd.Name && cmd.CanonicalName != "mcp.serve" && !cmd.MCPHidden && !mcpHiddenLocalTools[cmd.CanonicalName]
 }
 
 // mcpAllTools lists every tool the server can expose. History is split so
-// listing stays read-only while clearing is a separate destructive tool.
+// listing stays read-only while clearing is a separate destructive tool, and
+// doctor loses --fix, which rewrites the global default profile unasked.
 func (a *App) mcpAllTools() []*Command {
+	a.Registry.ensureAPICommands()
 	tools := []*Command{}
 	for _, cmd := range a.Registry.Commands {
 		if !mcpCommandExposed(cmd) {
 			continue
 		}
-		if cmd.CanonicalName == "history" {
+		switch cmd.CanonicalName {
+		case "history":
 			list, clear := mcpHistoryTools(cmd)
 			tools = append(tools, list, clear)
-			continue
+		case "doctor":
+			doctor := *cmd
+			doctor.Arguments = nil
+			for _, arg := range cmd.Arguments {
+				if arg.Name != "fix" {
+					doctor.Arguments = append(doctor.Arguments, arg)
+				}
+			}
+			tools = append(tools, &doctor)
+		default:
+			tools = append(tools, cmd)
 		}
-		tools = append(tools, cmd)
 	}
 	return tools
 }
@@ -689,23 +825,38 @@ func (a *App) mcpTools(policy mcpPolicy) []*Command {
 	return tools
 }
 
+// mcpTool finds an enabled tool by MCP name or by its older dotted name.
 func (a *App) mcpTool(name string, policy mcpPolicy) (*Command, bool) {
-	if !policy.includes(name) {
+	canonical := mcpCanonicalToolName(name)
+	if !policy.includes(canonical) {
 		return nil, false
 	}
 	for _, tool := range a.mcpAllTools() {
-		if tool.CanonicalName == name {
+		if tool.CanonicalName == canonical {
 			return tool, true
 		}
 	}
 	return nil, false
 }
 
+func mcpToolNames(canonical []string) []string {
+	names := make([]string, 0, len(canonical))
+	for _, name := range canonical {
+		names = append(names, mcpToolName(name))
+	}
+	return names
+}
+
 func (a *App) mcpUnknownToolError(id any, name string, policy mcpPolicy) map[string]any {
+	canonical := mcpCanonicalToolName(name)
 	for _, tool := range a.mcpAllTools() {
-		if tool.CanonicalName == name {
-			response := rpcError(id, -32602, "Unknown tool: "+name+" is not enabled on this server, which was started with --tools "+strings.Join(policy.toolPrefixes, ",")+".")
-			return response
+		if tool.CanonicalName == canonical {
+			group, _, _ := strings.Cut(canonical, ".")
+			enable := "with " + group + " added to --tools"
+			if policy.defaultToolSet() {
+				enable = "with --tools default," + group
+			}
+			return rpcError(id, -32602, "Unknown tool: "+mcpToolName(canonical)+" is not enabled on this server, which exposes "+policy.toolSetDescription()+". Do not retry; the user can enable it by restarting the server "+enable+" (or --tools all).")
 		}
 	}
 	var names []string
@@ -713,14 +864,15 @@ func (a *App) mcpUnknownToolError(id any, name string, policy mcpPolicy) map[str
 		names = append(names, tool.CanonicalName)
 	}
 	var suggestions []string
-	if alias, ok := a.Registry.ByName(name); ok && alias.CanonicalName != name && policy.includes(alias.CanonicalName) {
+	if alias, ok := a.Registry.ByName(canonical); ok && alias.CanonicalName != canonical && policy.includes(alias.CanonicalName) {
 		suggestions = append(suggestions, alias.CanonicalName)
 	}
-	for _, suggestion := range mcpNameSuggestions(name, names) {
+	for _, suggestion := range mcpNameSuggestions(canonical, names) {
 		if len(suggestions) < 3 && !containsString(suggestions, suggestion) {
 			suggestions = append(suggestions, suggestion)
 		}
 	}
+	suggestions = mcpToolNames(suggestions)
 	message := "Unknown tool: " + name + "."
 	if len(suggestions) > 0 {
 		message += " Did you mean " + strings.Join(suggestions, ", ") + "?"
@@ -752,27 +904,54 @@ func mcpToolGroups(tools []*Command) []string {
 	return groups
 }
 
-// mcpNameSuggestions ranks names by edit distance, favoring shared prefixes.
+// mcpSingular folds each dotted segment to a rough singular, so customer and
+// customers.list match customers and customers.lists.
+func mcpSingular(name string) string {
+	segments := strings.Split(name, ".")
+	for i, segment := range segments {
+		switch {
+		case strings.HasSuffix(segment, "ies"):
+			segment = strings.TrimSuffix(segment, "ies") + "y"
+		case strings.HasSuffix(segment, "sses"), strings.HasSuffix(segment, "xes"):
+			segment = segment[:len(segment)-2]
+		case strings.HasSuffix(segment, "s") && !strings.HasSuffix(segment, "ss"):
+			segment = strings.TrimSuffix(segment, "s")
+		}
+		segments[i] = segment
+	}
+	return strings.Join(segments, ".")
+}
+
+// mcpNameSuggestions ranks canonical names: singular and plural forms of the
+// input first, then names that extend it, then the closest by edit distance.
 func mcpNameSuggestions(input string, names []string) []string {
-	input = strings.ToLower(strings.TrimSpace(input))
+	input = strings.ToLower(mcpCanonicalToolName(input))
 	type candidate struct {
-		name  string
-		score int
+		name         string
+		rank, length int
 	}
 	var candidates []candidate
 	limit := max(2, len(input)/3)
+	singular := mcpSingular(input)
 	for _, name := range names {
-		score := levenshteinDistance(input, name)
-		if strings.HasPrefix(name, input) || strings.HasPrefix(input, name+".") {
-			score = min(score, 1)
+		distance := levenshteinDistance(input, name)
+		rank := 2
+		switch {
+		case mcpSingular(name) == singular:
+			rank = 0
+		case strings.HasPrefix(name, input) || strings.HasPrefix(input, name+".") || strings.HasPrefix(mcpSingular(name), singular):
+			rank = 1
+		case distance > limit:
+			continue
 		}
-		if score <= limit {
-			candidates = append(candidates, candidate{name, score})
-		}
+		candidates = append(candidates, candidate{name, rank, distance})
 	}
 	sort.SliceStable(candidates, func(i, j int) bool {
-		if candidates[i].score != candidates[j].score {
-			return candidates[i].score < candidates[j].score
+		if candidates[i].rank != candidates[j].rank {
+			return candidates[i].rank < candidates[j].rank
+		}
+		if candidates[i].length != candidates[j].length {
+			return candidates[i].length < candidates[j].length
 		}
 		return candidates[i].name < candidates[j].name
 	})
@@ -814,6 +993,54 @@ func mcpGateViolation(arguments map[string]any, policy mcpPolicy) string {
 	}
 	if _, ok := controls["confirm"]; ok && !policy.allowDestructive {
 		return "_flint.confirm is not accepted: on this MCP server only the user can confirm destructive or live-sensitive operations. Call the tool without _flint.confirm; the server will ask the user when the client supports elicitation. Otherwise the user can restart the server with flint mcp serve --allow-destructive."
+	}
+	return ""
+}
+
+// mcpSelectionSources says where the human set each server selection.
+var mcpSelectionSources = map[string]string{"flag": "a command-line flag", "environment": "the environment", "project": "the project's .flint/config.json", "profile": "the profile's saved settings"}
+
+// mcpSelectionViolation keeps an agent's _flint.profile and _flint.merchant
+// within the human's choices. An agent may add a merchant guard, or pick a
+// profile when the server pins none, but may not replace the profile,
+// merchant guard, or context the server resolves (from flags, environment,
+// project, or profile configuration). Repeating the server's value is fine.
+func (a *App) mcpSelectionViolation(arguments map[string]any, parent Options) string {
+	controls, _ := arguments["_flint"].(map[string]any)
+	profile, hasProfile := controls["profile"].(string)
+	merchant, hasMerchant := controls["merchant"].(string)
+	if !hasProfile && !hasMerchant {
+		return ""
+	}
+	base, _, err := a.resolveConfig(parent)
+	if err != nil {
+		return "_flint.profile and _flint.merchant are not accepted because this MCP server's own Flint configuration does not resolve (" + err.Error() + "). Do not retry; ask the user to fix the server's configuration and restart it."
+	}
+	candidate := parent
+	if hasProfile {
+		candidate.Profile = profile
+	}
+	if hasMerchant {
+		candidate.Merchant = merchant
+	}
+	next, _, err := a.resolveConfig(candidate)
+	if err != nil {
+		return "" // The command reports the invalid selection itself.
+	}
+	pinned := func(control, setting, value, source string) string {
+		return "_flint." + control + " is not accepted: this MCP server uses " + setting + " " + value + ", set by " + mcpSelectionSources[source] + ", and agents cannot replace it. Do not retry with a different value; omit _flint." + control + ". If the user wants another " + setting + ", they must restart the server with it."
+	}
+	switch source := base.Sources["profile"]; {
+	case hasProfile && next.ProfileName != base.ProfileName && (source == "flag" || source == "environment" || source == "project"):
+		return pinned("profile", "profile", base.ProfileName, source)
+	case base.MerchantGuard != "" && next.MerchantGuard != base.MerchantGuard:
+		control := "merchant"
+		if !hasMerchant {
+			control = "profile"
+		}
+		return pinned(control, "merchant guard", base.MerchantGuard, base.Sources["merchant_guard"])
+	case base.ContextID != "" && next.ContextID != base.ContextID:
+		return pinned("profile", "context", base.ContextID, base.Sources["context"])
 	}
 	return ""
 }
@@ -872,10 +1099,70 @@ func schemaForMCPTool(cmd *Command, policy mcpPolicy) (map[string]any, *CLIError
 	if !policy.allowDestructive {
 		delete(controls, "confirm")
 	}
-	if topic, ok := properties["topic"].(map[string]any); ok && cmd.CanonicalName == "help" {
-		topic["description"] = "A tool name such as customers.create, or a reference topic: test-cards, exit-codes, errors, events. Omit for a short index."
+	if controlsProperty != nil && len(controls) == 0 {
+		delete(properties, "_flint")
 	}
+	switch cmd.CanonicalName {
+	case "help":
+		if topic, ok := properties["topic"].(map[string]any); ok {
+			topic["description"] = "A tool name such as customers_create, a group such as customers, or a topic: controls, events, test-cards, exit-codes, errors. Omit for a short index."
+		}
+	case "schema.input", "schema.output", "schema.command":
+		if command, ok := properties["command"].(map[string]any); ok {
+			command["description"] = "Tool name, such as customers_create."
+		}
+	case "schema.commands":
+		if prefix, ok := properties["prefix"].(map[string]any); ok {
+			prefix["description"] = "Tool group, such as customers or customers_addresses."
+		}
+	case "schema.events":
+		properties["event_type"] = map[string]any{"type": "string", "minLength": 1, "description": "Event type such as payment_intent.succeeded, or a prefix such as payment_intent, to return payload schemas. Omit for a compact list of event types."}
+	}
+	delete(schema, "$id") // A per-tool URL that no MCP client resolves.
+	mcpCompactSchema(schema)
 	return schema, nil
+}
+
+// mcpCompactSchema drops annotations that cost tokens without informing an
+// agent: enum descriptions that only restate their value ("Goods." for goods)
+// and Flint's enum bookkeeping keywords.
+func mcpCompactSchema(schema map[string]any) {
+	restates := func(value any, description any) bool {
+		normalize := func(text string) string {
+			return strings.Map(func(r rune) rune {
+				if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
+					return r
+				}
+				return -1
+			}, strings.ToLower(text))
+		}
+		text, _ := description.(string)
+		return normalize(text) == normalize(fmt.Sprint(value))
+	}
+	walkJSONSchemas(schema, func(node map[string]any) {
+		delete(node, "x-flint-enum-kind")
+		delete(node, "x-flint-enum-vocabulary")
+		descriptions, ok := node["x-enum-descriptions"].([]any)
+		if !ok {
+			return
+		}
+		values, _ := node["enum"].([]any)
+		informative := false
+		kept := make([]any, len(descriptions))
+		for i, description := range descriptions {
+			if i < len(values) && restates(values[i], description) {
+				kept[i] = ""
+				continue
+			}
+			kept[i] = description
+			informative = true
+		}
+		if informative {
+			node["x-enum-descriptions"] = kept
+		} else {
+			delete(node, "x-enum-descriptions")
+		}
+	})
 }
 
 func schemaForMCPCommand(cmd *Command) (map[string]any, *CLIError) {
@@ -901,8 +1188,8 @@ func schemaForMCPCommand(cmd *Command) (map[string]any, *CLIError) {
 		"type":        "string",
 		"description": "Positive Go duration no longer than 2m.",
 	}
-	controlsProperty["description"] = "CLI execution controls. Streaming tools require max_events or for. Flint also applies a 100-record and 2-minute safety bound."
-	schema["allOf"] = appendSchemaConstraint(schema["allOf"], map[string]any{
+	controlsProperty["description"] = "Set max_events (1-100) or for (up to 2m)."
+	bound := map[string]any{
 		"required": []string{"_flint"},
 		"properties": map[string]any{
 			"_flint": map[string]any{
@@ -912,7 +1199,16 @@ func schemaForMCPCommand(cmd *Command) (map[string]any, *CLIError) {
 				},
 			},
 		},
-	})
+	}
+	constraint := bound
+	if cmd.CanonicalName == "listen" {
+		controlsProperty["description"] = "Set max_events (1-100) or for (up to 2m); or print_secret."
+		constraint = map[string]any{"anyOf": []any{bound, map[string]any{
+			"required":   []string{"print_secret"},
+			"properties": map[string]any{"print_secret": map[string]any{"const": true}},
+		}}}
+	}
+	schema["allOf"] = appendSchemaConstraint(schema["allOf"], constraint)
 	return schema, nil
 }
 
@@ -949,7 +1245,8 @@ func mcpToolAnnotations(cmd *Command) map[string]any {
 	// Sensitive operations need confirmation in live mode (refunds, secret
 	// rotation, session revocation), so clients should treat them as destructive.
 	destructive := cmd.Destructive || cmd.Sensitive
-	idempotent := readOnly
+	// Replacing (PUT) or deleting a resource again leaves it in the same state.
+	idempotent := readOnly || cmd.Method == "PUT" || cmd.Method == "DELETE"
 	openWorld := !cmd.Local
 	switch cmd.CanonicalName {
 	case "api":
@@ -957,10 +1254,6 @@ func mcpToolAnnotations(cmd *Command) map[string]any {
 		readOnly = false
 		destructive = true
 		idempotent = false
-	case "auth.logout":
-		readOnly = false
-		destructive = true
-		openWorld = true
 	case "history":
 		readOnly, destructive, idempotent = true, false, true
 	case "history.clear":
@@ -968,13 +1261,10 @@ func mcpToolAnnotations(cmd *Command) map[string]any {
 	case "listen":
 		// Forwards each event with a POST to the local endpoint.
 		readOnly, destructive, idempotent, openWorld = false, false, false, true
-	case "config.set":
-		readOnly, idempotent = false, true
-	case "doctor":
-		readOnly, idempotent, openWorld = false, false, true
 	case "signup":
 		readOnly, idempotent, openWorld = false, false, true
-	case "config.validate", "init", "help.search":
+	case "doctor", "config.validate", "init", "help.search":
+		// MCP's doctor has no --fix, so these only read.
 		openWorld = true
 	}
 	return map[string]any{
@@ -985,9 +1275,35 @@ func mcpToolAnnotations(cmd *Command) map[string]any {
 	}
 }
 
+// mcpLocalTools describes local tools in MCP terms: their CLI descriptions
+// mention flags and terminal behavior that do not apply to agents.
+var mcpLocalTools = map[string]struct{ title, description string }{
+	"help":            {"Flint MCP help", "Explain one tool (arguments, required fields, controls), list a group's tools, or show a topic: controls, events, test-cards, exit-codes. Omit topic for an index of enabled tools."},
+	"help.search":     {"Search Flint Help", "Search Flint Help community answers and support threads with a question."},
+	"schema.input":    {"Tool input schema", "JSON Schema of a tool's arguments, the same schema tools/call validates against, including tools this server does not enable."},
+	"schema.output":   {"Tool result schema", "JSON Schema of a tool's successful result (structuredContent). Some are large; use _flint.jq to extract parts."},
+	"schema.command":  {"Describe a command", "Describe the Flint CLI command behind a tool: API method and path, operation ID, and safety classification."},
+	"schema.commands": {"List commands", "List Flint CLI commands, optionally only those in a group such as customers, with their API routes."},
+	"schema.errors":   {"Error catalog", "Flint exit codes and error types."},
+	"schema.events":   {"Webhook event catalog", "List webhook event types with one-line descriptions. Pass event_type (an exact type, or a prefix such as payment_intent) for their payload schemas."},
+	"history":         {"Recent resource IDs", "List Flint resource IDs this CLI recently created or changed with the active credential."},
+	"history.clear":   {"Clear resource history", "Delete this CLI's saved list of recent resource IDs. Needs the user's confirmation."},
+	"version":         {"CLI version", "Flint CLI version and build, and the public API version and schema hash it targets."},
+	"doctor":          {"Check the Flint setup", "Check this server's Flint credential, connectivity, scopes, and API version compatibility."},
+	"init":            {"Flint setup status", "Report whether a Flint credential is configured, with setup checks and suggested first steps."},
+	"config.get":      {"Resolved configuration", "Show the Flint CLI configuration this server resolves: profile, merchant guard, context, and their sources."},
+	"config.validate": {"Validate configuration", "Validate the global and project Flint configuration and the credential they select."},
+	"signup":          {"Sign up for Flint", "Create a Flint account and sandbox API key in two calls: first email, first_name, and last_name (Flint emails a code), then verification_code. Only for a profile without a saved credential."},
+	"api":             {"Call a Flint API route", "Call any documented Flint public API route by method and /v1 path, with a JSON body for writes. Prefer a dedicated tool when one exists."},
+	"listen":          {"Stream webhook events", "Print Flint webhook events or forward them to a local forward_to endpoint. Set _flint.max_events or _flint.for (up to 100 events or 2m). print_secret returns the signing secret without connecting."},
+}
+
 // mcpToolTitle prefers the description's first sentence when it is short and
 // free of CLI flags; otherwise it spells out the canonical name.
 func mcpToolTitle(cmd *Command) string {
+	if local, ok := mcpLocalTools[cmd.CanonicalName]; ok {
+		return local.title
+	}
 	sentence := strings.TrimSpace(cmd.Description)
 	if index := strings.IndexAny(sentence, ";\n"); index >= 0 {
 		sentence = sentence[:index]
@@ -1006,30 +1322,769 @@ func mcpToolTitle(cmd *Command) string {
 	return strings.Join(words, " ")
 }
 
-func mcpHelpIndex(tools []*Command) map[string]any {
-	groups := map[string]int{}
-	for _, tool := range tools {
-		group, _, _ := strings.Cut(tool.CanonicalName, ".")
-		groups[group]++
+// mcpToolDescription is the compact tools/list description: what the tool
+// does, then the facts agents otherwise guess at: requirements stated only in
+// schema combinators, pagination, and money units.
+func mcpToolDescription(cmd *Command, schema map[string]any) string {
+	parts := []string{mcpBaseDescription(cmd)}
+	if summary := mcpRequirementSummary(schema); summary != "" {
+		parts = append(parts, summary)
 	}
-	return map[string]any{"data": map[string]any{
-		"summary":    "Index of Flint MCP help. Tools are named <resource>.<action>; resource_groups lists each resource with its number of tools.",
-		"tool_count": len(tools),
+	if cmd.Supports.Pagination && !cmd.Stream {
+		parts = append(parts, "Returns one page: pass next_page_token as page_token for the next (empty on the last page; there is no has_more), or set _flint.all.")
+	}
+	if mcpUsesMoney(cmd, schema) {
+		parts = append(parts, "Money amounts are integer minor units (2500 is 25.00 USD).")
+	}
+	return strings.Join(parts, " ")
+}
+
+// mcpBaseDescription uses the public API's operation description, trimmed to
+// its first sentences, when it says more than the CLI's one-line summary.
+func mcpBaseDescription(cmd *Command) string {
+	if local, ok := mcpLocalTools[cmd.CanonicalName]; ok {
+		return local.description
+	}
+	description := strings.TrimSpace(cmd.Description)
+	if before, after, found := strings.Cut(description, ";"); found && strings.Contains(after, "--") {
+		description = strings.TrimSpace(before)
+	}
+	if operation, ok := openAPIOperationByID(cmd.OperationID); ok {
+		if text := mcpLeadingSentences(operation.Description, 200); len(text) > len(description)+1 {
+			description = text
+		}
+	}
+	if description != "" && !strings.HasSuffix(description, ".") {
+		description += "."
+	}
+	return description
+}
+
+// mcpLeadingSentences returns up to two leading sentences within limit bytes,
+// shortening a first sentence that alone is too long.
+func mcpLeadingSentences(text string, limit int) string {
+	text = strings.Join(strings.Fields(text), " ")
+	var out string
+	for sentences := 0; text != "" && sentences < 2; sentences++ {
+		end := len(text)
+		for i := 0; i+1 < len(text); i++ {
+			if text[i] != '.' || text[i+1] != ' ' {
+				continue
+			}
+			word := text[strings.LastIndexByte(text[:i], ' ')+1 : i]
+			if word == "e.g" || word == "i.e" || word == "etc" || word == "vs" {
+				continue
+			}
+			end = i + 1
+			break
+		}
+		sentence := strings.TrimSpace(text[:end])
+		if out != "" && len(out)+1+len(sentence) > limit {
+			break
+		}
+		if out == "" && len(sentence) > limit {
+			cut := strings.LastIndexByte(sentence[:limit], ' ')
+			if cut <= 0 {
+				for cut = limit; cut > 0 && !utf8.RuneStart(sentence[cut]); cut-- {
+				}
+			}
+			return strings.TrimRight(sentence[:cut], " ,;:") + "..."
+		}
+		out = strings.TrimSpace(out + " " + sentence)
+		text = strings.TrimSpace(text[end:])
+	}
+	return out
+}
+
+func mcpStrings(value any) []string {
+	var out []string
+	switch values := value.(type) {
+	case []string:
+		out = append(out, values...)
+	case []any:
+		for _, item := range values {
+			if text, ok := item.(string); ok {
+				out = append(out, text)
+			}
+		}
+	}
+	return out
+}
+
+// mcpRequirementSummary spells out requirements a schema states only through
+// oneOf, anyOf, allOf, if/then, not, or dependentRequired, which clients and
+// models often ignore. It returns "" when there are none.
+func mcpRequirementSummary(schema map[string]any) string {
+	defs, _ := schema["$defs"].(map[string]any)
+	resolve := func(node any) map[string]any {
+		m, _ := node.(map[string]any)
+		if ref, ok := m["$ref"].(string); ok {
+			m, _ = defs[strings.TrimPrefix(ref, "#/$defs/")].(map[string]any)
+		}
+		return m
+	}
+	rootRequired := map[string]bool{}
+	for _, name := range mcpStrings(schema["required"]) {
+		rootRequired[name] = true
+	}
+	var sentences []string
+	needs := map[string][]string{} // "expected_version" -> fields that need it
+	var needOrder []string
+	need := func(triggers, needed []string) {
+		key := strings.Join(needed, " and ")
+		if _, seen := needs[key]; !seen {
+			needOrder = append(needOrder, key)
+		}
+		needs[key] = append(needs[key], triggers...)
+	}
+	// conditional recognizes {anyOf: [{not: {required: X}}, {required: Y}]}
+	// and {if: {required: X}, then: {required: Y}}: sending X needs Y.
+	conditional := func(node map[string]any) bool {
+		if branches, ok := node["anyOf"].([]any); ok && len(branches) == 2 {
+			first, second := resolve(branches[0]), resolve(branches[1])
+			not, _ := first["not"].(map[string]any)
+			triggers := mcpStrings(not["required"])
+			var needed []string
+			for _, name := range mcpStrings(second["required"]) {
+				if !containsString(triggers, name) {
+					needed = append(needed, name)
+				}
+			}
+			if len(first) == 1 && len(not) == 1 && len(triggers) > 0 && len(needed) > 0 {
+				need(triggers, needed)
+				return true
+			}
+		}
+		condition, _ := node["if"].(map[string]any)
+		then, _ := node["then"].(map[string]any)
+		if triggers, needed := mcpStrings(condition["required"]), mcpStrings(then["required"]); len(triggers) > 0 && len(needed) > 0 {
+			need(triggers, needed)
+			return true
+		}
+		return false
+	}
+	alternatives := func(branches []any, exclusive bool) string {
+		type variant struct {
+			required []string
+			values   map[string][]string // property -> const or enum values
+		}
+		var variants []variant
+		for _, raw := range branches {
+			branch := resolve(raw)
+			v := variant{values: map[string][]string{}}
+			members := []map[string]any{branch}
+			for _, member := range mcpAnySlice(branch["allOf"]) {
+				members = append(members, resolve(member))
+			}
+			for _, member := range members {
+				for _, name := range mcpStrings(member["required"]) {
+					if !rootRequired[name] && !containsString(v.required, name) {
+						v.required = append(v.required, name)
+					}
+				}
+			}
+			properties, _ := branch["properties"].(map[string]any)
+			for name, rawProperty := range properties {
+				property, _ := rawProperty.(map[string]any)
+				if value, ok := property["const"]; ok {
+					v.values[name] = []string{fmt.Sprint(value)}
+				} else if enum, ok := property["enum"].([]any); ok && len(enum) > 0 {
+					for _, value := range enum {
+						v.values[name] = append(v.values[name], fmt.Sprint(value))
+					}
+				}
+			}
+			variants = append(variants, v)
+		}
+		if len(variants) < 2 {
+			return ""
+		}
+		// A property every variant fixes to its own values selects the variant.
+		var discriminators []string
+		for name := range variants[0].values {
+			shared := true
+			for _, v := range variants[1:] {
+				if _, ok := v.values[name]; !ok {
+					shared = false
+				}
+			}
+			// The values must tell the variants apart.
+			seen := map[string]bool{}
+			for _, v := range variants {
+				for _, value := range v.values[name] {
+					if seen[value] {
+						shared = false
+					}
+					seen[value] = true
+				}
+			}
+			if shared {
+				discriminators = append(discriminators, name)
+			}
+		}
+		sort.Strings(discriminators)
+		if len(discriminators) > 0 {
+			name := discriminators[0]
+			var values, details []string
+			for _, v := range variants {
+				values = append(values, v.values[name]...)
+				var rest []string
+				for _, field := range v.required {
+					if field != name {
+						rest = append(rest, field)
+					}
+				}
+				if len(rest) > 0 {
+					details = append(details, name+" "+strings.Join(v.values[name], "/")+", send "+strings.Join(rest, ", "))
+				}
+			}
+			sentence := "Set " + name + " to one of: " + strings.Join(values, ", ") + "."
+			if len(details) > 0 && len(variants) <= 4 {
+				sentence += " With " + strings.Join(details, "; with ") + "."
+			} else if len(details) > 0 {
+				sentence += " Each has its own required fields; see help."
+			}
+			return sentence
+		}
+		var groups []string
+		empty := 0
+		// Variants that one required set cannot tell apart (equal or nested
+		// sets) differ in ways a one-line summary cannot state.
+		for i, v := range variants {
+			for j, other := range variants {
+				if i == j || len(v.required) == 0 {
+					continue
+				}
+				nested := true
+				for _, field := range v.required {
+					if !containsString(other.required, field) {
+						nested = false
+					}
+				}
+				if nested {
+					return fmt.Sprintf("Arguments must match one of %d variants; see schema_input.", len(variants))
+				}
+			}
+		}
+		for _, v := range variants {
+			switch len(v.required) {
+			case 0:
+				empty++
+			case 1:
+				groups = append(groups, v.required[0])
+			default:
+				groups = append(groups, "{"+strings.Join(v.required, ", ")+"}")
+			}
+		}
+		switch {
+		case empty == 0 && exclusive:
+			return "Provide exactly one of: " + strings.Join(groups, "; ") + "."
+		case empty == 0:
+			return "Provide at least one of: " + strings.Join(groups, "; ") + "."
+		case empty == 1 && exclusive && len(groups) > 0:
+			return "Provide at most one of: " + strings.Join(groups, "; ") + "."
+		case exclusive:
+			return fmt.Sprintf("Arguments must match one of %d variants; see schema_input.", len(variants))
+		}
+		return ""
+	}
+	if branches, ok := schema["oneOf"].([]any); ok {
+		if sentence := alternatives(branches, true); sentence != "" {
+			sentences = append(sentences, sentence)
+		}
+	}
+	if branches, ok := schema["anyOf"].([]any); ok && !conditional(schema) {
+		if sentence := alternatives(branches, false); sentence != "" {
+			sentences = append(sentences, sentence)
+		}
+	}
+	conditional(map[string]any{"if": schema["if"], "then": schema["then"]})
+	for _, raw := range mcpAnySlice(schema["allOf"]) {
+		member := resolve(raw)
+		if conditional(member) {
+			continue
+		}
+		// Streaming tools require one of several _flint bounds.
+		properties, _ := member["properties"].(map[string]any)
+		for name, rawProperty := range properties {
+			property, _ := rawProperty.(map[string]any)
+			var options []string
+			for _, branch := range mcpAnySlice(property["anyOf"]) {
+				if required := mcpStrings(resolve(branch)["required"]); len(required) == 1 {
+					options = append(options, name+"."+required[0])
+				}
+			}
+			if len(options) > 1 && containsString(mcpStrings(member["required"]), name) {
+				sentences = append(sentences, "Set "+strings.Join(options, " or ")+".")
+			}
+		}
+	}
+	if dependent, ok := schema["dependentRequired"].(map[string]any); ok {
+		var triggers []string
+		for trigger := range dependent {
+			triggers = append(triggers, trigger)
+		}
+		sort.Strings(triggers)
+		for _, trigger := range triggers {
+			need([]string{trigger}, mcpStrings(dependent[trigger]))
+		}
+	}
+	for _, key := range needOrder {
+		triggers := needs[key]
+		list := strings.Join(triggers, ", ")
+		if len(triggers) > 1 {
+			list = strings.Join(triggers[:len(triggers)-1], ", ") + ", or " + triggers[len(triggers)-1]
+		}
+		verb := " is "
+		if strings.Contains(key, " and ") {
+			verb = " are "
+		}
+		sentences = append(sentences, key+verb+"required when sending "+list+".")
+	}
+	// {not: {required: [S], anyOf: [...]}} means S must be sent alone.
+	if not, ok := schema["not"].(map[string]any); ok {
+		if alone := mcpStrings(not["required"]); len(alone) == 1 {
+			if _, combined := not["anyOf"]; combined {
+				sentences = append(sentences, "Send "+alone[0]+" without other fields.")
+			} else {
+				sentences = append(sentences, "Do not send "+alone[0]+".")
+			}
+		}
+	}
+	summary := strings.Join(sentences, " ")
+	if len(summary) > 200 {
+		cut := strings.LastIndex(summary[:190], ", ")
+		if cut <= 0 {
+			cut = 190
+		}
+		summary = summary[:cut] + "... (see help)"
+	}
+	return summary
+}
+
+func mcpAnySlice(value any) []any {
+	values, _ := value.([]any)
+	return values
+}
+
+var (
+	mcpComponentGraphOnce sync.Once
+	mcpComponentGraph     map[string]map[string]bool
+)
+
+// mcpComponentReferences maps each public schema component to the components
+// it references directly.
+func mcpComponentReferences() map[string]map[string]bool {
+	mcpComponentGraphOnce.Do(func() {
+		mcpComponentGraph = map[string]map[string]bool{}
+		doc, err := loadOpenAPI()
+		if err != nil {
+			return
+		}
+		for name, schema := range doc.Components.Schemas {
+			mcpComponentGraph[name] = map[string]bool{}
+			collectComponentRefs(schema, mcpComponentGraph[name])
+		}
+	})
+	return mcpComponentGraph
+}
+
+// mcpReachesMoney reports whether Money is within depth references of the
+// named components. A shallow bound keeps the money note to tools whose own
+// fields are amounts, not ones that merely link to a priced resource.
+func mcpReachesMoney(names []string, depth int) bool {
+	graph := mcpComponentReferences()
+	seen := map[string]bool{}
+	for level := 0; level <= depth && len(names) > 0; level++ {
+		var next []string
+		for _, name := range names {
+			if name == "Money" {
+				return true
+			}
+			if seen[name] {
+				continue
+			}
+			seen[name] = true
+			for target := range graph[name] {
+				next = append(next, target)
+			}
+		}
+		names = next
+	}
+	return false
+}
+
+// mcpUsesMoney reports whether a tool's arguments or result carry Money
+// amounts within two levels of nesting.
+func mcpUsesMoney(cmd *Command, schema map[string]any) bool {
+	root := map[string]any{}
+	for key, value := range schema {
+		if key != "$defs" {
+			root[key] = value
+		}
+	}
+	var direct []string
+	walkJSONSchemas(root, func(node map[string]any) {
+		if ref, ok := node["$ref"].(string); ok {
+			direct = append(direct, strings.TrimPrefix(ref, "#/$defs/"))
+		}
+	})
+	if mcpReachesMoney(direct, 1) {
+		return true
+	}
+	return cmd.OutputSchema != "" && mcpReachesMoney([]string{cmd.OutputSchema}, 2)
+}
+
+func mcpHelpIndex(all []*Command, policy mcpPolicy) map[string]any {
+	groups := map[string]int{}
+	var disabled []string
+	for _, tool := range all {
+		group, _, _ := strings.Cut(tool.CanonicalName, ".")
+		if policy.includes(tool.CanonicalName) {
+			groups[group]++
+		}
+	}
+	for _, group := range mcpToolGroups(all) {
+		if groups[group] == 0 {
+			disabled = append(disabled, group)
+		}
+	}
+	findingTools := []string{
+		"Call help with topic set to a tool name for its arguments and required fields, or to a group such as customers for its tools.",
+		"Call schema_input or schema_output with command set to a tool name for its full JSON input or result schema.",
+	}
+	if policy.includes("help.search") {
+		findingTools = append(findingTools, "Call help_search with a question to search Flint Help community answers.")
+	}
+	findingTools = append(findingTools, "tools/list returns every enabled tool. Tools in other_groups need the user to restart the server with --tools all, or --tools default,<group>.")
+	data := map[string]any{
+		"summary":    "Index of Flint MCP help. Tools are named <resource>_<action>; resource_groups lists each enabled group with its number of tools.",
+		"tool_set":   policy.toolSetDescription(),
+		"tool_count": len(mcpFilterTools(all, policy)),
 		"topics": []map[string]string{
-			{"topic": "<tool name>", "description": "Arguments, flags, and examples for one tool, for example customers.create."},
+			{"topic": "<tool name>", "description": "Arguments, required fields, and controls for one tool, for example customers_create."},
+			{"topic": "<group>", "description": "The tools in one group, for example customers."},
+			{"topic": "controls", "description": "What each _flint execution control does."},
+			{"topic": "events", "description": "Webhook event types with one-line descriptions; schema_events with event_type returns payload schemas."},
 			{"topic": "test-cards", "description": "Sandbox payment method tokens and card numbers for test scenarios."},
 			{"topic": "exit-codes", "description": "Exit codes and error types returned by Flint commands."},
 			{"topic": "errors", "description": "Same catalog as exit-codes."},
-			{"topic": "events", "description": "Full webhook event catalog with payload schemas (large)."},
 		},
-		"finding_tools": []string{
-			"Call help with topic set to a tool name for its arguments and examples.",
-			"Call schema.input or schema.output with command set to a tool name for its full JSON input or response schema.",
-			"Call help.search with a question to search Flint Help community answers.",
-			"tools/list returns every enabled tool; the human can limit them with flint mcp serve --tools PREFIX,...",
-		},
+		"finding_tools":   findingTools,
 		"resource_groups": groups,
-	}}
+	}
+	if len(disabled) > 0 {
+		data["other_groups"] = disabled
+	}
+	return map[string]any{"data": data}
+}
+
+func mcpFilterTools(all []*Command, policy mcpPolicy) []*Command {
+	var tools []*Command
+	for _, tool := range all {
+		if policy.includes(tool.CanonicalName) {
+			tools = append(tools, tool)
+		}
+	}
+	return tools
+}
+
+// mcpSchemaType is a short type label for a property in help output.
+func mcpSchemaType(property map[string]any) string {
+	switch value := property["type"].(type) {
+	case string:
+		if items, ok := property["items"].(map[string]any); ok && value == "array" {
+			return "array of " + mcpSchemaType(items)
+		}
+		return value
+	case []any:
+		return strings.Join(mcpStrings(value), " or ")
+	}
+	if ref, ok := property["$ref"].(string); ok {
+		return strings.TrimPrefix(ref, "#/$defs/")
+	}
+	if _, ok := property["const"]; ok {
+		return "const"
+	}
+	for _, keyword := range []string{"anyOf", "oneOf", "allOf"} {
+		var labels []string
+		for _, branch := range mcpAnySlice(property[keyword]) {
+			if branchMap, ok := branch.(map[string]any); ok {
+				if label := mcpSchemaType(branchMap); label != "any" && !containsString(labels, label) {
+					labels = append(labels, label)
+				}
+			}
+		}
+		if len(labels) > 0 {
+			return strings.Join(labels, " or ")
+		}
+	}
+	return "any"
+}
+
+// mcpToolHelp is help for one tool in MCP terms, consistent with its input
+// schema: argument names, types, and required fields come from that schema.
+func mcpToolHelp(cmd *Command, policy mcpPolicy) (map[string]any, *CLIError) {
+	schema, e := schemaForMCPTool(cmd, policy)
+	if e != nil {
+		return nil, e
+	}
+	name := mcpToolName(cmd.CanonicalName)
+	properties, _ := schema["properties"].(map[string]any)
+	required := mcpStrings(schema["required"])
+	var names []string
+	for property := range properties {
+		if property != "_flint" {
+			names = append(names, property)
+		}
+	}
+	sort.Slice(names, func(i, j int) bool {
+		left, right := containsString(required, names[i]), containsString(required, names[j])
+		if left != right {
+			return left
+		}
+		return names[i] < names[j]
+	})
+	arguments := []map[string]any{}
+	for _, property := range names {
+		definition, _ := properties[property].(map[string]any)
+		entry := map[string]any{"name": property, "type": mcpSchemaType(definition), "required": containsString(required, property)}
+		for _, keyword := range []string{"description", "enum", "default"} {
+			if value, ok := definition[keyword]; ok {
+				entry[keyword] = value
+			}
+		}
+		arguments = append(arguments, entry)
+	}
+	controls := []map[string]any{}
+	controlSchemas, _ := lookupPath(schema, "properties._flint.properties")
+	controlMap, _ := controlSchemas.(map[string]any)
+	var controlNames []string
+	for control := range controlMap {
+		controlNames = append(controlNames, control)
+	}
+	sort.Strings(controlNames)
+	for _, control := range controlNames {
+		definition, _ := controlMap[control].(map[string]any)
+		controls = append(controls, map[string]any{"name": "_flint." + control, "description": definition["description"]})
+	}
+	data := map[string]any{
+		"name":           name,
+		"canonical_name": cmd.CanonicalName,
+		"title":          mcpToolTitle(cmd),
+		"description":    mcpToolDescription(cmd, schema),
+		"enabled":        policy.includes(cmd.CanonicalName),
+		"annotations":    mcpToolAnnotations(cmd),
+		"required":       required,
+		"arguments":      arguments,
+		"controls":       controls,
+		"schemas":        "Call schema_input with command " + name + " for the full input JSON Schema, including nested fields, and schema_output for the result schema.",
+	}
+	if data["required"] == nil {
+		data["required"] = []string{}
+	}
+	if summary := mcpRequirementSummary(schema); summary != "" {
+		data["requirements"] = summary
+	}
+	if !policy.includes(cmd.CanonicalName) {
+		group, _, _ := strings.Cut(cmd.CanonicalName, ".")
+		data["note"] = "This tool is not enabled on this server. The user can enable it by restarting the server with --tools all, or with " + group + " added to --tools."
+	}
+	return map[string]any{"data": data}, nil
+}
+
+// mcpControlHelp documents each _flint control in full; tool schemas carry
+// only a one-line description.
+var mcpControlHelp = []map[string]string{
+	{"name": "_flint.dry_run", "applies_to": "writes", "description": "\"client\" validates the arguments and returns the prepared request (method, path, headers, body) without sending it. Nothing changes in Flint."},
+	{"name": "_flint.preview", "applies_to": "destructive writes", "description": "Returns the request and its effect (permission check, reversibility, affected resources) without making the change."},
+	{"name": "_flint.idempotency_key", "applies_to": "writes", "description": "Sent as the Idempotency-Key header. Flint returns the original result when a key is reused, so reuse the same key when retrying a write that timed out or failed on the network; a new key could run it twice. The server generates a key when omitted, and errors that need a retry include it."},
+	{"name": "_flint.confirm", "applies_to": "destructive and live-sensitive operations, only when the server was started with --allow-destructive", "description": "Confirms the operation. Without --allow-destructive the server asks the user through elicitation, or refuses when the client cannot ask."},
+	{"name": "_flint.live", "applies_to": "API tools, only when the server was started with --allow-live", "description": "Acknowledges a live (production) credential or context. Without --allow-live the server refuses live credentials."},
+	{"name": "_flint.merchant", "applies_to": "API tools", "description": "Fails the call unless the credential belongs to this mer_ merchant. An agent may add a guard but cannot replace one the server already uses."},
+	{"name": "_flint.profile", "applies_to": "API tools", "description": "Selects a saved Flint CLI profile, unless the server pins one with --profile, FLINT_PROFILE, or project configuration, or the profile would change the server's merchant guard or context."},
+	{"name": "_flint.timeout", "applies_to": "tools that call Flint", "description": "Per-request timeout as a Go duration such as 30s."},
+	{"name": "_flint.all", "applies_to": "paginated lists", "description": "Fetches every page and returns them merged as one list with an empty next_page_token. Large lists can exceed the result limit; combine with _flint.select."},
+	{"name": "_flint.wait_for", "applies_to": "get tools", "description": "Polls until every FIELD=VALUE condition holds, for example status=succeeded, bounded by _flint.for (default 2m)."},
+	{"name": "_flint.for", "applies_to": "waits and streams", "description": "Maximum duration of a wait or stream as a Go duration; streams allow at most 2m."},
+	{"name": "_flint.max_events", "applies_to": "streams", "description": "Stops a stream after this many records (at most 100)."},
+	{"name": "_flint.expand", "applies_to": "tools with documented expansions", "description": "Includes related resources inline; the schema lists the allowed values."},
+	{"name": "_flint.field", "applies_to": "most tools", "description": "Returns only the value at a dot path such as data.id, as {\"value\": ...}."},
+	{"name": "_flint.select", "applies_to": "most tools", "description": "Keeps only the listed fields of each resource, keeping the response envelope."},
+	{"name": "_flint.jq", "applies_to": "most tools", "description": "Applies a jq expression to the result, returned as {\"value\": ...}. Cannot be combined with _flint.field."},
+}
+
+// mcpEventList is the compact webhook catalog: every event type with its
+// one-line summary, plus how deliveries are signed and retried.
+func mcpEventList() (map[string]any, *CLIError) {
+	summaries, err := eventTypeSummaries()
+	doc, docErr := loadOpenAPI()
+	if err != nil || docErr != nil {
+		return nil, cliError(ExitUsage, "internal_error", "SCHEMA_SNAPSHOT_INVALID", "The embedded webhook catalog could not be read.")
+	}
+	data := map[string]any{
+		"event_types": summaries,
+		"count":       len(summaries),
+		"next":        "Call schema_events with event_type set to an event type, or a prefix such as payment_intent, for payload schemas.",
+	}
+	for _, key := range []string{"signing", "retry_policy", "secret_rotation"} {
+		if value, ok := doc.WebhookMetadata[key]; ok {
+			data[key] = value
+		}
+	}
+	return map[string]any{"data": data}, nil
+}
+
+// mcpEventSchemas is the webhook catalog for one event type or prefix.
+func mcpEventSchemas(filter string) (any, *CLIError) {
+	filter = strings.TrimSuffix(strings.TrimSpace(filter), ".")
+	match := func(eventType string) bool { return eventType == filter || strings.HasPrefix(eventType, filter+".") }
+	catalog, err := eventCatalogFor(match)
+	if err != nil {
+		return nil, cliError(ExitUsage, "internal_error", "SCHEMA_SNAPSHOT_INVALID", err.Error())
+	}
+	if webhooks, _ := catalog["webhooks"].(map[string]any); len(webhooks) > 0 {
+		return catalog, nil
+	}
+	summaries, _ := eventTypeSummaries()
+	type candidate struct {
+		name     string
+		distance int
+	}
+	var candidates []candidate
+	for _, summary := range summaries {
+		name := summary["event_type"]
+		group, _, _ := strings.Cut(name, ".")
+		distance := min(levenshteinDistance(filter, name), levenshteinDistance(filter, group))
+		if strings.Contains(name, filter) {
+			distance = 0
+		}
+		if distance <= max(2, len(filter)/3) {
+			candidates = append(candidates, candidate{name, distance})
+		}
+	}
+	sort.SliceStable(candidates, func(i, j int) bool { return candidates[i].distance < candidates[j].distance })
+	var suggestions []string
+	for _, c := range candidates[:min(3, len(candidates))] {
+		suggestions = append(suggestions, c.name)
+	}
+	message := "No webhook event type matches " + filter + "."
+	if len(suggestions) > 0 {
+		message += " Did you mean " + strings.Join(suggestions, ", ") + "?"
+	}
+	e := usageError("UNKNOWN_EVENT_TYPE", message+" Call schema_events without event_type to list event types.", "event_type")
+	e.Details = []map[string]any{{"input": filter, "suggestions": suggestions}}
+	return nil, e
+}
+
+// mcpCanonicalArguments maps tool names given to help and the schema tools,
+// such as customers_create, to the command names the CLI resolves.
+func mcpCanonicalArguments(cmd *Command, arguments map[string]any) map[string]any {
+	key := map[string]string{"help": "topic", "schema.input": "command", "schema.output": "command", "schema.command": "command", "schema.commands": "prefix"}[cmd.CanonicalName]
+	value, ok := arguments[key].(string)
+	if !ok || !strings.Contains(value, "_") {
+		return arguments
+	}
+	out := copyMap(arguments)
+	out[key] = mcpCanonicalToolName(value)
+	return out
+}
+
+// mcpTopicTool resolves a help or schema topic to an MCP tool.
+func (a *App) mcpTopicTool(topic string) (*Command, bool) {
+	canonical := strings.TrimSpace(topic)
+	if alias, ok := a.Registry.ByName(canonical); ok {
+		canonical = alias.CanonicalName
+	}
+	for _, tool := range a.mcpAllTools() {
+		if tool.CanonicalName == canonical {
+			return tool, true
+		}
+	}
+	return nil, false
+}
+
+// mcpLocalToolResult answers the help and schema tools in MCP terms where the
+// CLI's answer would describe flags and files, and gates signup. It reports
+// false when the CLI command should run as usual.
+func (a *App) mcpLocalToolResult(ctx context.Context, cmd *Command, arguments map[string]any, opts Options, policy mcpPolicy, structured bool) (map[string]any, bool) {
+	finish := func(value any, e *CLIError) (map[string]any, bool) {
+		if e != nil {
+			return mcpCommandError(cmd, mcpCallResult{value: mcpCLIErrorEnvelope(e), exit: e.ExitCode}, policy, ""), true
+		}
+		transformOptions, transformed, e := mcpOutputTransformOptions(cmd, arguments)
+		if e == nil && transformed {
+			// Transforms run on decoded JSON, as they do for CLI output.
+			raw, _ := json.Marshal(value)
+			var decoded any
+			_ = decodeJSONNumbers(raw, &decoded)
+			transformOptions.outputLimit = mcpMaxOutputBytes
+			value, e = applyOutputTransforms(ctx, decoded, transformOptions)
+		}
+		if e != nil {
+			return mcpCommandError(cmd, mcpCallResult{value: mcpCLIErrorEnvelope(e), exit: e.ExitCode}, policy, ""), true
+		}
+		if refused := mcpResultTooLarge(cmd, arguments, value); refused != nil {
+			return refused, true
+		}
+		return mcpToolResult(value, structured, transformed, ""), true
+	}
+	switch cmd.CanonicalName {
+	case "help":
+		topic, _ := arguments["topic"].(string)
+		topic = strings.TrimSpace(topic)
+		all := a.mcpAllTools()
+		switch topic {
+		case "":
+			return finish(mcpHelpIndex(all, policy), nil)
+		case "controls":
+			return finish(map[string]any{"data": map[string]any{"controls": mcpControlHelp, "usage": "Pass controls inside the _flint object argument, for example {\"_flint\": {\"dry_run\": \"client\"}}. Each tool's schema lists the controls it accepts."}}, nil)
+		case "events":
+			return finish(mcpEventList())
+		}
+		if tool, ok := a.mcpTopicTool(topic); ok {
+			return finish(mcpToolHelp(tool, policy))
+		}
+		var group []map[string]any
+		for _, tool := range all {
+			if strings.HasPrefix(tool.CanonicalName, topic+".") {
+				group = append(group, map[string]any{"name": mcpToolName(tool.CanonicalName), "title": mcpToolTitle(tool), "enabled": policy.includes(tool.CanonicalName)})
+			}
+		}
+		if len(group) > 0 {
+			return finish(map[string]any{"data": map[string]any{"group": mcpToolName(topic), "tools": group, "next": "Call help with a tool name for its arguments."}}, nil)
+		}
+	case "schema.input":
+		command, _ := arguments["command"].(string)
+		if tool, ok := a.mcpTopicTool(command); ok {
+			schema, e := schemaForMCPTool(tool, policy)
+			return finish(schema, e)
+		}
+	case "schema.events":
+		if filter, ok := arguments["event_type"].(string); ok {
+			return finish(mcpEventSchemas(filter))
+		}
+		return finish(mcpEventList())
+	case "signup":
+		if message := a.mcpSignupViolation(opts); message != "" {
+			return mcpToolError(message, nil), true
+		}
+	}
+	return nil, false
+}
+
+// mcpSignupViolation refuses signup when it would replace the credential the
+// human already saved for the server's profile.
+func (a *App) mcpSignupViolation(opts Options) string {
+	resolved, _, err := a.resolveConfig(opts)
+	if err != nil {
+		return "" // Signup reports the configuration problem itself.
+	}
+	existing, err := a.LoadCredential(resolved.ProfileName)
+	if err != nil || strings.TrimSpace(existing) == "" {
+		return ""
+	}
+	return "signup is not available here: profile " + resolved.ProfileName + " already has a saved Flint credential, and signup would replace it with a new account's key. Do not retry. The user already has a Flint login; if they want a new account, they can run flint signup in a terminal."
 }
 
 type mcpCallResult struct {
@@ -1038,6 +2093,32 @@ type mcpCallResult struct {
 	exit        int
 	environment string
 	liveBlocked bool
+	warnings    string // stderr of a successful command, minus progress and debug lines
+}
+
+// mcpResultTooLarge refuses an oversized read result with advice to narrow
+// it. Writes are never refused here: their result reports a completed change.
+func mcpResultTooLarge(cmd *Command, args map[string]any, value any) map[string]any {
+	method, _ := args["method"].(string)
+	if cmd.Mutation || (cmd.CanonicalName == "api" && !strings.EqualFold(method, http.MethodGet)) {
+		return nil
+	}
+	raw, err := json.Marshal(value)
+	if err != nil || len(raw) <= mcpMaxResultBytes {
+		return nil
+	}
+	message := fmt.Sprintf("The result is %d bytes, over this server's %d byte limit for one tool result, so it was not returned. Narrow it and call again: keep only the fields you need with _flint.select or _flint.jq, use page_size and page_token instead of _flint.all, or add filter arguments (schema_events takes event_type).", len(raw), mcpMaxResultBytes)
+	return mcpToolError(message, map[string]any{"error": map[string]any{"type": "usage_error", "code": "RESULT_TOO_LARGE", "message": message, "details": map[string]any{"bytes": len(raw), "limit": mcpMaxResultBytes}}})
+}
+
+// mcpWithWarnings adds CLI warnings to a successful result as their own text
+// block, after the result and the environment line.
+func mcpWithWarnings(result map[string]any, warnings string) map[string]any {
+	if warnings = strings.TrimSpace(warnings); warnings != "" {
+		content, _ := result["content"].([]map[string]any)
+		result["content"] = append(content, map[string]any{"type": "text", "text": "Warnings:\n" + warnings})
+	}
+	return result
 }
 
 // runMCPTool runs a tool, applies the live and confirmation gates, and turns
@@ -1062,7 +2143,10 @@ func (a *App) runMCPTool(ctx context.Context, cmd *Command, args map[string]any,
 	if outcome.exit != ExitOK {
 		return mcpCommandError(cmd, outcome, policy, "")
 	}
-	return mcpToolResult(outcome.value, structured, outcome.transformed, outcome.environment)
+	if refused := mcpResultTooLarge(cmd, args, outcome.value); refused != nil {
+		return refused
+	}
+	return mcpWithWarnings(mcpToolResult(outcome.value, structured, outcome.transformed, outcome.environment), outcome.warnings)
 }
 
 func mcpErrorField(value any, field string) string {
@@ -1088,7 +2172,7 @@ func mcpErrorText(value any) string { return mcpErrorField(value, "message") }
 
 func mcpConfirmationRequired(value any) bool {
 	code := mcpErrorField(value, "code")
-	return code == "CONFIRMATION_REQUIRED" || code == "PRODUCTION_CONFIRMATION_REQUIRED"
+	return code == "CONFIRMATION_REQUIRED" || code == "PRODUCTION_CONFIRMATION_REQUIRED" || code == "UNVERIFIED_ENVIRONMENT_CONFIRMATION_REQUIRED"
 }
 
 func mcpConfirmationUnavailable(cmd *Command, cliMessage string) string {
@@ -1109,7 +2193,7 @@ func (a *App) mcpAskConfirmation(ctx context.Context, session *mcpSession, cmd *
 	if len(rawArgs) > 2000 {
 		rawArgs = append(rawArgs[:2000], []byte("...")...)
 	}
-	prompt := fmt.Sprintf("An AI agent wants to run the Flint tool %s (environment: %s). %s\n\nArguments: %s\n\nAllow this operation?", cmd.CanonicalName, environment, cliMessage, rawArgs)
+	prompt := fmt.Sprintf("An AI agent wants to run the Flint tool %s (environment: %s). %s\n\nArguments: %s\n\nAllow this operation?", mcpToolName(cmd.CanonicalName), environment, cliMessage, rawArgs)
 	requestCtx, cancel := context.WithTimeout(ctx, mcpConfirmationDeadline)
 	defer cancel()
 	response, err := session.request(requestCtx, "elicitation/create", map[string]any{
@@ -1117,7 +2201,7 @@ func (a *App) mcpAskConfirmation(ctx context.Context, session *mcpSession, cmd *
 		"requestedSchema": map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"confirm": map[string]any{"type": "boolean", "title": "Allow " + cmd.CanonicalName, "description": "Approve this " + environment + " operation.", "default": false},
+				"confirm": map[string]any{"type": "boolean", "title": "Allow " + mcpToolName(cmd.CanonicalName), "description": "Approve this " + environment + " operation.", "default": false},
 			},
 			"required": []string{"confirm"},
 		},
@@ -1138,7 +2222,7 @@ func (a *App) mcpAskConfirmation(ctx context.Context, session *mcpSession, cmd *
 	if action == "accept" && content["confirm"] == true {
 		return true, ""
 	}
-	return false, "The user declined to confirm " + cmd.CanonicalName + "; the operation was not performed. Do not retry unless the user asks."
+	return false, "The user declined to confirm " + mcpToolName(cmd.CanonicalName) + "; the operation was not performed. Do not retry unless the user asks."
 }
 
 // mcpEnvironmentObserver sees the child command's HTTP traffic. It records the
@@ -1222,6 +2306,127 @@ func (a *App) mcpObservedHTTPClient(observer *mcpEnvironmentObserver) *http.Clie
 	return &client
 }
 
+type mcpProgressKey struct{}
+
+// mcpProgress sends notifications/progress for a tools/call whose request
+// carried a progressToken.
+type mcpProgress struct {
+	session  *mcpSession
+	token    any
+	messages bool // Progress messages arrived in protocol 2025-03-26.
+	mu       sync.Mutex
+	count    int
+}
+
+func mcpProgressFrom(ctx context.Context) *mcpProgress {
+	progress, _ := ctx.Value(mcpProgressKey{}).(*mcpProgress)
+	return progress
+}
+
+func (p *mcpProgress) notify(message string) {
+	if p == nil {
+		return
+	}
+	// Holding the lock while writing keeps progress values in order.
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.count++
+	params := map[string]any{"progressToken": p.token, "progress": p.count}
+	if p.messages && message != "" {
+		params["message"] = message
+	}
+	_ = p.session.write(map[string]any{"jsonrpc": "2.0", "method": "notifications/progress", "params": params})
+}
+
+// mcpProgressMessage describes one of the CLI's --progress=json records.
+func mcpProgressMessage(record map[string]any) (string, bool) {
+	switch record["type"] {
+	case "pagination":
+		if resources, ok := record["resources"]; ok {
+			return fmt.Sprintf("Fetched page %v (%v resources)", record["pages"], resources), true
+		}
+		return fmt.Sprintf("Fetched page %v", record["pages"]), true
+	case "wait":
+		return "Waiting for " + strings.Join(mcpStrings(record["conditions"]), ", "), true
+	case "upgrade":
+		return fmt.Sprint(record["stage"]), true
+	}
+	return "", false
+}
+
+// mcpStderr captures a child command's stderr line by line. With progress,
+// the CLI's JSON progress records become notifications; debug lines go to the
+// server's own stderr; everything else is kept as warnings for the agent.
+type mcpStderr struct {
+	mu       sync.Mutex
+	kept     mcpCappedBuffer
+	partial  []byte
+	progress *mcpProgress
+	debug    io.Writer
+}
+
+func (w *mcpStderr) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.partial = append(w.partial, p...)
+	for {
+		index := bytes.IndexByte(w.partial, '\n')
+		if index < 0 {
+			break
+		}
+		w.line(w.partial[:index])
+		w.partial = w.partial[index+1:]
+	}
+	return len(p), nil
+}
+
+func (w *mcpStderr) line(line []byte) {
+	if w.progress != nil && bytes.HasPrefix(line, []byte("{")) {
+		var record map[string]any
+		if json.Unmarshal(line, &record) == nil {
+			if message, ok := mcpProgressMessage(record); ok {
+				w.progress.notify(message)
+				return
+			}
+		}
+	}
+	if bytes.HasPrefix(line, []byte("debug: ")) {
+		if w.debug != nil {
+			_, _ = w.debug.Write(append(append([]byte(nil), line...), '\n'))
+		}
+		return
+	}
+	_, _ = w.kept.Write(append(append([]byte(nil), line...), '\n'))
+}
+
+func (w *mcpStderr) String() string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if len(w.partial) > 0 {
+		w.line(w.partial)
+		w.partial = nil
+	}
+	return strings.TrimSpace(w.kept.String())
+}
+
+// mcpLineNotifier reports each stream record a command writes as progress.
+type mcpLineNotifier struct {
+	io.Writer
+	progress *mcpProgress
+	records  int
+}
+
+func (w *mcpLineNotifier) Write(p []byte) (int, error) {
+	n, err := w.Writer.Write(p)
+	for _, b := range p[:n] {
+		if b == '\n' {
+			w.records++
+			w.progress.notify(fmt.Sprintf("Received %d stream records", w.records))
+		}
+	}
+	return n, err
+}
+
 func (a *App) callMCPCommand(ctx context.Context, cmd *Command, args map[string]any, parent Options) (any, bool, int) {
 	outcome := a.runMCPCommand(ctx, cmd, args, parent, mcpPolicyFromOptions(parent), nil)
 	return outcome.value, outcome.transformed, outcome.exit
@@ -1238,7 +2443,9 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 			}
 		}
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, bound)
+		// Let the CLI finish its --for checkpoint and report unmet counts
+		// before the outer MCP safety deadline cancels it.
+		ctx, cancel = context.WithTimeout(ctx, bound+time.Second)
 		defer cancel()
 	}
 	argv := append([]string(nil), cmd.Path[1:]...)
@@ -1273,6 +2480,25 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 			body[key] = value
 		}
 	}
+	if explicit, ok := body["body"].(map[string]any); ok && cmd.CanonicalName == "api" {
+		delete(body, "body")
+		if len(body) > 0 {
+			e := usageError("CONFLICTING_ARGUMENTS", "Put every request field inside body; do not also pass fields as top-level arguments.", "body")
+			return mcpCallResult{value: mcpCLIErrorEnvelope(e), exit: e.ExitCode}
+		}
+		body = explicit
+	}
+	progress := mcpProgressFrom(ctx)
+	if progress != nil && !cmd.Stream {
+		// The CLI reports progress only for these; --progress elsewhere is a
+		// usage error.
+		controls, _ := args["_flint"].(map[string]any)
+		all, _ := controls["all"].(bool)
+		paginate, _ := controls["paginate"].(bool)
+		if _, waits := controls["wait_for"]; all || paginate || waits || cmd.CanonicalName == "upgrade" {
+			argv = append(argv, "--progress=json")
+		}
+	}
 	if globals, ok := args["_flint"].(map[string]any); ok {
 		for key, value := range globals {
 			if key == "field" || key == "select" || key == "jq" {
@@ -1284,7 +2510,8 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	}
 	if cmd.Stream {
 		globals, _ := args["_flint"].(map[string]any)
-		if _, exists := globals["max_events"]; !exists {
+		_, hasDuration := globals["for"]
+		if _, exists := globals["max_events"]; !exists && !hasDuration {
 			argv = append(argv, "--max-events", fmt.Sprint(mcpMaxStreamEvents))
 		}
 		if _, exists := globals["for"]; !exists {
@@ -1316,9 +2543,12 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	defer cancelChild()
 	observer := &mcpEnvironmentObserver{allowLive: policy.allowLive, cancel: cancelChild}
 	stdout := &mcpCappedBuffer{limit: mcpMaxOutputBytes}
-	stderr := &mcpCappedBuffer{limit: mcpMaxStderrBytes}
+	stderr := &mcpStderr{kept: mcpCappedBuffer{limit: mcpMaxStderrBytes}, progress: progress, debug: a.Stderr}
 	child := *a
 	child.Stdout = stdout
+	if progress != nil && cmd.Stream {
+		child.Stdout = &mcpLineNotifier{Writer: stdout, progress: progress}
+	}
 	child.Stderr = stderr
 	child.Stdin = stdin
 	child.IsTTY = func() bool { return false }
@@ -1327,6 +2557,9 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	exit := child.Run(argv)
 	environment, blocked := observer.state()
 	outcome := mcpCallResult{exit: exit, environment: environment}
+	if exit == ExitOK {
+		outcome.warnings = stderr.String()
+	}
 	if !policy.allowLive && (blocked || exit != ExitOK) {
 		var probe any
 		_ = decodeJSONNumbers(bytes.TrimSpace(stdout.Bytes()), &probe)
@@ -1345,14 +2578,14 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	}
 	trimmed := bytes.TrimSpace(stdout.Bytes())
 	if len(trimmed) == 0 {
-		outcome.value = map[string]any{"stderr": strings.TrimSpace(stderr.String())}
+		outcome.value, outcome.warnings = map[string]any{"stderr": stderr.String()}, ""
 		return outcome
 	}
 	var result any
 	if err := decodeJSONNumbers(trimmed, &result); err == nil {
 		if exit == ExitOK && transformed {
 			transformOptions.outputLimit = mcpMaxOutputBytes
-			result, transformErr = applyOutputTransforms(childCtx, result, transformOptions)
+			result, transformErr = applyCommandOutputTransforms(childCtx, result, cmd, transformOptions)
 			if transformErr != nil {
 				outcome.value, outcome.exit = mcpCLIErrorEnvelope(transformErr), transformErr.ExitCode
 				return outcome
@@ -1438,14 +2671,11 @@ func mcpOutputTransformOptions(cmd *Command, args map[string]any) (Options, bool
 }
 
 func mcpCLIErrorEnvelope(err *CLIError) map[string]any {
-	payload := map[string]any{"type": err.Type, "code": err.Code, "message": err.Message}
-	if err.Param != "" {
-		payload["param"] = err.Param
-	}
-	if err.Details != nil {
-		payload["details"] = err.Details
-	}
-	return map[string]any{"error": payload}
+	var stdout bytes.Buffer
+	(&App{Stdout: &stdout}).writeError(err, Options{Output: "json"})
+	var envelope map[string]any
+	_ = json.Unmarshal(stdout.Bytes(), &envelope)
+	return envelope
 }
 
 func appendMCPFlag(argv []string, flag string, value any) []string {
@@ -1498,9 +2728,8 @@ var mcpControlFlags = map[string]string{
 	"live": "live", "confirm": "confirm", "idempotency-key": "idempotency_key", "dry-run": "dry_run",
 	"preview": "preview", "page-size": "page_size", "page-token": "page_token", "all": "all",
 	"expand": "expand", "field": "field", "select": "select", "jq": "jq", "for": "for",
-	"max-events": "max_events", "wait-for": "wait_for", "progress": "progress", "open": "open",
+	"max-events": "max_events", "wait-for": "wait_for",
 	"timeout": "timeout", "merchant": "merchant", "profile": "profile", "paginate": "paginate",
-	"debug": "debug", "quiet": "quiet",
 }
 
 var mcpFlagPattern = regexp.MustCompile(`--([a-z][a-z0-9-]*)(=client)?`)
@@ -1540,16 +2769,83 @@ func mcpTranslateRemediation(message string, cmd *Command, policy mcpPolicy) str
 	})
 }
 
+// mcpCredentialMessages replace CLI sign-in advice, which an MCP client
+// configuration cannot follow, for errors about a missing credential.
+var mcpCredentialMessages = map[string]string{
+	"API_KEY_REQUIRED":         "No Flint credential is configured for this MCP server.",
+	"CREDENTIAL_LOOKUP_FAILED": "This MCP server could not read its Flint credential from the OS keychain, which may be locked.",
+}
+
+const mcpCredentialRemedy = " Do not retry. Tell the user to set FLINT_API_KEY (a sandbox flint_test_ key from " + dashboardAPIKeysURL + ") or FLINT_PROFILE (a profile saved with flint login) in this server's env in their MCP client configuration, then restart the server."
+
+// mcpTranslateDetails rewrites CLI flag advice anywhere in error details,
+// leaving commands meant for the human and identifiers unchanged.
+func mcpTranslateDetails(value any, cmd *Command, policy mcpPolicy) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(typed))
+		for key, item := range typed {
+			if key == "command" || key == "url" || key == "idempotency_key" {
+				out[key] = item
+				continue
+			}
+			out[key] = mcpTranslateDetails(item, cmd, policy)
+		}
+		return out
+	case []any:
+		out := make([]any, len(typed))
+		for i, item := range typed {
+			out[i] = mcpTranslateDetails(item, cmd, policy)
+		}
+		return out
+	case []map[string]any:
+		out := make([]any, len(typed))
+		for i, item := range typed {
+			out[i] = mcpTranslateDetails(item, cmd, policy)
+		}
+		return out
+	case string:
+		return mcpTranslateRemediation(typed, cmd, policy)
+	}
+	return value
+}
+
 func mcpCommandError(cmd *Command, outcome mcpCallResult, policy mcpPolicy, override string) map[string]any {
 	value := outcome.value
 	message := override
 	if message == "" {
 		message = mcpTranslateRemediation(mcpErrorText(value), cmd, policy)
 	}
+	code := mcpErrorField(value, "code")
+	if replacement, ok := mcpCredentialMessages[code]; ok && override == "" {
+		message = replacement + mcpCredentialRemedy
+	}
 	if envelope, ok := value.(map[string]any); ok {
 		if e, ok := envelope["error"].(map[string]any); ok {
 			copyEnvelope := copyMap(envelope)
 			copyError := copyMap(e)
+			if remediation, has := copyError["remediation"]; has {
+				copyError["remediation"] = mcpTranslateDetails(remediation, cmd, policy)
+			}
+			if _, credential := mcpCredentialMessages[code]; credential {
+				copyError["remediation"] = map[string]any{"next_actions": []any{map[string]any{"reason_message": strings.TrimSpace(mcpCredentialRemedy)}}}
+			}
+			if details, has := copyError["details"]; has {
+				translated := mcpTranslateDetails(details, cmd, policy)
+				if _, credential := mcpCredentialMessages[code]; credential {
+					if detailMap, ok := translated.(map[string]any); ok {
+						detailMap["remediation"] = map[string]any{"next_actions": []any{map[string]any{"reason_message": strings.TrimSpace(mcpCredentialRemedy)}}}
+					}
+				}
+				copyError["details"] = translated
+				// A retry must reuse the key, or a write that already reached
+				// Flint could run twice.
+				if detailMap, ok := translated.(map[string]any); ok && !strings.Contains(message, "_flint.idempotency_key") {
+					if key, ok := detailMap["idempotency_key"].(string); ok && key != "" {
+						message = strings.TrimSpace(message + ` To retry, call the tool again with the same arguments and _flint.idempotency_key set to "` + key + `"; a different key could make the write run twice.`)
+					}
+				}
+			}
 			if _, has := copyError["message"]; has {
 				copyError["message"] = message
 			}
@@ -1604,7 +2900,17 @@ func mcpOutputSchema(cmd *Command) (map[string]any, *CLIError) {
 		return nil, outputErr
 	}
 	if cmd.Stream {
-		return mcpStreamOutputSchema(), nil
+		stream := mcpStreamOutputSchema()
+		if cmd.CanonicalName == "listen" {
+			return map[string]any{"type": "object", "anyOf": []any{stream, map[string]any{
+				"type": "object", "additionalProperties": false, "required": []string{"data"},
+				"properties": map[string]any{"data": map[string]any{
+					"type": "object", "additionalProperties": false, "required": []string{"signing_secret", "source"},
+					"properties": map[string]any{"signing_secret": map[string]any{"type": "string"}, "source": map[string]any{"type": "string"}},
+				}},
+			}}}, nil
+		}
+		return stream, nil
 	}
 	variants := []any{outputSchema}
 	if cmd.Supports.DryRunClient || cmd.Destructive {
@@ -1676,7 +2982,7 @@ func mcpStreamOutputSchema() map[string]any {
 					"additionalProperties": true,
 					"required":             []string{"type"},
 					"properties": map[string]any{
-						"type": map[string]any{"type": "string", "enum": []string{"version", "event", "listener", "ready", "gap", "withheld", "forward", "disconnect", "checkpoint"}},
+						"type": map[string]any{"type": "string", "enum": []string{"version", "event", "listener", "ready", "gap", "withheld", "forward", "reconnect", "disconnect", "checkpoint"}},
 					},
 				},
 			},

@@ -3,6 +3,11 @@
 const { spawn } = require("node:child_process");
 const path = require("node:path");
 
+// Exit codes 1-6 report Flint CLI outcomes such as usage, authentication, and
+// network errors. A broken installation is none of these, so the wrapper uses
+// the CLI's internal software error code instead.
+const EXIT_SOFTWARE = 70;
+
 const platform = process.platform;
 const arch = process.arch === "x64" ? "amd64" : process.arch;
 const supported = new Set([
@@ -15,8 +20,8 @@ const supported = new Set([
 const target = `${platform}-${arch}`;
 
 if (!supported.has(target)) {
-  process.stderr.write(`Flint CLI does not publish a binary for ${platform}/${process.arch}.\n`);
-  process.exit(2);
+  process.stderr.write(`Flint CLI does not publish a binary for ${platform}/${process.arch}. Supported platforms: macOS (arm64, x64), Linux (arm64, x64), and Windows (x64).\n`);
+  process.exit(EXIT_SOFTWARE);
 }
 
 const packagePlatform = platform === "win32" ? "windows" : platform;
@@ -26,11 +31,14 @@ try {
   packagePath = path.dirname(require.resolve(`${packageName}/package.json`));
 } catch {
   process.stderr.write(`The optional platform package ${packageName} is missing. Reinstall @flintpay/cli without omitting optional dependencies.\n`);
-  process.exit(3);
+  process.exit(EXIT_SOFTWARE);
 }
 
 const binary = path.join(packagePath, "bin", platform === "win32" ? "flint.exe" : "flint");
 const child = spawn(binary, process.argv.slice(2), { stdio: "inherit" });
+// Forward signals sent to this process alone, such as an MCP client stopping
+// its server. A terminal Ctrl-C reaches the CLI directly as well, because it
+// shares this process group; the CLI ignores such a duplicate for a moment.
 const signalHandlers = new Map();
 for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
   const handler = () => child.kill(signal);
@@ -44,8 +52,8 @@ function removeSignalHandlers() {
 }
 child.on("error", (error) => {
   removeSignalHandlers();
-  process.stderr.write(`${error.message}\n`);
-  process.exitCode = 5;
+  process.stderr.write(`Could not start the Flint CLI executable from ${packageName}: ${error.message}. Reinstall @flintpay/cli.\n`);
+  process.exitCode = EXIT_SOFTWARE;
 });
 child.on("exit", (code, signal) => {
   removeSignalHandlers();

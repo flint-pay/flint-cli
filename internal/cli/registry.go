@@ -6,12 +6,14 @@ import (
 )
 
 type Registry struct {
-	Commands []*Command
-	byName   map[string]*Command
-	byPath   map[string]*Command
+	Commands  []*Command
+	localOnly bool
+	byName    map[string]*Command
+	byPath    map[string]*Command
 }
 
 func (r *Registry) commandsUnder(prefix []string) []*Command {
+	r.ensureAPICommands()
 	var commands []*Command
 	for _, command := range r.Commands {
 		if len(command.Path) <= len(prefix) {
@@ -31,9 +33,26 @@ func (r *Registry) commandsUnder(prefix []string) []*Command {
 	return commands
 }
 
-func NewRegistry() *Registry {
-	r := &Registry{byName: map[string]*Command{}, byPath: map[string]*Command{}}
-	for _, c := range commandDefinitions() {
+func NewRegistry() *Registry { return newRegistry(true) }
+
+func newLocalRegistry() *Registry { return newRegistry(false) }
+
+func (r *Registry) ensureAPICommands() {
+	if r.localOnly {
+		*r = *NewRegistry()
+	}
+}
+
+func newRegistry(includeAPI bool) *Registry {
+	r := &Registry{localOnly: !includeAPI, byName: map[string]*Command{}, byPath: map[string]*Command{}}
+	definitions := curatedCommandDefinitions()
+	if includeAPI {
+		definitions = append(definitions, publicAPICommands(definitions)...)
+	}
+	for _, c := range definitions {
+		if !includeAPI && !c.Local {
+			continue
+		}
 		if c.CanonicalName == "" {
 			c.CanonicalName = c.Name
 		}
@@ -52,7 +71,7 @@ func NewRegistry() *Registry {
 			c.CanonicalName == "auth.status" {
 			c.EnvironmentAffinity = EnvironmentAffinityAccount
 		}
-		if operation, ok := openAPIOperationByID(c.OperationID); ok && operation.FlintRouteClass != "" {
+		if operation, ok := registryOperation(c); ok && operation.FlintRouteClass != "" {
 			// Safety classification belongs to the public API contract. Keeping the
 			// CLI confirmation gate derived from it prevents a new sensitive route
 			// from silently behaving like an ordinary write.
@@ -70,6 +89,11 @@ func NewRegistry() *Registry {
 		}
 		if c.Get && c.CanonicalName != "auth.status" {
 			c.Supports.WaitFor = true
+		}
+		for i := range c.Arguments {
+			if c.Arguments[i].Type == "time" {
+				c.Arguments[i].Description += "; RFC3339, YYYY-MM-DD (UTC), 2h, Nd, Nw, or yesterday"
+			}
 		}
 		for _, argument := range c.Arguments {
 			if argument.Name == "page_size" {
@@ -90,7 +114,9 @@ func NewRegistry() *Registry {
 		case "support.open":
 			c.Render = "support_open"
 		}
-		applyPublicOperationMetadata(c)
+		if !c.Local {
+			applyPublicOperationMetadata(c)
+		}
 		r.add(c)
 	}
 	sort.Slice(r.Commands, func(i, j int) bool { return r.Commands[i].Name < r.Commands[j].Name })
@@ -109,9 +135,29 @@ func (r *Registry) add(c *Command) {
 	}
 }
 
-func (r *Registry) ByName(name string) (*Command, bool) { c, ok := r.byName[name]; return c, ok }
+func (r *Registry) ByName(name string) (*Command, bool) {
+	c, ok := r.byName[name]
+	if !ok && r.localOnly {
+		r.ensureAPICommands()
+		c, ok = r.byName[name]
+	}
+	return c, ok
+}
 func (r *Registry) ByPath(path []string) (*Command, bool) {
 	c, ok := r.byPath[strings.Join(path, " ")]
+	if !ok && r.localOnly {
+		localPrefix := false
+		for n := len(path) - 1; n > 1; n-- {
+			if _, exists := r.byPath[strings.Join(path[:n], " ")]; exists {
+				localPrefix = true
+				break
+			}
+		}
+		if !localPrefix {
+			r.ensureAPICommands()
+			c, ok = r.byPath[strings.Join(path, " ")]
+		}
+	}
 	return c, ok
 }
 
@@ -144,12 +190,24 @@ func alias(c *Command, names ...string) *Command {
 }
 
 func commandDefinitions() []*Command {
+	commands := curatedCommandDefinitions()
+	return append(commands, publicAPICommands(commands)...)
+}
+
+func registryOperation(c *Command) (openAPIOperation, bool) {
+	if c.OperationID == "" {
+		return openAPIOperation{}, false
+	}
+	return openAPIOperationByID(c.OperationID)
+}
+
+func curatedCommandDefinitions() []*Command {
 	page := []Arg{flag("page_size", "integer", "", "page_size", "Number of resources per page", false), flag("page_token", "string", "", "page_token", "Pagination token", false)}
 	with := func(base []Arg, extra ...Arg) []Arg { out := append([]Arg(nil), base...); return append(out, extra...) }
-	input := flag("input", "string", "", "", "JSON request body file, or - for stdin", false)
+	input := flag("input", "string", "", "", "JSON body: FILE.json, - for stdin, or inline JSON", false)
 	commands := []*Command{
 		{Name: "init", Path: pathWithFlint("init"), Description: "Initialize Flint CLI context", Local: true, Examples: ex("flint init")},
-		alias(&Command{Name: "auth.login", Path: pathWithFlint("auth", "login"), Description: "Sign in through the Flint website (recommended for local development)", Local: true, MCPHidden: true, Arguments: []Arg{{Name: "new_session", Flag: "--new-session", Type: "boolean", Description: "Replace the saved session after browser approval"}, {Name: "scope", Flag: "--scope", Type: "string", Repeat: true, Description: "Request an additional public API scope"}, {Name: "no_open", Flag: "--no-open", Type: "boolean", Description: "Print the sign-in link without opening a browser"}}, Examples: ex("flint login", "flint auth login", "flint auth login --no-open", "flint auth login --new-session --scope commerce.subscriptions.read", "flint auth login --live --profile production")}, "login"),
+		alias(&Command{Name: "auth.login", Path: pathWithFlint("auth", "login"), Description: "Sign in through the Flint website (recommended for local development)", Local: true, MCPHidden: true, Arguments: []Arg{{Name: "no_wait", Flag: "--no-wait", Type: "boolean", Description: "Save pending approval and exit; run the returned next_command to resume"}, {Name: "new_session", Flag: "--new-session", Type: "boolean", Description: "Replace the saved session after browser approval"}, {Name: "scope", Flag: "--scope", Type: "string", Repeat: true, Description: "Request an additional public API scope"}, {Name: "no_open", Flag: "--no-open", Type: "boolean", Description: "Print the sign-in link without opening a browser"}}, Examples: ex("flint login", "flint auth login", "flint auth login --no-open", "flint auth login --new-session --scope commerce.subscriptions.read", "flint auth login --live --profile production")}, "login"),
 		alias(&Command{Name: "auth.reauth", Path: pathWithFlint("auth", "reauth"), Description: "Change authorized contexts or add scopes in the browser", Local: true, MCPHidden: true, Arguments: []Arg{{Name: "scope", Flag: "--scope", Type: "string", Repeat: true, Description: "Add a public API scope to the active context"}, {Name: "no_open", Flag: "--no-open", Type: "boolean"}}, Examples: ex("flint reauth", "flint reauth --scope commerce.subscriptions.read")}, "reauth"),
 		{Name: "context.list", Path: pathWithFlint("context", "list"), Description: "List authorized contexts and the active selection", Local: true, MCPHidden: true, Examples: ex("flint context list")},
 		{Name: "context.switch", Path: pathWithFlint("context", "switch"), Description: "Choose the active merchant and environment", Local: true, MCPHidden: true, Arguments: []Arg{{Name: "context_id", Type: "string", Positional: 1}}, Examples: ex("flint context switch", "flint context switch ctx_123", "flint context switch ctx_live --live")},
@@ -158,10 +216,11 @@ func commandDefinitions() []*Command {
 		alias(&Command{Name: "auth.logout", Path: pathWithFlint("auth", "logout"), Description: "Revoke the active OAuth session and remove the profile credential", Local: true, Destructive: true, Examples: ex("flint auth logout --confirm")}, "logout"),
 		{Name: "config.get", Path: pathWithFlint("config", "get"), Description: "Print resolved Flint CLI configuration", Local: true, Examples: ex("flint config get --output json")},
 		{Name: "config.set", Path: pathWithFlint("config", "set"), Description: "Set profile or merchant guard configuration", Local: true, Arguments: []Arg{{Name: "key", Type: "string", Required: true, Positional: 1}, {Name: "value", Type: "string", Required: true, Positional: 2}}, Examples: ex("flint config set profile default", "flint config set merchant mer_123")},
+		{Name: "config.unset", Path: pathWithFlint("config", "unset"), Description: "Clear a saved profile setting", Local: true, Arguments: []Arg{{Name: "key", Type: "string", Required: true, Positional: 1}}, Examples: ex("flint config unset merchant")},
 		{Name: "config.validate", Path: pathWithFlint("config", "validate"), Description: "Validate global and project Flint configuration", Local: true, Examples: ex("flint config validate --output json")},
-		{Name: "doctor", Path: pathWithFlint("doctor"), Description: "Check credential, connectivity, scopes, and API compatibility", Local: true, Arguments: []Arg{{Name: "fix", Flag: "--fix", Type: "boolean"}}, Examples: ex("flint doctor")},
+		{Name: "doctor", Path: pathWithFlint("doctor"), Description: "Check credential, connectivity, scopes, and API compatibility", Local: true, Arguments: []Arg{{Name: "fix", Flag: "--fix", Type: "boolean", Description: "Repair a stale default profile setting"}}, Examples: ex("flint doctor")},
 		{Name: "history", Path: pathWithFlint("history"), Description: "List or clear recent Flint resource IDs", Local: true, Arguments: []Arg{{Name: "clear", Flag: "--clear", Type: "boolean", Description: "Delete the saved history; requires --confirm"}}, Examples: ex("flint history", "flint history --clear --confirm")},
-		alias(&Command{Name: "upgrade", Path: pathWithFlint("upgrade"), Description: "Upgrade Flint CLI to the latest stable release", Local: true, MCPHidden: true, Examples: ex("flint upgrade", "flint update", "flint upgrade --output json")}, "update"),
+		alias(&Command{Name: "upgrade", Path: pathWithFlint("upgrade"), Description: "Upgrade Flint CLI to the latest stable release", Local: true, MCPHidden: true, Arguments: []Arg{{Name: "check", Flag: "--check", Type: "boolean", Description: "Report the current and latest stable versions without installing anything"}}, Examples: ex("flint upgrade", "flint update", "flint upgrade --check", "flint upgrade --check --output json", "flint upgrade --output json")}, "update"),
 		{Name: "version", Path: pathWithFlint("version"), Description: "Print CLI and public API schema version metadata", Local: true, Examples: ex("flint version --output json")},
 		apiCommand("merchants.get", "Get the credential-bound merchant", "GET", "/v1/merchant", "getMerchant", "", "MerchantResponse", nil, false, false, false, true, "flint merchants get"),
 		apiCommand("merchants.update", "Update the credential-bound merchant", "PATCH", "/v1/merchant", "updateMerchant", "UpdateMerchantRequest", "MerchantResponse", []Arg{input}, true, false, false, false, "flint merchants update --input merchant.json"),
@@ -192,6 +251,5 @@ func commandDefinitions() []*Command {
 		apiCommand("refunds.list", "List refunds", "GET", "/v1/refunds", "listRefunds", "", "RefundListResponse", with(page, idFlag("payment_intent", "pi_", "", "payment_intent_id", "Filter by payment intent", false), idFlag("order", "ord_", "", "order_id", "Filter by order", false), flag("status", "string", "", "status", "Filter by status", false)), false, false, false, false, "flint refunds list --payment-intent pi_123"),
 	}
 	commands = append(commands, additionalCommands(page, input)...)
-	commands = append(commands, publicAPICommands(commands)...)
 	return commands
 }

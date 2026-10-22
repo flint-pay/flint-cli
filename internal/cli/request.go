@@ -51,6 +51,13 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 			continue
 		}
 		for i, value := range values {
+			if arg.IDPrefix != "" {
+				value = strings.TrimSpace(value)
+				values[i] = value
+				if e := validateIDPrefix(value, arg); e != nil {
+					return req, e
+				}
+			}
 			if arg.AcceptsHistoryRef && strings.HasPrefix(value, "@last") {
 				resolvedID, e := a.resolveHistoryRef(value, arg.IDPrefix, historyScopeFromResolved(resolved))
 				if e != nil {
@@ -69,6 +76,9 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 				continue
 			}
 			if arg.BodyPath != "" && arg.Name != "input" {
+				if strings.HasSuffix(arg.BodyPath, ".currency") {
+					value = strings.ToUpper(value)
+				}
 				converted, e := convertValue(value, arg.Type)
 				if e != nil {
 					return req, usageError("INVALID_ARGUMENT", fmt.Sprintf("Invalid value for %s: %v", arg.Flag, e), arg.Name)
@@ -93,6 +103,12 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		}
 		values := opts.Raw[strings.TrimPrefix(arg.Flag, "--")]
 		for _, value := range values {
+			if arg.IDPrefix != "" {
+				value = strings.TrimSpace(value)
+				if e := validateIDPrefix(value, arg); e != nil {
+					return req, e
+				}
+			}
 			if arg.AcceptsHistoryRef && strings.HasPrefix(value, "@last") {
 				resolvedID, e := a.resolveHistoryRef(value, arg.IDPrefix, historyScopeFromResolved(resolved))
 				if e != nil {
@@ -113,7 +129,10 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 			query.Add(arg.Query, value)
 		}
 	}
-	if opts.PageSize > 0 {
+	if opts.Limit > 0 {
+		query.Set("page_size", strconv.Itoa(min(opts.Limit, 100)))
+	}
+	if opts.PageSize > 0 && opts.Limit == 0 {
 		query.Set("page_size", strconv.Itoa(opts.PageSize))
 	}
 	if opts.PageToken != "" {
@@ -224,6 +243,22 @@ func (a *App) validateBody(cmd *Command, opts Options, body map[string]any, req 
 	}
 	warnings, e := validateRequestBody(target, label, body)
 	if e != nil {
+		if details, ok := e.Details.(map[string]any); ok {
+			if problems, ok := details["problems"].([]map[string]any); ok {
+				for _, problem := range problems {
+					path, _ := problem["path"].(string)
+					for _, arg := range cmd.Arguments {
+						flag := strings.TrimPrefix(arg.Flag, "--")
+						if arg.BodyPath != "" && len(opts.Raw[flag]) > 0 && path == jsonFieldPath(strings.Split(arg.BodyPath, ".")) {
+							annotated := path + " (from " + arg.Flag + ")"
+							problem["path"] = annotated
+							e.Message = strings.ReplaceAll(e.Message, path+":", annotated+":")
+							e.Param = flag
+						}
+					}
+				}
+			}
+		}
 		return e
 	}
 	req.Warnings = warnings
@@ -244,7 +279,9 @@ func (a *App) readInput(path string) (map[string]any, *CLIError) {
 		return map[string]any{}, nil
 	}
 	var reader io.Reader
-	if path == "-" {
+	if strings.HasPrefix(strings.TrimSpace(path), "{") {
+		reader = strings.NewReader(path)
+	} else if path == "-" {
 		reader = a.Stdin
 	} else {
 		f, err := os.Open(path)
@@ -409,6 +446,18 @@ func replaceSlice(root map[string]any, path string, value []any) error {
 	return nil
 }
 
+func validateIDPrefix(value string, arg Arg) *CLIError {
+	if strings.HasPrefix(value, arg.IDPrefix) || strings.HasPrefix(value, "@last") {
+		return nil
+	}
+	for _, prefix := range publicResourceIDPrefixes {
+		if prefix != arg.IDPrefix && strings.HasPrefix(value, prefix) {
+			return usageError("INVALID_RESOURCE_ID", fmt.Sprintf("%s expects an ID starting with %s; got %s.", arg.Name, arg.IDPrefix, value), arg.Name)
+		}
+	}
+	return nil
+}
+
 func resolveTime(value string, now time.Time) (string, error) {
 	if value == "yesterday" {
 		return now.Add(-24 * time.Hour).UTC().Format(time.RFC3339), nil
@@ -416,9 +465,22 @@ func resolveTime(value string, now time.Time) (string, error) {
 	if d, err := time.ParseDuration(value); err == nil && d > 0 {
 		return now.Add(-d).UTC().Format(time.RFC3339), nil
 	}
+	if len(value) > 1 && (strings.HasSuffix(value, "d") || strings.HasSuffix(value, "w")) {
+		n, err := strconv.ParseInt(value[:len(value)-1], 10, 64)
+		hours := int64(24)
+		if strings.HasSuffix(value, "w") {
+			hours *= 7
+		}
+		if err == nil && n > 0 && n <= int64((1<<63-1)/time.Hour)/hours {
+			return now.Add(-time.Duration(n*hours) * time.Hour).UTC().Format(time.RFC3339), nil
+		}
+	}
+	if date, err := time.Parse("2006-01-02", value); err == nil {
+		return date.UTC().Format(time.RFC3339), nil
+	}
 	instant, err := time.Parse(time.RFC3339, value)
 	if err != nil {
-		return "", fmt.Errorf("time must be RFC3339, a relative duration such as 2h, or yesterday")
+		return "", fmt.Errorf("time must be RFC3339, YYYY-MM-DD (UTC midnight), a relative duration such as 2h, 7d, or 2w, or yesterday")
 	}
 	return instant.UTC().Format(time.RFC3339), nil
 }
