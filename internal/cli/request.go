@@ -25,8 +25,51 @@ type preparedRequest struct {
 	Warnings       []map[string]any
 }
 
-func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, resolved ResolvedConfig, key, baseURL string) (preparedRequest, *CLIError) {
-	req := preparedRequest{Method: cmd.Method, Path: cmd.APIPath}
+// commandIdempotencyClass derives write safety from the vendored API contract.
+func commandIdempotencyClass(cmd *Command) string {
+	if cmd == nil || cmd.Local || cmd.OperationID == "" {
+		return "none"
+	}
+	operation, _ := openAPIOperationByID(cmd.OperationID)
+	for _, parameter := range operation.Parameters {
+		if parameter["in"] == "header" && parameter["name"] == "Idempotency-Key" {
+			if parameter["required"] == true {
+				return "required"
+			}
+			return "optional"
+		}
+	}
+	return "none"
+}
+
+func requestIdempotencyKey(cmd *Command, opts Options) (string, *CLIError) {
+	switch commandIdempotencyClass(permissionCommand(cmd, opts)) {
+	case "required":
+		if strings.TrimSpace(opts.IdempotencyKey) == "" {
+			return "", usageError("IDEMPOTENCY_KEY_REQUIRED", "--idempotency-key is required for this operation. Save a key with the action before sending and reuse the same key on retry; a key generated for one command cannot protect a later run from repeating the action.", "--idempotency-key")
+		}
+		return opts.IdempotencyKey, nil
+	case "optional":
+		if opts.IdempotencyKey != "" {
+			return opts.IdempotencyKey, nil
+		}
+		key, err := newIdempotencyKey()
+		if err != nil {
+			return "", networkError("IDEMPOTENCY_KEY_GENERATION_FAILED", "Could not generate an idempotency key.", err)
+		}
+		return key, nil
+	default:
+		return "", nil
+	}
+}
+
+func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, resolved ResolvedConfig, key, baseURL string) (req preparedRequest, requestErr *CLIError) {
+	req = preparedRequest{Method: cmd.Method, Path: cmd.APIPath}
+	req.IdempotencyKey, requestErr = requestIdempotencyKey(cmd, opts)
+	if requestErr != nil {
+		return req, requestErr
+	}
+	defer func() { requestErr = withIdempotencyRetryContext(requestErr, req.IdempotencyKey) }()
 	if e := validateExpansions(cmd.OperationID, opts.Expand); e != nil {
 		return req, e
 	}
@@ -185,16 +228,6 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		}
 		parsed.RawQuery = merged.Encode()
 		req.Path = parsed.String()
-	}
-	if cmd.Mutation {
-		req.IdempotencyKey = opts.IdempotencyKey
-		if req.IdempotencyKey == "" {
-			var keyErr error
-			req.IdempotencyKey, keyErr = newIdempotencyKey()
-			if keyErr != nil {
-				return req, networkError("IDEMPOTENCY_KEY_GENERATION_FAILED", "Could not generate an idempotency key.", keyErr)
-			}
-		}
 	}
 	// Public API handlers with request schemas decode JSON even when every field
 	// is optional. Send an empty object so omission means no fields, not invalid JSON.

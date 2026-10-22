@@ -49,7 +49,10 @@ func (a *App) writeError(err *CLIError, opts Options) {
 		if err.HTTPStatus != 0 {
 			e["http_status"] = err.HTTPStatus
 		}
-		e["retryable"] = retryableErrorStatus(err.HTTPStatus) || err.ExitCode == ExitNetwork
+		e["retryable"] = errorRetryable(err)
+		if err.RetryAfterMs != nil {
+			e["retry_after_ms"] = *err.RetryAfterMs
+		}
 		if details, ok := e["details"].(map[string]any); ok {
 			if remediation, exists := details["remediation"]; exists {
 				if server, ok := e["remediation"].(map[string]any); ok {

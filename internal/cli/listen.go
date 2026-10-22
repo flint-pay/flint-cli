@@ -641,7 +641,7 @@ func (a *App) openListenStream(ctx context.Context, baseURL, key, path, cursor s
 		var value any
 		_ = json.Unmarshal(raw, &value)
 		apiErr := apiErrorFromResponse(&apiResponse{Status: resp.StatusCode, Headers: resp.Header.Clone(), Raw: raw, Value: value})
-		return nil, retryableStatus(resp.StatusCode), apiErr
+		return nil, errorRetryable(apiErr), apiErr
 	}
 	mediaType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 	if err != nil || mediaType != "text/event-stream" {

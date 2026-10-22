@@ -902,11 +902,35 @@ func TestListenHandlerSlowerThanTimeoutDoesNotStopListener(t *testing.T) {
 	}
 }
 
+func TestOpenListenStreamUsesFlintRetryDecision(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		body      string
+		wantRetry bool
+	}{
+		{"none", `{"error":{"code":"INTERNAL_ERROR","remediation":{"retry":"none"}}}`, false},
+		{"after_refresh", `{"error":{"code":"INTERNAL_ERROR","remediation":{"retry":"after_refresh"}}}`, false},
+		{"same_request", `{"error":{"code":"INTERNAL_ERROR","remediation":{"retry":"same_request"}}}`, true},
+		{"missing_retry", `{"error":{"code":"INTERNAL_ERROR"}}`, false},
+		{"proxy", `<html>Internal Server Error</html>`, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := &App{HTTPClient: &http.Client{Transport: listenRoundTripFunc(func(*http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: http.StatusInternalServerError, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(tc.body))}, nil
+			})}}
+			resp, retryable, err := app.openListenStream(t.Context(), "https://api.example.test", "", "/v1/webhook-events/stream", "", time.Second, false)
+			if resp != nil || err == nil || err.HTTPStatus != 500 || retryable != tc.wantRetry {
+				t.Fatalf("response=%v retryable=%t error=%+v", resp, retryable, err)
+			}
+		})
+	}
+}
+
 func TestListenReportsRetryableStreamFailures(t *testing.T) {
 	server := listenAPI(t, func(w http.ResponseWriter, _ *http.Request, _ int) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
-		fmt.Fprint(w, `{"error":{"type":"unavailable_error","code":"SERVICE_UNAVAILABLE","message":"Webhook streaming is temporarily unavailable."}}`)
+		fmt.Fprint(w, `{"error":{"type":"unavailable_error","code":"SERVICE_UNAVAILABLE","message":"Webhook streaming is temporarily unavailable.","remediation":{"retry":"same_request"}}}`)
 	})
 
 	app, stdout, stderr := testApp(t, server.URL)

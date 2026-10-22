@@ -266,7 +266,7 @@ func TestUndocumentedBodyFieldsAreRejected(t *testing.T) {
 		}
 	}
 	app.Stdin = strings.NewReader(`{"tip_money":{"amount":1,"currency":"USD"}}`)
-	exit, result := runJSON(t, app, stdout, "payment-intents", "create", "--order", "ord_test", "--input", "-", "--dry-run", "client")
+	exit, result := runJSON(t, app, stdout, "payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--order", "ord_test", "--input", "-", "--dry-run", "client")
 	if exit != ExitUsage || !strings.Contains(fmt.Sprint(result), "payment-intents.create --order") {
 		t.Fatalf("exit=%d result=%v", exit, result)
 	}

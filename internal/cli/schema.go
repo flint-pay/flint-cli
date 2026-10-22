@@ -466,7 +466,12 @@ func addCLIArgumentsToSchema(schema map[string]any, c *Command) map[string]any {
 		}
 	}
 	if controls := mcpControlSchemas(c); len(controls) > 0 {
-		properties["_flint"] = map[string]any{"type": "object", "description": "Optional controls; see help topic controls.", "additionalProperties": false, "properties": controls}
+		controlSchema := map[string]any{"type": "object", "description": "Execution controls; see help topic controls.", "additionalProperties": false, "properties": controls}
+		if commandIdempotencyClass(c) == "required" {
+			controlSchema["required"] = []string{"idempotency_key"}
+			requiredSet["_flint"] = true
+		}
+		properties["_flint"] = controlSchema
 	}
 	if len(requiredSet) > 0 {
 		required := make([]string, 0, len(requiredSet))

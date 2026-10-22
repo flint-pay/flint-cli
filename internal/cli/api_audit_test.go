@@ -56,7 +56,7 @@ func TestAuditRenamedParametersKeepTheirRequestBindings(t *testing.T) {
 
 func TestAuditRefundRequiresAnExplicitMode(t *testing.T) {
 	app, stdout, _ := testApp(t, "")
-	args := []string{"refunds", "create", "--payment-intent", "pi_test", "--dry-run=client"}
+	args := []string{"refunds", "create", "--idempotency-key", "saved-test-action-1", "--payment-intent", "pi_test", "--dry-run=client"}
 	exit, result := runJSON(t, app, stdout, args...)
 	if code, _ := lookupPath(result, "error.code"); exit != ExitUsage || code != "INVALID_REQUEST_BODY" {
 		t.Fatalf("exit=%d result=%v", exit, result)

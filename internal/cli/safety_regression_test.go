@@ -41,8 +41,8 @@ func TestOAuthAuthorizationSafetyForCanonicalAndRawCommands(t *testing.T) {
 					if r.URL.Path != "/v1/oauth/authorize" || r.URL.Query().Get("mode") != scenario.mode {
 						t.Errorf("unexpected request: %s", r.URL)
 					}
-					if r.Header.Get("Authorization") != "" || r.Header.Get("Idempotency-Key") == "" {
-						t.Error("public authorization must omit credentials and send its mutation idempotency key")
+					if r.Header.Get("Authorization") != "" || r.Header.Get("Idempotency-Key") != "" {
+						t.Error("public authorization must omit credentials and idempotency keys")
 					}
 					w.Header().Set("Location", "https://example.com/callback?code=synthetic")
 					w.WriteHeader(http.StatusFound)
@@ -66,8 +66,8 @@ func TestOAuthAuthorizationSafetyForCanonicalAndRawCommands(t *testing.T) {
 				if exit := app.Run(argv); exit != scenario.wantExit || calls.Load() != scenario.wantCalls || !strings.Contains(out.String(), scenario.wantCode) {
 					t.Fatalf("exit=%d calls=%d stdout=%s stderr=%s", exit, calls.Load(), out, stderr)
 				}
-				if scenario.name == "dry_run" && !strings.Contains(out.String(), `"Idempotency-Key":"review_oauth"`) {
-					t.Fatalf("missing preview idempotency key: %s", out)
+				if scenario.name == "dry_run" && strings.Contains(out.String(), `"Idempotency-Key"`) {
+					t.Fatalf("none-class preview included an idempotency key: %s", out)
 				}
 			})
 		}

@@ -227,7 +227,7 @@ func TestJSONMutationRetriesWithOneIdempotencyKey(t *testing.T) {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
-		if r.URL.Path != "/v1/payment-intents" {
+		if r.URL.Path != "/v1/customers" {
 			t.Errorf("unexpected path %s", r.URL.Path)
 		}
 		mu.Lock()
@@ -237,7 +237,7 @@ func TestJSONMutationRetriesWithOneIdempotencyKey(t *testing.T) {
 		mu.Unlock()
 		if attempt == 1 {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			fmt.Fprint(w, `{"error":{"type":"unavailable_error","code":"SERVICE_UNAVAILABLE","message":"retry"}}`)
+			fmt.Fprint(w, `{"error":{"type":"unavailable_error","code":"SERVICE_UNAVAILABLE","message":"retry","remediation":{"retry":"same_request"}}}`)
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
@@ -247,7 +247,7 @@ func TestJSONMutationRetriesWithOneIdempotencyKey(t *testing.T) {
 	app, stdout, stderr := testApp(t, server.URL)
 	// This checks retry identity, so use the normal request timeout to tolerate
 	// race instrumentation and contention on busy build runners.
-	exit := app.Run([]string{"payment-intents", "create", "--amount", "2500", "--currency", "USD", "--payment-option", "card", "--output", "json"})
+	exit := app.Run([]string{"customers", "create", "--email", "jane@example.com", "--output", "json"})
 	if exit != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
@@ -258,7 +258,7 @@ func TestJSONMutationRetriesWithOneIdempotencyKey(t *testing.T) {
 	if strings.TrimSpace(stderr.String()) != "" {
 		t.Fatalf("unexpected stderr: %s", stderr)
 	}
-	if attempts != 2 || keys[0] == "" || keys[0] != keys[1] {
+	if attempts != 2 || !strings.HasPrefix(keys[0], "flint-cli-") || len(keys[0]) != len("flint-cli-")+32 || keys[0] != keys[1] {
 		t.Fatalf("attempts=%d keys=%v", attempts, keys)
 	}
 }
@@ -313,7 +313,7 @@ func TestPaymentIntentCreateSendsRepeatablePaymentOptions(t *testing.T) {
 
 	app, stdout, stderr := testApp(t, server.URL)
 	exit := app.Run([]string{
-		"payment-intents", "create", "--amount", "2500", "--currency", "USD",
+		"payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--amount", "2500", "--currency", "USD",
 		"--payment-option", "card", "--payment-option", "ach_debit", "--transaction-purpose", "services",
 		"--output", "json",
 	})
@@ -331,14 +331,14 @@ func TestPaymentIntentCreateSendsRepeatablePaymentOptions(t *testing.T) {
 
 func TestPaymentIntentCreateRequiresOptionsOnlyForStandaloneRequests(t *testing.T) {
 	app, stdout, stderr := testApp(t, "")
-	exit := app.Run([]string{"payment-intents", "create", "--amount", "2500", "--currency", "USD", "--dry-run=client", "--output", "json"})
+	exit := app.Run([]string{"payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--amount", "2500", "--currency", "USD", "--dry-run=client", "--output", "json"})
 	if exit != ExitUsage || !strings.Contains(stdout.String(), `"param":"payment_option"`) {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
 
 	stdout.Reset()
 	stderr.Reset()
-	exit = app.Run([]string{"payment-intents", "create", "--order", "ord_123", "--dry-run=client", "--output", "json"})
+	exit = app.Run([]string{"payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--order", "ord_123", "--dry-run=client", "--output", "json"})
 	if exit != ExitOK || stderr.Len() != 0 || !strings.Contains(stdout.String(), `"path":"/v1/orders/ord_123/payment-intents"`) {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
@@ -411,7 +411,7 @@ func TestLiveJSONMutationFailsClosedWithoutConfirm(t *testing.T) {
 	defer server.Close()
 	app, stdout, stderr := testApp(t, server.URL)
 	t.Setenv("FLINT_API_KEY", "flint_live_test")
-	exit := app.Run([]string{"payment-intents", "create", "--amount", "2500", "--currency", "USD", "--payment-option", "card", "--live", "--output", "json"})
+	exit := app.Run([]string{"payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--amount", "2500", "--currency", "USD", "--payment-option", "card", "--live", "--output", "json"})
 	if exit != ExitConfirmation {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
@@ -457,14 +457,14 @@ func TestClientDryRunPerformsNoNetworkRequest(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { requests++ }))
 	defer server.Close()
 	app, stdout, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"payment-intents", "create", "--amount", "2500", "--currency", "USD", "--payment-option", "card", "--dry-run=client", "--output", "json"})
+	exit := app.Run([]string{"payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--amount", "2500", "--currency", "USD", "--payment-option", "card", "--dry-run=client", "--output", "json"})
 	if exit != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
 	if requests != 0 {
 		t.Fatalf("client dry-run made %d network requests", requests)
 	}
-	if !strings.Contains(stdout.String(), `"persistent_side_effects":false`) || !strings.Contains(stdout.String(), `"Idempotency-Key":"flint-cli-`) {
+	if !strings.Contains(stdout.String(), `"persistent_side_effects":false`) || !strings.Contains(stdout.String(), `"Idempotency-Key":"saved-test-action-1"`) {
 		t.Fatalf("unexpected dry-run output: %s", stdout)
 	}
 }
@@ -665,7 +665,7 @@ func TestMCPOrderLinkedPaymentIntentUsesTypedAlternateInput(t *testing.T) {
 		"name": "payment-intents.create",
 		"arguments": map[string]any{
 			"order":  "ord_123",
-			"_flint": map[string]any{"dry_run": "client"},
+			"_flint": map[string]any{"dry_run": "client", "idempotency_key": "saved-test-action-1"},
 		},
 	}}, defaultOptions())
 	result := response["result"].(map[string]any)
@@ -794,7 +794,7 @@ func TestOrderPaymentIntentPermissionUsesOrderScope(t *testing.T) {
 				}))
 				defer server.Close()
 				app, stdout, stderr := testApp(t, server.URL)
-				argv := []string{"payment-intents", "create", "--order", "ord_123", "--output", "json"}
+				argv := []string{"payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--order", "ord_123", "--output", "json"}
 				if dryRun {
 					argv = append(argv, "--dry-run=client")
 				}
@@ -1210,7 +1210,7 @@ func TestPayOrderActionInputAndTokenShortcut(t *testing.T) {
 		t.Run(body, func(t *testing.T) {
 			app, _, _ := testApp(t, "")
 			app.Stdin = strings.NewReader(body)
-			_, opts, _, err := parseInvocation(NewRegistry(), []string{"orders", "pay", "ord_test", "--input", "-", "--dry-run", "client"})
+			_, opts, _, err := parseInvocation(NewRegistry(), []string{"orders", "pay", "ord_test", "--input", "-", "--dry-run", "client", "--idempotency-key", "saved-order-payment-1"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1241,7 +1241,7 @@ func TestPayOrderActionInputAndTokenShortcut(t *testing.T) {
 		t.Run("shortcut/"+tc.body, func(t *testing.T) {
 			app, _, _ := testApp(t, "")
 			app.Stdin = strings.NewReader(tc.body)
-			_, opts, _, err := parseInvocation(NewRegistry(), []string{"orders", "pay", "ord_test", "--payment-source-token", "pi_test=pm_card_visa", "--input", "-", "--dry-run", "client"})
+			_, opts, _, err := parseInvocation(NewRegistry(), []string{"orders", "pay", "ord_test", "--payment-source-token", "pi_test=pm_card_visa", "--input", "-", "--dry-run", "client", "--idempotency-key", "saved-order-payment-1"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1278,7 +1278,7 @@ func TestPayOrderMCPActionBranchesAcceptCLIArguments(t *testing.T) {
 			t.Fatal(err)
 		}
 		arguments["order_id"] = "ord_test"
-		arguments["_flint"] = map[string]any{"dry_run": "client"}
+		arguments["_flint"] = map[string]any{"dry_run": "client", "idempotency_key": "saved-test-action-1"}
 		if err := validateMCPArguments(command, arguments); err != nil {
 			t.Fatalf("valid %s: %v", body, err)
 		}

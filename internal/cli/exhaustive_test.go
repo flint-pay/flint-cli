@@ -244,7 +244,7 @@ func TestOrderPaymentHistoryMapKeyResolves(t *testing.T) {
 	}
 
 	_, options, _, cliErr := parseInvocation(NewRegistry(), []string{
-		"orders", "pay", "ord_test", "--payment-source-token", "@last.pi=pm_card_visa",
+		"orders", "pay", "--idempotency-key", "saved-test-action-1", "ord_test", "--payment-source-token", "@last.pi=pm_card_visa",
 	})
 	if cliErr != nil {
 		t.Fatal(cliErr)
@@ -811,7 +811,7 @@ func TestMachineModesNeverPromptEvenWithTTY(t *testing.T) {
 			name:        "json implies no input",
 			environment: "live",
 			argv: []string{
-				"payment-intents", "create",
+				"payment-intents", "create", "--idempotency-key", "saved-test-action-1",
 				"--amount", "2500",
 				"--currency", "USD",
 				"--payment-option", "card",
@@ -1049,8 +1049,13 @@ func TestEveryMutationExecutesClientDryRunWithoutNetwork(t *testing.T) {
 			if sideEffects, ok := lookupPath(result, "data.persistent_side_effects"); !ok || sideEffects != false {
 				t.Fatalf("dry-run result = %#v", result)
 			}
-			if key, ok := lookupPath(result, "data.headers.Idempotency-Key"); !ok || strings.TrimSpace(fmt.Sprint(key)) == "" {
-				t.Fatalf("dry-run omitted generated idempotency key: %#v", result)
+			key, present := lookupPath(result, "data.headers.Idempotency-Key")
+			if commandIdempotencyClass(command) == "none" {
+				if present {
+					t.Fatalf("none-class dry-run included an idempotency key: %#v", result)
+				}
+			} else if !present || strings.TrimSpace(fmt.Sprint(key)) == "" {
+				t.Fatalf("dry-run omitted idempotency key: %#v", result)
 			}
 		})
 	}
@@ -1490,6 +1495,9 @@ type exhaustiveHTTPRequest struct {
 
 func minimalInvocation(t testing.TB, command *Command) []string {
 	argv := append([]string(nil), command.Path[1:]...)
+	if commandIdempotencyClass(command) == "required" {
+		argv = append(argv, "--idempotency-key", "saved-minimal-action-1")
+	}
 	for _, argument := range command.Arguments {
 		if argument.Positional > 0 {
 			argv = append(argv, exhaustiveArgumentValues(argument)[0])
@@ -1586,7 +1594,7 @@ func exhaustiveRemoteInvocation(command *Command) []string {
 	}
 	argv = append(argv, "--output", "json", "--timeout", "2s")
 	if command.CanonicalName == "api" {
-		argv = append(argv, "--confirm")
+		argv = append(argv, "--confirm", "--idempotency-key", "saved-raw-action-1")
 	}
 	if command.Mutation {
 		argv = append(argv, "--idempotency-key", "idem_exhaustive")
@@ -1630,7 +1638,11 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 	if request.Header.Get("Authorization") != wantAuth {
 		t.Errorf("Authorization header = %q", request.Header.Get("Authorization"))
 	}
-	if command.Mutation || command.CanonicalName == "api" {
+	if commandIdempotencyClass(command) == "none" && command.CanonicalName != "api" {
+		if request.Header.Get("Idempotency-Key") != "" {
+			t.Errorf("none-class request sent Idempotency-Key %q", request.Header.Get("Idempotency-Key"))
+		}
+	} else if command.Mutation || command.CanonicalName == "api" {
 		if request.Header.Get("Idempotency-Key") != "idem_exhaustive" && command.CanonicalName != "api" {
 			t.Errorf("Idempotency-Key = %q, want idem_exhaustive", request.Header.Get("Idempotency-Key"))
 		}

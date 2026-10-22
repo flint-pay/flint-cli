@@ -86,9 +86,17 @@ func (a *App) Run(argv []string) int {
 	}
 	ctx = withOAuthContext(ctx, resolved.ContextID)
 	effective := resolveAPICommand(cmd, opts)
+	idempotencyKey, errKey := requestIdempotencyKey(effective, opts)
+	if errKey != nil {
+		return a.fail(errKey, opts)
+	}
+	opts.IdempotencyKey = idempotencyKey
+	fail := func(e *CLIError, opts Options) int {
+		return a.fail(withIdempotencyRetryContext(e, opts.IdempotencyKey), opts)
+	}
 	key, baseURL, authEnvelope, authErr := a.authenticateCommand(ctx, effective, opts, resolved)
 	if authErr != nil {
-		return a.fail(authErr, opts)
+		return fail(authErr, opts)
 	}
 	authContext := authEnvelope.Data
 	if authContext.OAuthGrantID != "" && strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) == "" && credentialFromEnvironment() == "" {
@@ -109,32 +117,32 @@ func (a *App) Run(argv []string) int {
 		affinity = EnvironmentAffinityAccount
 	}
 	if e := validateResolvedCredentialIntent(authContext, opts, resolved, affinity); (effective.AuthRequired || effective.OperationID == "authorizePartnerInstall") && e != nil {
-		return a.fail(e, opts)
+		return fail(e, opts)
 	}
 	if cmd.CanonicalName == "auth.status" {
 		if e := a.writeResult(map[string]any{"data": authEnvelope.Data, "request_id": authEnvelope.RequestID, "meta": authEnvelope.Meta}, cmd, opts); e != nil {
-			return a.fail(e, opts)
+			return fail(e, opts)
 		}
 		return ExitOK
 	}
 	if !opts.DryRunClient() {
 		if e := commandPermissionError(permissionCommand(effective, opts), authContext, resolved.ProfileName); e != nil {
-			return a.fail(e, opts)
+			return fail(e, opts)
 		}
 	}
 	if e := a.confirmCommand(effective, authContext, opts); e != nil {
-		return a.fail(e, opts)
+		return fail(e, opts)
 	}
 	value, runErr := a.executeAPI(ctx, effective, opts, resolved, authContext, key, baseURL)
 	if runErr != nil {
 		if runErr.ExitCode == ExitWait && value != nil && opts.Output == "human" {
 			if e := a.writeResult(value, cmd, opts); e != nil {
-				return a.fail(e, opts)
+				return fail(e, opts)
 			}
 			fmt.Fprintln(a.Stderr, runErr.Message)
 			return runErr.ExitCode
 		}
-		return a.fail(runErr, opts)
+		return fail(runErr, opts)
 	}
 	if _, ok := value.(outputHandled); ok {
 		return ExitOK
@@ -145,7 +153,7 @@ func (a *App) Run(argv []string) int {
 		}
 	}
 	if e := a.writeResult(value, cmd, opts); e != nil {
-		return a.fail(e, opts)
+		return fail(e, opts)
 	}
 	return ExitOK
 }

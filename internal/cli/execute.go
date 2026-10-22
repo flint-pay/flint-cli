@@ -56,7 +56,11 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 }
 
 func previewRequest(req preparedRequest, cmd *Command, authContext AuthContext, preview bool) map[string]any {
-	data := map[string]any{"method": req.Method, "path": req.Path, "headers": map[string]any{"Idempotency-Key": req.IdempotencyKey}, "body": req.BodyValue, "persistent_side_effects": false}
+	headers := map[string]any{}
+	if req.IdempotencyKey != "" {
+		headers["Idempotency-Key"] = req.IdempotencyKey
+	}
+	data := map[string]any{"method": req.Method, "path": req.Path, "headers": headers, "body": req.BodyValue, "persistent_side_effects": false}
 	if len(req.Warnings) > 0 {
 		data["warnings"] = req.Warnings
 	}

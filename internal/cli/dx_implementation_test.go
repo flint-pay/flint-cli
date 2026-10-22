@@ -236,9 +236,7 @@ func TestDXErrorsPreserveAPIContext(t *testing.T) {
 		app, out, _ := testApp(t, "")
 		raw := map[string]any{"type": "api_error", "code": "TEST", "message": "test", "details": map[string]any{"original": "kept"}, "remediation": map[string]any{"next_actions": []any{map[string]any{"command": "existing"}}}}
 		e := apiErrorFromResponse(&apiResponse{Status: status, Headers: http.Header{}, Value: map[string]any{"error": raw}})
-		if retryableErrorStatus(status) {
-			e = withIdempotencyRetryContext(e, "idem_test")
-		}
+		e = withIdempotencyRetryContext(e, "idem_test")
 		options := defaultOptions()
 		options.Output = "json"
 		app.writeError(e, options)
@@ -247,20 +245,18 @@ func TestDXErrorsPreserveAPIContext(t *testing.T) {
 		if actual, _ := lookupPath(result, "error.http_status"); actual != float64(status) {
 			t.Fatal(result)
 		}
-		if actual, _ := lookupPath(result, "error.retryable"); actual != retryableErrorStatus(status) {
+		if actual, _ := lookupPath(result, "error.retryable"); actual != false {
 			t.Fatal(result)
 		}
 		if original, _ := lookupPath(result, "error.details.original"); original != "kept" {
 			t.Fatal(result)
 		}
-		if retryableErrorStatus(status) {
-			if key, _ := lookupPath(result, "error.details.idempotency_key"); key != "idem_test" {
-				t.Fatal(result)
-			}
-			actions, _ := lookupPath(result, "error.remediation.next_actions")
-			if len(actions.([]any)) != 2 {
-				t.Fatal(result)
-			}
+		if key, _ := lookupPath(result, "error.details.idempotency_key"); key != "idem_test" {
+			t.Fatal(result)
+		}
+		actions, _ := lookupPath(result, "error.remediation.next_actions")
+		if len(actions.([]any)) != 2 {
+			t.Fatal(result)
 		}
 		if status == 403 && e.ExitCode != ExitAuth {
 			t.Fatal(e)
