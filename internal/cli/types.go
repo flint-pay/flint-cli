@@ -153,6 +153,7 @@ type App struct {
 	LoadCredential            func(string) (string, error)
 	StoreCredential           func(string, string) error
 	DeleteCredential          func(string) error
+	upgradeReleaseLatestURL   string
 	upgradeReleaseAPIURL      string
 	upgradeReleaseDownloadURL string
 	executablePath            func() (string, error)

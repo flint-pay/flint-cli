@@ -56,10 +56,11 @@ esac
     writeFileSync(join(mockBin, "curl"), `#!/bin/sh
 set -eu
 printf '%s\\n' "$*" >> "$FLINT_TEST_ARGUMENTS"
-url="" output="" write_out="" config=""
+url="" output="" write_out="" config="" headers=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -o) output="$2"; shift 2 ;;
+    -D) headers="$2"; shift 2 ;;
     -w) write_out="$2"; shift 2 ;;
     -K) config="$2"; shift 2 ;;
     -*) shift ;;
@@ -69,6 +70,10 @@ done
 printf '%s\\n' "$url" >> "$FLINT_TEST_REQUESTS"
 if [ "$config" = - ]; then cat >> "$FLINT_TEST_CURL_CONFIG"; fi
 case "$url" in
+  'https://github.com/flint-pay/flint-cli/releases/latest')
+    printf 'HTTP/2 %s\\r\\nlocation: %s\\r\\n\\r\\n' "$FLINT_TEST_REDIRECT_HTTP_STATUS" "$FLINT_TEST_REDIRECT_LOCATION" > "$headers"
+    printf '%s' "$FLINT_TEST_REDIRECT_HTTP_STATUS"
+    exit "$FLINT_TEST_REDIRECT_STATUS" ;;
   'https://api.github.com/repos/flint-pay/flint-cli/releases?per_page=100')
     cp "$FLINT_TEST_RELEASES" "$output"
     if [ "$write_out" = '%{http_code}' ]; then printf '%s' "$FLINT_TEST_FEED_HTTP_STATUS"; fi
@@ -94,6 +99,7 @@ exit 9
       ...process.env,
       PATH: [mockBin, ...(options.onPath ?? []).map(name => join(temp, name)), process.env.PATH].join(delimiter),
       HOME: home,
+      FLINT_API_KEY: "flint_test_xxx",
       FLINT_CLI_VERSION: requestedVersion,
       FLINT_INSTALL_DIR: installDir,
       FLINT_TEST_SYSTEM_INSTALL_DIR: systemDir,
@@ -105,6 +111,9 @@ exit 9
       FLINT_TEST_ARCHIVE: archive,
       FLINT_TEST_ARCHIVE_PATH: archivePath,
       FLINT_TEST_CHECKSUMS: join(temp, "checksums.txt"),
+      FLINT_TEST_REDIRECT_LOCATION: options.redirectLocation ?? "",
+      FLINT_TEST_REDIRECT_HTTP_STATUS: String(options.redirectHTTPStatus ?? 302),
+      FLINT_TEST_REDIRECT_STATUS: String(options.redirectStatus ?? 0),
       FLINT_TEST_FEED_STATUS: String(options.feedStatus ?? 0),
       FLINT_TEST_FEED_HTTP_STATUS: String(options.feedHTTPStatus ?? 200),
     };
@@ -143,8 +152,8 @@ shellTest("latest installs the highest stable version even when a backport was p
     assert.equal(result.status, 0, result.stderr);
     assert.equal(result.installed, true);
     assert.match(result.stdout, /installed fixture/);
-    assert.equal(result.requests.length, 3);
-    assert.ok(result.requests[1].includes("cli%2Fv2.0.0/flint_2.0.0_"));
+    assert.equal(result.requests.length, 4);
+    assert.ok(result.requests[2].includes("cli%2Fv2.0.0/flint_2.0.0_"));
   }
 });
 
@@ -158,7 +167,7 @@ shellTest("latest supports compact JSON and release fields in any order", () => 
     const result = runInstaller(releases, "2.0.0", "latest", { releaseBody });
     assert.equal(result.status, 0, result.stderr);
     assert.equal(result.installed, true);
-    assert.ok(result.requests[1].includes("cli%2Fv2.0.0/flint_2.0.0_"));
+    assert.ok(result.requests[2].includes("cli%2Fv2.0.0/flint_2.0.0_"));
   }
 });
 
@@ -206,7 +215,7 @@ shellTest("latest fails before downloading or installing when no stable CLI rele
     const result = runInstaller(releases, "unused");
     assert.equal(result.status, 5, result.stderr);
     assert.match(result.stderr, /Could not resolve the latest Flint CLI release/);
-    assert.equal(result.requests.length, 1);
+    assert.equal(result.requests.length, 2);
     assert.equal(result.installed, false);
   }
 });
@@ -233,7 +242,7 @@ shellTest("latest rejects failed or truncated feeds before touching an existing 
   ]) {
     const result = runInstaller([release("1.0.1"), release("2.0.0")], "2.0.0", "latest", { ...options, existingInstall: true });
     assert.equal(result.status, 5, result.stderr);
-    assert.equal(result.requests.length, 1);
+    assert.equal(result.requests.length, 2);
     assert.equal(result.oldInstallPreserved, true);
     assert.equal(result.installedOutput, "old working CLI\n");
     assert.deepEqual(result.leftoverStaging, []);
@@ -330,8 +339,46 @@ shellTest("latest explains GitHub rate limiting before touching an existing inst
     const result = runInstaller([release("2.0.0")], "2.0.0", "latest", { feedHTTPStatus, githubToken, existingInstall: true });
     assert.equal(result.status, 5, result.stderr);
     assert.match(result.stderr, message);
-    assert.equal(result.requests.length, 1);
+    assert.equal(result.requests.length, 2);
     assert.equal(result.oldInstallPreserved, true);
     assert.equal(result.stderr.includes(token), false);
+  }
+});
+
+const latestTagURL = "https://github.com/flint-pay/flint-cli/releases/tag/cli/v";
+
+shellTest("latest uses the web redirect without the API or a token", () => {
+  const token = "installer-test-token";
+  for (const redirectLocation of [`${latestTagURL}2.0.0`, "/flint-pay/flint-cli/releases/tag/cli/v2.0.0"]) {
+    const result = runInstaller([], "2.0.0", "latest", { redirectLocation, githubToken: token, feedHTTPStatus: 429 });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.installed, true);
+    assert.equal(result.requests.length, 3);
+    assert.equal(result.requests.some(url => url.includes("api.github.com")), false);
+    assert.equal(result.curlConfig, "");
+    assert.equal(`${result.stdout}${result.stderr}${result.curlArguments}`.includes(token), false);
+    const redirectArguments = result.curlArguments.trim().split("\n")[0];
+    assert.doesNotMatch(redirectArguments, /-\w*L|--location|-K/);
+  }
+});
+
+shellTest("latest falls back for invalid redirects, non-redirects, and request failures", () => {
+  for (const options of [
+    { redirectLocation: `${latestTagURL}2.0.0-beta.1` },
+    { redirectLocation: `${latestTagURL}2.0.0+build` },
+    { redirectLocation: `${latestTagURL}02.0.0` },
+    { redirectLocation: `${latestTagURL}2.0.0?query=1` },
+    { redirectLocation: `${latestTagURL}2.0.0#fragment` },
+    { redirectLocation: "https://example.com/flint-pay/flint-cli/releases/tag/cli/v2.0.0" },
+    { redirectLocation: "https://github.com/other/repo/releases/tag/cli/v2.0.0" },
+    { redirectLocation: `${latestTagURL}2.0.0`, redirectHTTPStatus: 200 },
+    { redirectLocation: `${latestTagURL}2.0.0`, redirectStatus: 7 },
+    {},
+  ]) {
+    const result = runInstaller([release("2.0.0")], "2.0.0", "latest", options);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.installed, true);
+    assert.equal(result.requests.length, 4);
+    assert.match(result.requests[1], /api\.github\.com/);
   }
 });

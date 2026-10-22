@@ -35,6 +35,7 @@ func New(info BuildInfo) *App {
 		LoadCredential:            loadKeychainCredential,
 		StoreCredential:           storeKeychainCredential,
 		DeleteCredential:          deleteKeychainCredential,
+		upgradeReleaseLatestURL:   defaultUpgradeReleaseLatestURL,
 		upgradeReleaseAPIURL:      defaultUpgradeReleaseAPIURL,
 		upgradeReleaseDownloadURL: defaultUpgradeReleaseDownloadURL,
 		executablePath:            os.Executable,

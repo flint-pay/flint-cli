@@ -1138,6 +1138,8 @@ func testAppFromTemplate(t *testing.T, baseURL string, template *App) (*App, *by
 	t.Setenv("FLINT_BASE_URL", baseURL)
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 	app := *template
+	// Upgrade tests opt into redirect discovery explicitly; other cases stay offline.
+	app.upgradeReleaseLatestURL = ""
 	app.Registry.ensureAPICommands()
 	app.Stdout = stdout
 	app.Stderr = stderr

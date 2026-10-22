@@ -21,6 +21,7 @@ import (
 )
 
 func TestStandaloneUpgradeVerifiesAndReplacesBinary(t *testing.T) {
+	t.Setenv("GITHUB_TOKEN", "upgrade-test-token")
 	oldBinary := []byte("old flint")
 	newBinary := []byte("new flint release")
 	archive := testUpgradeArchive(t, newBinary)
@@ -28,7 +29,13 @@ func TestStandaloneUpgradeVerifiesAndReplacesBinary(t *testing.T) {
 	archiveName := "flint_1.2.0_linux_amd64.tar.gz"
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.Header.Get("Authorization") != "" {
+			t.Error("web redirect or release download received a credential")
+		}
 		switch {
+		case request.URL.Path == "/latest":
+			w.Header().Set("Location", "http://"+request.Host+"/flint-pay/flint-cli/releases/tag/cli/v1.2.0")
+			w.WriteHeader(http.StatusFound)
 		case request.URL.Path == "/releases":
 			if request.Header.Get("User-Agent") != "flintpay-cli/1.0.0" {
 				t.Errorf("User-Agent=%q", request.Header.Get("User-Agent"))
@@ -60,6 +67,7 @@ func TestStandaloneUpgradeVerifiesAndReplacesBinary(t *testing.T) {
 	}
 	app, stdout, stderr := testApp(t, "")
 	app.Info.Version = "1.0.0"
+	app.upgradeReleaseLatestURL = server.URL + "/latest"
 	app.upgradeReleaseAPIURL = server.URL + "/releases"
 	app.upgradeReleaseDownloadURL = server.URL + "/download"
 	app.executablePath = func() (string, error) { return executable, nil }

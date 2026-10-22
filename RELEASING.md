@@ -103,7 +103,7 @@ FLINT_CLI_VERSION=0.1.0-beta.1 FLINT_INSTALL_DIR="$HOME/.local/bin" sh /tmp/flin
 "$HOME/.local/bin/flint" version --output json
 ```
 
-Add `$HOME/.local/bin` to your shell's `PATH` if needed. Omitting `FLINT_CLI_VERSION` selects the latest stable release; set `GITHUB_TOKEN` if the GitHub API rate-limits that lookup. If `FLINT_INSTALL_DIR` is omitted, the installer uses `/usr/local/bin` when it is writable and `$HOME/.local/bin` otherwise.
+Add `$HOME/.local/bin` to your shell's `PATH` if needed. Omitting `FLINT_CLI_VERSION` selects the latest stable release using GitHub's `releases/latest` web redirect, as does `flint upgrade` (including `--check`). If the redirect lookup fails, both fall back to the REST API; set `GITHUB_TOKEN` to raise that fallback's rate limit. The token is sent only to the API. If `FLINT_INSTALL_DIR` is omitted, the installer uses `/usr/local/bin` when it is writable and `$HOME/.local/bin` otherwise.
 
 For Windows, download `flint_VERSION_windows_amd64.zip` and `checksums.txt` from the same GitHub Release. Compare `Get-FileHash .\flint_VERSION_windows_amd64.zip -Algorithm SHA256` with its entry in `checksums.txt`, extract `flint.exe` into a directory on `PATH`, and run `flint version --output json`. macOS/Linux users can likewise verify and extract the relevant `.tar.gz` manually.
 

@@ -8,6 +8,9 @@ import { fileURLToPath } from "node:url";
 import { releaseVersion } from "./release-version.mjs";
 import { singlePackResult } from "./npm-pack-result.mjs";
 
+// Keep version checks out of the shared OS keyring.
+process.env.FLINT_API_KEY = "flint_test_xxx";
+
 const root = fileURLToPath(new URL("../", import.meta.url));
 const dist = join(root, "dist");
 const version = releaseVersion(`cli/v${process.env.FLINT_CLI_VERSION}`);
@@ -75,7 +78,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const args = process.argv.slice(2);
 const url = args.find(arg => arg.startsWith('https://'));
-if (url === 'https://api.github.com/repos/flint-pay/flint-cli/releases?per_page=100') {
+if (url === 'https://github.com/flint-pay/flint-cli/releases/latest') {
+  fs.writeFileSync(args[args.indexOf('-D') + 1], 'HTTP/2 302\\r\\nlocation: https://github.com/flint-pay/flint-cli/releases/tag/cli/v${version}\\r\\n\\r\\n');
+  process.stdout.write(process.env.FLINT_TEST_REDIRECT_FAIL ? '503' : '302');
+} else if (url === 'https://api.github.com/repos/flint-pay/flint-cli/releases?per_page=100') {
+  if (!process.env.FLINT_TEST_REDIRECT_FAIL) throw new Error('Unexpected API fallback after a valid redirect');
   fs.writeFileSync(args[args.indexOf('-o') + 1], JSON.stringify([{tag_name:'cli/v99.0.0-beta.1',prerelease:true},{tag_name:'cli/v${version}',prerelease:false}], null, 2));
   if (args[args.indexOf('-w') + 1] === '%{http_code}') process.stdout.write('200');
 } else {
@@ -93,9 +100,9 @@ if (url === 'https://api.github.com/repos/flint-pay/flint-cli/releases?per_page=
     chmodSync(curl, 0o755);
     const env = { ...process.env, PATH: `${mockBin}${delimiter}${process.env.PATH}`, FLINT_TEST_DIST: dist };
     delete env.GITHUB_TOKEN;
-    for (const selected of [version, ...(version.includes("-") ? [] : ["latest"])]) {
+    for (const selected of [version, ...(version.includes("-") ? [] : ["latest", "latest-fallback"])]) {
       const installDir = join(temp, `installed-${selected}`);
-      run("sh", [join(root, "scripts/install.sh")], { env: { ...env, FLINT_CLI_VERSION: selected, FLINT_INSTALL_DIR: installDir } });
+      run("sh", [join(root, "scripts/install.sh")], { env: { ...env, FLINT_CLI_VERSION: selected.startsWith("latest") ? "latest" : selected, FLINT_INSTALL_DIR: installDir, FLINT_TEST_REDIRECT_FAIL: selected === "latest-fallback" ? "1" : "" } });
       checkVersion(join(installDir, binary));
     }
     const rejected = spawnSync("sh", [join(root, "scripts/install.sh")], {

@@ -39,6 +39,37 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+# Read only the redirect headers; never download the release page or send a token.
+latest_redirect_tag() {
+  redirect_status="$(curl -sS -D "${temp_dir}/latest.headers" -o /dev/null -w '%{http_code}' \
+    "https://github.com/${repository}/releases/latest" 2>/dev/null)" || return 1
+  case "$redirect_status" in
+    301|302|303|307|308) ;;
+    *) return 1 ;;
+  esac
+  awk '
+    { sub(/\r$/, "") }
+    /^HTTP\// { location=""; count=0 }
+    tolower($1) == "location:" {
+      sub(/^[^:]*:[ \t]*/, "")
+      location=$0
+      count++
+    }
+    END {
+      prefix="https://github.com/flint-pay/flint-cli/releases/tag/cli/v"
+      relative="/flint-pay/flint-cli/releases/tag/cli/v"
+      if (index(location, prefix) == 1) tag=substr(location, length(prefix)+1)
+      else if (index(location, relative) == 1) tag=substr(location, length(relative)+1)
+      if (count != 1 || tag !~ /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/) exit 1
+      print tag
+    }
+  ' "${temp_dir}/latest.headers"
+}
+
+if [ "$version" = latest ] && tag="$(latest_redirect_tag)"; then
+  version="$tag"
+fi
+
 if [ "$version" = latest ]; then
   release_url="https://api.github.com/repos/${repository}/releases?per_page=100"
   # GITHUB_TOKEN raises GitHub's API rate limit. curl reads the header from
