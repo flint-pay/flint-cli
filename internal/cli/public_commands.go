@@ -181,7 +181,7 @@ func publicAPIArguments(
 			Name:        name,
 			Type:        openAPIArgumentType(typeName, schema),
 			Description: description,
-			IDPrefix:    publicResourceIDPrefix(name, operation.OperationID),
+			IDPrefix:    publicResourceIDPrefixes[name],
 		}
 		if argument.IDPrefix != "" || isPublicResourceID(name) {
 			argument.AcceptsHistoryRef = true
@@ -296,7 +296,7 @@ var publicResourceIDPrefixes = map[string]string{
 	"location_id":                        "loc_",
 	"merchant_billing_balance_id":        "mbbal_",
 	"merchant_id":                        "mer_",
-	"merchant_subscription_invoice_id":   "msinv_",
+	"merchant_billing_invoice_id":        "msinv_",
 	"modifier_group_id":                  "mg_",
 	"modifier_set_id":                    "ms_",
 	"option_id":                          "opt_",
@@ -348,13 +348,14 @@ var publicResourceIDPrefixes = map[string]string{
 	"webhook_delivery_id":                "wdel_",
 	"webhook_endpoint_id":                "whep_",
 	"webhook_event_id":                   "whev_",
-}
 
-func publicResourceIDPrefix(name, operationID string) string {
-	if name == "customer_verification_id" && operationID == "confirmCheckoutSessionCustomerVerification" {
-		return "cscv_"
-	}
-	return publicResourceIDPrefixes[name]
+	"checkout_session_customer_verification_id": "cscv_",
+	"file_id":                                 "file_",
+	"gift_card_funding_disposition_id":        "gfd_",
+	"inventory_adjustment_id":                 "invadj_",
+	"inventory_allocation_policy_revision_id": "invpv_",
+	"inventory_movement_id":                   "invm_",
+	"inventory_receipt_id":                    "invrec_",
 }
 
 func requestSchemaName(requestBody map[string]any) string {

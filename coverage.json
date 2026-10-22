@@ -154,15 +154,6 @@
   },
   {
     "method": "GET",
-    "path": "/v1/capabilities",
-    "operation_id": "listCapabilities",
-    "classification": "resource",
-    "commands": [
-      "capabilities.list"
-    ]
-  },
-  {
-    "method": "GET",
     "path": "/v1/categories",
     "operation_id": "listCategories",
     "classification": "resource",
@@ -262,7 +253,7 @@
   },
   {
     "method": "POST",
-    "path": "/v1/checkout-sessions/{checkout_session_id}/customer-verifications/{customer_verification_id}/confirm",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/customer-verifications/{checkout_session_customer_verification_id}/confirm",
     "operation_id": "confirmCheckoutSessionCustomerVerification",
     "classification": "resource",
     "commands": [
@@ -540,6 +531,15 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/access-links",
+    "operation_id": "createCustomerAccessLink",
+    "classification": "resource",
+    "commands": [
+      "customers.access-links.create"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/customers/{customer_id}/addresses",
     "operation_id": "listCustomerAddresses",
@@ -793,6 +793,15 @@
   },
   {
     "method": "GET",
+    "path": "/v1/delivery-quotes/{delivery_quote_id}",
+    "operation_id": "getDeliveryQuote",
+    "classification": "resource",
+    "commands": [
+      "delivery-quotes.get"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/delivery-rate-callbacks",
     "operation_id": "listDeliveryRateCallbacks",
     "classification": "resource",
@@ -1036,6 +1045,15 @@
   },
   {
     "method": "GET",
+    "path": "/v1/developer/partner/installs",
+    "operation_id": "listDeveloperPartnerInstalls",
+    "classification": "resource",
+    "commands": [
+      "developer.partner.installs.list"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/developer/request-logs",
     "operation_id": "listCurrentAPIKeyRequestLogs",
     "classification": "resource",
@@ -1189,6 +1207,15 @@
   },
   {
     "method": "POST",
+    "path": "/v1/disputes/{dispute_id}/response-sessions",
+    "operation_id": "createDisputeResponseSession",
+    "classification": "resource",
+    "commands": [
+      "disputes.response-sessions.create"
+    ]
+  },
+  {
+    "method": "POST",
     "path": "/v1/email-preference-links/lookup",
     "operation_id": "lookupEmailPreferenceLink",
     "classification": "resource",
@@ -1225,6 +1252,24 @@
     "operation_id": "getFeedbackReport",
     "classification": "raw-api-only",
     "reason": "Feedback CLI feature removed; use flint support open for Flint Help."
+  },
+  {
+    "method": "POST",
+    "path": "/v1/files",
+    "operation_id": "createFile",
+    "classification": "resource",
+    "commands": [
+      "files.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/files/{file_id}/complete",
+    "operation_id": "completeFile",
+    "classification": "resource",
+    "commands": [
+      "files.complete"
+    ]
   },
   {
     "method": "GET",
@@ -1335,12 +1380,30 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/gift-card-funding-dispositions",
+    "operation_id": "listGiftCardFundingDispositions",
+    "classification": "resource",
+    "commands": [
+      "gift-card-funding-dispositions.list"
+    ]
+  },
+  {
     "method": "POST",
     "path": "/v1/gift-card-funding-dispositions",
     "operation_id": "createGiftCardFundingDisposition",
     "classification": "resource",
     "commands": [
       "gift-card-funding-dispositions.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-funding-dispositions/{gift_card_funding_disposition_id}",
+    "operation_id": "getGiftCardFundingDisposition",
+    "classification": "resource",
+    "commands": [
+      "gift-card-funding-dispositions.get"
     ]
   },
   {
@@ -1498,20 +1561,20 @@
   },
   {
     "method": "POST",
-    "path": "/v1/gift-cards/{gift_card_id}/adjustments",
-    "operation_id": "createGiftCardAdjustment",
+    "path": "/v1/gift-cards/{gift_card_id}/adjust-balance",
+    "operation_id": "adjustGiftCardBalance",
     "classification": "resource",
     "commands": [
-      "gift-cards.adjustments.create"
+      "gift-cards.adjust-balance"
     ]
   },
   {
     "method": "POST",
-    "path": "/v1/gift-cards/{gift_card_id}/cash-outs",
-    "operation_id": "createGiftCardCashOut",
+    "path": "/v1/gift-cards/{gift_card_id}/cash-out",
+    "operation_id": "cashOutGiftCard",
     "classification": "resource",
     "commands": [
-      "gift-cards.cash-outs.create"
+      "gift-cards.cash-out"
     ]
   },
   {
@@ -1561,6 +1624,15 @@
   },
   {
     "method": "GET",
+    "path": "/v1/inventory-adjustments/{inventory_adjustment_id}",
+    "operation_id": "getInventoryAdjustment",
+    "classification": "resource",
+    "commands": [
+      "inventory-adjustments.get"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/inventory-allocation-policies",
     "operation_id": "listInventoryAllocationPolicies",
     "classification": "resource",
@@ -1606,6 +1678,24 @@
   },
   {
     "method": "GET",
+    "path": "/v1/inventory-allocation-policies/{inventory_allocation_policy_id}/revisions",
+    "operation_id": "listInventoryAllocationPolicyRevisions",
+    "classification": "resource",
+    "commands": [
+      "inventory-allocation-policies.revisions.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-allocation-policies/{inventory_allocation_policy_id}/revisions/{inventory_allocation_policy_revision_id}",
+    "operation_id": "getInventoryAllocationPolicyRevision",
+    "classification": "resource",
+    "commands": [
+      "inventory-allocation-policies.revisions.get"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/inventory-counts",
     "operation_id": "listInventoryCounts",
     "classification": "resource",
@@ -1620,6 +1710,15 @@
     "classification": "resource",
     "commands": [
       "inventory-counts.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-counts/{inventory_count_id}",
+    "operation_id": "getInventoryCount",
+    "classification": "resource",
+    "commands": [
+      "inventory-counts.get"
     ]
   },
   {
@@ -1704,6 +1803,15 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/inventory-levels/{inventory_level_id}",
+    "operation_id": "getInventoryLevel",
+    "classification": "resource",
+    "commands": [
+      "inventory-levels.get"
+    ]
+  },
+  {
     "method": "PATCH",
     "path": "/v1/inventory-levels/{inventory_level_id}",
     "operation_id": "updateInventoryLevel",
@@ -1719,6 +1827,15 @@
     "classification": "resource",
     "commands": [
       "inventory-movements.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-movements/{inventory_movement_id}",
+    "operation_id": "getInventoryMovement",
+    "classification": "resource",
+    "commands": [
+      "inventory-movements.get"
     ]
   },
   {
@@ -1741,6 +1858,15 @@
   },
   {
     "method": "GET",
+    "path": "/v1/inventory-receipts/{inventory_receipt_id}",
+    "operation_id": "getInventoryReceipt",
+    "classification": "resource",
+    "commands": [
+      "inventory-receipts.get"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/inventory-reservations",
     "operation_id": "listInventoryReservations",
     "classification": "resource",
@@ -1755,6 +1881,15 @@
     "classification": "resource",
     "commands": [
       "inventory-reservations.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-reservations/{inventory_reservation_id}",
+    "operation_id": "getInventoryReservation",
+    "classification": "resource",
+    "commands": [
+      "inventory-reservations.get"
     ]
   },
   {
@@ -1800,6 +1935,15 @@
     "classification": "resource",
     "commands": [
       "inventory-transfers.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/inventory-transfers/{inventory_transfer_id}",
+    "operation_id": "getInventoryTransfer",
+    "classification": "resource",
+    "commands": [
+      "inventory-transfers.get"
     ]
   },
   {
@@ -2097,24 +2241,6 @@
     "classification": "resource",
     "commands": [
       "locations.update"
-    ]
-  },
-  {
-    "method": "PATCH",
-    "path": "/v1/locations/{location_id}/geography",
-    "operation_id": "publishLocationGeography",
-    "classification": "resource",
-    "commands": [
-      "locations.geography.update"
-    ]
-  },
-  {
-    "method": "PATCH",
-    "path": "/v1/locations/{location_id}/inventory",
-    "operation_id": "updateLocationInventory",
-    "classification": "resource",
-    "commands": [
-      "locations.inventory.update"
     ]
   },
   {
@@ -2767,20 +2893,20 @@
   },
   {
     "method": "GET",
-    "path": "/v1/merchant-subscription-invoices",
-    "operation_id": "listMerchantSubscriptionInvoices",
+    "path": "/v1/merchant-billing-invoices",
+    "operation_id": "listMerchantBillingInvoices",
     "classification": "resource",
     "commands": [
-      "merchant-subscription-invoices.list"
+      "merchant-billing-invoices.list"
     ]
   },
   {
     "method": "GET",
-    "path": "/v1/merchant-subscription-invoices/{merchant_subscription_invoice_id}",
-    "operation_id": "getMerchantSubscriptionInvoice",
+    "path": "/v1/merchant-billing-invoices/{merchant_billing_invoice_id}",
+    "operation_id": "getMerchantBillingInvoice",
     "classification": "resource",
     "commands": [
-      "merchant-subscription-invoices.get"
+      "merchant-billing-invoices.get"
     ]
   },
   {
@@ -3324,15 +3450,6 @@
     ]
   },
   {
-    "method": "POST",
-    "path": "/v1/organizations/{organization_id}/transfer-ownership",
-    "operation_id": "transferOrganizationOwnership",
-    "classification": "resource",
-    "commands": [
-      "organizations.transfer-ownership"
-    ]
-  },
-  {
     "method": "GET",
     "path": "/v1/packages",
     "operation_id": "listPackages",
@@ -3459,6 +3576,15 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/payment-intents/{payment_intent_id}/activities",
+    "operation_id": "listPaymentIntentActivities",
+    "classification": "resource",
+    "commands": [
+      "payment-intents.activities.list"
+    ]
+  },
+  {
     "method": "POST",
     "path": "/v1/payment-intents/{payment_intent_id}/cancel",
     "operation_id": "cancelPaymentIntent",
@@ -3483,6 +3609,15 @@
     "classification": "resource",
     "commands": [
       "payment-intents.confirm"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-intents/{payment_intent_id}/receipts",
+    "operation_id": "sendPaymentIntentReceipt",
+    "classification": "resource",
+    "commands": [
+      "payment-intents.send-receipt"
     ]
   },
   {
@@ -3712,15 +3847,6 @@
   },
   {
     "method": "GET",
-    "path": "/v1/payouts/{payout_id}/entries",
-    "operation_id": "listPayoutEntries",
-    "classification": "resource",
-    "commands": [
-      "payouts.entries.list"
-    ]
-  },
-  {
-    "method": "GET",
     "path": "/v1/products",
     "operation_id": "listProducts",
     "classification": "resource",
@@ -3897,6 +4023,15 @@
     "classification": "resource",
     "commands": [
       "promotions.codes.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/promotions/{promotion_id}/codes/{promotion_code_id}",
+    "operation_id": "getPromotionCode",
+    "classification": "resource",
+    "commands": [
+      "promotions.codes.get"
     ]
   },
   {
@@ -5026,6 +5161,15 @@
   },
   {
     "method": "GET",
+    "path": "/v1/webhook-deliveries",
+    "operation_id": "listWebhookDeliveries",
+    "classification": "resource",
+    "commands": [
+      "webhook-deliveries.list"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/webhook-deliveries/{webhook_delivery_id}",
     "operation_id": "getWebhookDelivery",
     "classification": "resource",
@@ -5148,15 +5292,6 @@
     "classification": "resource",
     "commands": [
       "webhook-events.get"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/webhook-events/{webhook_event_id}/deliveries",
-    "operation_id": "listWebhookDeliveries",
-    "classification": "resource",
-    "commands": [
-      "webhook-events.deliveries"
     ]
   }
 ]

@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
@@ -26,24 +25,6 @@ func GenerateSecret() (string, error) {
 		return "", fmt.Errorf("generate webhook secret: %w", err)
 	}
 	return SecretPrefix + base64.StdEncoding.EncodeToString(secret), nil
-}
-
-func LegacySignature(secret string, timestamp int64, payload []byte) string {
-	mac := hmac.New(sha256.New, []byte(secret))
-	fmt.Fprintf(mac, "%d.", timestamp)
-	mac.Write(payload)
-	return hex.EncodeToString(mac.Sum(nil))
-}
-
-func LegacySignatureHeader(timestamp int64, payload []byte, secrets ...string) string {
-	parts := []string{fmt.Sprintf("t=%d", timestamp)}
-	for _, secret := range secrets {
-		if strings.TrimSpace(secret) == "" {
-			continue
-		}
-		parts = append(parts, fmt.Sprintf("v1=%s", LegacySignature(secret, timestamp, payload)))
-	}
-	return strings.Join(parts, ",")
 }
 
 func StandardWebhookSignature(secret, eventID string, timestamp int64, payload []byte) string {

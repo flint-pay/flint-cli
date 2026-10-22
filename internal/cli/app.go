@@ -102,7 +102,13 @@ func (a *App) Run(argv []string) int {
 	resolved.APIKeyID = authContext.APIKeyID
 	resolved.MerchantID = authContext.MerchantID
 	resolved.SandboxID = authContext.SandboxID
-	if e := validateResolvedCredentialIntent(authContext, opts, resolved, effective.EnvironmentAffinity); effective.AuthRequired && e != nil {
+	affinity := effective.EnvironmentAffinity
+	if effective.OperationID == "authorizePartnerInstall" {
+		// The browser entry point is public, but a live authorization still
+		// requires the same explicit acknowledgement as before.
+		affinity = EnvironmentAffinityAccount
+	}
+	if e := validateResolvedCredentialIntent(authContext, opts, resolved, affinity); (effective.AuthRequired || effective.OperationID == "authorizePartnerInstall") && e != nil {
 		return a.fail(e, opts)
 	}
 	if cmd.CanonicalName == "auth.status" {

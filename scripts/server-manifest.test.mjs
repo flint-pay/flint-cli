@@ -81,8 +81,12 @@ test("server.json uses only fields and argument shapes defined by its schema", (
 test("server.json describes the MCP server's tool selection and safety flags", () => {
   const named = Object.fromEntries(server.packages[0].packageArguments.filter(argument => argument.type === "named").map(argument => [argument.name, argument]));
   assert.deepEqual(Object.keys(named).sort(), ["--allow-destructive", "--allow-live", "--tools"]);
-  assert.match(named["--tools"].description, /Omit or leave empty for 32 curated tools/);
-  assert.match(named["--tools"].description, /all for all 588 tools/);
-  assert.match(named["--tools"].description, /default,invoices to add groups/);
+  const toolsDescription = named["--tools"].description;
+  assert.match(toolsDescription, /Without --tools.*empty value.*curated core set/);
+  assert.match(toolsDescription, /help and schema_\* are always on/);
+  assert.match(toolsDescription, /--tools all to expose every tool/);
+  assert.match(toolsDescription, /--tools default,GROUP to add groups to the default set/);
+  assert.match(toolsDescription, /dotted names are accepted/);
+  assert.doesNotMatch(toolsDescription, /\d[\d,.]*\s*(?:(?:curated\s+)?tools\b|[KM]B\b)/i);
   assert.deepEqual(server.packages[0].packageArguments.filter(argument => argument.type === "positional").map(argument => argument.value), ["mcp", "serve"]);
 });

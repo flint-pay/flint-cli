@@ -84,7 +84,9 @@ func TestMCPDefaultToolSetIsCuratedAndAllIsOptIn(t *testing.T) {
 	defaults, defaultSize := names(defaultOptions())
 	t.Logf("default tools/list: %d tools, %d bytes in compact result JSON", len(defaults), defaultSize)
 	all, allSize := names(mcpAllToolsOptions(t))
-	if len(all) != len(app.mcpAllTools()) || len(defaults) >= len(all)/4 || defaultSize >= allSize/4 || len(defaults) > 40 || defaultSize > 120000 {
+	// The reviewed refund credential/mode unions increase schema size; keep
+	// the same 32 tools and a bounded default payload.
+	if len(all) != len(app.mcpAllTools()) || len(defaults) >= len(all)/4 || defaultSize >= allSize/4 || len(defaults) > 40 || defaultSize > 180000 {
 		t.Fatalf("default exposes %d tools in %d bytes; all exposes %d in %d", len(defaults), defaultSize, len(all), allSize)
 	}
 	for _, want := range []string{"help", "schema_input", "schema_output", "customers_create", "payment-intents_create", "checkout-sessions_create", "payment-links_create", "refunds_create", "webhook-endpoints_create", "webhook-events_list", "products_create"} {

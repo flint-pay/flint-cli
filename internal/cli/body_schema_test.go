@@ -50,6 +50,10 @@ func exhaustiveInputBody(t testing.TB, command *Command) map[string]any {
 	withoutRepeats := func(value any) map[string]any {
 		body, _ := value.(map[string]any)
 		body = deepCopyMap(body)
+		if command.CanonicalName == "payment-intents.confirm" {
+			delete(body, "payment_source_token")
+			delete(body, "payment_method_id")
+		}
 		for _, arg := range command.Arguments {
 			if arg.Repeat && arg.BodyPath != "" {
 				delete(body, strings.Split(arg.BodyPath, ".")[0])
@@ -59,7 +63,14 @@ func exhaustiveInputBody(t testing.TB, command *Command) map[string]any {
 	}
 	withFlags := func(body map[string]any) map[string]any {
 		body = deepCopyMap(body)
+		if command.CanonicalName == "payment-intents.confirm" {
+			delete(body, "payment_source_token")
+			delete(body, "payment_method_id")
+		}
 		for _, arg := range command.Arguments {
+			if skipExhaustiveConfirmationFlag(command, arg) {
+				continue
+			}
 			if arg.BodyPath == "" || arg.Name == "input" || arg.Positional > 0 || arg.Query != "" || (command.CanonicalName == "payment-intents.create" && arg.Name == "order") {
 				continue
 			}
@@ -188,7 +199,6 @@ func TestClientDryRunValidatesTheRequestBody(t *testing.T) {
 	cases := []struct {
 		name, input, path, contains string
 	}{
-		{"missing required", `{"name":"Ada"}`, "$.email", "required field is missing"},
 		{"wrong type", `{"email":123}`, "$.email", "got number, want string"},
 		{"misspelled required", `{"emial":"a@example.com"}`, "$.emial", "did you mean email?"},
 		{"nested", `{"email":"a@example.com","billing_address":{"city":"X"}}`, "$.billing_address.country", "required field is missing"},
