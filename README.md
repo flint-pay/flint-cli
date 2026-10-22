@@ -112,6 +112,14 @@ Primitives use their resource names, such as `customers`, `products`, `orders`, 
 
 Commands with convenience flags can create a resource directly. Other commands take a JSON request body through `--input FILE.json`, `--input -` for stdin, or inline JSON such as `--input '{"email":"jane@example.com"}'`, which the CLI sends as the API request body. Use `flint schema input <resource>.create --output json` to see the JSON Schema of that body, prepare the file, then run the create command. Path arguments such as IDs and execution controls such as `--live` or `--idempotency-key` are not part of the body; pass them as arguments and flags. Convenience flags set their body fields on top of the file.
 
+Writes that require an idempotency key, such as `flint refunds create` and `flint orders pay`, require `--idempotency-key KEY`, including with `--dry-run=client`. Save the key with the action before the first command and reuse it on retry. For writes with an optional key, the CLI generates a `flint-cli-…` key and reuses it across its own retries. Operations that take no key send none. The API never generates keys.
+
+```sh
+flint payment-intents create --amount 2500 --currency USD --payment-option card --idempotency-key quickstart-pi-1
+```
+
+Running the command again with the same key returns the same payment intent; change the key to create another.
+
 ```bash
 flint customers create --email jane@example.com
 flint products create --help
@@ -173,9 +181,9 @@ Use `--expand a,b` for documented relationships; command help lists valid expans
 
 `FLINT_OUTPUT` accepts human, json, or ndjson (streams), case-insensitively. Its ndjson setting falls back to JSON for non-streaming commands; explicit `--output ndjson` still requires a stream. `FLINT_NO_INPUT` accepts `1`, `true`, `yes`, and `on`, case-insensitively. Boolean flags accept `--flag=true` and `--flag true` forms.
 
-JSON errors use `{"error": {...}}` with `type`, `code`, `message`, optional `param`, object-shaped `details`, and `request_id` when available. HTTP responses add `http_status`. `retryable` is true for 429, 5xx, network errors, and timeouts. CLI remediation appears at `error.remediation` and also at `error.details.remediation` for compatibility. Unknown-command and unknown-flag details contain `input` and a `suggestions` array, which can be empty. Failed waits return `WAIT_CONDITION_UNMET` or `WAIT_CONDITION_IMPOSSIBLE` with `details.conditions`, `details.observed`, and `details.last`. Exit codes are 0 success, 1 API or webhook delivery error, 2 usage, 3 auth/config (including HTTP 403), 4 confirmation required, 5 network/timeout (including streams that never connect), 6 wait or expected event count unmet, and 70 internal error.
+JSON errors use `{"error": {...}}` with `type`, `code`, `message`, optional `param`, object-shaped `details`, and `request_id` when available. HTTP responses add `http_status`. `retryable` is true when sending the same request again is safe and may succeed: no usable response arrived, or Flint returned `remediation.retry: "same_request"`. Responses without a Flint error envelope retry on HTTP 429, 500, 502, 503, or 504. Reads and keyed writes make at most 3 attempts within `--timeout`, honoring `Retry-After` and using jittered backoff otherwise. Writes that take no key are sent once. CLI remediation appears at `error.remediation` and also at `error.details.remediation` for compatibility. Unknown-command and unknown-flag details contain `input` and a `suggestions` array, which can be empty. Failed waits return `WAIT_CONDITION_UNMET` or `WAIT_CONDITION_IMPOSSIBLE` with `details.conditions`, `details.observed`, and `details.last`. Exit codes are 0 success, 1 API or webhook delivery error, 2 usage, 3 auth/config (including HTTP 403), 4 confirmation required, 5 network/timeout (including streams that never connect), 6 wait or expected event count unmet, and 70 internal error.
 
-Mutation network failures and all 5xx responses include the idempotency key and retry guidance; retry the same request with that key. `--confirm` is accepted on every mutation, so agents can pass it defensively. Existing confirmation requirements still apply. Before merchant-route mutations, `FLINT_ACCESS_TOKEN` is introspected for environment and guard checks. If introspection cannot verify the environment, sensitive operations require `--confirm` with `UNVERIFIED_ENVIRONMENT_CONFIRMATION_REQUIRED`; network failures stop the command.
+Every error from a keyed write includes `details.idempotency_key`; reuse it when retrying the same request. `Retry-After` is also reported as `retry_after_ms` on JSON errors. `--confirm` is accepted on every mutation, so agents can pass it defensively. Existing confirmation requirements still apply. Before merchant-route mutations, `FLINT_ACCESS_TOKEN` is introspected for environment and guard checks. If introspection cannot verify the environment, sensitive operations require `--confirm` with `UNVERIFIED_ENVIRONMENT_CONFIRMATION_REQUIRED`; network failures stop the command.
 
 
 ## MCP server

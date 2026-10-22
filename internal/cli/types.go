@@ -163,15 +163,17 @@ type App struct {
 }
 
 type CLIError struct {
-	HTTPStatus int
-	ExitCode   int
-	Type       string
-	Code       string
-	Message    string
-	Param      string
-	Details    any
-	RequestID  string
-	Cause      error
+	retryable    *bool
+	RetryAfterMs *int64
+	HTTPStatus   int
+	ExitCode     int
+	Type         string
+	Code         string
+	Message      string
+	Param        string
+	Details      any
+	RequestID    string
+	Cause        error
 }
 
 func (e *CLIError) Error() string { return e.Message }

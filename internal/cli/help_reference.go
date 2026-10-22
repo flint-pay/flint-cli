@@ -116,7 +116,7 @@ func errorEnvelopeHelp() map[string]any {
 	return map[string]any{"envelope": "{\"error\": {...}}", "fields": map[string]string{
 		"type": "Error category.", "code": "Stable error code.", "message": "Human-readable explanation.",
 		"param": "Invalid flag or body field, when known.", "details": "Object containing extra context; INVALID_REQUEST_BODY uses problems, UNKNOWN_FLAG and UNKNOWN_COMMAND use input and suggestions (an array).",
-		"request_id": "API request identifier, when available.", "http_status": "HTTP response status, when available.", "retryable": "True for 429, 5xx, network errors, and timeouts.",
+		"request_id": "API request identifier, when available.", "http_status": "HTTP response status, when available.", "retryable": "True when retrying the same request is safe and no usable response arrived, Flint returned remediation.retry=same_request, or a non-Flint response has HTTP 429, 500, 502, 503, or 504.",
 		"remediation": "Next actions; CLI remediation is also retained under details.remediation.",
 	}}
 }

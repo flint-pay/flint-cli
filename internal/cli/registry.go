@@ -117,6 +117,13 @@ func newRegistry(includeAPI bool) *Registry {
 		if !c.Local {
 			applyPublicOperationMetadata(c)
 		}
+		if commandIdempotencyClass(c) == "required" {
+			for i, example := range c.Examples {
+				if !strings.Contains(example, "--idempotency-key") {
+					c.Examples[i] = example + " --idempotency-key saved-action-1"
+				}
+			}
+		}
 		r.add(c)
 	}
 	sort.Slice(r.Commands, func(i, j int) bool { return r.Commands[i].Name < r.Commands[j].Name })

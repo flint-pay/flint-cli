@@ -29,6 +29,7 @@ func TestPaymentIntentMCPInputPreservesStandaloneConditions(t *testing.T) {
 			{map[string]any{"payment_options": []any{"ach_debit", "affirm"}, "transaction_purpose": "services", "payment_return_url": "https://example.com/return"}, true},
 		} {
 			body := deepCopyMap(moneyInput)
+			body["_flint"] = map[string]any{"idempotency_key": "saved-test-action-1"}
 			for key, value := range fixture.fields {
 				body[key] = value
 			}
@@ -38,6 +39,7 @@ func TestPaymentIntentMCPInputPreservesStandaloneConditions(t *testing.T) {
 		}
 	}
 	for _, body := range []map[string]any{{"order": "ord_123"}, {"order": "ord_123", "payment_options": []any{}}, {"order": "ord_123", "payment_options": []any{"ach_debit"}}} {
+		body["_flint"] = map[string]any{"idempotency_key": "saved-test-action-1"}
 		if err := validateMCPArguments(command, body); err != nil {
 			t.Fatalf("standalone conditions leaked into order input: %v", err)
 		}

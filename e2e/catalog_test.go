@@ -333,7 +333,7 @@ func builtRemoteInvocation(command *cli.Command) []string {
 	}
 	argv = append(argv, "--output", "json", "--timeout", "2s")
 	if command.CanonicalName == "api" {
-		argv = append(argv, "--confirm")
+		argv = append(argv, "--confirm", "--idempotency-key", "saved-raw-action-1")
 	}
 	if command.Mutation {
 		argv = append(argv, "--idempotency-key", "idem_compiled_exhaustive")

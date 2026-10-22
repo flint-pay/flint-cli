@@ -120,7 +120,7 @@ func TestMCPUnverifiedEnvironmentElicitsConfirmation(t *testing.T) {
 			t.Setenv("FLINT_ACCESS_TOKEN", "synthetic-partner-token")
 			conn := startMCPTestConn(t, app, defaultOptions())
 			conn.initialize(`{"elicitation":{"form":{}}}`)
-			conn.send(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"payment-intents_create","arguments":{"amount_money":{"amount":500,"currency":"USD"},"payment_options":["card"]}}}`)
+			conn.send(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"payment-intents_create","arguments":{"amount_money":{"amount":500,"currency":"USD"},"payment_options":["card"],"_flint":{"idempotency_key":"saved-test-action-1"}}}}`)
 			request := conn.next()
 			if request["method"] != "elicitation/create" || writes != 0 || !strings.Contains(fmt.Sprint(lookupPathValue(request, "params.message")), "cannot verify") {
 				t.Fatalf("writes=%d request=%v", writes, request)

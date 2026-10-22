@@ -1898,7 +1898,7 @@ func mcpToolHelp(cmd *Command, policy mcpPolicy) (map[string]any, *CLIError) {
 var mcpControlHelp = []map[string]string{
 	{"name": "_flint.dry_run", "applies_to": "writes", "description": "\"client\" validates the arguments and returns the prepared request (method, path, headers, body) without sending it. Nothing changes in Flint."},
 	{"name": "_flint.preview", "applies_to": "destructive writes", "description": "Returns the request and its effect (permission check, reversibility, affected resources) without making the change."},
-	{"name": "_flint.idempotency_key", "applies_to": "writes", "description": "Sent as the Idempotency-Key header. Flint returns the original result when a key is reused, so reuse the same key when retrying a write that timed out or failed on the network; a new key could run it twice. The server generates a key when omitted, and errors that need a retry include it."},
+	{"name": "_flint.idempotency_key", "applies_to": "writes", "description": "Sent as the Idempotency-Key header. Flint returns the original result when a key is reused, so reuse the same key when retrying a write that timed out or failed on the network; a new key could run it twice. The CLI generates a key only when the route makes it optional. Required routes need a key saved before the first call; operations that take no key send none. The API never generates keys. Every error from a keyed write includes its key."},
 	{"name": "_flint.confirm", "applies_to": "destructive and live-sensitive operations, only when the server was started with --allow-destructive", "description": "Confirms the operation. Without --allow-destructive the server asks the user through elicitation, or refuses when the client cannot ask."},
 	{"name": "_flint.live", "applies_to": "API tools, only when the server was started with --allow-live", "description": "Acknowledges a live (production) credential or context. Without --allow-live the server refuses live credentials."},
 	{"name": "_flint.merchant", "applies_to": "API tools", "description": "Fails the call unless the credential belongs to this mer_ merchant. An agent may add a guard but cannot replace one the server already uses."},
@@ -2949,7 +2949,6 @@ func mcpPreviewOutputSchema() map[string]any {
 					"headers": map[string]any{
 						"type":       "object",
 						"properties": map[string]any{"Idempotency-Key": map[string]any{"type": "string"}},
-						"required":   []string{"Idempotency-Key"},
 					},
 					"body":                    map[string]any{},
 					"persistent_side_effects": map[string]any{"const": false},

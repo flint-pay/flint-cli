@@ -149,9 +149,15 @@ func (a *App) fetchCurrentAPIVersion(ctx context.Context, baseURL string, debug 
 
 func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, body []byte, idempotencyKey string, debug bool) (result *apiResponse, requestErr *CLIError) {
 	responseStatus := 0
+	replaySafe := method == http.MethodGet || idempotencyKey != ""
 	defer func() {
-		if requestErr != nil && requestErr.HTTPStatus == 0 {
-			requestErr.HTTPStatus = responseStatus
+		if requestErr != nil {
+			if requestErr.HTTPStatus == 0 {
+				requestErr.HTTPStatus = responseStatus
+			}
+			retryable := replaySafe && errorRetryable(requestErr) && !errors.Is(ctx.Err(), context.Canceled) && !errors.Is(requestErr.Cause, context.Canceled)
+			requestErr.retryable = &retryable
+			requestErr = withIdempotencyRetryContext(requestErr, idempotencyKey)
 		}
 	}()
 	if !strings.HasPrefix(path, "/v1/") && path != "/v1" {
@@ -174,7 +180,9 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 			return nil, tokenErr
 		}
 		key = currentKey
-		req, err := http.NewRequestWithContext(ctx, method, baseURL+path, bytes.NewReader(body))
+		attemptCtx, cancelAttempt := context.WithTimeout(ctx, 10*time.Second)
+		defer cancelAttempt()
+		req, err := http.NewRequestWithContext(attemptCtx, method, baseURL+path, bytes.NewReader(body))
 		if err != nil {
 			return nil, usageError("INVALID_REQUEST_URL", err.Error(), "path")
 		}
@@ -228,21 +236,21 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		}
 		resp, err := client.Do(req)
 		if err != nil {
+			cancelAttempt()
+			if errors.Is(err, context.Canceled) {
+				return nil, networkError("REQUEST_CANCELED", "The request was canceled.", err)
+			}
 			if ctx.Err() != nil {
-				return nil, withIdempotencyRetryContext(
-					networkError("REQUEST_TIMEOUT", "The request timed out.", ctx.Err()),
-					idempotencyKey,
-				)
+				return nil, networkError("REQUEST_TIMEOUT", "The request timed out.", ctx.Err())
 			}
-			if !retryBudgetAllows(ctx, attempt) || !sleepContext(ctx, retryDelay(attempt, "")) {
-				// Report the connection failure itself; calling it a timeout sends
-				// people to raise --timeout when the server cannot be reached.
-				return nil, withIdempotencyRetryContext(
-					networkError("NETWORK_ERROR", "The request failed before Flint returned a response: "+transportErrorReason(err)+". Check FLINT_BASE_URL and your network connection.", err),
-					idempotencyKey,
-				)
+			e := networkError("NETWORK_ERROR", "The request failed before Flint returned a response: "+transportErrorReason(err)+". Check FLINT_BASE_URL and your network connection.", err)
+			if errors.Is(err, context.DeadlineExceeded) {
+				e = networkError("REQUEST_TIMEOUT", "The request attempt timed out before Flint returned a response.", err)
 			}
-			continue
+			if replaySafe && retryRequest(ctx, attempt, "") {
+				continue
+			}
+			return nil, e
 		}
 		responseStatus = resp.StatusCode
 		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
@@ -250,20 +258,16 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		}
 		raw, readErr := io.ReadAll(io.LimitReader(resp.Body, (16<<20)+1))
 		resp.Body.Close()
+		cancelAttempt()
 		if readErr != nil {
-			if retryBudgetAllows(ctx, attempt) {
-				if !sleepContext(ctx, retryDelay(attempt, "")) {
-					return nil, withIdempotencyRetryContext(
-						networkError("REQUEST_TIMEOUT", "The request timed out.", ctx.Err()),
-						idempotencyKey,
-					)
-				}
+			if errors.Is(readErr, context.Canceled) {
+				return nil, networkError("REQUEST_CANCELED", "The request was canceled while reading the response.", readErr)
+			}
+			e := networkError("RESPONSE_READ_FAILED", "The Flint response could not be read.", readErr)
+			if replaySafe && retryRequest(ctx, attempt, "") {
 				continue
 			}
-			return nil, withIdempotencyRetryContext(
-				networkError("RESPONSE_READ_FAILED", "The Flint response could not be read.", readErr),
-				idempotencyKey,
-			)
+			return nil, e
 		}
 		if len(raw) > 16<<20 {
 			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -271,25 +275,14 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 				e.Code = "RESPONSE_TOO_LARGE"
 				e.Message = fmt.Sprintf("Flint returned an oversized response with HTTP %d.", resp.StatusCode)
 				e.RequestID = resp.Header.Get("X-Request-Id")
-				if retryableErrorStatus(resp.StatusCode) {
-					e = withIdempotencyRetryContext(e, idempotencyKey)
+				if replaySafe && errorRetryable(e) && retryRequest(ctx, attempt, resp.Header.Get("Retry-After")) {
+					continue
 				}
 				return nil, e
 			}
-			return nil, withIdempotencyRetryContext(
-				invalidResponseError("RESPONSE_TOO_LARGE", "The Flint response exceeded 16 MiB.", nil),
-				idempotencyKey,
-			)
+			return nil, invalidResponseError("RESPONSE_TOO_LARGE", "The Flint response exceeded 16 MiB.", nil)
 		}
-		if retryableStatus(resp.StatusCode) && retryBudgetAllows(ctx, attempt) {
-			if !sleepContext(ctx, retryDelay(attempt, resp.Header.Get("Retry-After"))) {
-				return nil, withIdempotencyRetryContext(
-					networkError("REQUEST_TIMEOUT", "The request timed out.", ctx.Err()),
-					idempotencyKey,
-				)
-			}
-			continue
-		}
+
 		command := responseContract(ctx)
 		if command != nil {
 			if resp.StatusCode == http.StatusTemporaryRedirect && command.OperationID == "getReportDownload" {
@@ -311,20 +304,14 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 			}
 		}
 		var value any
+		var decodeErr error
 		if len(bytes.TrimSpace(raw)) > 0 {
-			if err := decodeJSONNumbers(raw, &value); err != nil {
-				if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-					e := apiErrorFromResponse(&apiResponse{Status: resp.StatusCode, Headers: resp.Header.Clone()})
-					e.Cause = err
-					if retryableErrorStatus(resp.StatusCode) {
-						e = withIdempotencyRetryContext(e, idempotencyKey)
-					}
-					return nil, e
-				}
-				return nil, withIdempotencyRetryContext(
-					invalidResponseError("INVALID_JSON_RESPONSE", fmt.Sprintf("Flint returned non-JSON data with HTTP %d.", resp.StatusCode), err),
-					idempotencyKey,
-				)
+			decodeErr = decodeJSONNumbers(raw, &value)
+			if decodeErr != nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+				return nil, invalidResponseError("INVALID_JSON_RESPONSE", fmt.Sprintf("Flint returned non-JSON data with HTTP %d.", resp.StatusCode), decodeErr)
+			}
+			if decodeErr != nil {
+				value = nil
 			}
 		}
 		result := &apiResponse{Status: resp.StatusCode, Headers: resp.Header.Clone(), Raw: raw, Value: value}
@@ -333,8 +320,9 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			e := apiErrorFromResponse(result)
-			if retryableErrorStatus(resp.StatusCode) {
-				e = withIdempotencyRetryContext(e, idempotencyKey)
+			e.Cause = decodeErr
+			if replaySafe && errorRetryable(e) && retryRequest(ctx, attempt, resp.Header.Get("Retry-After")) {
+				continue
 			}
 			return nil, e
 		}
@@ -360,27 +348,45 @@ func isSensitivePath(path string) bool {
 func retryableErrorStatus(status int) bool { return status == 429 || status >= 500 && status <= 599 }
 
 func retryableStatus(status int) bool {
-	return status == 429 || status == 502 || status == 503 || status == 504
+	return status == 429 || status == 500 || status == 502 || status == 503 || status == 504
 }
-func retryBudgetAllows(ctx context.Context, attempt int) bool {
-	if attempt >= 6 {
+
+func responseRetryable(resp *apiResponse) bool {
+	if envelope, ok := resp.Value.(map[string]any); ok {
+		if apiError, ok := envelope["error"].(map[string]any); ok {
+			remediation, _ := apiError["remediation"].(map[string]any)
+			return remediation["retry"] == "same_request"
+		}
+	}
+	return retryableStatus(resp.Status)
+}
+
+func errorRetryable(err *CLIError) bool {
+	if err.retryable != nil {
+		return *err.retryable
+	}
+	// Other HTTP clients (upgrade downloads and streams) set their own status.
+	return retryableErrorStatus(err.HTTPStatus) || err.ExitCode == ExitNetwork
+}
+
+func retryRequest(ctx context.Context, attempt int, retryAfter string) bool {
+	if attempt >= 3 || ctx.Err() != nil {
 		return false
 	}
-	deadline, ok := ctx.Deadline()
-	if !ok {
-		return true
+	delay := retryDelay(attempt, retryAfter)
+	if deadline, ok := ctx.Deadline(); ok && delay >= time.Until(deadline) {
+		return false
 	}
-	return time.Until(deadline) > 250*time.Millisecond
+	return sleepContext(ctx, delay)
 }
+
 func retryDelay(attempt int, retryAfter string) time.Duration {
+	base := min(time.Duration(math.Pow(2, float64(attempt-1)))*500*time.Millisecond, 5*time.Second)
+	delay := base/2 + time.Duration(mathrand.Float64()*float64(base/2))
 	if d, ok := parseRetryAfter(retryAfter); ok {
-		return d
+		delay = max(delay, d)
 	}
-	base := time.Duration(math.Pow(2, float64(attempt-1))) * 250 * time.Millisecond
-	if base > 5*time.Second {
-		base = 5 * time.Second
-	}
-	return time.Duration(mathrand.Float64() * float64(base))
+	return delay
 }
 func parseRetryAfter(value string) (time.Duration, bool) {
 	value = strings.TrimSpace(value)
@@ -415,7 +421,8 @@ func apiErrorFromResponse(resp *apiResponse) *CLIError {
 	if message == "" {
 		message = fmt.Sprintf("Flint returned HTTP %d.", resp.Status)
 	}
-	e := &CLIError{HTTPStatus: resp.Status, ExitCode: exit, Type: "api_error", Code: "HTTP_" + strconv.Itoa(resp.Status), Message: message}
+	retryable := responseRetryable(resp)
+	e := &CLIError{retryable: &retryable, HTTPStatus: resp.Status, ExitCode: exit, Type: "api_error", Code: "HTTP_" + strconv.Itoa(resp.Status), Message: message}
 	if m, ok := resp.Value.(map[string]any); ok {
 		if raw, ok := m["error"].(map[string]any); ok {
 			if v, ok := raw["type"].(string); ok {
@@ -448,6 +455,10 @@ func apiErrorFromResponse(resp *apiResponse) *CLIError {
 	}
 	if e.RequestID == "" {
 		e.RequestID = resp.Headers.Get("X-Request-Id")
+	}
+	if delay, ok := parseRetryAfter(resp.Headers.Get("Retry-After")); ok {
+		milliseconds := delay.Milliseconds()
+		e.RetryAfterMs = &milliseconds
 	}
 	return e
 }
@@ -482,6 +493,9 @@ func withIdempotencyRetryContext(err *CLIError, idempotencyKey string) *CLIError
 		target, _ = details["details"].(map[string]any)
 		if target == nil {
 			target = map[string]any{}
+			if original := details["details"]; original != nil {
+				target["problems"] = original
+			}
 		} else {
 			target = copyMap(target)
 		}
@@ -495,7 +509,14 @@ func withIdempotencyRetryContext(err *CLIError, idempotencyKey string) *CLIError
 		remediation = copyMap(remediation)
 	}
 	actions, _ := remediation["next_actions"].([]any)
-	remediation["next_actions"] = append(append([]any(nil), actions...), map[string]any{"reason_message": "Retry the same command with --idempotency-key " + idempotencyKey + "."})
+	message := "For a retry of the same request, reuse --idempotency-key " + idempotencyKey + "."
+	for _, action := range actions {
+		if next, ok := action.(map[string]any); ok && next["reason_message"] == message {
+			err.Details = details
+			return err
+		}
+	}
+	remediation["next_actions"] = append(append([]any(nil), actions...), map[string]any{"reason_message": message})
 	target["remediation"] = remediation
 	err.Details = details
 	return err
