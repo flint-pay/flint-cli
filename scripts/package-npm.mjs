@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { releaseVersion } from "./release-version.mjs";
+import { stampServerManifest } from "./server-manifest.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const cliDir = resolve(scriptDir, "..");
@@ -32,6 +33,8 @@ for (const dependency of Object.keys(wrapperManifest.optionalDependencies)) {
   wrapperManifest.optionalDependencies[dependency] = version;
 }
 writeFileSync(wrapperManifestPath, `${JSON.stringify(wrapperManifest, null, 2)}\n`);
+const serverManifest = JSON.parse(readFileSync(resolve(cliDir, "server.json"), "utf8"));
+writeFileSync(resolve(distDir, "server.json"), `${JSON.stringify(stampServerManifest(serverManifest, version), null, 2)}\n`);
 
 for (const [os, arch, format] of targets) {
   const packageDir = join(outputDir, `${os}-${arch}`);

@@ -188,6 +188,7 @@ func TestSignupCancellationStopsBeforeKeyIssuance(t *testing.T) {
 	}))
 	defer server.Close()
 	app, out, stderr := testApp(t, server.URL)
+	t.Setenv("FLINT_API_KEY", "")
 	app.Context = ctx
 	app.StoreCredential = func(string, string) error { t.Error("canceled signup stored a credential"); return nil }
 	if exit := app.Run(signupRegressionArgs()); exit != ExitNetwork || calls.Load() != 1 {
@@ -309,6 +310,7 @@ func TestSignupCancellationAfterKeyIssuanceStillRevokesKey(t *testing.T) {
 	}))
 	defer server.Close()
 	app, out, stderr := testApp(t, server.URL)
+	t.Setenv("FLINT_API_KEY", "")
 	app.Context = ctx
 	baseClient := server.Client()
 	defer baseClient.CloseIdleConnections()

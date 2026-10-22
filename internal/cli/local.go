@@ -28,6 +28,8 @@ func (a *App) runLocal(cmd *Command, opts Options) int {
 		return a.localConfigGet(cmd, opts)
 	case "config.set":
 		return a.localConfigSet(cmd, opts)
+	case "config.unset":
+		return a.localConfigUnset(cmd, opts)
 	case "config.validate":
 		return a.localConfigValidate(cmd, opts)
 	case "history":
@@ -53,6 +55,7 @@ func (a *App) runLocal(cmd *Command, opts Options) int {
 	case "support.open":
 		return a.localSupportOpen(cmd, opts)
 	case "mcp.serve":
+		a.Registry.ensureAPICommands()
 		return a.serveMCP(opts)
 	case "signup":
 		return a.localSignup(cmd, opts)
@@ -120,25 +123,45 @@ func (a *App) localConfigSet(cmd *Command, opts Options) int {
 	return a.outputLocal(map[string]any{"data": map[string]any{"key": key, "value": value}}, cmd, opts)
 }
 
+func (a *App) localConfigUnset(cmd *Command, opts Options) int {
+	key := opts.Positionals[0]
+	if key != "merchant" {
+		return a.fail(usageError("INVALID_CONFIG_KEY", "Config key must be merchant.", "key"), opts)
+	}
+	resolved, _, err := a.resolveConfig(opts)
+	if err != nil {
+		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
+	}
+	if err := a.updateConfig(func(cfg *Config) error {
+		profile := cfg.Profiles[resolved.ProfileName]
+		profile.MerchantGuard = ""
+		cfg.Profiles[resolved.ProfileName] = profile
+		return nil
+	}); err != nil {
+		return a.fail(configError("CONFIG_WRITE_FAILED", err.Error(), err), opts)
+	}
+	return a.outputLocal(map[string]any{"data": map[string]any{"key": key, "value": nil}}, cmd, opts)
+}
+
 func (a *App) localConfigValidate(cmd *Command, opts Options) int {
 	resolved, _, err := a.resolveConfig(opts)
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
 	}
 	checks := []map[string]any{{"name": "global_config", "status": "pass", "path": resolved.GlobalConfigPath}, {"name": "project_config", "status": "pass", "path": resolved.ProjectConfigPath}, {"name": "profile", "status": "pass", "value": resolved.ProfileName}}
+	checks = append(checks, configUnknownFieldWarnings(resolved)...)
 	key, source, credentialErr := a.resolveCheckCredential(resolved.ProfileName)
 	if credentialErr != nil {
 		return a.fail(configError("CREDENTIAL_LOOKUP_FAILED", credentialErr.Error(), credentialErr), opts)
 	}
 	if key != "" {
-		ctx, cancel := context.WithTimeout(withOAuthContext(a.commandContext(), resolved.ContextID), opts.Timeout)
-		defer cancel()
-		_, _, envelope, authErr := a.fetchCredentialContext(ctx, resolved.ProfileName, key, opts.Debug)
+		ctx := withOAuthContext(a.commandContext(), resolved.ContextID)
+		_, _, envelope, authErr := a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, key, opts.Debug)
 		authContext := envelope.Data
 		if authErr != nil {
 			return a.fail(authErr, opts)
 		}
-		if intentErr := validateCredentialIntent(authContext, opts, resolved.MerchantGuard, resolved.SandboxGuard); intentErr != nil {
+		if intentErr := validateResolvedCredentialIntent(authContext, opts, resolved, ""); intentErr != nil {
 			return a.fail(intentErr, opts)
 		}
 		checks = append(checks, map[string]any{"name": "credential", "status": "pass", "source": source, "environment": authContext.Environment, "merchant_id": authContext.MerchantID})
@@ -203,7 +226,7 @@ func (a *App) localHistory(cmd *Command, opts Options) int {
 		}
 	}
 	scope := historyScopeFromResolved(resolved)
-	var entries []any
+	entries := []any{}
 	for _, e := range h.Entries {
 		if (resolved.Environment == "" && e.Profile == resolved.ProfileName) || historyEntryMatchesScope(e, scope) {
 			entries = append(entries, map[string]any{
@@ -222,6 +245,7 @@ func (a *App) localHistory(cmd *Command, opts Options) int {
 }
 
 func (a *App) localAuthImport(cmd *Command, opts Options) int {
+	opts.allowMissingProfile = true
 	resolved, _, err := a.resolveConfig(opts)
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
@@ -254,7 +278,7 @@ func (a *App) localAuthImport(cmd *Command, opts Options) int {
 	}
 	baseURL, err := a.baseURLForCredential(key)
 	if err != nil {
-		return a.fail(configError("INVALID_CREDENTIAL", err.Error(), err), opts)
+		return a.fail(configError("INVALID_BASE_URL", err.Error(), err), opts)
 	}
 	ctx, cancel := context.WithTimeout(withOAuthContext(a.commandContext(), resolved.ContextID), opts.Timeout)
 	defer cancel()
@@ -262,7 +286,7 @@ func (a *App) localAuthImport(cmd *Command, opts Options) int {
 	if e != nil {
 		return a.fail(e, opts)
 	}
-	if intentErr := validateCredentialIntent(authContext, opts, resolved.MerchantGuard, resolved.SandboxGuard); intentErr != nil {
+	if intentErr := validateResolvedCredentialIntent(authContext, opts, resolved, ""); intentErr != nil {
 		return a.fail(intentErr, opts)
 	}
 	if e := a.saveAuthenticatedCredential(resolved.ProfileName, key, authContext); e != nil {
@@ -325,11 +349,11 @@ func (a *App) saveCredentialProfileUnlocked(profile, key string, updateProfile f
 		}
 		previousCredential, previousErr := a.LoadCredential(profile)
 		if previousErr != nil {
-			persistenceErr = configError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before authentication.", previousErr)
+			persistenceErr = credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before authentication.", previousErr)
 			return previousErr
 		}
 		if storeErr := a.StoreCredential(profile, key); storeErr != nil {
-			persistenceErr = configError("KEYCHAIN_WRITE_FAILED", "The validated credential could not be stored in the OS keychain.", storeErr)
+			persistenceErr = credentialStoreError("KEYCHAIN_WRITE_FAILED", "The validated credential could not be stored in the OS keyring.", storeErr)
 			if restoreErr := a.restoreCredential(profile, previousCredential); restoreErr != nil {
 				persistenceErr.Message += "; credential rollback also failed: " + restoreErr.Error()
 			}
@@ -461,6 +485,7 @@ func (a *App) confirmLocal(message string, opts Options) *CLIError {
 }
 
 func (a *App) localSchema(cmd *Command, opts Options) int {
+	a.Registry.ensureAPICommands()
 	var value any
 	switch cmd.CanonicalName {
 	case "schema.commands":
@@ -479,7 +504,7 @@ func (a *App) localSchema(cmd *Command, opts Options) int {
 					message += " Did you mean " + suggestions[0] + "?"
 				}
 				e := usageError("UNKNOWN_COMMAND_PREFIX", message, "prefix")
-				e.Details = []map[string]any{{"input": prefix, "suggestions": suggestions}}
+				e.Details = suggestionDetails(prefix, suggestions)
 				return a.fail(e, opts)
 			}
 			commands = filtered
@@ -505,13 +530,13 @@ func (a *App) localSchema(cmd *Command, opts Options) int {
 				message += " Did you mean " + suggestions[0] + "?"
 			}
 			e := usageError("UNKNOWN_COMMAND_SCHEMA", message, "command")
-			e.Details = []map[string]any{{"input": requested, "suggestions": suggestions}}
+			e.Details = suggestionDetails(requested, suggestions)
 			return a.fail(e, opts)
 		}
 		var e *CLIError
 		switch cmd.CanonicalName {
 		case "schema.command":
-			value = commandDocument(target, requested)
+			value = map[string]any{"data": commandDocument(target, requested)}
 		case "schema.input":
 			value, e = requestBodySchema(target)
 		default:
@@ -521,18 +546,31 @@ func (a *App) localSchema(cmd *Command, opts Options) int {
 			return a.fail(e, opts)
 		}
 	}
+	if opts.Output == "human" && (cmd.CanonicalName == "schema.input" || cmd.CanonicalName == "schema.output" || cmd.CanonicalName == "schema.command") {
+		if opts.JQ != "" || opts.Field != "" || len(opts.Select) > 0 {
+			return a.outputLocal(value, cmd, opts)
+		}
+		enc := json.NewEncoder(a.Stdout)
+		enc.SetEscapeHTML(false)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(value); err != nil {
+			return a.fail(networkError("OUTPUT_WRITE_FAILED", "Could not write schema output.", err), opts)
+		}
+		return ExitOK
+	}
 	opts.Output = "json"
 	return a.outputLocal(value, cmd, opts)
 }
 
 func (a *App) localHelp(cmd *Command, opts Options) int {
+	a.Registry.ensureAPICommands()
 	topic := ""
 	if len(opts.Positionals) > 0 {
 		topic = opts.Positionals[0]
 	}
 	if topic == "" {
 		if opts.Output == "json" {
-			return a.outputLocal(map[string]any{"data": commandList(a.Registry)}, cmd, opts)
+			return a.outputLocal(map[string]any{"data": rootHelpIndex(a.Registry)}, cmd, opts)
 		}
 		a.printRootHelp()
 		return ExitOK
@@ -545,6 +583,15 @@ func (a *App) localHelp(cmd *Command, opts Options) int {
 		return ExitOK
 	}
 	value, ok := helpTopic(topic)
+	if topic == "events" && len(opts.Positionals) > 1 {
+		var e *CLIError
+		value, e = eventHelpDetail(opts.Positionals[1])
+		if e != nil {
+			return a.fail(e, opts)
+		}
+	} else if len(opts.Positionals) > 1 {
+		return a.fail(usageError("UNEXPECTED_ARGUMENT", "Only help events accepts an event type.", "event_type"), opts)
+	}
 	if !ok {
 		// The offline topics are a short fixed list. Anything else is a question,
 		// and questions belong in Flint Help rather than in a dead end here.
@@ -555,7 +602,14 @@ func (a *App) localHelp(cmd *Command, opts Options) int {
 		return a.fail(unknown, opts)
 	}
 	if opts.Output == "json" {
-		return a.outputLocal(value, cmd, opts)
+		return a.outputLocal(map[string]any{"data": value}, cmd, opts)
+	}
+	if topic == "events" && len(opts.Positionals) == 1 {
+		for _, event := range value["events"].([]map[string]any) {
+			fmt.Fprintf(a.Stdout, "%-56s %s\n", event["type"], event["description"])
+		}
+		fmt.Fprintln(a.Stdout, "Run flint help events <event_type> for details.")
+		return ExitOK
 	}
 	renderHelpTopic(a.Stdout, topic, value)
 	return ExitOK
@@ -568,10 +622,10 @@ func (a *App) localInit(cmd *Command, opts Options) int {
 	}
 	key, _, err := a.resolveCheckCredential(resolved.ProfileName)
 	if err != nil {
-		return a.fail(configError("CREDENTIAL_LOOKUP_FAILED", err.Error(), err), opts)
+		return a.fail(credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the credential.", err), opts)
 	}
 	if key == "" {
-		return a.outputLocal(map[string]any{"data": map[string]any{"authenticated": false, "recommended_auth": "flint login", "existing_account": "flint login", "manual_api_key": "flint auth import", "new_account": "flint signup", "dashboard_api_keys_url": dashboardAPIKeysURL}}, cmd, opts)
+		return a.outputLocal(map[string]any{"data": map[string]any{"authenticated": false, "recommended_auth": "flint login", "existing_account": "flint login", "manual_api_key": "flint auth import", "headless_api_key": "Set FLINT_API_KEY", "new_account": "flint signup", "dashboard_api_keys_url": dashboardAPIKeysURL}}, cmd, opts)
 	}
 	checks, exit := a.doctorChecks(opts)
 	value := map[string]any{"data": map[string]any{
@@ -616,21 +670,20 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 	checks = append(checks, map[string]any{"name": "config", "status": "pass", "profile": resolved.ProfileName})
 	key, source, err := a.resolveCheckCredential(resolved.ProfileName)
 	if err != nil {
-		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": err.Error()})
+		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the credential.", err).Message})
 		return checks, ExitAuth
 	}
 	if key == "" {
-		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": "Run flint login (recommended), or flint auth import to use an API key."})
+		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": "Run flint login (recommended), flint auth import, or set FLINT_API_KEY for headless use."})
 		return checks, ExitAuth
 	}
 	checks = append(checks, map[string]any{"name": "credential", "status": "pass", "source": source, "note": "Credential found; API validation follows."})
-	ctx, cancel := context.WithTimeout(withOAuthContext(a.commandContext(), resolved.ContextID), opts.Timeout)
-	defer cancel()
-	_, baseURL, authResponse, e := a.fetchCredentialContext(ctx, resolved.ProfileName, key, opts.Debug)
+	ctx := withOAuthContext(a.commandContext(), resolved.ContextID)
+	_, baseURL, authResponse, e := a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, key, opts.Debug)
 	if e != nil {
 		switch e.Code {
 		case "INVALID_CREDENTIAL", "INVALID_OAUTH_CREDENTIAL", "OAUTH_SERVER_MISMATCH", "CREDENTIAL_LOOKUP_FAILED", "KEYCHAIN_WRITE_FAILED", "OAUTH_REFRESH_FAILED", "OAUTH_SESSION_CHANGED":
-			checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": e.Message})
+			checks = append(checks, map[string]any{"name": "authentication", "status": "fail", "fix": e.Message})
 			return checks, e.ExitCode
 		}
 		if e.ExitCode == ExitAuth {
@@ -651,7 +704,7 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 		return checks, e.ExitCode
 	}
 	authContext := authResponse.Data
-	if intentErr := validateCredentialIntent(authContext, opts, resolved.MerchantGuard, resolved.SandboxGuard); intentErr != nil {
+	if intentErr := validateResolvedCredentialIntent(authContext, opts, resolved, ""); intentErr != nil {
 		checks = append(checks, map[string]any{"name": "context_guard", "status": "fail", "fix": intentErr.Message})
 		return checks, intentErr.ExitCode
 	}
@@ -664,10 +717,11 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 	)
 	if len(authContext.Scopes) == 0 {
 		checks = append(checks, map[string]any{
-			"name":   "scopes",
-			"status": "fail",
-			"count":  0,
-			"fix":    "Sign in again or issue an API key with the scopes required by the commands you intend to run.",
+			"name":                 "scopes",
+			"status":               "fail",
+			"count":                0,
+			"missing_cli_baseline": initialCLIScopes,
+			"fix":                  "Sign in again or issue an API key with the scopes required by the commands you intend to run.",
 		})
 		return checks, ExitAuth
 	}
@@ -675,16 +729,16 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 	for _, scope := range authContext.Scopes {
 		grantedScopes[strings.TrimSpace(scope)] = struct{}{}
 	}
-	missingBaselineScopes := 0
+	missingBaselineScopes := []string{}
 	for _, scope := range initialCLIScopes {
 		if _, ok := grantedScopes[scope]; !ok {
-			missingBaselineScopes++
+			missingBaselineScopes = append(missingBaselineScopes, scope)
 		}
 	}
 	scopeCheck := map[string]any{"name": "scopes", "status": "pass", "count": len(authContext.Scopes)}
-	if missingBaselineScopes > 0 {
+	if len(missingBaselineScopes) > 0 {
 		scopeCheck["limited"] = true
-		scopeCheck["missing_cli_baseline_count"] = missingBaselineScopes
+		scopeCheck["missing_cli_baseline"] = missingBaselineScopes
 		if authContext.AuthType == "oauth" {
 			scopeCheck["note"] = "This browser session is missing CLI baseline scopes. Commands outside its granted scopes will fail authorization."
 		} else {
@@ -696,13 +750,15 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 		scopeCheck["note"] = "Browser login grants the CLI baseline scopes. Use flint reauth --scope for commands that need additional access."
 	}
 	checks = append(checks, scopeCheck)
-	observedVersion, discoveryError := a.fetchCurrentAPIVersion(ctx, baseURL, opts.Debug)
+	discoveryCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
+	defer cancel()
+	observedVersion, discoveryError := a.fetchCurrentAPIVersion(discoveryCtx, baseURL, opts.Debug)
 	versionCheck := map[string]any{"name": "api_version", "expected": a.Info.APIVersion, "observed": observedVersion, "status": "pass"}
 	if discoveryError != nil {
-		versionCheck["status"] = "fail"
+		versionCheck["status"] = "warning"
 		versionCheck["fix"] = discoveryError.Message
 		checks = append(checks, versionCheck)
-		return checks, discoveryError.ExitCode
+		return checks, ExitOK
 	}
 	if observedVersion != a.Info.APIVersion {
 		versionCheck["status"] = "info"
@@ -744,9 +800,9 @@ func helpTopic(topic string) (map[string]any, bool) {
 	case "exit-codes":
 		return errorCatalog(), true
 	case "errors":
-		return errorCatalog(), true
+		return errorEnvelopeHelp(), true
 	case "events":
-		v, err := eventCatalog()
+		v, err := eventHelpIndex()
 		return map[string]any{"events": v}, err == nil
 	case "test-cards":
 		return map[string]any{"sandbox_tokens": []map[string]string{{"scenario": "success", "token": "pm_card_visa"}, {"scenario": "3d_secure", "token": "pm_card_threeDSecure2Required"}, {"scenario": "authentication_required", "token": "pm_card_authenticationRequired"}, {"scenario": "insufficient_funds", "token": "pm_card_chargeDeclinedInsufficientFunds"}, {"scenario": "generic_decline", "token": "pm_card_chargeDeclined"}}, "provider_test_cards": []map[string]string{{"scenario": "success", "number": "4242 4242 4242 4242"}, {"scenario": "3d_secure", "number": "4000 0000 0000 3220"}, {"scenario": "authentication_required", "number": "4000 0025 0000 3155"}, {"scenario": "insufficient_funds", "number": "4000 0000 0000 9995"}, {"scenario": "generic_decline", "number": "4000 0000 0000 0002"}}}, true

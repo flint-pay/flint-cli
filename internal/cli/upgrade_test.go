@@ -21,6 +21,7 @@ import (
 )
 
 func TestStandaloneUpgradeVerifiesAndReplacesBinary(t *testing.T) {
+	t.Setenv("GITHUB_TOKEN", "upgrade-test-token")
 	oldBinary := []byte("old flint")
 	newBinary := []byte("new flint release")
 	archive := testUpgradeArchive(t, newBinary)
@@ -28,7 +29,13 @@ func TestStandaloneUpgradeVerifiesAndReplacesBinary(t *testing.T) {
 	archiveName := "flint_1.2.0_linux_amd64.tar.gz"
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.Header.Get("Authorization") != "" {
+			t.Error("web redirect or release download received a credential")
+		}
 		switch {
+		case request.URL.Path == "/latest":
+			w.Header().Set("Location", "http://"+request.Host+"/flint-pay/flint-cli/releases/tag/cli/v1.2.0")
+			w.WriteHeader(http.StatusFound)
 		case request.URL.Path == "/releases":
 			if request.Header.Get("User-Agent") != "flintpay-cli/1.0.0" {
 				t.Errorf("User-Agent=%q", request.Header.Get("User-Agent"))
@@ -60,6 +67,7 @@ func TestStandaloneUpgradeVerifiesAndReplacesBinary(t *testing.T) {
 	}
 	app, stdout, stderr := testApp(t, "")
 	app.Info.Version = "1.0.0"
+	app.upgradeReleaseLatestURL = server.URL + "/latest"
 	app.upgradeReleaseAPIURL = server.URL + "/releases"
 	app.upgradeReleaseDownloadURL = server.URL + "/download"
 	app.executablePath = func() (string, error) { return executable, nil }
@@ -424,6 +432,123 @@ func TestUpgradeDoesNothingWhenCurrent(t *testing.T) {
 				t.Fatalf("stdout=%s", stdout)
 			}
 		})
+	}
+}
+
+func TestUpgradeCheckReportsVersionsWithoutInstalling(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/releases" {
+			t.Errorf("--check requested %s; it must only read the release list", request.URL.Path)
+			http.NotFound(w, request)
+			return
+		}
+		fmt.Fprint(w, `[{"tag_name":"cli/v1.3.0-beta.1","prerelease":true},{"tag_name":"cli/v1.2.0"},{"tag_name":"cli/v1.1.0"}]`)
+	}))
+	defer server.Close()
+	for _, test := range []struct {
+		name      string
+		argv      []string
+		installed string
+		want      map[string]any
+	}{
+		{"update available", []string{"upgrade", "--check"}, "1.0.0", map[string]any{
+			"status": "update_available", "current_version": "1.0.0", "latest_version": "1.2.0", "update_available": true, "upgrade_command": "flint upgrade",
+		}},
+		{"alias", []string{"update", "--check"}, "1.1.0", map[string]any{
+			"status": "update_available", "current_version": "1.1.0", "latest_version": "1.2.0", "update_available": true, "upgrade_command": "flint upgrade",
+		}},
+		{"current", []string{"upgrade", "--check"}, "1.2.0", map[string]any{
+			"status": "current", "current_version": "1.2.0", "latest_version": "1.2.0", "update_available": false,
+		}},
+		{"newer prerelease", []string{"upgrade", "--check"}, "1.3.0-beta.1", map[string]any{
+			"status": "current", "current_version": "1.3.0-beta.1", "latest_version": "1.2.0", "update_available": false,
+		}},
+		{"explicit true", []string{"upgrade", "--check=true"}, "1.0.0", map[string]any{
+			"status": "update_available", "current_version": "1.0.0", "latest_version": "1.2.0", "update_available": true, "upgrade_command": "flint upgrade",
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			app, stdout, stderr := testApp(t, "")
+			app.Info.Version = test.installed
+			app.upgradeReleaseAPIURL = server.URL + "/releases"
+			app.upgradeReleaseDownloadURL = server.URL + "/download"
+			app.executablePath = func() (string, error) { t.Fatal("--check looked up the executable"); return "", nil }
+			app.runCommand = func(context.Context, string, ...string) ([]byte, error) {
+				t.Fatal("--check ran a command")
+				return nil, nil
+			}
+
+			if exit := app.Run(append(test.argv, "--output", "json")); exit != ExitOK {
+				t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
+			}
+			var got struct {
+				Data map[string]any `json:"data"`
+			}
+			if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+				t.Fatalf("stdout=%s: %v", stdout, err)
+			}
+			if fmt.Sprint(got.Data) != fmt.Sprint(test.want) {
+				t.Fatalf("data=%v want %v", got.Data, test.want)
+			}
+		})
+	}
+}
+
+func TestUpgradeCheckHumanOutputAndExplicitFalse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, `[{"tag_name":"cli/v1.2.0"}]`)
+	}))
+	defer server.Close()
+	app, stdout, stderr := testApp(t, "")
+	app.Info.Version = "1.0.0"
+	app.upgradeReleaseAPIURL = server.URL
+	app.executablePath = func() (string, error) { t.Fatal("--check looked up the executable"); return "", nil }
+	if exit := app.Run([]string{"upgrade", "--check"}); exit != ExitOK {
+		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
+	}
+	for _, want := range []string{"1.0.0", "1.2.0", "flint upgrade"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("human output missing %q: %s", want, stdout)
+		}
+	}
+
+	// --check=false is an ordinary upgrade; with no newer release it does nothing.
+	current, stdout, stderr := testApp(t, "")
+	current.Info.Version = "1.2.0"
+	current.upgradeReleaseAPIURL = server.URL
+	if exit := current.Run([]string{"upgrade", "--check=false", "--output", "json"}); exit != ExitOK {
+		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
+	}
+	if !strings.Contains(stdout.String(), `"status":"current"`) || !strings.Contains(stdout.String(), `"installed_version":"1.2.0"`) {
+		t.Fatalf("stdout=%s", stdout)
+	}
+}
+
+func TestUpgradeDryRunPointsToCheck(t *testing.T) {
+	app, stdout, _ := testApp(t, "")
+	app.Info.Version = "1.0.0"
+	app.upgradeReleaseAPIURL = "http://127.0.0.1:1/unused"
+	if exit := app.Run([]string{"upgrade", "--dry-run=client", "--output", "json"}); exit != ExitUsage {
+		t.Fatalf("exit=%d stdout=%s", exit, stdout)
+	}
+	if !strings.Contains(stdout.String(), "flint upgrade --check") {
+		t.Fatalf("dry-run rejection does not mention --check: %s", stdout)
+	}
+}
+
+func TestUpgradeCheckReportsReleaseLookupFailures(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "rate limited", http.StatusForbidden)
+	}))
+	defer server.Close()
+	app, stdout, _ := testApp(t, "")
+	app.Info.Version = "1.0.0"
+	app.upgradeReleaseAPIURL = server.URL
+	if exit := app.Run([]string{"upgrade", "--check", "--output", "json"}); exit != ExitNetwork {
+		t.Fatalf("exit=%d stdout=%s", exit, stdout)
+	}
+	if !strings.Contains(stdout.String(), `"code":"RELEASE_DOWNLOAD_FAILED"`) {
+		t.Fatalf("stdout=%s", stdout)
 	}
 }
 

@@ -108,6 +108,7 @@ func TestPromptReadsHonorCancellation(t *testing.T) {
 	} {
 		t.Run(strings.Join(command, "-"), func(t *testing.T) {
 			a, out, stderr := testApp(t, "")
+			t.Setenv("FLINT_API_KEY", "")
 			a.IsTTY = func() bool { return true }
 			reader, writer := io.Pipe()
 			defer writer.Close()

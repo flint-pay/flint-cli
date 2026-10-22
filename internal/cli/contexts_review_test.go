@@ -250,7 +250,14 @@ func TestContextLoginDoesNotReplaceUnconfirmedSession(t *testing.T) {
 				state.revokedOriginal = true
 				args = append(args, "--no-input")
 			}
-			if exit := app.Run(args); exit == ExitOK {
+			exit := app.Run(args)
+			if kind == "no-input" {
+				if exit != ExitOK || state.devices != 1 || stored() == before {
+					t.Fatalf("remote approval did not complete: exit=%d devices=%d out=%s", exit, state.devices, out)
+				}
+				return
+			}
+			if exit == ExitOK {
 				t.Fatalf("unexpected success: %s", out)
 			}
 			if state.devices != 0 || state.revokes != 0 || stored() != before {

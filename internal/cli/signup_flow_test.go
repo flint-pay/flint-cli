@@ -166,7 +166,7 @@ func TestSignupFlowMCP(t *testing.T) {
 		{"email": "dev@example.com", "first_name": "Ada", "last_name": "Lovelace"},
 		{"verification_code": "123456"},
 	} {
-		response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: i + 1, Method: "tools/call", Params: map[string]any{"name": "signup", "arguments": args}}, defaultOptions())
+		response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: i + 1, Method: "tools/call", Params: map[string]any{"name": "signup", "arguments": args}}, mcpServeOptions(t, "--tools", "signup"))
 		if valueAt(response, "result.isError") == true || valueAt(response, "error") != nil {
 			t.Fatalf("MCP response = %#v", response)
 		}
@@ -343,6 +343,7 @@ func TestSignupFlowLoginApprovalLinks(t *testing.T) {
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
 				app.Context = ctx
+				app.IsTTY = func() bool { return true }
 				var opened string
 				app.OpenBrowser = func(target string) error { opened = target; cancel(); return nil }
 				if exit := app.Run(args); exit != ExitAuth {

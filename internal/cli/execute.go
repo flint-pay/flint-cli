@@ -3,10 +3,10 @@ package cli
 import (
 	"context"
 	"fmt"
-	"maps"
 	"net/url"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -31,7 +31,7 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 	if len(opts.WaitFor) > 0 {
 		return a.executeWait(ctx, cmd, opts, req, key, baseURL)
 	}
-	if opts.All {
+	if opts.All || opts.Limit > 0 {
 		return a.executeAllPages(ctx, cmd, opts, req, key, baseURL)
 	}
 	resp, e := a.doRequestWithin(ctx, opts.Timeout, baseURL, key, req.Method, req.Path, req.Body, req.IdempotencyKey, opts.Debug)
@@ -50,7 +50,7 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 		}
 	}
 	if values := opts.Raw["save-to"]; len(values) > 0 {
-		return saveDownload(resp.Value, values[len(values)-1])
+		return a.saveDownload(resp.Value, values[len(values)-1])
 	}
 	return resp.Value, nil
 }
@@ -228,6 +228,9 @@ func (a *App) executeAllPages(ctx context.Context, cmd *Command, opts Options, r
 	pages := 0
 	seenPageTokens := map[string]bool{}
 	for {
+		if opts.Limit > 0 {
+			path = setQuery(path, "page_size", fmt.Sprint(min(opts.Limit-len(combined), 100)))
+		}
 		if token := pageToken(path); token != "" {
 			if seenPageTokens[token] {
 				return nil, invalidResponseError("PAGINATION_TOKEN_LOOP", "Flint returned a repeated pagination token.", nil)
@@ -248,7 +251,14 @@ func (a *App) executeAllPages(ctx context.Context, cmd *Command, opts Options, r
 			collection, _ = m["data"].(map[string]any)
 		}
 		if data, ok := collection[collectionField].([]any); ok {
-			combined = append(combined, data...)
+			remaining := len(data)
+			if opts.Limit > 0 {
+				remaining = min(remaining, opts.Limit-len(combined))
+			}
+			combined = append(combined, data[:remaining]...)
+			if remaining < len(data) {
+				delete(m, "next_page_token")
+			}
 		} else {
 			return nil, invalidResponseError("INVALID_PAGINATION_RESPONSE", "List response collection is not an array.", nil)
 		}
@@ -257,7 +267,7 @@ func (a *App) executeAllPages(ctx context.Context, cmd *Command, opts Options, r
 		if tokenErr != nil {
 			return nil, tokenErr
 		}
-		if token == "" {
+		if token == "" || (opts.Limit > 0 && len(combined) >= opts.Limit) {
 			break
 		}
 		if seenPageTokens[token] {
@@ -269,7 +279,9 @@ func (a *App) executeAllPages(ctx context.Context, cmd *Command, opts Options, r
 		}
 	}
 	collection[collectionField] = combined
-	last["next_page_token"] = ""
+	if opts.Limit == 0 {
+		last["next_page_token"] = ""
+	}
 	return last, nil
 }
 
@@ -289,7 +301,7 @@ func (a *App) executeWait(ctx context.Context, cmd *Command, opts Options, req p
 		remaining := deadline.Sub(a.Now())
 		if remaining <= 0 {
 			err := cliError(ExitWait, "wait_condition_unmet", "WAIT_CONDITION_UNMET", "The wait bound passed before the requested condition was met.")
-			err.Details = map[string]any{"conditions": opts.WaitFor, "last": last}
+			err.Details = map[string]any{"conditions": opts.WaitFor, "observed": observedConditions(last, conditions), "last": last}
 			return last, err
 		}
 		requestTimeout := min(opts.Timeout, remaining)
@@ -297,7 +309,7 @@ func (a *App) executeWait(ctx context.Context, cmd *Command, opts Options, req p
 		if requestErr != nil {
 			if !a.Now().Before(deadline) {
 				err := cliError(ExitWait, "wait_condition_unmet", "WAIT_CONDITION_UNMET", "The wait bound passed before the requested condition was met.")
-				err.Details = map[string]any{"conditions": opts.WaitFor, "last": last}
+				err.Details = map[string]any{"conditions": opts.WaitFor, "observed": observedConditions(last, conditions), "last": last}
 				return last, err
 			}
 			return last, requestErr
@@ -310,7 +322,7 @@ func (a *App) executeWait(ctx context.Context, cmd *Command, opts Options, req p
 		for _, c := range conditions {
 			if _, found := lookupResourcePath(last, c.Path); !found && !outputSchemaDeclaresPath(cmd, c.Path) {
 				err := usageError("WAIT_FIELD_UNKNOWN", fmt.Sprintf("--wait-for field %q is not part of this command's response, so the condition can never be met. Run flint schema output %s to list fields.", c.Path, cmd.CanonicalName), "wait-for")
-				err.Details = map[string]any{"conditions": opts.WaitFor, "last": last}
+				err.Details = map[string]any{"conditions": opts.WaitFor, "observed": observedConditions(last, conditions), "last": last}
 				return last, err
 			}
 		}
@@ -353,50 +365,71 @@ func (a *App) writeProgress(opts Options, record map[string]any, plain string) *
 	return nil
 }
 
-// outputSchemaDeclaresPath reports whether the first segment of a wait path is
-// a documented response field, either on the resource or one nested object
-// below it. Unknown or free-form schemas count as declared.
+// outputSchemaDeclaresPath checks envelope, resource, and nested resource paths.
+// Free-form schemas remain permissive because their fields are not enumerable.
 func outputSchemaDeclaresPath(cmd *Command, path string) bool {
+	if cmd == nil {
+		return false
+	}
 	schema, err := schemaForCommand(cmd, false)
 	if err != nil {
 		return true
 	}
 	defs, _ := schema["$defs"].(map[string]any)
-	var properties func(node any, depth int) map[string]any
-	properties = func(node any, depth int) map[string]any {
-		m, _ := node.(map[string]any)
-		if m == nil || depth > 8 {
-			return nil
+	var declares func(map[string]any, []string, int) bool
+	declares = func(node map[string]any, parts []string, depth int) bool {
+		if depth > 64 || node == nil {
+			return false
 		}
-		if ref, ok := m["$ref"].(string); ok {
-			return properties(defs[strings.TrimPrefix(ref, "#/$defs/")], depth+1)
+		if len(parts) == 0 {
+			return true
 		}
-		out := map[string]any{}
-		if own, ok := m["properties"].(map[string]any); ok {
-			maps.Copy(out, own)
+		if ref, ok := node["$ref"].(string); ok {
+			target, _ := defs[strings.TrimPrefix(ref, "#/$defs/")].(map[string]any)
+			return declares(target, parts, depth+1)
 		}
-		for _, key := range []string{"allOf", "anyOf", "oneOf"} {
-			branches, _ := m[key].([]any)
-			for _, branch := range branches {
-				maps.Copy(out, properties(branch, depth+1))
+		for _, keyword := range []string{"allOf", "anyOf", "oneOf"} {
+			branches, _ := node[keyword].([]any)
+			for _, raw := range branches {
+				branch, _ := raw.(map[string]any)
+				if declares(branch, parts, depth+1) {
+					return true
+				}
 			}
 		}
-		return out
+		if items, ok := node["items"].(map[string]any); ok {
+			next := parts
+			if _, err := strconv.Atoi(parts[0]); err == nil {
+				next = parts[1:]
+			}
+			return declares(items, next, depth+1)
+		}
+		if properties, ok := node["properties"].(map[string]any); ok {
+			child, _ := properties[parts[0]].(map[string]any)
+			return declares(child, parts[1:], depth+1)
+		}
+		if extra, ok := node["additionalProperties"].(map[string]any); ok {
+			return declares(extra, parts[1:], depth+1)
+		}
+		return len(node) == 0 || node["additionalProperties"] == true || node["type"] == "object"
 	}
-	first := strings.Split(strings.TrimPrefix(path, "data."), ".")[0]
-	root := properties(schema, 0)
-	if _, ok := root[first]; ok {
+	parts := strings.Split(path, ".")
+	if declares(schema, parts, 0) {
 		return true
 	}
-	data := properties(root["data"], 0)
-	if len(data) == 0 {
+	root, _ := schema["properties"].(map[string]any)
+	data, _ := root["data"].(map[string]any)
+	if declares(data, parts, 0) {
 		return true
 	}
-	if _, ok := data[first]; ok {
-		return true
-	}
-	for _, child := range data {
-		if _, ok := properties(child, 0)[first]; ok {
+	properties, _ := bodyProperties(data, defs, map[string]bool{})
+	for _, raw := range properties {
+		child, _ := raw.(map[string]any)
+		childProperties, _ := bodyProperties(child, defs, map[string]bool{})
+		if len(childProperties) == 0 {
+			continue
+		}
+		if declares(child, parts, 0) {
 			return true
 		}
 	}
@@ -416,6 +449,19 @@ func parseWaitConditions(values []string) ([]waitCondition, *CLIError) {
 	}
 	return out, nil
 }
+func observedConditions(value any, conditions []waitCondition) map[string]string {
+	observed := map[string]string{}
+	for _, c := range conditions {
+		if v, ok := lookupResourcePath(value, c.Path); ok {
+			observed[c.Path] = fmt.Sprint(v)
+			if v == nil {
+				observed[c.Path] = "null"
+			}
+		}
+	}
+	return observed
+}
+
 func conditionsMatch(value any, conditions []waitCondition) (bool, map[string]string) {
 	observed := map[string]string{}
 	for _, c := range conditions {
@@ -424,6 +470,9 @@ func conditionsMatch(value any, conditions []waitCondition) (bool, map[string]st
 			return false, observed
 		}
 		text := fmt.Sprint(v)
+		if v == nil {
+			text = "null"
+		}
 		observed[c.Path] = text
 		if text != c.Expected {
 			return false, observed

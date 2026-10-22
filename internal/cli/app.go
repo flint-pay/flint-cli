@@ -31,10 +31,11 @@ func New(info BuildInfo) *App {
 		Stdin:                     os.Stdin,
 		IsTTY:                     func() bool { return term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stderr.Fd())) },
 		Now:                       time.Now,
-		Registry:                  NewRegistry(),
+		Registry:                  newLocalRegistry(),
 		LoadCredential:            loadKeychainCredential,
 		StoreCredential:           storeKeychainCredential,
 		DeleteCredential:          deleteKeychainCredential,
+		upgradeReleaseLatestURL:   defaultUpgradeReleaseLatestURL,
 		upgradeReleaseAPIURL:      defaultUpgradeReleaseAPIURL,
 		upgradeReleaseDownloadURL: defaultUpgradeReleaseDownloadURL,
 		executablePath:            os.Executable,
@@ -54,7 +55,21 @@ func (a *App) Run(argv []string) int {
 	if envErr := validateOptions(cmd, &opts, help); envErr != nil {
 		return a.fail(envErr, opts)
 	}
+	if value := strings.TrimSpace(os.Getenv("FLINT_BASE_URL")); value != "" {
+		if _, err := validateBaseURL(value); err != nil {
+			return a.fail(configError("INVALID_BASE_URL", err.Error(), err), opts)
+		}
+		if strings.HasSuffix(strings.TrimRight(value, "/"), "/v1") && !opts.Quiet {
+			fmt.Fprintln(a.Stderr, "warning: stripped trailing /v1 from FLINT_BASE_URL; Flint adds the API version path.")
+		}
+	}
 	if help {
+		if cmd.CanonicalName == "help" {
+			return a.localHelp(cmd, opts)
+		}
+		if opts.Output == "json" {
+			return a.outputLocal(map[string]any{"data": commandDocument(cmd, cmd.Name)}, cmd, opts)
+		}
 		a.printCommandHelp(cmd)
 		return ExitOK
 	}
@@ -87,7 +102,7 @@ func (a *App) Run(argv []string) int {
 	resolved.APIKeyID = authContext.APIKeyID
 	resolved.MerchantID = authContext.MerchantID
 	resolved.SandboxID = authContext.SandboxID
-	if e := validateCredentialIntentForCommand(authContext, opts, resolved.MerchantGuard, resolved.SandboxGuard, effective.EnvironmentAffinity); effective.AuthRequired && e != nil {
+	if e := validateResolvedCredentialIntent(authContext, opts, resolved, effective.EnvironmentAffinity); effective.AuthRequired && e != nil {
 		return a.fail(e, opts)
 	}
 	if cmd.CanonicalName == "auth.status" {
@@ -106,7 +121,7 @@ func (a *App) Run(argv []string) int {
 	}
 	value, runErr := a.executeAPI(ctx, effective, opts, resolved, authContext, key, baseURL)
 	if runErr != nil {
-		if runErr.ExitCode == ExitWait && value != nil {
+		if runErr.ExitCode == ExitWait && value != nil && opts.Output == "human" {
 			if e := a.writeResult(value, cmd, opts); e != nil {
 				return a.fail(e, opts)
 			}
@@ -118,7 +133,7 @@ func (a *App) Run(argv []string) int {
 	if _, ok := value.(outputHandled); ok {
 		return ExitOK
 	}
-	if !opts.DryRunClient() && (effective.Mutation || effective.Get) {
+	if !opts.DryRunClient() && effective.Mutation {
 		if err := a.recordHistory(value, effective.CanonicalName, historyScopeFromResolved(resolved)); err != nil && !opts.Quiet {
 			fmt.Fprintln(a.Stderr, "warning: could not record resource history: "+err.Error())
 		}
@@ -134,7 +149,8 @@ func (o Options) DryRunClient() bool { return o.DryRun == "client" || o.Preview 
 func applyEnvironmentOptions(o *Options) {
 	if len(o.Raw["output"]) == 0 {
 		if v := strings.TrimSpace(os.Getenv("FLINT_OUTPUT")); v != "" {
-			o.Output = v
+			o.Output = strings.ToLower(v)
+			o.outputFromEnvironment = true
 		}
 	}
 	if len(o.Raw["color"]) == 0 {
@@ -142,11 +158,24 @@ func applyEnvironmentOptions(o *Options) {
 			o.Color = v
 		}
 	}
-	if v := strings.TrimSpace(os.Getenv("FLINT_NO_INPUT")); v == "1" || strings.EqualFold(v, "true") {
+	if environmentBool(os.Getenv("FLINT_NO_INPUT")) {
 		o.NoInput = true
 	}
 	if o.Output == "json" || o.Output == "ndjson" {
 		o.NoInput = true
+	}
+}
+
+// environmentUnverified marks an access token whose environment the API
+// would not report. Sensitive operations then require confirmation.
+const environmentUnverified = "unverified"
+
+func environmentBool(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
 	}
 }
 
@@ -170,6 +199,11 @@ func validateCredentialIntentForCommand(authContext AuthContext, opts Options, m
 		opts.Live = true
 	}
 	env := normalizeEnvironment(authContext.Environment)
+	if env == environmentUnverified && authContext.AuthType == "session" {
+		// Guards were rejected before an unverifiable token got this far;
+		// confirmCommand treats sensitive operations as live.
+		return nil
+	}
 	if env != "sandbox" && env != "live" {
 		return configError("UNKNOWN_CREDENTIAL_ENVIRONMENT", "The credential returned an unknown environment: "+authContext.Environment, nil)
 	}
@@ -196,15 +230,20 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 	if opts.DryRun == "client" {
 		return nil
 	}
-	needs := cmd.Destructive || (cmd.Sensitive && normalizeEnvironment(authContext.Environment) == "live")
+	environment := normalizeEnvironment(authContext.Environment)
+	needs := cmd.Destructive || (cmd.Sensitive && (environment == "live" || environment == environmentUnverified))
 	if !needs || opts.Confirm || opts.Preview {
 		return nil
 	}
 	message := "This operation requires confirmation."
 	code := "CONFIRMATION_REQUIRED"
-	if normalizeEnvironment(authContext.Environment) == "live" {
+	switch environment {
+	case "live":
 		message = "This operation affects live production data and requires confirmation."
 		code = "PRODUCTION_CONFIRMATION_REQUIRED"
+	case environmentUnverified:
+		message = "Flint cannot verify whether FLINT_ACCESS_TOKEN is a live credential, so this operation requires confirmation."
+		code = "UNVERIFIED_ENVIRONMENT_CONFIRMATION_REQUIRED"
 	}
 	if opts.NoInput || !a.IsTTY() {
 		return &CLIError{ExitCode: ExitConfirmation, Type: "confirmation_required", Code: code, Message: message + " Re-run with --confirm."}
@@ -222,6 +261,9 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 }
 
 func configError(code, message string, cause error) *CLIError {
+	if errors.Is(cause, errLocalFileLockTimeout) {
+		return networkError("CONFIG_LOCK_TIMEOUT", "Another Flint process is updating this profile. Retry the command.", cause)
+	}
 	if errors.Is(cause, context.Canceled) {
 		return networkError("REQUEST_CANCELED", "The command was canceled.", cause)
 	}
@@ -275,7 +317,7 @@ func (a *App) printCommandHelp(cmd *Command) {
 				if arg.IDPrefix != "" {
 					ref = "@last." + strings.TrimSuffix(arg.IDPrefix, "_")
 				}
-				description += "; accepts " + ref + " for the most recent one"
+				description += "; accepts " + ref + " for the most recent resource this profile created or changed"
 			}
 			if arg.Required {
 				description += " (required)"
@@ -284,14 +326,23 @@ func (a *App) printCommandHelp(cmd *Command) {
 		}
 	}
 	fmt.Fprintln(a.Stdout)
+	if !cmd.Local && commandHasRequestBody(cmd) {
+		fmt.Fprintln(a.Stdout, "Request body:")
+		if required := requiredBodyFields(cmd); len(required) > 0 {
+			fmt.Fprintln(a.Stdout, "  Required top-level fields: "+strings.Join(required, ", "))
+		}
+		fmt.Fprintf(a.Stdout, "  Run flint schema input %s --output json for the full schema.\n", cmd.CanonicalName)
+		fmt.Fprintln(a.Stdout, "  --input takes FILE.json, - for stdin, or inline JSON.")
+		fmt.Fprintln(a.Stdout)
+	}
 	fmt.Fprintln(a.Stdout, "Global flags:")
 	if supportsContextSelection(cmd) {
 		fmt.Fprintln(a.Stdout, "  --context ID  Select an authorized context for this command")
 	}
-	fmt.Fprintln(a.Stdout, "  --output human|json|ndjson  --quiet  --debug  --no-input  --live  --merchant ID  --profile NAME  --color auto|always|never")
+	fmt.Fprintln(a.Stdout, "  --output human|json|ndjson  --quiet  --debug  --no-input  --live  --merchant ID  --profile NAME ")
 	var capabilities []string
 	if cmd.Mutation {
-		capabilities = append(capabilities, "--idempotency-key KEY", "--dry-run=client")
+		capabilities = append(capabilities, "--idempotency-key KEY", "--dry-run=client", "--confirm")
 	}
 	if cmd.CanonicalName == "api" {
 		capabilities = append(capabilities, "--idempotency-key KEY", "--dry-run=client", "--confirm", "--preview", "--paginate", "--page-size N", "--page-token TOKEN", "--all")
@@ -307,10 +358,13 @@ func (a *App) printCommandHelp(cmd *Command) {
 		capabilities = append(capabilities, "--confirm (with --clear)")
 	}
 	if cmd.Supports.Pagination {
-		capabilities = append(capabilities, "--page-size N", "--page-token TOKEN")
+		capabilities = append(capabilities, "--page-size N", "--page-token TOKEN", "--limit N")
 		if !cmd.Stream {
 			capabilities = append(capabilities, "--all")
 		}
+	}
+	if expansions, _ := expansionValues(cmd.OperationID); len(expansions) > 0 {
+		capabilities = append(capabilities, "--expand "+strings.Join(expansions, ","))
 	}
 	if cmd.Supports.WaitFor {
 		capabilities = append(capabilities, "--wait-for FIELD=VALUE", "--for DURATION")
@@ -408,19 +462,21 @@ func (a *App) printRootHelp() {
 	fmt.Fprintln(a.Stdout)
 	fmt.Fprintln(a.Stdout, "Scripts and AI agents:")
 	fmt.Fprintln(a.Stdout, "  Use --output json (or FLINT_OUTPUT=json) for JSON results and errors on stdout; it never prompts.")
-	fmt.Fprintln(a.Stdout, "  Exit codes: 0 ok, 1 API error, 2 usage, 3 auth or config, 4 confirmation required, 5 network, 6 wait unmet.")
-	fmt.Fprintln(a.Stdout, "  Lists return one page; check has_more and pass --page-token, or use --all.")
+	fmt.Fprintln(a.Stdout, "  Exit codes: 0 ok, 1 API error, 2 usage, 3 auth or config, 4 confirmation required, 5 network, 6 wait unmet, 70 internal error.")
+	fmt.Fprintln(a.Stdout, "  Lists return one page; check next_page_token and pass --page-token, or use --all or --limit N.")
 	fmt.Fprintln(a.Stdout, "  Reuse --idempotency-key when retrying a create or update that timed out.")
-	fmt.Fprintln(a.Stdout, "  Pass @last or @last.<prefix> (for example @last.pi) as an ID to reuse the newest resource.")
+	fmt.Fprintln(a.Stdout, "  @last (or @last.pi) is the most recent resource this profile created or changed; all processes share it. Use explicit IDs in parallel commands.")
 	fmt.Fprintln(a.Stdout)
 	fmt.Fprintln(a.Stdout, "Environment:")
 	for _, line := range [][2]string{
 		{"FLINT_API_KEY", "API key; overrides saved credentials"},
-		{"FLINT_OUTPUT", "Default output format: human or json"},
-		{"FLINT_NO_INPUT", "Set to 1 to disable prompts"},
+		{"FLINT_OUTPUT", "human, json, or ndjson (streams)"},
+		{"FLINT_NO_INPUT", "1, true, yes, or on to disable prompts"},
 		{"FLINT_PROFILE", "Profile to use, like --profile"},
 		{"FLINT_MERCHANT", "Merchant guard, like --merchant"},
-		{"FLINT_COLOR", "auto, always, or never"},
+		{"FLINT_CHECKOUT_SESSION_SECRET", "Checkout session signing credential"},
+		{"FLINT_CHECKOUT_SESSION_ID", "Checkout session ID"},
+		{"FLINT_WEBHOOK_SECRET", "signing secret for flint listen"},
 		{"FLINT_ACCESS_TOKEN", "Session or partner access token"},
 		{"FLINT_BASE_URL", "API server for development; sign in with a separate profile"},
 	} {

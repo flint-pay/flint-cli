@@ -72,7 +72,7 @@ func TestOAuthReviewDoctorDistinguishesLocalCredentialFailure(t *testing.T) {
 	if exit := app.Run([]string{"doctor", "--output", "json"}); exit != ExitAuth {
 		t.Fatalf("exit=%d", exit)
 	}
-	if strings.Contains(out.String(), "API rejected") || !strings.Contains(out.String(), `"name":"credential","status":"fail"`) {
+	if strings.Contains(out.String(), "API rejected") || !strings.Contains(out.String(), `"name":"authentication","status":"fail"`) {
 		t.Fatalf("local failure blamed on API: %s", out)
 	}
 }

@@ -22,7 +22,8 @@ const oauthRevokePath = "/v1/oauth/revoke"
 const deviceGrantType = "urn:ietf:params:oauth:grant-type:device_code"
 
 // The complete record lives only in the OS keychain. Existing raw API-key
-// entries remain readable; tokens are never placed in config.json.
+// entries remain readable. Signup verification and onboarding tokens are stored
+// in config.json; pending device approval uses a separate private file.
 type oauthCredential struct {
 	SessionID         string      `json:"oauth_session_id,omitempty"`
 	ContextID         string      `json:"context_id,omitempty"`
@@ -101,7 +102,7 @@ func (a *App) oauthRequest(ctx context.Context, baseURL, path string, form url.V
 	return a.oauthRequestWithBearer(ctx, baseURL, path, form, "")
 }
 
-func (a *App) oauthRequestWithBearer(ctx context.Context, baseURL, path string, form url.Values, token string) ([]byte, *CLIError) {
+func (a *App) oauthRequestWithBearer(ctx context.Context, baseURL, path string, form url.Values, token string) (result []byte, requestErr *CLIError) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+path, strings.NewReader(form.Encode()))
@@ -131,6 +132,11 @@ func (a *App) oauthRequestWithBearer(ctx context.Context, baseURL, path string, 
 		return nil, networkError("OAUTH_REQUEST_FAILED", "Could not reach the OAuth server. Retry the command; if the session expired, run flint auth login.", nil)
 	}
 	defer resp.Body.Close()
+	defer func() {
+		if requestErr != nil {
+			requestErr.HTTPStatus = resp.StatusCode
+		}
+	}()
 	if path == oauthRevokePath {
 		if resp.StatusCode == http.StatusOK {
 			return nil, nil
@@ -216,17 +222,19 @@ func (a *App) cleanupOAuth(c oauthCredential, primary *CLIError) *CLIError {
 
 // Serialize refresh with logout/import across processes, rereading the keychain
 // after acquiring the lock so only one process rotates a given refresh token.
+var oauthRefreshTimeout = 30 * time.Second
+
 func (a *App) oauthAccess(ctx context.Context, profile string) (oauthCredential, *CLIError) {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
 	var c oauthCredential
 	var result *CLIError
 	locked := *a
 	locked.Context = ctx
 	err := locked.withConfigLock(func() error {
+		ctx, cancel := context.WithTimeout(ctx, oauthRefreshTimeout)
+		defer cancel()
 		raw, err := a.LoadCredential(profile)
 		if err != nil {
-			result = configError("CREDENTIAL_LOOKUP_FAILED", "Could not read the OAuth session from the OS keychain.", nil)
+			result = credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the OAuth session from the OS keyring.", err)
 			return result
 		}
 		if !isOAuthCredential(raw) {
@@ -329,7 +337,10 @@ func (a *App) oauthAccess(ctx context.Context, profile string) (oauthCredential,
 		return nil
 	})
 	if err != nil && result == nil {
-		result = configError("OAUTH_REFRESH_FAILED", "Could not lock or update the OAuth session. Retry the command.", nil)
+		if errors.Is(err, errLocalFileLockTimeout) || errors.Is(err, context.DeadlineExceeded) {
+			return c, networkError("CONFIG_LOCK_TIMEOUT", "Another Flint process is refreshing this profile. Retry the command.", err)
+		}
+		result = configError("OAUTH_REFRESH_FAILED", "Could not lock or update the OAuth session. Retry the command.", err)
 	}
 	return c, result
 }
@@ -363,7 +374,12 @@ func (a *App) resolveCheckCredential(profile string) (string, string, error) {
 	return a.resolveCredential(profile)
 }
 
-func (a *App) fetchCredentialContext(ctx context.Context, profile, raw string, debug bool) (string, string, authContextEnvelope, *CLIError) {
+func (a *App) fetchCredentialContext(ctx context.Context, timeout time.Duration, profile, raw string, debug bool) (string, string, authContextEnvelope, *CLIError) {
+	fetch := func(base, token string, debug bool) (authContextEnvelope, *CLIError) {
+		requestCtx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+		return a.fetchAuthContextResponse(requestCtx, base, token, debug)
+	}
 	if requestedOAuthContext(ctx) != "" && (!isOAuthCredential(raw) || credentialFromEnvironment() != "" || os.Getenv("FLINT_ACCESS_TOKEN") != "") {
 		return "", "", authContextEnvelope{}, contextSessionRequired()
 	}
@@ -373,9 +389,9 @@ func (a *App) fetchCredentialContext(ctx context.Context, profile, raw string, d
 		}
 		base, err := a.baseURLForCredential("flint_test_")
 		if err != nil {
-			return "", "", authContextEnvelope{}, configError("INVALID_CREDENTIAL", err.Error(), err)
+			return "", "", authContextEnvelope{}, invalidCredentialError(raw, err)
 		}
-		envelope, e := a.fetchAuthContextResponse(ctx, base, token, false)
+		envelope, e := fetch(base, token, false)
 		if e != nil {
 			return "", "", envelope, cliError(e.ExitCode, e.Type, "CREDENTIAL_VALIDATION_FAILED", "Could not validate FLINT_ACCESS_TOKEN. Check the server connection and replace or unset the environment token if it is no longer valid.")
 		}
@@ -384,9 +400,9 @@ func (a *App) fetchCredentialContext(ctx context.Context, profile, raw string, d
 	if !isOAuthCredential(raw) {
 		base, err := a.baseURLForCredential(raw)
 		if err != nil {
-			return "", "", authContextEnvelope{}, configError("INVALID_CREDENTIAL", err.Error(), err)
+			return "", "", authContextEnvelope{}, invalidCredentialError(raw, err)
 		}
-		auth, e := a.fetchAuthContextResponse(ctx, base, raw, debug)
+		auth, e := fetch(base, raw, debug)
 		return raw, base, auth, e
 	}
 	expected, e := decodeOAuthCredential(raw)
@@ -394,11 +410,14 @@ func (a *App) fetchCredentialContext(ctx context.Context, profile, raw string, d
 		return "", "", authContextEnvelope{}, e
 	}
 	ctx = withOAuthIdentity(ctx, expected)
+	// Lock waiting and refresh have separate budgets. Keep the caller's
+	// cancellation, then start the API request timeout after they finish.
 	c, e := a.oauthAccess(ctx, profile)
 	if e != nil {
 		return "", "", authContextEnvelope{}, e
 	}
-	envelope, e := a.fetchAuthContextResponse(withoutOAuthSession(ctx), c.BaseURL, c.AccessToken, false)
+	ctx = withoutOAuthSession(ctx)
+	envelope, e := fetch(c.BaseURL, c.AccessToken, false)
 	if e != nil {
 		if e.ExitCode == ExitAuth {
 			if c.Version == 2 {

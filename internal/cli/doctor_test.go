@@ -60,7 +60,7 @@ func TestDoctorRejectedCredential(t *testing.T) {
 
 func TestDoctorServerFailureIsNotAuthenticationFailure(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusForbidden)
+		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer server.Close()
 	app, stdout, _ := testApp(t, server.URL)

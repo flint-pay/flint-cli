@@ -63,3 +63,10 @@ test("preapproval preparation cannot publish and publishers consume frozen files
   assert.ok(dependencies("verify-published").includes("docker"));
   assert.match(jobs.get("verify-published"), /needs\.docker\.result == 'success'/);
 });
+
+test("channel preparation keeps the MCP registry manifest stamped with the release version", () => {
+  const preflight = jobs.get("channel-preflight");
+  assert.match(preflight, /FLINT_CLI_VERSION: \$\{\{ needs\.release\.outputs\.cli_version \}\}/);
+  assert.match(preflight, /node scripts\/package-npm\.mjs/, "package-npm.mjs writes dist/server.json");
+  assert.match(preflight, /name: flint-cli-channels\n\s+path: \|\n(?:\s+dist\/\S+\n)*\s+dist\/server\.json\n/);
+});

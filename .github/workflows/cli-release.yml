@@ -190,6 +190,7 @@ jobs:
           path: |
             dist/npm-packages/*.tgz
             dist/flint.rb
+            dist/server.json
           if-no-files-found: error
 
   container-build:

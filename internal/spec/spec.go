@@ -1,6 +1,7 @@
 package spec
 
 import (
+	"bytes"
 	_ "embed"
 	"encoding/json"
 	"sync"
@@ -20,11 +21,32 @@ func APIVersion() string {
 }
 
 var embeddedAPIVersion = sync.OnceValue(func() string {
-	var document struct {
-		Version string `json:"x-flint-api-version"`
-	}
-	if err := json.Unmarshal(OpenAPI, &document); err != nil || document.Version == "" {
+	var version string
+	if err := decodeMetadata("x-flint-api-version", &version); err != nil || version == "" {
 		panic("embedded Flint OpenAPI snapshot has no x-flint-api-version")
 	}
-	return document.Version
+	return version
 })
+
+// BootstrapScopes reads only the bootstrap scope extension. The full schema
+// document is loaded later by commands that need API operations or schemas.
+func BootstrapScopes() []string { return append([]string(nil), bootstrapScopes()...) }
+
+var bootstrapScopes = sync.OnceValue(func() []string {
+	var scopes []string
+	if err := decodeMetadata("x-flint-cli-bootstrap-scopes", &scopes); err != nil || len(scopes) == 0 {
+		panic("embedded Flint OpenAPI snapshot has no x-flint-cli-bootstrap-scopes")
+	}
+	return scopes
+})
+
+// These extension names are unique in the embedded, validated snapshot. Decode
+// one value rather than traversing its large components and paths a second time.
+func decodeMetadata(name string, target any) error {
+	key := []byte(`"` + name + `":`)
+	index := bytes.LastIndex(OpenAPI, key)
+	if index < 0 {
+		return &json.SyntaxError{}
+	}
+	return json.NewDecoder(bytes.NewReader(OpenAPI[index+len(key):])).Decode(target)
+}

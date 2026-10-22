@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/flint-pay/flint-cli/internal/cli"
 	apispec "github.com/flint-pay/flint-cli/internal/spec"
@@ -17,6 +19,13 @@ var (
 	buildDate  = "unknown"
 	schemaHash = "development"
 )
+
+// duplicateSignalWindow is how long further signals are ignored after the
+// first one. A single Ctrl-C can arrive more than once within milliseconds:
+// the terminal signals the whole foreground process group, and the npm wrapper
+// also forwards its own copy. A deliberate second signal after the window
+// still stops a command that is stuck during cleanup.
+var duplicateSignalWindow = time.Second
 
 func main() {
 	os.Exit(run(os.Args[1:]))
@@ -30,14 +39,8 @@ func run(argv []string) (exitCode int) {
 			exitCode = cli.ExitSoftware
 		}
 	}()
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, stop := signalContext(context.Background())
 	defer stop()
-	go func() {
-		<-ctx.Done()
-		// The first signal requests graceful cancellation. Restore default
-		// handling so another signal can stop a command stuck during cleanup.
-		stop()
-	}()
 	app := cli.New(cli.BuildInfo{
 		Version:    version,
 		Commit:     commit,
@@ -47,4 +50,44 @@ func run(argv []string) (exitCode int) {
 	})
 	app.Context = ctx
 	return app.Run(argv)
+}
+
+// signalContext returns a context canceled by the first interrupt or
+// termination signal, which requests graceful cancellation. Duplicate signals
+// within duplicateSignalWindow are discarded; afterwards default handling is
+// restored, so another signal terminates the process.
+func signalContext(parent context.Context) (context.Context, func()) {
+	ctx, cancel := context.WithCancel(parent)
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-signals:
+		case <-done:
+			signal.Stop(signals)
+			return
+		}
+		cancel()
+		// Keep discarding signals for the whole window, even after stop: a
+		// command that cancels quickly must not be killed by the duplicate
+		// while the process exits.
+		window := time.NewTimer(duplicateSignalWindow)
+		defer window.Stop()
+		for {
+			select {
+			case <-signals:
+			case <-window.C:
+				signal.Stop(signals)
+				return
+			}
+		}
+	}()
+	var once sync.Once
+	return ctx, func() {
+		once.Do(func() {
+			close(done)
+			cancel()
+		})
+	}
 }

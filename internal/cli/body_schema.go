@@ -14,7 +14,8 @@ import (
 )
 
 type bodyValidator struct {
-	schema *jsonschema.Schema
+	schema   *jsonschema.Schema
+	document map[string]any
 	// Top-level fields the schema documents. open means undeclared fields are
 	// typed by additionalProperties or patternProperties rather than unknown.
 	declared []string
@@ -52,7 +53,7 @@ func requestBodyValidator(c *Command) (*bodyValidator, *CLIError) {
 	if err != nil {
 		return nil, invalid(err)
 	}
-	v := &bodyValidator{schema: compiled}
+	v := &bodyValidator{schema: compiled, document: schema}
 	declared := map[string]bool{}
 	defs, _ := schema["$defs"].(map[string]any)
 	v.open = collectDeclaredProperties(schema, defs, declared, map[string]bool{})
@@ -101,7 +102,7 @@ var flintControlFlags = map[string]string{
 }
 
 // validateRequestBody checks the final JSON body against the command's request
-// schema. It returns warnings for undocumented top-level fields.
+// schema, including undocumented fields rejected by API decoders.
 func validateRequestBody(c *Command, label string, body map[string]any) ([]map[string]any, *CLIError) {
 	if controls, ok := body["_flint"]; ok {
 		flags := []string{}
@@ -122,31 +123,15 @@ func validateRequestBody(c *Command, label string, body map[string]any) ([]map[s
 			message += " such as --live, --idempotency-key, or --dry-run=client"
 		}
 		e := usageError("INVALID_REQUEST_BODY", message+".", "_flint")
-		e.Details = []map[string]any{{"path": "$._flint", "message": "_flint is not a request body field", "flags": flags}}
+		e.Details = map[string]any{"problems": []map[string]any{{"path": "$._flint", "message": "_flint is not a request body field", "flags": flags}}}
 		return nil, e
 	}
 	v, e := requestBodyValidator(c)
 	if e != nil {
 		return nil, e
 	}
-	var warnings []map[string]any
-	if !v.open {
-		names := make([]string, 0, len(body))
-		for name := range body {
-			names = append(names, name)
-		}
-		sort.Strings(names)
-		for _, name := range names {
-			if !sortedContains(v.declared, name) {
-				warning := map[string]any{"path": jsonFieldPath([]string{name}), "message": "not a documented " + label + " request field"}
-				if suggestion := closestName(name, v.declared); suggestion != "" {
-					warning["suggestion"] = suggestion
-					warning["message"] = warning["message"].(string) + "; did you mean " + suggestion + "?"
-				}
-				warnings = append(warnings, warning)
-			}
-		}
-	}
+	defs, _ := v.document["$defs"].(map[string]any)
+	warnings := unknownBodyFields(body, v.document, defs, nil, 0)
 	raw, err := json.Marshal(body)
 	if err != nil {
 		return nil, usageError("INVALID_INPUT", err.Error(), "input")
@@ -156,16 +141,20 @@ func validateRequestBody(c *Command, label string, body map[string]any) ([]map[s
 		return nil, usageError("INVALID_INPUT", err.Error(), "input")
 	}
 	err = v.schema.Validate(instance)
-	if err == nil {
-		return warnings, nil
+	if err == nil && len(warnings) == 0 {
+		return nil, nil
 	}
 	validationErr, ok := err.(*jsonschema.ValidationError)
-	if !ok {
+	if err != nil && !ok {
 		return nil, usageError("INVALID_REQUEST_BODY", err.Error(), "input")
 	}
 	var violations []map[string]any
 	reported, seen := map[any]bool{}, map[string]bool{}
-	for _, violation := range bodyViolations(validationErr, v.declared) {
+	var schemaProblems []map[string]any
+	if validationErr != nil {
+		schemaProblems = bodyViolations(validationErr, v.declared)
+	}
+	for _, violation := range schemaProblems {
 		if key := fmt.Sprint(violation["path"], "\x00", violation["message"]); !seen[key] {
 			seen[key] = true
 			reported[violation["path"]] = true
@@ -175,6 +164,13 @@ func validateRequestBody(c *Command, label string, body map[string]any) ([]map[s
 	for _, warning := range warnings {
 		if !reported[warning["path"]] {
 			violations = append(violations, warning)
+		} else if suggestion, ok := warning["suggestion"].(string); ok {
+			for _, violation := range violations {
+				if violation["path"] == warning["path"] && violation["suggestion"] == nil {
+					violation["suggestion"] = suggestion
+					violation["message"] = fmt.Sprint(violation["message"]) + "; did you mean " + suggestion + "?"
+				}
+			}
 		}
 	}
 	lines := make([]string, 0, len(violations))
@@ -186,9 +182,9 @@ func validateRequestBody(c *Command, label string, body map[string]any) ([]map[s
 		lines = append(lines, fmt.Sprintf("  %s: %s", violation["path"], violation["message"]))
 	}
 	name := strings.Fields(label)[0]
-	message := fmt.Sprintf("The request body does not match the %s request schema:\n%s\nRun flint schema input %s to see the expected body.", label, strings.Join(lines, "\n"), name)
+	message := fmt.Sprintf("The request body does not match the %s request schema:\n%s\nRun flint schema input %s to see the expected body. Use flint api to send undocumented fields.", label, strings.Join(lines, "\n"), name)
 	invalid := usageError("INVALID_REQUEST_BODY", message, "input")
-	invalid.Details = violations
+	invalid.Details = map[string]any{"problems": violations}
 	return nil, invalid
 }
 

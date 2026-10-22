@@ -70,6 +70,7 @@ type openAPIOperation struct {
 	Security            []map[string][]string     `json:"security"`
 	OperationID         string                    `json:"operationId"`
 	Summary             string                    `json:"summary"`
+	Description         string                    `json:"description"`
 	Parameters          []map[string]any          `json:"parameters"`
 	RequestBody         map[string]any            `json:"requestBody"`
 	Responses           map[string]map[string]any `json:"responses"`
@@ -115,27 +116,23 @@ func validateExpansions(operationID string, values []string) *CLIError {
 }
 
 func expansionValues(operationID string) ([]string, error) {
-	doc, err := loadOpenAPI()
-	if err != nil {
+	if operationID == "" {
+		return []string{}, nil
+	}
+	if _, err := loadOpenAPI(); err != nil {
 		return nil, err
 	}
 	allowed := map[string]bool{}
-	for _, methods := range doc.Paths {
-		for _, operation := range methods {
-			if operation.OperationID != operationID {
-				continue
-			}
-			for _, parameter := range operation.Parameters {
-				if parameter["name"] != "expand" {
-					continue
-				}
-				schema, _ := parameter["schema"].(map[string]any)
-				items, _ := schema["items"].(map[string]any)
-				if enums, ok := items["enum"].([]any); ok {
-					for _, value := range enums {
-						allowed[fmt.Sprint(value)] = true
-					}
-				}
+	operation := openAPIOperations[operationID]
+	for _, parameter := range operation.Parameters {
+		if parameter["name"] != "expand" {
+			continue
+		}
+		schema, _ := parameter["schema"].(map[string]any)
+		items, _ := schema["items"].(map[string]any)
+		if enums, ok := items["enum"].([]any); ok {
+			for _, value := range enums {
+				allowed[fmt.Sprint(value)] = true
 			}
 		}
 	}
@@ -173,6 +170,11 @@ func commandDocument(c *Command, requested string) map[string]any {
 	b, _ := json.Marshal(c)
 	var out map[string]any
 	_ = json.Unmarshal(b, &out)
+	expansions, _ := expansionValues(c.OperationID)
+	if expansions == nil {
+		expansions = []string{}
+	}
+	out["expansions"] = expansions
 	if requested != "" && requested != c.CanonicalName {
 		out["name"] = requested
 		out["canonical_name"] = c.CanonicalName
@@ -381,13 +383,16 @@ func addCLIArgumentsToSchema(schema map[string]any, c *Command) map[string]any {
 	if schema["maxProperties"] == float64(0) {
 		delete(schema, "maxProperties")
 	}
-	if c.CanonicalName == "api" {
-		schema["additionalProperties"] = true
-	}
 	properties, _ := schema["properties"].(map[string]any)
 	if properties == nil {
 		properties = map[string]any{}
 		schema["properties"] = properties
+	}
+	if c.CanonicalName == "api" {
+		// Older clients send body fields as extra top-level keys; body is the
+		// documented form.
+		schema["additionalProperties"] = true
+		properties["body"] = map[string]any{"type": "object", "description": "JSON request body for POST, PUT, and PATCH routes."}
 	}
 	requiredSet := map[string]bool{}
 	if existing, ok := schema["required"].([]any); ok {
@@ -395,6 +400,7 @@ func addCLIArgumentsToSchema(schema map[string]any, c *Command) map[string]any {
 			requiredSet[fmt.Sprint(v)] = true
 		}
 	}
+	parameters := operationParameterSchemas(c.OperationID)
 	for _, arg := range c.Arguments {
 		// Body convenience flags are documented in `schema command`; the input
 		// schema stays faithful to the public request body so agents do not have
@@ -402,7 +408,7 @@ func addCLIArgumentsToSchema(schema map[string]any, c *Command) map[string]any {
 		if arg.Name == "input" || (arg.BodyPath != "" && arg.Positional == 0 && arg.Query == "") {
 			continue
 		}
-		property := map[string]any{"type": map[string]string{"integer": "integer", "boolean": "boolean"}[arg.Type]}
+		property := map[string]any{"type": map[string]string{"integer": "integer", "number": "number", "boolean": "boolean"}[arg.Type]}
 		if property["type"] == "" {
 			property["type"] = "string"
 		}
@@ -410,14 +416,36 @@ func addCLIArgumentsToSchema(schema map[string]any, c *Command) map[string]any {
 			property["minimum"] = 1
 			property["maximum"] = 100
 		}
+		// Query and path parameters keep the enums, defaults, and bounds of the
+		// public contract, so agents see the values the API accepts.
+		parameter := parameters["path:"+arg.Name]
+		if arg.Query != "" {
+			parameter = parameters["query:"+arg.Query]
+		}
+		if arg.Repeat {
+			parameter, _ = parameter["items"].(map[string]any)
+		}
+		for _, keyword := range []string{"enum", "default", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "minLength", "maxLength", "pattern", "format", "x-enum-descriptions"} {
+			if value, ok := parameter[keyword]; ok {
+				property[keyword] = value
+			}
+		}
 		if arg.Repeat {
 			property = map[string]any{"type": "array", "items": property}
 			if arg.Required {
 				property["minItems"] = 1
 			}
 		}
-		if arg.Description != "" {
-			property["description"] = arg.Description
+		description := arg.Description
+		if arg.IDPrefix != "" && !strings.Contains(description, arg.IDPrefix) {
+			description = strings.TrimSuffix(strings.TrimSpace(description), ".")
+			if description == "" {
+				description = "Flint ID"
+			}
+			description += " (" + arg.IDPrefix + "...)"
+		}
+		if description != "" {
+			property["description"] = description
 		}
 		if c.CanonicalName == "api" {
 			switch arg.Name {
@@ -437,73 +465,9 @@ func addCLIArgumentsToSchema(schema map[string]any, c *Command) map[string]any {
 			requiredSet[arg.Name] = true
 		}
 	}
-	// Every control carries a description: agents see these schemas without
-	// the CLI help text, and several controls change safety behavior.
-	control := func(schema map[string]any, description string) map[string]any {
-		schema["description"] = description
-		return schema
+	if controls := mcpControlSchemas(c); len(controls) > 0 {
+		properties["_flint"] = map[string]any{"type": "object", "description": "Optional controls; see help topic controls.", "additionalProperties": false, "properties": controls}
 	}
-	idempotencyKey := control(map[string]any{"type": "string", "minLength": 1}, "Idempotency key. Reuse the same key when retrying after a timeout, or the write may run twice.")
-	dryRun := control(map[string]any{"type": "string", "enum": []string{"client"}}, "\"client\": validate and return the request without sending it.")
-	confirm := control(map[string]any{"type": "boolean"}, "Confirm a destructive or live-sensitive operation.")
-	forDuration := control(map[string]any{"type": "string"}, "Maximum duration, e.g. 30s.")
-	controls := map[string]any{
-		"live":     control(map[string]any{"type": "boolean"}, "Acknowledge a live (production) credential."),
-		"merchant": control(map[string]any{"type": "string"}, "Fail unless the credential's merchant is this mer_ ID."),
-		"profile":  control(map[string]any{"type": "string"}, "Flint CLI profile to use."),
-		"timeout":  control(map[string]any{"type": "string"}, "Request timeout, e.g. 30s."),
-		"debug":    control(map[string]any{"type": "boolean"}, "Log request diagnostics to stderr."),
-		"quiet":    control(map[string]any{"type": "boolean"}, "Suppress warnings."),
-	}
-	if c.Mutation {
-		controls["idempotency_key"] = idempotencyKey
-		controls["dry_run"] = dryRun
-	}
-	if c.CanonicalName == "api" {
-		controls["idempotency_key"] = idempotencyKey
-		controls["dry_run"] = dryRun
-		controls["confirm"] = confirm
-		controls["preview"] = control(map[string]any{"type": "boolean"}, "Show a destructive request's effect without sending it.")
-		controls["paginate"] = control(map[string]any{"type": "boolean"}, "Return every page as records. GET only.")
-		controls["page_size"] = control(map[string]any{"type": "integer", "minimum": 1, "maximum": 100}, "Resources per page.")
-		controls["page_token"] = control(map[string]any{"type": "string"}, "next_page_token from a previous page.")
-		controls["all"] = control(map[string]any{"type": "boolean"}, "Fetch and merge every page. GET only.")
-	}
-	if c.Sensitive || c.Destructive {
-		controls["confirm"] = confirm
-	}
-	if c.CanonicalName == "history" {
-		controls["confirm"] = control(map[string]any{"type": "boolean"}, "Required when clear is true.")
-	}
-	if c.Mutation && c.Destructive {
-		controls["preview"] = control(map[string]any{"type": "boolean"}, "Show the effect without making the change.")
-	}
-	if c.Stream {
-		controls["max_events"] = control(map[string]any{"type": "integer", "minimum": 1}, "Stop after this many records.")
-		controls["for"] = forDuration
-	}
-	if c.Supports.WaitFor {
-		controls["wait_for"] = control(map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"type": "string"}}, "Poll until each FIELD=VALUE holds; bound with for.")
-		controls["for"] = forDuration
-	}
-	if c.Supports.Pagination && !c.Stream {
-		controls["all"] = control(map[string]any{"type": "boolean"}, "Fetch and merge every page.")
-	}
-	if c.Stream || c.Supports.Pagination || c.Supports.WaitFor || c.CanonicalName == "api" || c.CanonicalName == "upgrade" {
-		controls["progress"] = control(map[string]any{"type": "string", "enum": []string{"auto", "plain", "json", "quiet"}}, "Progress reporting on stderr.")
-	}
-	if c.Supports.Open {
-		controls["open"] = control(map[string]any{"type": "boolean"}, "Open the URL in a browser (interactive terminals only).")
-	}
-	if expansions, err := expansionValues(c.OperationID); err == nil && len(expansions) > 0 {
-		controls["expand"] = control(map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"type": "string", "enum": expansions}}, "Related resources to include inline.")
-	}
-	if c.Supports.Field {
-		controls["field"] = control(map[string]any{"type": "string"}, "Return only the value at this dot path, e.g. data.id.")
-		controls["select"] = control(map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"type": "string"}}, "Keep only these fields of each resource.")
-		controls["jq"] = control(map[string]any{"type": "string"}, "jq expression applied to the response.")
-	}
-	properties["_flint"] = map[string]any{"type": "object", "description": "Optional CLI execution controls.", "additionalProperties": false, "properties": controls}
 	if len(requiredSet) > 0 {
 		required := make([]string, 0, len(requiredSet))
 		for name := range requiredSet {
@@ -513,7 +477,8 @@ func addCLIArgumentsToSchema(schema map[string]any, c *Command) map[string]any {
 		schema["required"] = required
 	}
 	// CLI arguments accompany the selected request branch in MCP input.
-	// Closed public branches must admit those arguments as well.
+	// Closed public branches must admit those arguments as well; the root
+	// properties already validate them, so each branch only names them.
 	if variants, ok := schema["oneOf"].([]any); ok {
 		defs, _ := schema["$defs"].(map[string]any)
 		for _, raw := range variants {
@@ -525,14 +490,93 @@ func addCLIArgumentsToSchema(schema map[string]any, c *Command) map[string]any {
 				continue
 			}
 			branchProperties, _ := branch["properties"].(map[string]any)
-			for name, property := range properties {
+			for name := range properties {
 				if _, exists := branchProperties[name]; !exists {
-					branchProperties[name] = property
+					branchProperties[name] = map[string]any{}
 				}
 			}
 		}
 	}
 	return schema
+}
+
+// operationParameterSchemas maps "query:NAME" and "path:NAME" to the schema of
+// each parameter of a public operation.
+func operationParameterSchemas(operationID string) map[string]map[string]any {
+	operation, ok := openAPIOperationByID(operationID)
+	if !ok {
+		return nil
+	}
+	out := map[string]map[string]any{}
+	for _, parameter := range operation.Parameters {
+		name, _ := parameter["name"].(string)
+		location, _ := parameter["in"].(string)
+		if schema, ok := parameter["schema"].(map[string]any); ok && name != "" {
+			out[location+":"+name] = schema
+		}
+	}
+	return out
+}
+
+// mcpControlSchemas lists the _flint execution controls that apply to a tool.
+// Controls that do nothing over MCP (debug, quiet, color, progress, open) are
+// not offered; help topic controls explains each one in full.
+func mcpControlSchemas(c *Command) map[string]any {
+	control := func(schema map[string]any, description string) map[string]any {
+		schema["description"] = description
+		return schema
+	}
+	controls := map[string]any{}
+	api := c.CanonicalName == "api"
+	// Local checks that validate the credential against the API also need the
+	// live acknowledgement; only API tools select a profile or merchant guard.
+	credentialed := !c.Local || c.CanonicalName == "doctor" || c.CanonicalName == "init" || c.CanonicalName == "config.validate"
+	if credentialed {
+		controls["live"] = control(map[string]any{"type": "boolean"}, "Acknowledge a live credential.")
+	}
+	if !c.Local {
+		controls["merchant"] = control(map[string]any{"type": "string"}, "Require this mer_ merchant.")
+		controls["profile"] = control(map[string]any{"type": "string"}, "CLI profile.")
+	}
+	if credentialed || c.CanonicalName == "help.search" || c.CanonicalName == "signup" {
+		controls["timeout"] = control(map[string]any{"type": "string"}, "Request timeout, e.g. 30s.")
+	}
+	if c.Mutation || api {
+		controls["idempotency_key"] = control(map[string]any{"type": "string", "minLength": 1}, "Reuse the same key when retrying, or the write may run twice.")
+		controls["dry_run"] = control(map[string]any{"type": "string", "enum": []string{"client"}}, "\"client\": prepare without sending.")
+	}
+	if c.Sensitive || c.Destructive || api {
+		controls["confirm"] = control(map[string]any{"type": "boolean"}, "Confirm this operation.")
+	}
+	if (c.Mutation && c.Destructive) || api {
+		controls["preview"] = control(map[string]any{"type": "boolean"}, "Show the effect without changing anything.")
+	}
+	if api {
+		controls["paginate"] = control(map[string]any{"type": "boolean"}, "Return every page as records. GET only.")
+		controls["page_size"] = control(map[string]any{"type": "integer", "minimum": 1, "maximum": 100}, "Resources per page.")
+		controls["page_token"] = control(map[string]any{"type": "string"}, "next_page_token from a previous page.")
+		controls["all"] = control(map[string]any{"type": "boolean"}, "Fetch and merge every page. GET only.")
+	}
+	if c.Supports.Pagination && !c.Stream {
+		controls["all"] = control(map[string]any{"type": "boolean"}, "Fetch every page.")
+	}
+	if c.Stream {
+		controls["max_events"] = control(map[string]any{"type": "integer", "minimum": 1}, "Stop after this many records.")
+		controls["for"] = control(map[string]any{"type": "string"}, "Maximum duration, e.g. 30s.")
+	}
+	if c.Supports.WaitFor {
+		controls["wait_for"] = control(map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"type": "string"}}, "Poll until each FIELD=VALUE holds.")
+		controls["for"] = control(map[string]any{"type": "string"}, "Maximum wait, e.g. 30s.")
+	}
+	if expansions, err := expansionValues(c.OperationID); err == nil && len(expansions) > 0 {
+		controls["expand"] = control(map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"type": "string", "enum": expansions}}, "Include related resources.")
+	}
+	if c.Supports.Field {
+		controls["field"] = control(map[string]any{"type": "string"}, "Return only this dot path.")
+		controls["select"] = control(map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"type": "string"}}, "Keep only these fields.")
+		controls["jq"] = control(map[string]any{"type": "string"}, "jq expression for the result.")
+	}
+	return controls
 }
 
 func rewriteSchemaRefs(value any) any {
@@ -614,34 +658,71 @@ func commandNameSuggestions(r *Registry, input string, groups bool) []string {
 
 func errorCatalog() map[string]any {
 	return map[string]any{
-		"exit_codes": []map[string]any{{"code": 0, "meaning": "success"}, {"code": 1, "meaning": "api_error"}, {"code": 2, "meaning": "usage_error"}, {"code": 3, "meaning": "auth_or_config_error"}, {"code": 4, "meaning": "confirmation_required"}, {"code": 5, "meaning": "network_or_timeout_error"}, {"code": 6, "meaning": "wait_condition_unmet"}},
+		"exit_codes": []map[string]any{{"code": 0, "meaning": "success"}, {"code": 1, "meaning": "api_error"}, {"code": 2, "meaning": "usage_error"}, {"code": 3, "meaning": "auth_or_config_error"}, {"code": 4, "meaning": "confirmation_required"}, {"code": 5, "meaning": "network_or_timeout_error"}, {"code": 6, "meaning": "wait_condition_unmet"}, {"code": 70, "meaning": "internal_error"}},
 		"types":      []string{"usage_error", "validation_error", "authentication_error", "authorization_error", "confirmation_required", "network_error", "timeout_error", "rate_limit_error", "conflict_error", "not_found_error", "unavailable_error"},
 		"listen_codes": []map[string]any{
 			{"code": "STREAM_BOUND_REQUIRED", "exit_code": ExitUsage},
 			{"code": "INVALID_FORWARD_URL", "exit_code": ExitUsage},
 			{"code": "INVALID_CURSOR", "exit_code": ExitUsage},
+			{"code": "INVALID_EVENT_TYPE", "exit_code": ExitUsage},
+			{"code": "MULTIPLE_EVENT_TYPES", "exit_code": ExitUsage},
+			{"code": "INVALID_WEBHOOK_SECRET", "exit_code": ExitUsage},
+			{"code": "LISTEN_SECRET_INVALID", "exit_code": ExitAuth},
+			{"code": "LISTEN_SECRET_SAVE_FAILED", "exit_code": ExitAuth},
 			{"code": "WEBHOOK_SECRET_GENERATION_FAILED", "exit_code": ExitNetwork},
 			{"code": "REQUEST_TIMEOUT", "exit_code": ExitNetwork},
 			{"code": "NETWORK_ERROR", "exit_code": ExitNetwork},
 			{"code": "RESPONSE_READ_FAILED", "exit_code": ExitNetwork},
 			{"code": "STREAM_READ_FAILED", "exit_code": ExitNetwork},
+			{"code": "STREAM_NOT_CONNECTED", "exit_code": ExitNetwork},
 			{"code": "INVALID_STREAM_CONTENT_TYPE", "exit_code": ExitAPI},
 			{"code": "INVALID_STREAM_EVENT", "exit_code": ExitAPI},
 			{"code": "INVALID_STREAM_EVENT_ID", "exit_code": ExitAPI},
 			{"code": "INVALID_STREAM_PAYLOAD", "exit_code": ExitAPI},
-			{"code": "WEBHOOK_PAYLOAD_NOT_VISIBLE", "exit_code": ExitAuth},
+			{"code": "WEBHOOK_FORWARD_FAILED", "exit_code": ExitAPI},
+			{"code": "EXPECTED_EVENTS_NOT_RECEIVED", "exit_code": ExitWait},
 			{"code": "OUTPUT_WRITE_FAILED", "exit_code": ExitNetwork},
 		},
 	}
 }
 
-func eventCatalog() (any, error) {
+func eventCatalog() (any, error) { return eventCatalogFor(nil) }
+
+// eventCatalogFor returns the webhook catalog limited to the event types match
+// accepts, with only the components those payloads reach. A nil match keeps
+// every event type.
+func eventCatalogFor(match func(string) bool) (map[string]any, error) {
 	doc, err := loadOpenAPI()
 	if err != nil {
 		return nil, err
 	}
+	webhooks := doc.Webhooks
+	metadata := doc.WebhookMetadata
+	if match != nil {
+		webhooks = map[string]any{}
+		for eventType, path := range doc.Webhooks {
+			if match(eventType) {
+				webhooks[eventType] = path
+			}
+		}
+		metadata = map[string]any{}
+		for key, value := range doc.WebhookMetadata {
+			payloads, ok := value.(map[string]any)
+			if !ok || (key != "event_payload_schemas" && key != "partner_event_payload_schemas") {
+				metadata[key] = value
+				continue
+			}
+			filtered := map[string]any{}
+			for eventType, schema := range payloads {
+				if match(eventType) {
+					filtered[eventType] = schema
+				}
+			}
+			metadata[key] = filtered
+		}
+	}
 	requestSchemas := []any{}
-	for _, rawPath := range doc.Webhooks {
+	for _, rawPath := range webhooks {
 		path := rawPath.(map[string]any)
 		post := path["post"].(map[string]any)
 		body := post["requestBody"].(map[string]any)
@@ -652,7 +733,23 @@ func eventCatalog() (any, error) {
 	components := reachableSchemaComponents(map[string]any{"anyOf": requestSchemas}, doc.Components.Schemas)
 	return map[string]any{
 		"openapi": doc.OpenAPI, "jsonSchemaDialect": doc.JSONSchemaDialect, "info": doc.Info,
-		"webhooks": doc.Webhooks, "components": map[string]any{"schemas": components},
-		"x-flint-webhooks": doc.WebhookMetadata,
+		"webhooks": webhooks, "components": map[string]any{"schemas": components},
+		"x-flint-webhooks": metadata,
 	}, nil
+}
+
+// eventTypeSummaries lists every webhook event type with its one-line summary.
+func eventTypeSummaries() ([]map[string]string, error) {
+	doc, err := loadOpenAPI()
+	if err != nil {
+		return nil, err
+	}
+	summaries := make([]map[string]string, 0, len(doc.Webhooks))
+	for eventType, rawPath := range doc.Webhooks {
+		summary, _ := lookupPath(rawPath, "post.summary")
+		text, _ := summary.(string)
+		summaries = append(summaries, map[string]string{"event_type": eventType, "description": text})
+	}
+	sort.Slice(summaries, func(i, j int) bool { return summaries[i]["event_type"] < summaries[j]["event_type"] })
+	return summaries, nil
 }

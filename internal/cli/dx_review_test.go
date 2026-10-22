@@ -18,7 +18,7 @@ func dxCustomerServer(t *testing.T) *httptest.Server {
 		case r.URL.Path == "/v1/developer/auth-context":
 			fmt.Fprint(w, authContextJSON("sandbox"))
 		case r.URL.Path == "/v1/customers":
-			fmt.Fprint(w, `{"data":[{"customer_id":"cus_1"},{"customer_id":"cus_2"}],"has_more":true,"next_page_token":"tok_2","request_id":"req_list"}`)
+			fmt.Fprint(w, `{"data":[{"customer_id":"cus_1"},{"customer_id":"cus_2"}],"next_page_token":"tok_2","request_id":"req_list"}`)
 		default:
 			fmt.Fprint(w, `{"data":{"customer_id":"cus_1","email":"a@example.com"},"request_id":"req_get"}`)
 		}
@@ -97,12 +97,12 @@ func TestCommonFlagGuesses(t *testing.T) {
 			if tc.suggestion != "" {
 				var body struct {
 					Error struct {
-						Details []struct {
+						Details struct {
 							Suggestions []string `json:"suggestions"`
 						} `json:"details"`
 					} `json:"error"`
 				}
-				if err := json.Unmarshal(stdout.Bytes(), &body); err != nil || len(body.Error.Details) == 0 || len(body.Error.Details[0].Suggestions) == 0 || body.Error.Details[0].Suggestions[0] != tc.suggestion {
+				if err := json.Unmarshal(stdout.Bytes(), &body); err != nil || len(body.Error.Details.Suggestions) == 0 || body.Error.Details.Suggestions[0] != tc.suggestion {
 					t.Fatalf("stdout=%s", stdout)
 				}
 			}

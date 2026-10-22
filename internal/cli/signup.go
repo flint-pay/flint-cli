@@ -8,11 +8,17 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	apispec "github.com/flint-pay/flint-cli/internal/spec"
 )
 
-var initialCLIScopes = embeddedInitialCLIScopes()
+var initialCLIScopes = apispec.BootstrapScopes()
 
 func (a *App) runSignup(opts Options) int {
+	opts.allowMissingProfile = true
+	if credentialFromEnvironment() != "" {
+		return a.fail(configError("ENVIRONMENT_CREDENTIAL_ACTIVE", "Unset FLINT_API_KEY before signup; it would override the saved credential.", nil), opts)
+	}
 	// Validate the local destination before creating remote account resources or
 	// issuing a one-time API key that this process may be unable to persist.
 	resolved, cfg, err := a.resolveConfig(opts)
@@ -28,7 +34,7 @@ func (a *App) runSignup(opts Options) int {
 	}
 	_, previousErr := a.LoadCredential(resolved.ProfileName)
 	if previousErr != nil {
-		return a.fail(configError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before signup.", previousErr), opts)
+		return a.fail(credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before signup.", previousErr), opts)
 	}
 	reader := bufio.NewReader(&contextInputReader{ctx: a.commandContext(), reader: a.Stdin})
 	pending, e := a.signupChallenge(reader, opts, resolved.ProfileName, cfg.Profiles[resolved.ProfileName].PendingSignup)
@@ -90,11 +96,11 @@ func (a *App) runSignup(opts Options) int {
 		}
 		previousCredential, credentialErr := a.LoadCredential(resolved.ProfileName)
 		if credentialErr != nil {
-			persistenceErr = configError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before signup.", credentialErr)
+			persistenceErr = credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before signup.", credentialErr)
 			return credentialErr
 		}
 		if storeErr := a.StoreCredential(resolved.ProfileName, secret); storeErr != nil {
-			persistenceErr = configError("KEYCHAIN_WRITE_FAILED", "The new credential could not be stored in the OS keychain.", storeErr)
+			persistenceErr = credentialStoreError("KEYCHAIN_WRITE_FAILED", "The new credential could not be stored in the OS keyring.", storeErr)
 			if restoreErr := a.restoreCredential(resolved.ProfileName, previousCredential); restoreErr != nil {
 				persistenceErr.Message += "; credential rollback also failed: " + restoreErr.Error()
 			}
@@ -407,7 +413,7 @@ func (a *App) signupValue(reader *bufio.Reader, opts Options, flagName, label st
 		}
 	}
 	if opts.NoInput || !a.IsTTY() {
-		return "", configError("SIGNUP_INPUT_REQUIRED", "flint signup requires --"+flagName+" when input is disabled.", nil)
+		return "", usageError("SIGNUP_INPUT_REQUIRED", "flint signup requires --"+flagName+" when input is disabled.", flagName)
 	}
 	fmt.Fprint(a.Stderr, label+": ")
 	line, err := reader.ReadString('\n')

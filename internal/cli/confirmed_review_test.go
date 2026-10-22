@@ -64,7 +64,7 @@ func TestMCPPreviewResultsMatchAdvertisedSchemas(t *testing.T) {
 		{"transformed dry run", "organizations.create", map[string]any{"name": "Audit", "_flint": map[string]any{"dry_run": "client", "field": "data.method"}}, "value", "POST"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 2, Method: "tools/call", Params: map[string]any{"name": test.tool, "arguments": test.arguments}}, defaultOptions())
+			response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 2, Method: "tools/call", Params: map[string]any{"name": test.tool, "arguments": test.arguments}}, mcpAllToolsOptions(t))
 			value, ok := lookupPath(response, "result.structuredContent")
 			if !ok {
 				t.Fatalf("tool failed: %#v", response)
@@ -117,7 +117,7 @@ func TestTimelineAllPreservesEnvelopeAndCollectsEntries(t *testing.T) {
 				}
 				response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{
 					"name": name, "arguments": arguments,
-				}}, defaultOptions())
+				}}, mcpAllToolsOptions(t))
 				var ok bool
 				result, ok = lookupPath(response, "result.structuredContent")
 				if !ok {

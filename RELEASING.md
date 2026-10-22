@@ -2,7 +2,7 @@
 
 The CLI follows the [Flint SDK release process](https://github.com/flint-pay/flint-sdks/blob/main/RELEASING.md): prepare a release PR, merge a reviewed commit to `main`, tag that commit, publish immutable versions, then verify installation from each public channel.
 
-The CLI version is independent of the API version and SDK package versions. One `cli/vX.Y.Z` tag supplies the version for the binary, npm packages, Homebrew formula, and container. The development version in `npm/package.json` is replaced during packaging; do not bump it manually. Stable versions use npm `latest`; prereleases such as `cli/v0.1.0-beta.1` use `next` and do not update Homebrew or the container's `latest` tag. Release tags do not accept SemVer build metadata (`+build`).
+The CLI version is independent of the API version and SDK package versions. One `cli/vX.Y.Z` tag supplies the version for the binary, npm packages, Homebrew formula, and container. The development versions in `npm/package.json` and `server.json` are replaced during packaging (`scripts/package-npm.mjs` writes the stamped MCP registry manifest to `dist/server.json`); do not bump them manually. Stable versions use npm `latest`; prereleases such as `cli/v0.1.0-beta.1` use `next` and do not update Homebrew or the container's `latest` tag. Release tags do not accept SemVer build metadata (`+build`).
 
 ## One-time setup
 
@@ -103,7 +103,7 @@ FLINT_CLI_VERSION=0.1.0-beta.1 FLINT_INSTALL_DIR="$HOME/.local/bin" sh /tmp/flin
 "$HOME/.local/bin/flint" version --output json
 ```
 
-Add `$HOME/.local/bin` to your shell's `PATH` if needed. Omitting `FLINT_CLI_VERSION` selects the latest stable release. The installer defaults to `/usr/local/bin` if `FLINT_INSTALL_DIR` is omitted; choose a writable directory for installation without sudo.
+Add `$HOME/.local/bin` to your shell's `PATH` if needed. Omitting `FLINT_CLI_VERSION` selects the latest stable release using GitHub's `releases/latest` web redirect, as does `flint upgrade` (including `--check`). If the redirect lookup fails, both fall back to the REST API; set `GITHUB_TOKEN` to raise that fallback's rate limit. The token is sent only to the API. If `FLINT_INSTALL_DIR` is omitted, the installer uses `/usr/local/bin` when it is writable and `$HOME/.local/bin` otherwise.
 
 For Windows, download `flint_VERSION_windows_amd64.zip` and `checksums.txt` from the same GitHub Release. Compare `Get-FileHash .\flint_VERSION_windows_amd64.zip -Algorithm SHA256` with its entry in `checksums.txt`, extract `flint.exe` into a directory on `PATH`, and run `flint version --output json`. macOS/Linux users can likewise verify and extract the relevant `.tar.gz` manually.
 

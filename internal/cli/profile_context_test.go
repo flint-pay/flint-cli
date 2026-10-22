@@ -28,7 +28,7 @@ func TestHistoryEnvironmentKeyOverridesSavedContext(t *testing.T) {
 			if err := app.recordHistory(map[string]any{"data": map[string]any{"customer_id": "cus_old"}}, "customers.get", historyScope{Profile: "default", Environment: "live", MerchantID: "mer_old"}); err != nil {
 				t.Fatal(err)
 			}
-			for _, argv := range [][]string{{"customers", "get", "cus_current", "--output", "json"}, {"customers", "get", "@last", "--output", "json"}} {
+			for _, argv := range [][]string{{"customers", "create", "--email", "current@example.com", "--output", "json"}, {"customers", "get", "@last", "--output", "json"}} {
 				out.Reset()
 				if exit := app.Run(argv); exit != ExitOK || !strings.Contains(out.String(), "cus_current") {
 					t.Fatalf("%v exit=%d: %s", argv, exit, out)

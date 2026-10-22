@@ -14,7 +14,7 @@ function within(promise, milliseconds = 5000) {
   ]).finally(() => clearTimeout(timer));
 }
 
-function wrapperFixture(t, script, { missingBinary = false } = {}) {
+function wrapperFixture(t, script, { missingBinary = false, missingPackage = false, nodeArgs = [] } = {}) {
   const temp = mkdtempSync(join(tmpdir(), "flint-wrapper-"));
   const wrapper = join(temp, "node_modules", "@flintpay", "cli", "bin", "flint.js");
   mkdirSync(dirname(wrapper), { recursive: true });
@@ -22,15 +22,17 @@ function wrapperFixture(t, script, { missingBinary = false } = {}) {
   const platform = process.platform === "win32" ? "windows" : process.platform;
   const arch = process.arch === "x64" ? "amd64" : process.arch;
   const pkg = join(temp, "node_modules", "@flintpay", `cli-${platform}-${arch}`);
-  mkdirSync(join(pkg, "bin"), { recursive: true });
-  writeFileSync(join(pkg, "package.json"), JSON.stringify({ name: `@flintpay/cli-${platform}-${arch}` }));
-  const binary = join(pkg, "bin", platform === "windows" ? "flint.exe" : "flint");
-  if (!missingBinary) {
-    if (platform === "windows") copyFileSync(process.execPath, binary);
-    else symlinkSync(process.execPath, binary);
+  if (!missingPackage) {
+    mkdirSync(join(pkg, "bin"), { recursive: true });
+    writeFileSync(join(pkg, "package.json"), JSON.stringify({ name: `@flintpay/cli-${platform}-${arch}` }));
+    const binary = join(pkg, "bin", platform === "windows" ? "flint.exe" : "flint");
+    if (!missingBinary) {
+      if (platform === "windows") copyFileSync(process.execPath, binary);
+      else symlinkSync(process.execPath, binary);
+    }
   }
   // A Node helper stands in for the Go executable, exercising the real wrapper.
-  const child = spawn(process.execPath, [wrapper, "-e", script, "--", "argument with spaces"], { stdio: "pipe" });
+  const child = spawn(process.execPath, [...nodeArgs, wrapper, "-e", script, "--", "argument with spaces"], { stdio: "pipe" });
   let stdout = "", stderr = "", helperPID;
   child.stdout.on("data", chunk => { stdout += chunk; });
   child.stderr.on("data", chunk => { stderr += chunk; });
@@ -66,10 +68,30 @@ test("npm wrapper preserves arguments, stdio, and exit status", async t => {
   assert.equal(run.stderr(), "diagnostic");
 });
 
+// Installation failures must not reuse the CLI's own exit codes, such as 2
+// (usage), 3 (authentication or configuration), or 5 (network).
+const EXIT_SOFTWARE = 70;
+
 test("npm wrapper reports a missing platform executable", async t => {
   const run = wrapperFixture(t, "", { missingBinary: true });
-  assert.deepEqual(await within(run.closed), { code: 5, signal: null });
-  assert.match(run.stderr(), /ENOENT/);
+  assert.deepEqual(await within(run.closed), { code: EXIT_SOFTWARE, signal: null });
+  assert.match(run.stderr(), /Could not start the Flint CLI executable from @flintpay\/cli-[\w-]+: .*ENOENT.*Reinstall @flintpay\/cli/);
+});
+
+test("npm wrapper reports a missing platform package", async t => {
+  const run = wrapperFixture(t, "", { missingPackage: true });
+  assert.deepEqual(await within(run.closed), { code: EXIT_SOFTWARE, signal: null });
+  assert.match(run.stderr(), /optional platform package @flintpay\/cli-[\w-]+ is missing/);
+});
+
+test("npm wrapper reports an unsupported platform", async t => {
+  const temp = mkdtempSync(join(tmpdir(), "flint-wrapper-arch-"));
+  t.after(() => rmSync(temp, { recursive: true, force: true }));
+  const preload = join(temp, "unsupported-arch.cjs");
+  writeFileSync(preload, "Object.defineProperty(process, 'arch', { value: 'ia32' });\n");
+  const run = wrapperFixture(t, "", { nodeArgs: ["--require", preload] });
+  assert.deepEqual(await within(run.closed), { code: EXIT_SOFTWARE, signal: null });
+  assert.match(run.stderr(), /does not publish a binary for \w+\/ia32\. Supported platforms:/);
 });
 
 for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"]) {

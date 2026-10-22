@@ -10,7 +10,7 @@ Every command maps to a documented `/v1` route, so anything you can do over HTTP
 npm install -g @flintpay/cli
 ```
 
-On macOS and Linux, run `flint upgrade` (or its alias `flint update`) to update the global package and its platform binary to the latest stable release. On Windows, the command prints the exact npm update to run after closing the CLI.
+On macOS and Linux, run `flint upgrade` (or its alias `flint update`) to update the global package and its platform binary to the latest stable release. On Windows, the command prints the exact npm update to run after closing the CLI. `flint upgrade --check` only reports the current and latest stable versions and whether an update is available.
 
 This package resolves a prebuilt binary for your platform. Node `>=18` is required to run the installer. On macOS and Linux you can install with Homebrew instead:
 
@@ -87,9 +87,9 @@ This streams your sandbox's events to a local server with a real signature, so y
 
 ## Scripting
 
-For bounded commands, `--output json` prints one JSON envelope on stdout and disables terminal input prompts. `flint auth login` still requires approval on the website; use `FLINT_NO_INPUT=1` to prohibit browser login in automation. Streaming commands emit newline-delimited JSON instead. `flint listen --output json` writes one listener, webhook event, delivery result, or checkpoint object per line; use `--max-events` or `--for` to bound it. Diagnostics and progress go to stderr, so stdout stays a clean data stream.
+For bounded commands, `--output json` prints one JSON envelope on stdout and disables terminal input prompts. `flint auth login` still requires approval on the website; `FLINT_NO_INPUT=1` suppresses opening the browser automatically while allowing website approval and polling. Use `FLINT_API_KEY` for unattended automation. Streaming commands emit newline-delimited JSON instead. `flint listen --output json` writes one listener, webhook event, delivery result, or checkpoint object per line; use `--max-events` or `--for` to bound it. Diagnostics and progress go to stderr, so stdout stays a clean data stream.
 
-Exit codes are stable: `0` success, `1` API error, `2` usage error, `3` auth or config, `4` confirmation required, `5` network, `6` `--wait-for` timed out, `70` internal error.
+Exit codes are stable: `0` success, `1` API error, `2` usage error, `3` auth or config, `4` confirmation required, `5` network, `6` `--wait-for` timed out, `70` internal error, including a missing or unsupported platform binary.
 
 In CI, pass the key through `FLINT_API_KEY` instead of the keychain, and set `FLINT_OUTPUT=json` and `FLINT_NO_INPUT=1` to make every command non-interactive.
 

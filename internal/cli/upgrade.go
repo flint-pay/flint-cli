@@ -23,6 +23,7 @@ import (
 )
 
 const (
+	defaultUpgradeReleaseLatestURL   = "https://github.com/flint-pay/flint-cli/releases/latest"
 	defaultUpgradeReleaseAPIURL      = "https://api.github.com/repos/flint-pay/flint-cli/releases?per_page=100"
 	defaultUpgradeReleaseDownloadURL = "https://github.com/flint-pay/flint-cli/releases/download"
 	maxReleaseResponseSize           = 2 << 20
@@ -145,8 +146,11 @@ func (a *App) localUpgrade(cmd *Command, opts Options) int {
 		}, opts)
 	}
 
+	// --check only looks up the release, so it keeps the ordinary request
+	// timeout; installing can take minutes.
+	check := booleanRawOption(opts, "check")
 	upgradeTimeout := opts.Timeout
-	if len(opts.Raw["timeout"]) == 0 {
+	if len(opts.Raw["timeout"]) == 0 && !check {
 		upgradeTimeout = 5 * time.Minute
 	}
 	ctx, cancel := context.WithTimeout(a.commandContext(), upgradeTimeout)
@@ -158,6 +162,9 @@ func (a *App) localUpgrade(cmd *Command, opts Options) int {
 	})
 	if upgradeErr != nil {
 		return a.fail(upgradeErr, opts)
+	}
+	if check {
+		return a.outputLocal(upgradeCheckResult(installed, latest), cmd, opts)
 	}
 	if compareReleaseVersions(installed, latest) >= 0 {
 		return a.outputLocal(map[string]any{"data": map[string]any{
@@ -247,6 +254,23 @@ func (a *App) localUpgrade(cmd *Command, opts Options) int {
 		}}, cmd, opts)
 	}
 	return a.outputLocal(upgradeResult(installed.raw, latest.raw, "standalone"), cmd, opts)
+}
+
+// upgradeCheckResult reports whether a newer stable release exists without
+// changing the installation. Either answer is a successful check.
+func upgradeCheckResult(current, latest releaseVersion) map[string]any {
+	available := compareReleaseVersions(current, latest) < 0
+	data := map[string]any{
+		"status":           "current",
+		"current_version":  current.raw,
+		"latest_version":   latest.raw,
+		"update_available": available,
+	}
+	if available {
+		data["status"] = "update_available"
+		data["upgrade_command"] = "flint upgrade"
+	}
+	return map[string]any{"data": data}
 }
 
 func upgradeResult(previous, latest, method string) map[string]any {
@@ -458,8 +482,55 @@ func pathWithin(root, target string) bool {
 	return err == nil && relative != "." && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
+// stableReleaseTag accepts only canonical stable CLI tags, without whitespace,
+// prerelease identifiers, or build metadata.
+func stableReleaseTag(tag string) (releaseVersion, bool) {
+	if !strings.HasPrefix(tag, "cli/v") {
+		return releaseVersion{}, false
+	}
+	version, valid := parseReleaseVersion(strings.TrimPrefix(tag, "cli/"))
+	return version, valid && version.prerelease == "" && tag == "cli/v"+version.raw
+}
+
+func (a *App) latestCLIReleaseRedirect(ctx context.Context) (releaseVersion, bool) {
+	if a.upgradeReleaseLatestURL == "" {
+		return releaseVersion{}, false
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, a.upgradeReleaseLatestURL, nil)
+	if err != nil {
+		return releaseVersion{}, false
+	}
+	request.Header.Set("User-Agent", "flintpay-cli/"+a.Info.Version)
+	client := a.upgradeHTTPClient()
+	// Copy the client so release downloads retain their normal redirect policy.
+	redirectClient := *client
+	redirectClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	response, err := redirectClient.Do(request)
+	if err != nil {
+		return releaseVersion{}, false
+	}
+	defer response.Body.Close()
+	switch response.StatusCode {
+	case http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther, http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
+	default:
+		return releaseVersion{}, false
+	}
+	location, err := response.Location()
+	if err != nil || location.Scheme != request.URL.Scheme || location.Host != request.URL.Host || location.User != nil || location.ForceQuery || location.RawQuery != "" || location.Fragment != "" {
+		return releaseVersion{}, false
+	}
+	const prefix = "/flint-pay/flint-cli/releases/tag/"
+	if !strings.HasPrefix(location.Path, prefix) {
+		return releaseVersion{}, false
+	}
+	return stableReleaseTag(strings.TrimPrefix(location.Path, prefix))
+}
+
 func (a *App) latestStableCLIRelease(ctx context.Context) (releaseVersion, *CLIError) {
-	raw, err := a.getUpgradeURL(ctx, a.upgradeReleaseAPIURL, maxReleaseResponseSize)
+	if latest, valid := a.latestCLIReleaseRedirect(ctx); valid {
+		return latest, nil
+	}
+	raw, err := a.fetchUpgradeURL(ctx, a.upgradeReleaseAPIURL, maxReleaseResponseSize, true)
 	if err != nil {
 		return releaseVersion{}, err
 	}
@@ -470,11 +541,11 @@ func (a *App) latestStableCLIRelease(ctx context.Context) (releaseVersion, *CLIE
 	var latest releaseVersion
 	found := false
 	for _, release := range releases {
-		if release.Draft || release.Prerelease || !strings.HasPrefix(release.TagName, "cli/v") {
+		if release.Draft || release.Prerelease {
 			continue
 		}
-		version, valid := parseReleaseVersion(strings.TrimPrefix(release.TagName, "cli/"))
-		if !valid || version.prerelease != "" {
+		version, valid := stableReleaseTag(release.TagName)
+		if !valid {
 			continue
 		}
 		if !found || compareReleaseVersions(version, latest) > 0 {
@@ -636,26 +707,51 @@ func (a *App) replaceExecutableAtomically(ctx context.Context, executable string
 	return installedVersion, nil
 }
 
+func (a *App) upgradeHTTPClient() *http.Client {
+	if a.HTTPClient != nil {
+		return a.HTTPClient
+	}
+	return http.DefaultClient
+}
+
 func (a *App) getUpgradeURL(ctx context.Context, target string, limit int64) ([]byte, *CLIError) {
+	return a.fetchUpgradeURL(ctx, target, limit, false)
+}
+
+func (a *App) fetchUpgradeURL(ctx context.Context, target string, limit int64, releaseAPI bool) ([]byte, *CLIError) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
 		return nil, upgradeFailure("INVALID_RELEASE_URL", "The Flint CLI release URL is invalid.", err)
 	}
 	request.Header.Set("Accept", "application/vnd.github+json")
 	request.Header.Set("User-Agent", "flintpay-cli/"+a.Info.Version)
-	client := a.HTTPClient
-	if client == nil {
-		client = http.DefaultClient
+	client := a.upgradeHTTPClient()
+	if releaseAPI {
+		if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+			request.Header.Set("Authorization", "Bearer "+token)
+		}
+		// The API endpoint is final. Never forward its credential to a redirect.
+		apiClient := *client
+		apiClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+		client = &apiClient
 	}
 	response, requestErr := client.Do(request)
 	if requestErr != nil {
 		if errors.Is(ctx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return nil, networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 		}
+		// Transport errors can contain invalid header values. The API credential
+		// must never reach an error, including through its cause.
+		if releaseAPI {
+			requestErr = nil
+		}
 		return nil, networkError("RELEASE_DOWNLOAD_FAILED", "Could not download Flint CLI release information.", requestErr)
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
+		if releaseAPI {
+			return nil, githubReleaseAPIError(response)
+		}
 		return nil, networkError("RELEASE_DOWNLOAD_FAILED", fmt.Sprintf("GitHub returned HTTP %d while downloading Flint CLI release information.", response.StatusCode), nil)
 	}
 	raw, readErr := io.ReadAll(io.LimitReader(response.Body, limit+1))
@@ -669,6 +765,44 @@ func (a *App) getUpgradeURL(ctx context.Context, target string, limit int64) ([]
 		return nil, upgradeFailure("RELEASE_DOWNLOAD_TOO_LARGE", "The Flint CLI release download exceeded its size limit.", nil)
 	}
 	return raw, nil
+}
+
+func githubReleaseAPIError(response *http.Response) *CLIError {
+	status := response.StatusCode
+	failure := networkError("RELEASE_DOWNLOAD_FAILED", fmt.Sprintf("GitHub returned HTTP %d while looking up the latest Flint CLI release.", status), nil)
+	failure.HTTPStatus = status
+	if status != http.StatusForbidden && status != http.StatusTooManyRequests {
+		return failure
+	}
+	header := response.Header
+	if status == http.StatusForbidden && header.Get("X-RateLimit-Remaining") != "0" && header.Get("Retry-After") == "" {
+		failure.Message = fmt.Sprintf("GitHub refused the latest Flint CLI release lookup (HTTP %d). Check GITHUB_TOKEN permissions or retry later.", status)
+		return failure
+	}
+	failure.Type = "rate_limit_error"
+	failure.Code = "GITHUB_RATE_LIMITED"
+	failure.Message = "GitHub API rate limit reached while looking up the latest Flint CLI release."
+	details := map[string]any{}
+	var reset time.Time
+	if retryAfter := header.Get("Retry-After"); retryAfter != "" {
+		if seconds, err := strconv.ParseUint(retryAfter, 10, 32); err == nil {
+			reset = time.Now().Add(time.Duration(seconds) * time.Second)
+		} else if date, err := http.ParseTime(retryAfter); err == nil {
+			reset = date
+		}
+	} else if header.Get("X-RateLimit-Remaining") == "0" {
+		if seconds, err := strconv.ParseInt(header.Get("X-RateLimit-Reset"), 10, 64); err == nil && seconds > 0 {
+			reset = time.Unix(seconds, 0)
+		}
+	}
+	remediation := "Set GITHUB_TOKEN to raise the API limit, or retry after the rate limit resets."
+	if !reset.IsZero() {
+		details["reset_at"] = reset.UTC().Format(time.RFC3339)
+		remediation = "Set GITHUB_TOKEN to raise the API limit, or retry after " + reset.UTC().Format(time.RFC3339) + "."
+	}
+	details["remediation"] = map[string]any{"next_actions": []any{map[string]any{"reason_message": remediation}}}
+	failure.Details = details
+	return failure
 }
 
 func upgradeFailure(code, message string, cause error) *CLIError {

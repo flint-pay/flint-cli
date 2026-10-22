@@ -72,6 +72,19 @@ func resolveAPICommand(command *Command, opts Options) *Command {
 	return &resolved
 }
 
+// merchantBearerRoute includes operations that also accept session credentials.
+// An access token on a mixed route may still be a merchant OAuth token.
+func merchantBearerRoute(command *Command) bool {
+	for _, requirement := range command.Security {
+		_, bearer := requirement["BearerAuth"]
+		_, apiKey := requirement["ApiKeyHeader"]
+		if bearer || apiKey {
+			return true
+		}
+	}
+	return false
+}
+
 func oauthAuthorizationEnvironment(command *Command, opts Options) string {
 	if command.OperationID != "authorizePartnerInstall" {
 		return ""
@@ -134,30 +147,49 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 		if !command.AuthRequired {
 			token = ""
 		}
-		// Session tokens cannot use the API-key introspection endpoint. The
-		// selected route validates the token and its resource authorization.
-		if (token != "" || checkoutSession) && resolved.SandboxGuard != "" {
-			return "", "", envelope, configError("SESSION_SANDBOX_GUARD_UNSUPPORTED", "Session credentials cannot verify a configured sandbox guard. Use an API key for guarded merchant commands.", nil)
-		}
-		if (token != "" || checkoutSession) && resolved.MerchantGuard != "" {
-			return "", "", envelope, configError("SESSION_MERCHANT_GUARD_UNSUPPORTED", "Session credentials cannot verify a configured merchant guard. Use an API key for guarded merchant commands.", nil)
-		}
 		if command.CanonicalName == "auth.status" {
 			authCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
 			defer cancel()
 			actual, authErr := a.fetchAuthContextResponse(authCtx, baseURL, token, opts.Debug)
 			return token, baseURL, actual, authErr
 		}
-		envelope.Data = AuthContext{Environment: mode, AuthType: "session"}
+		credentialScope := ""
 		if token != "" || checkoutSession {
 			digest := sha256.Sum256([]byte(token + "\x00" + os.Getenv("FLINT_CHECKOUT_SESSION_ID") + "\x00" + os.Getenv("FLINT_CHECKOUT_SESSION_SECRET")))
-			envelope.Data.CredentialScope = hex.EncodeToString(digest[:])
+			credentialScope = hex.EncodeToString(digest[:])
 		}
+		// An access token's format does not reveal its environment. Before a
+		// merchant write, CLI OAuth tokens are introspected so they receive the
+		// same live acknowledgement, confirmation, and guard checks as API keys.
+		// Partner tokens cannot be, so their environment stays unverified and
+		// sensitive writes require confirmation as if they were live.
+		if token != "" && !checkoutSession && command.Mutation && !opts.DryRunClient() && merchantBearerRoute(command) && oauthAuthorizationEnvironment(command, opts) == "" {
+			authCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
+			actual, introspectErr := a.fetchAuthContextResponse(authCtx, baseURL, token, opts.Debug)
+			cancel()
+			if introspectErr == nil {
+				actual.Data.CredentialScope = credentialScope
+				return token, baseURL, actual, nil
+			}
+			if introspectErr.ExitCode == ExitNetwork {
+				return "", "", envelope, introspectErr
+			}
+			mode = environmentUnverified
+		}
+		// The selected route validates these tokens and their resource
+		// authorization, but the CLI cannot check guards against them.
+		if (token != "" || checkoutSession) && resolved.SandboxGuard != "" {
+			return "", "", envelope, configError("SESSION_SANDBOX_GUARD_UNSUPPORTED", "Session credentials cannot verify a configured sandbox guard. Use an API key for guarded merchant commands.", nil)
+		}
+		if (token != "" || checkoutSession) && resolved.MerchantGuard != "" {
+			return "", "", envelope, configError("SESSION_MERCHANT_GUARD_UNSUPPORTED", "Session credentials cannot verify a configured merchant guard. Use an API key for guarded merchant commands.", nil)
+		}
+		envelope.Data = AuthContext{Environment: mode, AuthType: "session", CredentialScope: credentialScope}
 		return token, baseURL, envelope, nil
 	}
 	key, _, err := a.resolveCredential(resolved.ProfileName)
 	if err != nil {
-		return "", "", envelope, configError("CREDENTIAL_LOOKUP_FAILED", "The credential could not be read from the OS keychain.", err)
+		return "", "", envelope, credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The credential could not be read from the OS keyring.", err)
 	}
 	if key == "" {
 		e := configError("API_KEY_REQUIRED", "No Flint credential is configured. Run flint auth login (recommended for local development), or flint auth import to use an API key. For automation, set FLINT_API_KEY.", nil)
@@ -184,21 +216,19 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 			envelope.Data.CredentialScope = oauthHistoryScope(c.Auth)
 			return c.AccessToken, c.BaseURL, envelope, nil
 		}
-		authCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
-		defer cancel()
-		return a.fetchCredentialContext(authCtx, resolved.ProfileName, key, opts.Debug)
+		return a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, key, opts.Debug)
 	}
 	if resolved.ContextID != "" {
 		return "", "", envelope, contextSessionRequired()
 	}
 	baseURL, err := a.baseURLForCredential(key)
 	if err != nil {
-		return "", "", envelope, configError("INVALID_CREDENTIAL", err.Error(), err)
+		return "", "", envelope, invalidCredentialError(key, err)
 	}
 	if opts.DryRun == "client" {
 		mode, err := credentialEnvironment(key)
 		if err != nil {
-			return "", "", envelope, configError("INVALID_CREDENTIAL", err.Error(), err)
+			return "", "", envelope, invalidCredentialError(key, err)
 		}
 		envelope.Data = AuthContext{Environment: mode, MerchantID: resolved.MerchantID, APIKeyID: resolved.APIKeyID, SandboxID: resolved.SandboxID}
 	} else {

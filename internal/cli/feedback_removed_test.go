@@ -57,7 +57,7 @@ func TestMCPStartsAndListsToolsWithoutFeedbackConsent(t *testing.T) {
 		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"test","version":"1"},"capabilities":{"elicitation":{"form":{}}}}}` + "\n" +
 			`{"jsonrpc":"2.0","method":"notifications/initialized"}` + "\n" +
 			`{"jsonrpc":"2.0","id":2,"method":"tools/list"}` + "\n")
-	if exit := app.Run([]string{"mcp", "serve"}); exit != ExitOK {
+	if exit := app.Run([]string{"mcp", "serve", "--tools", "all"}); exit != ExitOK {
 		t.Fatalf("exit=%d: %s", exit, stderr)
 	}
 	if stderr.Len() != 0 {
@@ -85,7 +85,7 @@ func TestMCPStartsAndListsToolsWithoutFeedbackConsent(t *testing.T) {
 		if strings.Contains(name, "feedback") {
 			t.Errorf("feedback tool still listed: %s", name)
 		}
-		if name == "help.search" {
+		if name == "help_search" {
 			foundHelp = true
 		}
 	}
@@ -113,7 +113,7 @@ func TestRetiredFeedbackConfigIsDiscarded(t *testing.T) {
 	if strings.Contains(string(raw), "feedback") {
 		t.Fatalf("retired setting persisted: %s", raw)
 	}
-	if err := strictJSON([]byte(`{"profiles":{"default":{"unknown_setting":true}}}`), &cfg); err == nil {
-		t.Fatal("unknown profile settings must still fail validation")
+	if err := lenientConfigJSON([]byte(`{"profiles":{"default":{"unknown_setting":true}}}`), &cfg); err != nil {
+		t.Fatal("unknown profile settings should be ignored:", err)
 	}
 }
