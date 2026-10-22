@@ -8,7 +8,9 @@ The CLI version is independent of the API version and SDK package versions. One 
 
 1. Keep `flint-pay/flint-cli` public. The manual installer and Homebrew download its GitHub Release assets anonymously; npm provenance also requires a public source repository. Merge `.github/workflows/cli-release.yml` before configuring publication.
 2. Create the public `flint-pay/homebrew-tap` repository with an initial README commit. The release workflow writes `Formula/flint.rb` to its default branch. Add `HOMEBREW_TAP_TOKEN` as a secret in the CLI repository: use a fine-grained GitHub token restricted to the tap with Contents read/write permission, authorized for the organization. The CLI repository's default `GITHUB_TOKEN` cannot write to another repository.
-3. Create the GitHub environment `cli-release-sandbox`, require a maintainer's approval, and allow the `cli/v*` release tags and the `main` branch. Add the environment secret `FLINT_TEST_API_KEY` for a disposable sandbox. The listener check creates a customer and validates the forwarded webhook signature; it must not use a live key.
+3. Create the GitHub environment `cli-release-staging-sandbox`, require reviewer `athammer` with self-review allowed, and restrict deployment policies to the `main` branch and `cli/v*` tags. Add the environment secret `FLINT_TEST_API_KEY` with a disposable staging sandbox key. Both sandbox workflows run against `https://api.staging.withflintpay.com`; the listener check creates a customer and validates the forwarded webhook signature, and must never use a live key.
+
+   The old `cli-release-sandbox` environment is unused and can be deleted by a repository admin.
 4. Create the GitHub environment `npm`, using the same naming convention as the SDK repository. Restrict it to release tags, require maintainer approval, and prevent self-approval. The `publication-approval` job uses this environment as the shared barrier for npm, GitHub, Homebrew, and GHCR. Configure a GitHub Actions trusted publisher on **each** of these npm packages:
 
    - `@flintpay/cli`
@@ -56,7 +58,7 @@ PR and main-branch CI also build snapshot archives and run the same macOS, Linux
 
 ## Publish the reviewed commit
 
-Run **CLI Sandbox Check** from `main` and approve the sandbox environment before tagging. This checks the configured credential and webhook forwarding without publishing. Failures report CLI error codes without exposing the signing secret.
+Run **CLI Sandbox Check** from `main` and approve its `cli-release-staging-sandbox` deployment before tagging. This checks the configured staging sandbox credential and webhook forwarding without publishing. Failures report CLI error codes without exposing the signing secret.
 
 Check that the version is unused on GitHub and all six npm packages. A registry authentication or network error does not establish that a version is available.
 
@@ -69,7 +71,7 @@ git push origin cli/v0.1.0-beta.1
 gh run list --workflow cli-release.yml --limit 5
 ```
 
-Approve the sandbox environment deployment when prompted by GitHub. The workflow validates the tag and main ancestry, runs CI and the sandbox check, builds archives once, and runs installation tests on macOS, Linux, and Windows before any publication. Homebrew is tested on macOS using the generated formula. It prepares the six actual npm tarballs and formula, and exports a multi-platform OCI container archive with provenance and SBOM without pushing it.
+Approve the release run's `cli-release-staging-sandbox` deployment when prompted by GitHub. The workflow validates the tag and main ancestry, runs CI and the sandbox check, builds archives once, and runs installation tests on macOS, Linux, and Windows before any publication. Homebrew is tested on macOS using the generated formula. It prepares the six actual npm tarballs and formula, and exports a multi-platform OCI container archive with provenance and SBOM without pushing it.
 
 Before approving publication, independently review the frozen artifacts and `flint-cli-candidate-manifest` workflow artifact. The manifest records the exact tag, source commit, build date, schema hash, archive/checksum/formula/npm/OCI file SHA-256 hashes, all six npm SHA-512 integrities, and the exported container manifest digest. Archive and npm bytes must match the previously frozen release review. The container requires review of the actual exported OCI bytes and digest; a source inspection or unavailable Docker daemon does not establish container identity. If a container rebuild changes bytes or provenance, stop and obtain fresh artifact review.
 
@@ -121,4 +123,4 @@ For npm OIDC failures, check the exact repository/workflow/environment fields, d
 
 ## Explicit sandbox waiver
 
-For an approved release during a known sandbox API outage, set repository variables `CLI_SANDBOX_WAIVER_TAG` to the exact release tag and `CLI_SANDBOX_WAIVER_REASON` to a nonempty public explanation. The sandbox environment still requires approval. Only that tag skips the live sandbox check; CI, security, installation, and public-channel verification remain required. The reason appears in the job summary and GitHub Release notes. Remove both variables after the release. The standalone CLI Sandbox Check never uses this waiver.
+For an approved release during a known staging sandbox API outage, set repository variables `CLI_SANDBOX_WAIVER_TAG` to the exact release tag and `CLI_SANDBOX_WAIVER_REASON` to a nonempty public explanation. The `cli-release-staging-sandbox` environment still requires approval. Only that tag skips the sandbox check against the staging API; CI, security, installation, and public-channel verification remain required. The reason appears in the job summary and GitHub Release notes. Remove both variables after the release. The standalone CLI Sandbox Check never uses this waiver.
