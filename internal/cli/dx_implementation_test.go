@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -446,8 +447,11 @@ func TestDXAuthContextCache(t *testing.T) {
 	if err != nil || bytes.Contains(raw, []byte(key)) {
 		t.Fatalf("cache error=%v contains key=%v", err, bytes.Contains(raw, []byte(key)))
 	}
-	info, _ := os.Stat(path)
-	if info.Mode().Perm() != 0600 {
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0600 {
 		t.Fatal(info.Mode())
 	}
 	authContextCache.Delete(path)
@@ -504,8 +508,11 @@ func TestDXLoginNoWaitResume(t *testing.T) {
 	}
 	path, _ := app.pendingLoginPath("new")
 	info, err := os.Stat(path)
-	if err != nil || info.Mode().Perm() != 0600 {
+	if err != nil {
 		t.Fatalf("pending file err=%v", err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0600 {
+		t.Fatalf("pending file mode=%v", info.Mode())
 	}
 	cfg, _ := app.loadConfig()
 	if cfg.DefaultProfile != "default" {

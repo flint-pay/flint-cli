@@ -111,15 +111,16 @@ func (a *App) saveDownload(value any, destination string) (any, *CLIError) {
 // Downloads never overwrite, so an existing path is a usage error too.
 func downloadDestinationError(destination, mediaType string, err error) *CLIError {
 	path := terminalSafe(destination)
+	// Opening a directory with O_EXCL does not report fs.ErrExist on every OS.
+	if info, statErr := os.Stat(destination); statErr == nil && info.IsDir() {
+		name := map[string]string{"application/pdf": "download.pdf", "text/csv": "download.csv"}[mediaType]
+		if name == "" {
+			name = "download"
+		}
+		return usageError("DESTINATION_IS_DIRECTORY", fmt.Sprintf("%s is a directory. Pass a file path inside it, such as %s.", path, filepath.Join(path, name)), "save_to")
+	}
 	switch {
 	case errors.Is(err, fs.ErrExist):
-		if info, statErr := os.Stat(destination); statErr == nil && info.IsDir() {
-			name := map[string]string{"application/pdf": "download.pdf", "text/csv": "download.csv"}[mediaType]
-			if name == "" {
-				name = "download"
-			}
-			return usageError("DESTINATION_IS_DIRECTORY", fmt.Sprintf("%s is a directory. Pass a file path inside it, such as %s.", path, filepath.Join(path, name)), "save_to")
-		}
 		return usageError("DESTINATION_EXISTS", fmt.Sprintf("%s already exists, and downloads never overwrite files. Choose a new path or remove the existing file.", path), "save_to")
 	case errors.Is(err, fs.ErrNotExist):
 		return usageError("DESTINATION_DIRECTORY_NOT_FOUND", fmt.Sprintf("The directory %s does not exist. Create it or choose another path.", terminalSafe(filepath.Dir(destination))), "save_to")

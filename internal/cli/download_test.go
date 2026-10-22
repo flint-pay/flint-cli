@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -92,5 +94,23 @@ func TestSaveToReportsSpecificDestinationProblems(t *testing.T) {
 	}
 	if data, err := os.ReadFile(existing); err != nil || string(data) != "keep me" {
 		t.Fatalf("existing file changed: %q, %v", data, err)
+	}
+}
+
+func TestDownloadDestinationErrorClassifiesDirectoryAcrossOpenErrors(t *testing.T) {
+	dir := t.TempDir()
+	for _, cause := range []error{fs.ErrExist, fs.ErrPermission, errors.New("is a directory")} {
+		err := downloadDestinationError(dir, "application/pdf", &fs.PathError{Op: "open", Path: dir, Err: cause})
+		if err.Code != "DESTINATION_IS_DIRECTORY" || !strings.Contains(err.Message, filepath.Join(dir, "download.pdf")) {
+			t.Fatalf("cause=%v error=%v", cause, err)
+		}
+	}
+}
+
+func TestDownloadDestinationErrorPreservesPermissionError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "download.pdf")
+	err := downloadDestinationError(path, "application/pdf", &fs.PathError{Op: "open", Path: path, Err: fs.ErrPermission})
+	if err.Code != "DESTINATION_NOT_WRITABLE" {
+		t.Fatalf("error=%v", err)
 	}
 }
