@@ -221,9 +221,11 @@ Server flags:
 
 Agents can always inspect a write first with `_flint.dry_run: "client"` or, for destructive operations, `_flint.preview`. Successful results that reached the API include a `Flint environment: sandbox|live` line, followed by a `Warnings:` block when the CLI printed warnings. The `help` tool returns a short index without a topic, a tool's arguments and required fields when given a tool name, and control details for `controls`. `schema_input` and `schema_output` return a tool's full schemas on demand, and `schema_events` lists webhook event types (pass `event_type` for payload schemas). Agents can add a `_flint.merchant` guard but cannot replace the profile, merchant guard, or context the server uses. `config set`, `config unset`, and `auth logout` are not available over MCP.
 
-## Migrating from 0.8.0
+## Migrating from 0.9.0
 
-The next release is 0.9.0 because the public API refresh removes and renames commands, parameters, and request/response fields. See [the migration notes](docs/migrating-0.9.md) for the complete command and MCP tool lists, parameter changes, and schema field inventory. In particular, use `flint gift-cards adjust-balance`, `flint gift-cards cash-out`, and `flint webhook-deliveries list --webhook-event-id whev_123`; create refunds with an explicit `--refund-type full|amount|targets`.
+The next release is 0.10.0 because writes with required idempotency keys now reject calls that omit the key, and retry behavior changes. See [the 0.10.0 migration notes](docs/migrating-0.10.md) for affected commands, script and MCP changes, retry rules, and error fields.
+
+If upgrading from 0.8.0, also follow [the 0.9.0 migration notes](docs/migrating-0.9.md) for the public API refresh's command and MCP tool lists, parameter changes, and schema field inventory. In particular, use `flint gift-cards adjust-balance`, `flint gift-cards cash-out`, and `flint webhook-deliveries list --webhook-event-id whev_123`; create refunds with an explicit `--refund-type full|amount|targets`.
 
 ## Develop
 
