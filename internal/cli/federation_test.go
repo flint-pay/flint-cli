@@ -27,7 +27,7 @@ func subjectJWT(aud any, expiry time.Time, sub string) string {
 func federationApp(t *testing.T, base string) *App {
 	t.Helper()
 	app, _, _ := testApp(t, base)
-	for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_OIDC_TOKEN", "FLINT_OIDC_TOKEN_FILE", "FLINT_OIDC_SOURCE", "FLINT_OIDC_SCOPE", "FLINT_OIDC_AUDIENCE", "GITHUB_ACTIONS", "ACTIONS_ID_TOKEN_REQUEST_URL", "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "GITLAB_CI", "KUBERNETES_SERVICE_HOST", "K_SERVICE", "GCE_METADATA_HOST", "IDENTITY_ENDPOINT", "AZURE_CLIENT_ID", "AWS_EXECUTION_ENV", "AWS_LAMBDA_FUNCTION_NAME"} {
+	for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_OIDC_TOKEN", "FLINT_OIDC_TOKEN_FILE", "FLINT_OIDC_SOURCE", "FLINT_OIDC_SCOPE", "FLINT_OIDC_AUDIENCE", "GITHUB_ACTIONS", "ACTIONS_ID_TOKEN_REQUEST_URL", "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "GITLAB_CI", "KUBERNETES_SERVICE_HOST", "K_SERVICE", "GCE_METADATA_HOST", "IDENTITY_ENDPOINT", "AZURE_CLIENT_ID", "AWS_EXECUTION_ENV", "AWS_LAMBDA_FUNCTION_NAME", "AWS_WEB_IDENTITY_TOKEN_FILE", "AZURE_FEDERATED_TOKEN_FILE"} {
 		t.Setenv(name, "")
 	}
 	t.Setenv("FLINT_WORKLOAD_IDENTITY_ID", "wid_synthetic")
@@ -576,5 +576,139 @@ func TestFederationClientDryRunIsOffline(t *testing.T) {
 	}
 	if code := app.Run([]string{"signup", "--email", "synthetic@example.test", "--no-input", "--output", "json"}); code != ExitAuth || requests.Load() != 0 {
 		t.Fatal("signup ignored workload identity override", code)
+	}
+}
+
+func TestFederationShortLifetimeCache(t *testing.T) {
+	for _, lifetime := range []time.Duration{31 * time.Second, 45 * time.Second, 60 * time.Second} {
+		for _, limitedBy := range []string{"access", "subject"} {
+			t.Run(fmt.Sprintf("%s/%s", lifetime, limitedBy), func(t *testing.T) {
+				var exchanges atomic.Int32
+				now := time.Now().Truncate(time.Second)
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					exchanges.Add(1)
+					expiresIn := int64(3600)
+					if limitedBy == "access" {
+						expiresIn = int64(lifetime / time.Second)
+					}
+					_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "fwat_synthetic_short", "token_type": "Bearer", "issued_token_type": accessTokenType, "expires_in": expiresIn, "workload_identity_id": "wid_synthetic"})
+				}))
+				defer server.Close()
+				app := federationApp(t, server.URL)
+				app.Now = func() time.Time { return now }
+				if limitedBy == "subject" {
+					t.Setenv("FLINT_OIDC_TOKEN", subjectJWT(server.URL, now.Add(lifetime), "short-lived"))
+				}
+				lookup := func() {
+					t.Helper()
+					token, e := app.workloadToken(context.Background(), server.URL, "")
+					if e != nil || token != "fwat_synthetic_short" {
+						t.Errorf("token=%q err=%v", token, e)
+					}
+				}
+				// Sequential calls must reuse the completed exchange.
+				for range 3 {
+					lookup()
+				}
+				if exchanges.Load() != 1 {
+					t.Fatalf("sequential exchanges=%d, want 1", exchanges.Load())
+				}
+				// Clear the cache to exercise concurrent initial acquisition and
+				// callers that arrive after the initial flight has completed.
+				c, e := app.federationConfig(server.URL)
+				if e != nil {
+					t.Fatal(e)
+				}
+				federationCache.Lock()
+				delete(federationCache.tokens, c)
+				federationCache.Unlock()
+				exchanges.Store(0)
+				var wg sync.WaitGroup
+				start := make(chan struct{})
+				for range 100 {
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						<-start
+						lookup()
+					}()
+				}
+				close(start)
+				wg.Wait()
+				if exchanges.Load() != 1 {
+					t.Fatalf("concurrent exchanges=%d, want 1", exchanges.Load())
+				}
+				federationCache.Lock()
+				cached := federationCache.tokens[c]
+				federationCache.Unlock()
+				if !cached.Refresh.After(now) || cached.Refresh.After(cached.Expires.Add(-30*time.Second)) {
+					t.Fatalf("refresh=%v outside usable lifetime", cached.Refresh.Sub(now))
+				}
+				// The cached token must stop being reused by the safety margin.
+				now = cached.Expires.Add(-30 * time.Second)
+				lookup()
+				if exchanges.Load() != 2 {
+					t.Fatal("token reused inside expiry safety margin")
+				}
+			})
+		}
+	}
+}
+
+func TestFederationForeignTokenFiles(t *testing.T) {
+	for _, source := range []string{"token_file", "kubernetes"} {
+		for _, foreign := range []string{"AWS_WEB_IDENTITY_TOKEN_FILE", "AZURE_FEDERATED_TOKEN_FILE", "kubernetes-default"} {
+			for _, variant := range []string{"direct", "cleaned-relative", "symlink", "foreign-symlink", "missing"} {
+				if foreign == "kubernetes-default" && variant != "direct" {
+					continue
+				}
+				t.Run(source+"/"+foreign+"/"+variant, func(t *testing.T) {
+					federationApp(t, "https://api.example.test")
+					t.Setenv("KUBERNETES_SERVICE_HOST", "cluster.example")
+					path := filepath.Join(t.TempDir(), "foreign-token")
+					if foreign == "kubernetes-default" {
+						path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+					} else if variant != "missing" {
+						if err := os.WriteFile(path, []byte("synthetic-foreign-token"), 0600); err != nil {
+							t.Fatal(err)
+						}
+					}
+					configured, denied := path, path
+					switch variant {
+					case "cleaned-relative":
+						cwd, err := os.Getwd()
+						if err != nil {
+							t.Fatal(err)
+						}
+						configured, err = filepath.Rel(cwd, path)
+						if err != nil {
+							t.Fatal(err)
+						}
+						configured = filepath.Dir(configured) + "/unused/../" + filepath.Base(configured)
+					case "symlink", "foreign-symlink":
+						link := filepath.Join(t.TempDir(), "alias")
+						if err := os.Symlink(path, link); err != nil {
+							t.Fatal(err)
+						}
+						if variant == "symlink" {
+							configured = link
+						} else {
+							denied = link
+						}
+					}
+					if foreign != "kubernetes-default" {
+						t.Setenv(foreign, denied)
+					}
+					c := federationConfig{Source: source, File: configured}
+					token, e := c.subjectToken(context.Background())
+					if e == nil || e.Code != "FEDERATION_SOURCE_UNAVAILABLE" || !strings.Contains(e.Message, "Refusing to read") || token != "" {
+						t.Fatalf("foreign file accepted or wrong error: token=%q err=%v", token, e)
+					}
+					if foreign != "kubernetes-default" && !strings.Contains(e.Message, foreign) {
+						t.Fatalf("error does not identify foreign source: %v", e)
+					}
+				})
+			}
+		}
 	}
 }

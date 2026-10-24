@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -180,6 +181,38 @@ var federationHTTPClient = &http.Client{
 	CheckRedirect: rejectAPIRedirect,
 }
 
+// Compare both lexical paths and symlink targets, falling back to the cleaned
+// absolute path when a file does not exist or cannot be resolved.
+func federationFilePaths(path string) (string, string) {
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		absolute = filepath.Clean(path)
+	}
+	resolved, err := filepath.EvalSymlinks(absolute)
+	if err != nil {
+		resolved = absolute
+	}
+	return absolute, resolved
+}
+
+func foreignFederationFile(path string) string {
+	absolute, resolved := federationFilePaths(path)
+	for _, source := range []struct{ name, path string }{
+		{"AWS_WEB_IDENTITY_TOKEN_FILE", os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")},
+		{"AZURE_FEDERATED_TOKEN_FILE", os.Getenv("AZURE_FEDERATED_TOKEN_FILE")},
+		{"the default Kubernetes service account token", "/var/run/secrets/kubernetes.io/serviceaccount/token"},
+	} {
+		if source.path == "" {
+			continue
+		}
+		foreignAbsolute, foreignResolved := federationFilePaths(source.path)
+		if absolute == foreignAbsolute || resolved == foreignResolved {
+			return source.name
+		}
+	}
+	return ""
+}
+
 func (c federationConfig) subjectToken(ctx context.Context) (string, *CLIError) {
 	unavailable := func(message string) (string, *CLIError) {
 		return "", c.failure("FEDERATION_SOURCE_UNAVAILABLE", subjectClaims{}, message)
@@ -205,6 +238,9 @@ func (c federationConfig) subjectToken(ctx context.Context) (string, *CLIError) 
 		}
 		if path == "" {
 			return unavailable("Set FLINT_OIDC_TOKEN_FILE to a Flint audience token file.")
+		}
+		if source := foreignFederationFile(path); source != "" {
+			return unavailable("Refusing to read " + source + " as a Flint OIDC token. Set FLINT_OIDC_TOKEN_FILE to a separate token file with the Flint audience.")
 		}
 		f, err := os.Open(path)
 		if err != nil {
@@ -317,7 +353,14 @@ func (a *App) exchangeWorkloadToken(ctx context.Context, c federationConfig) (fe
 		if lifetime <= 0 {
 			return federationToken{}, c.failure("FEDERATION_EXCHANGE_FAILED", claims, "The subject token expired during exchange.", subject, body.AccessToken)
 		}
-		return federationToken{Value: body.AccessToken, Expires: expires, Refresh: expires.Add(-max(60*time.Second, lifetime/5))}, nil
+		refresh := expires.Add(-max(60*time.Second, lifetime/5))
+		if !refresh.After(now) {
+			// Short-lived tokens still need a positive cache interval, without
+			// reusing them inside the final 30-second safety margin.
+			usable := max(0, lifetime-30*time.Second)
+			refresh = now.Add(min(usable, max(time.Second, usable/2)))
+		}
+		return federationToken{Value: body.AccessToken, Expires: expires, Refresh: refresh}, nil
 	}
 }
 
