@@ -19,6 +19,9 @@ func (a *App) runSignup(opts Options) int {
 	if credentialFromEnvironment() != "" {
 		return a.fail(configError("ENVIRONMENT_CREDENTIAL_ACTIVE", "Unset FLINT_API_KEY before signup; it would override the saved credential.", nil), opts)
 	}
+	if workloadIdentityID() != "" {
+		return a.fail(configError("ENVIRONMENT_CREDENTIAL_ACTIVE", "Unset FLINT_WORKLOAD_IDENTITY_ID before signup; it would override the saved credential.", nil), opts)
+	}
 	// Validate the local destination before creating remote account resources or
 	// issuing a one-time API key that this process may be unable to persist.
 	resolved, cfg, err := a.resolveConfig(opts)

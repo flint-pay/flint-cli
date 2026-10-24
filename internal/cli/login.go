@@ -12,7 +12,7 @@ import (
 
 func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	opts.allowMissingProfile = true
-	for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_CHECKOUT_SESSION_SECRET"} {
+	for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_WORKLOAD_IDENTITY_ID", "FLINT_CHECKOUT_SESSION_SECRET"} {
 		if strings.TrimSpace(os.Getenv(name)) != "" {
 			return a.fail(configError("ENVIRONMENT_CREDENTIAL_ACTIVE", "Unset "+name+" before browser login; it would override the saved credential.", nil), opts)
 		}

@@ -23,20 +23,21 @@ import (
 )
 
 type AuthContext struct {
-	SelectedContext bool     `json:"-"`
-	OAuthSessionID  string   `json:"oauth_session_id,omitempty"`
-	ContextID       string   `json:"context_id,omitempty"`
-	CredentialScope string   `json:"-"`
-	AuthType        string   `json:"auth_type"`
-	OAuthGrantID    string   `json:"oauth_grant_id,omitempty"`
-	APIKeyID        string   `json:"api_key_id"`
-	Name            string   `json:"name,omitempty"`
-	Environment     string   `json:"environment"`
-	MerchantID      string   `json:"merchant_id"`
-	OrganizationID  string   `json:"organization_id,omitempty"`
-	SandboxID       string   `json:"sandbox_id,omitempty"`
-	Scopes          []string `json:"scopes"`
-	ExpiresAt       *string  `json:"expires_at"`
+	SelectedContext    bool     `json:"-"`
+	OAuthSessionID     string   `json:"oauth_session_id,omitempty"`
+	ContextID          string   `json:"context_id,omitempty"`
+	CredentialScope    string   `json:"-"`
+	AuthType           string   `json:"auth_type"`
+	WorkloadIdentityID string   `json:"workload_identity_id,omitempty"`
+	OAuthGrantID       string   `json:"oauth_grant_id,omitempty"`
+	APIKeyID           string   `json:"api_key_id"`
+	Name               string   `json:"name,omitempty"`
+	Environment        string   `json:"environment"`
+	MerchantID         string   `json:"merchant_id"`
+	OrganizationID     string   `json:"organization_id,omitempty"`
+	SandboxID          string   `json:"sandbox_id,omitempty"`
+	Scopes             []string `json:"scopes"`
+	ExpiresAt          *string  `json:"expires_at"`
 }
 
 type authContextEnvelope struct {
@@ -172,14 +173,17 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		client = &clone
 	}
 	attempt := 0
+	credential := key
+	federationRetried := false
 	for {
 		responseStatus = 0
 		attempt++
-		currentKey, tokenErr := a.oauthRequestToken(ctx, key, baseURL)
+		currentKey, tokenErr := a.oauthRequestToken(ctx, credential, baseURL)
 		if tokenErr != nil {
 			return nil, tokenErr
 		}
 		key = currentKey
+		federated := credential == workloadCredential || strings.HasPrefix(key, "fwat_")
 		attemptCtx, cancelAttempt := context.WithTimeout(ctx, 10*time.Second)
 		defer cancelAttempt()
 		req, err := http.NewRequestWithContext(attemptCtx, method, baseURL+path, bytes.NewReader(body))
@@ -229,9 +233,17 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 			req.Header.Set("Idempotency-Key", idempotencyKey)
 		}
 		if debug && !isSensitivePath(path) {
-			fmt.Fprintf(a.Stderr, "debug: %s %s (attempt %d)\n", method, path, attempt)
+			debugPath := path
+			if federated {
+				debugPath = federationSafe(path, key)
+			}
+			fmt.Fprintf(a.Stderr, "debug: %s %s (attempt %d)\n", method, debugPath, attempt)
 			if idempotencyKey != "" {
-				fmt.Fprintf(a.Stderr, "debug: idempotency key %s\n", idempotencyKey)
+				debugKey := idempotencyKey
+				if federated {
+					debugKey = federationSafe(debugKey, key)
+				}
+				fmt.Fprintf(a.Stderr, "debug: idempotency key %s\n", debugKey)
 			}
 		}
 		resp, err := client.Do(req)
@@ -256,6 +268,16 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 			a.invalidateAuthContext(baseURL, key)
 		}
+		if resp.StatusCode == http.StatusUnauthorized && credential == workloadCredential && !federationRetried {
+			resp.Body.Close()
+			cancelAttempt()
+			federationRetried = true
+			if _, e := a.workloadToken(ctx, baseURL, key); e != nil {
+				return nil, e
+			}
+			continue
+		}
+
 		raw, readErr := io.ReadAll(io.LimitReader(resp.Body, (16<<20)+1))
 		resp.Body.Close()
 		cancelAttempt()
@@ -321,11 +343,18 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		}
 		result := &apiResponse{Status: resp.StatusCode, Headers: resp.Header.Clone(), Raw: raw, Value: value}
 		if debug {
-			debugResponse(a.Stderr, result)
+			if federated {
+				fmt.Fprintf(a.Stderr, "debug: HTTP %d\n", result.Status)
+			} else {
+				debugResponse(a.Stderr, result)
+			}
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			e := apiErrorFromResponse(result)
 			e.Cause = decodeErr
+			if federated {
+				e = redactFederationError(e, key)
+			}
 			if replaySafe && errorRetryable(e) && retryRequest(ctx, attempt, resp.Header.Get("Retry-After")) {
 				continue
 			}

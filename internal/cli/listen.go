@@ -556,6 +556,29 @@ func (a *App) writeListenSecret(opts Options, secret listenSecret) (any, *CLIErr
 }
 
 func (a *App) openListenStream(ctx context.Context, baseURL, key, path, cursor string, timeout time.Duration, debug bool) (*http.Response, bool, *CLIError) {
+	if key != workloadCredential {
+		resp, retry, e := a.openListenStreamAttempt(ctx, baseURL, key, path, cursor, timeout, debug)
+		if strings.HasPrefix(key, "fwat_") {
+			e = redactFederationError(e, key)
+		}
+		return resp, retry, e
+	}
+	token, e := a.workloadToken(ctx, baseURL, "")
+	if e != nil {
+		return nil, false, e
+	}
+	resp, retry, e := a.openListenStreamAttempt(ctx, baseURL, token, path, cursor, timeout, debug)
+	if e != nil && e.HTTPStatus == http.StatusUnauthorized {
+		token, e = a.workloadToken(ctx, baseURL, token)
+		if e != nil {
+			return nil, false, e
+		}
+		resp, retry, e = a.openListenStreamAttempt(ctx, baseURL, token, path, cursor, timeout, debug)
+	}
+	return resp, retry, redactFederationError(e, token)
+}
+
+func (a *App) openListenStreamAttempt(ctx context.Context, baseURL, key, path, cursor string, timeout time.Duration, debug bool) (*http.Response, bool, *CLIError) {
 	client := a.HTTPClient
 	if client == nil {
 		// The opening timer below enforces this stream's header timeout.
