@@ -676,15 +676,10 @@ func TestFederationForeignTokenFiles(t *testing.T) {
 					configured, denied := path, path
 					switch variant {
 					case "cleaned-relative":
-						cwd, err := os.Getwd()
-						if err != nil {
-							t.Fatal(err)
-						}
-						configured, err = filepath.Rel(cwd, path)
-						if err != nil {
-							t.Fatal(err)
-						}
-						configured = filepath.Dir(configured) + "/unused/../" + filepath.Base(configured)
+						// Run from the token's directory: on Windows the temp directory
+						// can be on a different volume than the checkout.
+						t.Chdir(filepath.Dir(path))
+						configured = "unused/../" + filepath.Base(path)
 					case "symlink", "foreign-symlink":
 						link := filepath.Join(t.TempDir(), "alias")
 						if err := os.Symlink(path, link); err != nil {
