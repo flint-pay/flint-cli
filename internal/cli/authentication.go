@@ -112,9 +112,10 @@ func oauthAuthorizationEnvironment(command *Command, opts Options) string {
 func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Options, resolved ResolvedConfig) (string, string, authContextEnvelope, *CLIError) {
 	ctx = withOAuthContext(ctx, resolved.ContextID)
 	envelope := authContextEnvelope{}
-	if resolved.ContextID != "" && (credentialFromEnvironment() != "" || os.Getenv("FLINT_ACCESS_TOKEN") != "" || os.Getenv("FLINT_CHECKOUT_SESSION_SECRET") != "") {
+	if resolved.ContextID != "" && environmentCredentialActive() {
 		return "", "", envelope, contextSessionRequired()
 	}
+	a.warnAmbiguousCredentials()
 	token := strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN"))
 	if strings.HasPrefix(token, "flint_test_") || strings.HasPrefix(token, "flint_live_") {
 		return "", "", envelope, configError("API_KEY_IN_ACCESS_TOKEN", "Set FLINT_API_KEY for an API key. FLINT_ACCESS_TOKEN is for session and partner tokens.", nil)
@@ -147,7 +148,7 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 		if !command.AuthRequired {
 			token = ""
 		}
-		if command.CanonicalName == "auth.status" {
+		if command.CanonicalName == "auth.status" || (strings.HasPrefix(token, "fwat_") && !opts.DryRunClient()) {
 			authCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
 			defer cancel()
 			actual, authErr := a.fetchAuthContextResponse(authCtx, baseURL, token, opts.Debug)
@@ -192,9 +193,27 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 		return "", "", envelope, credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The credential could not be read from the OS keyring.", err)
 	}
 	if key == "" {
-		e := configError("API_KEY_REQUIRED", "No Flint credential is configured. Run flint auth login (recommended for local development), or flint auth import to use an API key. For automation, set FLINT_API_KEY.", nil)
+		e := configError("API_KEY_REQUIRED", "No Flint credential is configured. Run flint auth login (recommended for local development), or flint auth import to use an API key. For automation, set FLINT_WORKLOAD_IDENTITY_ID and configure an OIDC source, or set FLINT_API_KEY.", nil)
 		e.Details = map[string]any{"remediation": map[string]any{"next_actions": []any{map[string]any{"command": "flint auth login"}, map[string]any{"command": "flint auth import", "url": dashboardAPIKeysURL}, map[string]any{"command": "flint signup"}}}}
 		return "", "", envelope, e
+	}
+	if key == workloadCredential {
+		if opts.DryRunClient() {
+			baseURL, err := a.baseURLForCredential("flint_test_")
+			if err != nil {
+				return "", "", envelope, configError("INVALID_BASE_URL", err.Error(), nil)
+			}
+			if _, e := a.federationConfig(baseURL); e != nil {
+				return "", "", envelope, e
+			}
+			mode := "sandbox"
+			if opts.Live {
+				mode = "live"
+			}
+			envelope.Data = AuthContext{AuthType: "workload_identity", WorkloadIdentityID: workloadIdentityID(), Environment: mode, MerchantID: resolved.MerchantGuard, SandboxID: resolved.SandboxGuard}
+			return key, baseURL, envelope, nil
+		}
+		return a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, key, opts.Debug)
 	}
 	if isOAuthCredential(key) {
 		if opts.DryRun == "client" {

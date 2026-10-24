@@ -53,7 +53,7 @@ For local development, start with `flint login`. It opens the Flint website, dis
 
 Use `flint login --no-wait --output json` to start approval and exit successfully with `data.status: "approval_pending"`, the link, code, expiry, and `next_command`. Run `next_command` to resume polling with the same profile, `--live` acknowledgement, scopes, and context guards; keep the same API server and project sandbox guard. Conflicting environment or guard flags fail before redeeming approval and preserve the pending login. Pending device approval is saved in its own private 0600 file in the config directory and removed when completed or expired. Saved OAuth tokens remain in the OS keyring.
 
-If browser login is unavailable, use `flint auth import` instead. Browser approval requires a person; automation should use an API key through `FLINT_API_KEY` or `flint auth import --stdin`.
+If browser login is unavailable, use `flint auth import` instead. Browser approval requires a person; automation should use [workload identity](#workload-identity-and-automation), with an API key as a fallback.
 
 Browser login grants baseline permissions for common development workflows. Some command groups, including subscriptions, payouts, reports, risk, and advanced commerce operations, require additional access. Add scopes to the active context with `flint reauth --scope SCOPE`; repeat `--scope` when an operation requires multiple scopes. The browser may approve only part of a request, and the CLI reports what was approved. Known command requirements are checked before a request is sent.
 
@@ -81,19 +81,35 @@ Manage and revoke sessions on the [CLI sessions page](https://app.withflintpay.c
 
 Context selection uses `--context ID`, then a project's `.flint/config.json` `context` field, then the profile default. For example, `{"context":"ctx_development"}` pins a project. Switching changes the profile default, not a project pin. Each running command retains its starting context. Access tokens remain restricted to one context and refresh automatically. LIVE contexts are labeled in the selector and command diagnostics; selected multi-context sessions do not need `--live` on every command, while sensitive/destructive operations still require confirmation.
 
-Environment credentials (`FLINT_API_KEY`, `FLINT_ACCESS_TOKEN`, or `FLINT_CHECKOUT_SESSION_SECRET`) override configured browser-session contexts. An explicit `--context` cannot be combined with these overrides. Merchant and sandbox guards still apply.
+Environment credentials (`FLINT_API_KEY`, `FLINT_ACCESS_TOKEN`, `FLINT_WORKLOAD_IDENTITY_ID`, or `FLINT_CHECKOUT_SESSION_SECRET`) override configured browser-session contexts. An explicit `--context` cannot be combined with these overrides. Merchant and sandbox guards still apply.
 
 If `flint context list` reports that contexts are unavailable, your existing login remains usable and keeps its live-mode safeguards. Run `flint reauth` later to authorize multiple contexts.
 
-### API keys and automation
+### Workload identity and automation
 
-For manual setup, create a key in the [Flint dashboard](https://app.withflintpay.com/developers/api-keys) and run `flint auth import`. For CI, supply `FLINT_API_KEY` through your secret store and set `FLINT_NO_INPUT=1`. `flint signup` remains available for creating an account from the terminal; unset `FLINT_API_KEY` before signup or browser login.
+For CI and containers, configure a Flint workload identity that trusts your platform's OIDC issuer, subject, and audience. Set the non-secret `FLINT_WORKLOAD_IDENTITY_ID` and `FLINT_NO_INPUT=1`. The CLI exchanges the platform token for a short-lived Flint access token, without saving credentials or using the OS keyring. The Flint server must support workload identity token exchange.
 
-A locked or unavailable OS keyring fails with guidance after a bounded wait. For SSH, containers, CI, and agents, use `FLINT_API_KEY`; there is no file-based API-key or OAuth credential store. `flint auth import --profile NAME`, `flint login --profile NAME`, and `flint signup --profile NAME` create missing profiles without changing the default profile.
+For GitHub Actions, grant the job `permissions: id-token: write` and set `FLINT_WORKLOAD_IDENTITY_ID` in its environment. For GitLab CI, issue a token into `FLINT_OIDC_TOKEN`:
+
+```yaml
+id_tokens:
+  FLINT_OIDC_TOKEN:
+    aud: https://api.withflintpay.com
+```
+
+`FLINT_OIDC_SOURCE` defaults to `auto`, trying `FLINT_OIDC_TOKEN`, `FLINT_OIDC_TOKEN_FILE`, GitHub Actions, GitLab CI, then Kubernetes when its environment marker is present. Kubernetes uses a projected token at `/var/run/secrets/flint/token`; mount a token with the Flint audience there or set `FLINT_OIDC_TOKEN_FILE`. Files are read again on each exchange. The CLI never discovers AWS or Azure token files or the default Kubernetes service account token. You can select `token`, `token_file`, `github_actions`, `gitlab_ci`, or `kubernetes` explicitly. `none` disables source discovery and reports an error while a workload identity is configured. GCP, Azure, and AWS sources are not supported in this version.
+
+The audience defaults to the origin of `FLINT_BASE_URL`, or `https://api.withflintpay.com`. Use `FLINT_OIDC_AUDIENCE` to override it and `FLINT_OIDC_SCOPE` to request narrower scopes. Live identities require `--live`. Merchant and sandbox guards apply to workload identities.
+
+Environment access tokens take precedence over API keys, with a warning when both are set. API keys and access tokens take precedence over workload identity, which takes precedence over the saved login. Workload identity overrides configured contexts and cannot be combined with `--context`.
+
+If your platform cannot provide a Flint audience OIDC token, supply `FLINT_API_KEY` through your secret store as a fallback. For manual setup, create a key in the [Flint dashboard](https://app.withflintpay.com/developers/api-keys) and run `flint auth import`. Unset environment credentials before signup or browser login.
+
+A locked or unavailable OS keyring fails with guidance after a bounded wait. For SSH, containers, CI, and agents, use workload identity or the `FLINT_API_KEY` fallback; there is no file-based API-key or OAuth credential store. `flint auth import --profile NAME`, `flint login --profile NAME`, and `flint signup --profile NAME` create missing profiles without changing the default profile.
 
 API-key auth-context metadata is cached in memory and in a separate 0600 file for five minutes, keyed by a SHA-256 hash of the key and API base URL. The cache contains no API key. A later HTTP 401 or 403 invalidates it; OAuth credential handling is unchanged.
 
-Configuration selection uses `--profile`, `FLINT_PROFILE`, a project pin in `.flint/config.json`, then the default profile. With `FLINT_API_KEY` or `FLINT_ACCESS_TOKEN`, a missing profile is allowed and scopes resource history. Empty config files are accepted and unknown fields are ignored; `flint config validate` reports unknown fields as warnings. Use `flint config unset merchant` to clear the selected profile's saved merchant guard. Project and environment guards still apply, and mismatch errors identify their source.
+Configuration selection uses `--profile`, `FLINT_PROFILE`, a project pin in `.flint/config.json`, then the default profile. With `FLINT_API_KEY`, `FLINT_ACCESS_TOKEN`, or `FLINT_WORKLOAD_IDENTITY_ID`, a missing profile is allowed and scopes resource history. Empty config files are accepted and unknown fields are ignored; `flint config validate` reports unknown fields as warnings. Use `flint config unset merchant` to clear the selected profile's saved merchant guard. Project and environment guards still apply, and mismatch errors identify their source.
 
 ## Use
 
@@ -145,7 +161,7 @@ With credentials configured, add `--dry-run=client` to run the same checks and i
 flint products create --input product.json --dry-run=client --output json
 ```
 
-Client dry runs use the saved or environment credential locally; sign in first if no credential is configured. They do not check server permissions or server-side business rules, such as whether referenced IDs exist. Remove `--dry-run=client` to submit the create request.
+Client dry runs use the saved or environment credential locally; sign in first if no credential is configured. Workload identity dry runs validate source configuration without requesting or exchanging tokens. They do not check server permissions or server-side business rules, such as whether referenced IDs exist. Remove `--dry-run=client` to submit the create request.
 
 The same workflow applies to other primitives. Inspect each schema, prepare the corresponding JSON request body file, then create it:
 

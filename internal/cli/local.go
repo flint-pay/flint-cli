@@ -383,7 +383,7 @@ func (a *App) saveCredentialProfileUnlocked(profile, key string, updateProfile f
 }
 
 func (a *App) localLogout(cmd *Command, opts Options) int {
-	for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_CHECKOUT_SESSION_SECRET"} {
+	for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_WORKLOAD_IDENTITY_ID", "FLINT_CHECKOUT_SESSION_SECRET"} {
 		if strings.TrimSpace(os.Getenv(name)) != "" {
 			return a.fail(configError("ENVIRONMENT_CREDENTIAL_ACTIVE", name+" is active and cannot be removed by flint auth logout. Unset it in the calling environment.", nil), opts)
 		}
@@ -690,6 +690,8 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 			fix := "Run flint login --profile " + resolved.ProfileName + " to sign in again (recommended), or flint auth import --profile " + resolved.ProfileName + " to replace the saved API key."
 			if source == "environment_access_token" {
 				fix = "Replace or unset FLINT_ACCESS_TOKEN. To save an OAuth session, unset the override and run flint login --profile " + resolved.ProfileName + "."
+			} else if source == "workload_identity" {
+				fix = "Check FLINT_WORKLOAD_IDENTITY_ID, the OIDC source, and the workload identity trust conditions."
 			} else if source != "keychain" {
 				fix = "Replace or unset FLINT_API_KEY. To save a valid API key, run flint auth import --profile " + resolved.ProfileName + "."
 			}

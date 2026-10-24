@@ -99,7 +99,7 @@ func (a *App) Run(argv []string) int {
 		return fail(authErr, opts)
 	}
 	authContext := authEnvelope.Data
-	if authContext.OAuthGrantID != "" && strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) == "" && credentialFromEnvironment() == "" {
+	if authContext.OAuthGrantID != "" && strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) == "" && credentialFromEnvironment() == "" && workloadIdentityID() == "" {
 		ctx = context.WithValue(ctx, oauthSessionKey{}, &oauthSession{Profile: resolved.ProfileName, GrantID: authContext.OAuthGrantID, ContextID: authContext.ContextID, SessionID: authContext.OAuthSessionID, MerchantID: authContext.MerchantID, SandboxID: authContext.SandboxID, Environment: authContext.Environment})
 	}
 	if authContext.SelectedContext && authContext.Environment == "live" && !opts.Quiet {
@@ -491,7 +491,13 @@ func (a *App) printRootHelp() {
 		{"FLINT_CHECKOUT_SESSION_SECRET", "Checkout session signing credential"},
 		{"FLINT_CHECKOUT_SESSION_ID", "Checkout session ID"},
 		{"FLINT_WEBHOOK_SECRET", "signing secret for flint listen"},
-		{"FLINT_ACCESS_TOKEN", "Session or partner access token"},
+		{"FLINT_ACCESS_TOKEN", "Access token; takes precedence over FLINT_API_KEY"},
+		{"FLINT_WORKLOAD_IDENTITY_ID", "Workload identity; overrides saved login and contexts"},
+		{"FLINT_OIDC_SOURCE", "auto, none, token, token_file, github_actions, gitlab_ci, kubernetes; gcp/azure/aws unsupported"},
+		{"FLINT_OIDC_AUDIENCE", "OIDC audience; defaults to the API base URL origin"},
+		{"FLINT_OIDC_TOKEN", "OIDC JWT for workload identity exchange"},
+		{"FLINT_OIDC_TOKEN_FILE", "Flint OIDC token file; re-read on exchange"},
+		{"FLINT_OIDC_SCOPE", "Optional narrowing scopes for workload tokens"},
 		{"FLINT_BASE_URL", "API server for development; sign in with a separate profile"},
 	} {
 		fmt.Fprintf(a.Stdout, "  %-20s %s\n", line[0], line[1])

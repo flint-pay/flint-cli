@@ -265,7 +265,7 @@ func (a *App) resolveConfig(opts Options) (ResolvedConfig, Config, error) {
 		profile = "default"
 	}
 	p, ok := cfg.Profiles[profile]
-	if !ok && profile != "default" && !opts.allowMissingProfile && credentialFromEnvironment() == "" && strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) == "" {
+	if !ok && profile != "default" && !opts.allowMissingProfile && credentialFromEnvironment() == "" && strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) == "" && workloadIdentityID() == "" {
 		source := configSource("profile", sources["profile"], projectPath)
 		return ResolvedConfig{}, cfg, fmt.Errorf("unknown profile %q from %s; create it with flint login --profile %s, flint auth import --profile %s, or flint signup --profile %s", profile, source, profile, profile, profile)
 	}
@@ -306,7 +306,7 @@ func (a *App) resolveConfig(opts Options) (ResolvedConfig, Config, error) {
 	// Environment credentials replace the saved browser session, including its
 	// configured context. Explicit --context remains an error for these tokens;
 	// merchant and sandbox guards still apply independently.
-	if credentialFromEnvironment() != "" || strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) != "" || strings.TrimSpace(os.Getenv("FLINT_CHECKOUT_SESSION_SECRET")) != "" {
+	if environmentCredentialActive() {
 		contextID = ""
 		delete(sources, "context")
 	}
@@ -385,6 +385,9 @@ func credentialStoreError(code, message string, err error) *CLIError {
 func (a *App) resolveCredential(profile string) (string, string, error) {
 	if key := credentialFromEnvironment(); key != "" {
 		return key, "environment", nil
+	}
+	if workloadIdentityID() != "" {
+		return workloadCredential, "workload_identity", nil
 	}
 	key, err := a.LoadCredential(profile)
 	if err != nil {

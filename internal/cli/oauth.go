@@ -369,6 +369,7 @@ func sameScopeSet(left, right []string) bool {
 // FLINT_ACCESS_TOKEN has precedence over both imported keys and saved sessions.
 func (a *App) resolveCheckCredential(profile string) (string, string, error) {
 	if token := strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")); token != "" {
+		a.warnAmbiguousCredentials()
 		return token, "environment_access_token", nil
 	}
 	return a.resolveCredential(profile)
@@ -380,7 +381,7 @@ func (a *App) fetchCredentialContext(ctx context.Context, timeout time.Duration,
 		defer cancel()
 		return a.fetchAuthContextResponse(requestCtx, base, token, debug)
 	}
-	if requestedOAuthContext(ctx) != "" && (!isOAuthCredential(raw) || credentialFromEnvironment() != "" || os.Getenv("FLINT_ACCESS_TOKEN") != "") {
+	if requestedOAuthContext(ctx) != "" && (!isOAuthCredential(raw) || environmentCredentialActive()) {
 		return "", "", authContextEnvelope{}, contextSessionRequired()
 	}
 	if token := strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")); token != "" && token == raw {
@@ -396,6 +397,22 @@ func (a *App) fetchCredentialContext(ctx context.Context, timeout time.Duration,
 			return "", "", envelope, cliError(e.ExitCode, e.Type, "CREDENTIAL_VALIDATION_FAILED", "Could not validate FLINT_ACCESS_TOKEN. Check the server connection and replace or unset the environment token if it is no longer valid.")
 		}
 		return token, base, envelope, nil
+	}
+	if raw == workloadCredential {
+		base, err := a.baseURLForCredential("flint_test_")
+		if err != nil {
+			return "", "", authContextEnvelope{}, configError("INVALID_BASE_URL", err.Error(), nil)
+		}
+		envelope, e := fetch(base, raw, debug)
+		if e == nil {
+			if envelope.Data.AuthType != "workload_identity" || envelope.Data.WorkloadIdentityID != workloadIdentityID() {
+				c, _ := a.federationConfig(base)
+				return "", "", envelope, c.failure("FEDERATION_EXCHANGE_FAILED", subjectClaims{}, "The auth context did not match the configured workload identity.")
+			}
+			envelope.Data.SelectedContext = false
+			envelope.Data.CredentialScope = "workload_identity:" + workloadIdentityID()
+		}
+		return raw, base, envelope, e
 	}
 	if !isOAuthCredential(raw) {
 		base, err := a.baseURLForCredential(raw)
@@ -444,6 +461,9 @@ func withoutOAuthSession(ctx context.Context) context.Context {
 }
 
 func (a *App) oauthRequestToken(ctx context.Context, key, baseURL string) (string, *CLIError) {
+	if key == workloadCredential {
+		return a.workloadToken(ctx, baseURL, "")
+	}
 	session, _ := ctx.Value(oauthSessionKey{}).(*oauthSession)
 	if session == nil || key == "" {
 		return key, nil
