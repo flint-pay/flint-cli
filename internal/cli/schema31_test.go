@@ -105,7 +105,7 @@ func TestExportedNullEnumAndReferenceAcceptance(t *testing.T) {
 		valid, invalid   []any
 	}{
 		{"Refund", "reason", []any{nil, "duplicate"}, []any{"unknown", float64(0)}},
-		{"Review", "refunded_money", []any{nil, map[string]any{"amount": float64(100), "currency": "USD"}}, []any{map[string]any{}, "100"}},
+		{"PaymentReview", "refunded_money", []any{nil, map[string]any{"amount": float64(100), "currency": "USD"}}, []any{map[string]any{}, "100"}},
 		{"UpdateProductRequest", "metadata", []any{nil, map[string]any{"color": "red", "old": nil}}, []any{map[string]any{"color": float64(2)}, []any{}}},
 	} {
 		property := doc.Components.Schemas[fixture.component]["properties"].(map[string]any)[fixture.field].(map[string]any)

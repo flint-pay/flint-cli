@@ -41,6 +41,9 @@ func TestOAuthAuthorizationSafetyForCanonicalAndRawCommands(t *testing.T) {
 					if r.URL.Path != "/v1/oauth/authorize" || r.URL.Query().Get("mode") != scenario.mode {
 						t.Errorf("unexpected request: %s", r.URL)
 					}
+					if r.URL.Query().Get("code_challenge") != "synthetic_pkce_challenge_012345678901234567890" || r.URL.Query().Get("code_challenge_method") != "S256" {
+						t.Errorf("PKCE parameters were not preserved: %s", r.URL)
+					}
 					if r.Header.Get("Authorization") != "" || r.Header.Get("Idempotency-Key") != "" {
 						t.Error("public authorization must omit credentials and idempotency keys")
 					}
@@ -51,10 +54,10 @@ func TestOAuthAuthorizationSafetyForCanonicalAndRawCommands(t *testing.T) {
 				app, out, stderr := testApp(t, server.URL)
 				t.Setenv("FLINT_API_KEY", "")
 				t.Setenv("FLINT_ACCESS_TOKEN", "synthetic_session")
-				argv := []string{"oauth", "authorize", "--client-id", "papp_test", "--mode", scenario.mode, "--redirect-uri", "https://example.com/callback", "--response-type", "code", "--state", "test"}
+				argv := []string{"oauth", "authorize", "--client-id", "papp_test", "--mode", scenario.mode, "--redirect-uri", "https://example.com/callback", "--response-type", "code", "--state", "test", "--code-challenge", "synthetic_pkce_challenge_012345678901234567890", "--code-challenge-method", "S256"}
 				flags := scenario.flags
 				if raw {
-					path := "/v1/oauth/authorize?client_id=papp_test&mode=" + scenario.mode + "&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code&state=test"
+					path := "/v1/oauth/authorize?client_id=papp_test&mode=" + scenario.mode + "&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code&state=test&code_challenge=synthetic_pkce_challenge_012345678901234567890&code_challenge_method=S256"
 					if scenario.name == "repeated_mode_cannot_hide_live" {
 						path += "&mode=test"
 						flags = nil
@@ -87,7 +90,7 @@ func TestMCPRawOAuthUsesProductionConfirmation(t *testing.T) {
 	command, _ := app.Registry.ByName("api")
 	args := map[string]any{
 		"method": "GET",
-		"path":   "/v1/oauth/authorize?client_id=papp_test&mode=live&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code&state=test",
+		"path":   "/v1/oauth/authorize?client_id=papp_test&mode=live&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code&state=test&code_challenge=synthetic_pkce_challenge_012345678901234567890&code_challenge_method=S256",
 		"_flint": map[string]any{"live": true},
 	}
 	result, _, exit := app.callMCPCommand(t.Context(), command, args, defaultOptions())

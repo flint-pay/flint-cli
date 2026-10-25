@@ -442,6 +442,24 @@
   },
   {
     "method": "POST",
+    "path": "/v1/customer-deletion-requests",
+    "operation_id": "createCustomerDeletionRequest",
+    "classification": "resource",
+    "commands": [
+      "customer-deletion-requests.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customer-deletion-requests/{customer_deletion_request_id}",
+    "operation_id": "getCustomerDeletionRequest",
+    "classification": "resource",
+    "commands": [
+      "customer-deletion-requests.get"
+    ]
+  },
+  {
+    "method": "POST",
     "path": "/v1/customer-deletion-requests/{customer_deletion_request_id}/resolve",
     "operation_id": "resolveCustomerDeletionRequest",
     "classification": "resource",
@@ -591,24 +609,6 @@
     "classification": "resource",
     "commands": [
       "customers.addresses.set-default"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/customers/{customer_id}/deletion-requests",
-    "operation_id": "createCustomerDeletionRequest",
-    "classification": "resource",
-    "commands": [
-      "customers.deletion-requests.create"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/customers/{customer_id}/deletion-requests/{customer_deletion_request_id}",
-    "operation_id": "getCustomerDeletionRequest",
-    "classification": "resource",
-    "commands": [
-      "customers.deletion-requests.get"
     ]
   },
   {
@@ -1055,7 +1055,7 @@
   {
     "method": "GET",
     "path": "/v1/developer/request-logs",
-    "operation_id": "listCurrentAPIKeyRequestLogs",
+    "operation_id": "listAPIRequestLogs",
     "classification": "resource",
     "commands": [
       "request-logs.list"
@@ -1064,7 +1064,7 @@
   {
     "method": "GET",
     "path": "/v1/developer/request-logs/{api_request_log_id}",
-    "operation_id": "getCurrentAPIKeyRequestLog",
+    "operation_id": "getAPIRequestLog",
     "classification": "resource",
     "commands": [
       "request-logs.get"
@@ -1260,6 +1260,15 @@
     "classification": "resource",
     "commands": [
       "files.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/files/{file_id}",
+    "operation_id": "getFile",
+    "classification": "resource",
+    "commands": [
+      "files.get"
     ]
   },
   {
@@ -1732,20 +1741,11 @@
   },
   {
     "method": "POST",
-    "path": "/v1/inventory-counts/{inventory_count_id}/apply",
-    "operation_id": "applyInventoryCount",
+    "path": "/v1/inventory-counts/{inventory_count_id}/transitions",
+    "operation_id": "transitionInventoryCount",
     "classification": "resource",
     "commands": [
-      "inventory-counts.apply"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/inventory-counts/{inventory_count_id}/cancel",
-    "operation_id": "cancelInventoryCount",
-    "classification": "resource",
-    "commands": [
-      "inventory-counts.cancel"
+      "inventory-counts.transitions"
     ]
   },
   {
@@ -1893,30 +1893,21 @@
     ]
   },
   {
-    "method": "POST",
-    "path": "/v1/inventory-reservations/{inventory_reservation_id}/commit",
-    "operation_id": "commitInventoryReservation",
+    "method": "PATCH",
+    "path": "/v1/inventory-reservations/{inventory_reservation_id}",
+    "operation_id": "updateInventoryReservation",
     "classification": "resource",
     "commands": [
-      "inventory-reservations.commit"
+      "inventory-reservations.update"
     ]
   },
   {
     "method": "POST",
-    "path": "/v1/inventory-reservations/{inventory_reservation_id}/consume",
-    "operation_id": "consumeInventoryReservation",
+    "path": "/v1/inventory-reservations/{inventory_reservation_id}/transitions",
+    "operation_id": "transitionInventoryReservation",
     "classification": "resource",
     "commands": [
-      "inventory-reservations.consume"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/inventory-reservations/{inventory_reservation_id}/release",
-    "operation_id": "releaseInventoryReservation",
-    "classification": "resource",
-    "commands": [
-      "inventory-reservations.release"
+      "inventory-reservations.transitions"
     ]
   },
   {
@@ -2109,18 +2100,36 @@
     ]
   },
   {
-    "method": "POST",
+    "method": "GET",
     "path": "/v1/invoices/{invoice_id}/manual-payments",
-    "operation_id": "recordManualInvoicePayment",
+    "operation_id": "listInvoiceManualPayments",
     "classification": "resource",
     "commands": [
-      "invoices.manual-payments"
+      "invoices.manual-payments.list"
     ]
   },
   {
     "method": "POST",
-    "path": "/v1/invoices/{invoice_id}/manual-payments/reverse",
-    "operation_id": "reverseManualInvoicePayment",
+    "path": "/v1/invoices/{invoice_id}/manual-payments",
+    "operation_id": "createInvoiceManualPayment",
+    "classification": "resource",
+    "commands": [
+      "invoices.manual-payments.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/manual-payments/{invoice_manual_payment_id}",
+    "operation_id": "getInvoiceManualPayment",
+    "classification": "resource",
+    "commands": [
+      "invoices.manual-payments.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/manual-payments/{invoice_manual_payment_id}/reverse",
+    "operation_id": "reverseInvoiceManualPayment",
     "classification": "resource",
     "commands": [
       "invoices.manual-payments.reverse"
@@ -2579,16 +2588,16 @@
   {
     "method": "POST",
     "path": "/v1/me/payment-methods",
-    "operation_id": "saveMePaymentMethod",
+    "operation_id": "createMePaymentMethod",
     "classification": "resource",
     "commands": [
-      "me.payment-methods"
+      "me.payment-methods.create"
     ]
   },
   {
     "method": "DELETE",
     "path": "/v1/me/payment-methods/{payment_method_id}",
-    "operation_id": "removeMePaymentMethod",
+    "operation_id": "deleteMePaymentMethod",
     "classification": "resource",
     "commands": [
       "me.payment-methods.delete"
@@ -2682,6 +2691,15 @@
     "classification": "resource",
     "commands": [
       "me.returns.cancel"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/session/revoke",
+    "operation_id": "revokeMeSession",
+    "classification": "resource",
+    "commands": [
+      "me.session.revoke"
     ]
   },
   {
@@ -2893,6 +2911,15 @@
   },
   {
     "method": "GET",
+    "path": "/v1/merchant-billing-entries",
+    "operation_id": "listMerchantBillingEntries",
+    "classification": "resource",
+    "commands": [
+      "merchant-billing-entries.list"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/merchant-billing-invoices",
     "operation_id": "listMerchantBillingInvoices",
     "classification": "resource",
@@ -3047,7 +3074,7 @@
   {
     "method": "POST",
     "path": "/v1/oauth/revoke",
-    "operation_id": "revokeCLIGrant",
+    "operation_id": "revokeOAuthToken",
     "classification": "resource",
     "commands": [
       "oauth.revoke"
@@ -3056,7 +3083,7 @@
   {
     "method": "POST",
     "path": "/v1/oauth/token",
-    "operation_id": "exchangePartnerInstallToken",
+    "operation_id": "exchangeOAuthToken",
     "classification": "resource",
     "commands": [
       "oauth.token"
@@ -3613,7 +3640,7 @@
   },
   {
     "method": "POST",
-    "path": "/v1/payment-intents/{payment_intent_id}/receipts",
+    "path": "/v1/payment-intents/{payment_intent_id}/send-receipt",
     "operation_id": "sendPaymentIntentReceipt",
     "classification": "resource",
     "commands": [
@@ -3722,7 +3749,7 @@
   {
     "method": "POST",
     "path": "/v1/payment-methods",
-    "operation_id": "savePaymentMethod",
+    "operation_id": "createPaymentMethod",
     "classification": "resource",
     "commands": [
       "payment-methods.create"
@@ -3731,7 +3758,7 @@
   {
     "method": "DELETE",
     "path": "/v1/payment-methods/{payment_method_id}",
-    "operation_id": "removePaymentMethod",
+    "operation_id": "deletePaymentMethod",
     "classification": "resource",
     "commands": [
       "payment-methods.delete"
@@ -3753,6 +3780,42 @@
     "classification": "resource",
     "commands": [
       "payment-methods.set-default"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-reviews",
+    "operation_id": "listPaymentReviews",
+    "classification": "resource",
+    "commands": [
+      "payment-reviews.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-reviews/{payment_review_id}",
+    "operation_id": "getPaymentReview",
+    "classification": "resource",
+    "commands": [
+      "payment-reviews.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-reviews/{payment_review_id}/approve",
+    "operation_id": "approvePaymentReview",
+    "classification": "resource",
+    "commands": [
+      "payment-reviews.approve"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-reviews/{payment_review_id}/decline",
+    "operation_id": "declinePaymentReview",
+    "classification": "resource",
+    "commands": [
+      "payment-reviews.decline"
     ]
   },
   {
@@ -4449,6 +4512,15 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/returns/{return_id}/activities",
+    "operation_id": "listReturnActivities",
+    "classification": "resource",
+    "commands": [
+      "returns.activities.list"
+    ]
+  },
+  {
     "method": "POST",
     "path": "/v1/returns/{return_id}/cancel",
     "operation_id": "cancelReturn",
@@ -4559,7 +4631,7 @@
   {
     "method": "POST",
     "path": "/v1/returns/{return_id}/process",
-    "operation_id": "processExistingReturn",
+    "operation_id": "processReturn",
     "classification": "resource",
     "commands": [
       "returns.process"
@@ -4590,42 +4662,6 @@
     "classification": "resource",
     "commands": [
       "returns.resolutions.create"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/reviews",
-    "operation_id": "listReviews",
-    "classification": "resource",
-    "commands": [
-      "reviews.list"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/reviews/{review_id}",
-    "operation_id": "getReview",
-    "classification": "resource",
-    "commands": [
-      "reviews.get"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/reviews/{review_id}/approve",
-    "operation_id": "approveReview",
-    "classification": "resource",
-    "commands": [
-      "reviews.approve"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/reviews/{review_id}/decline",
-    "operation_id": "declineReview",
-    "classification": "resource",
-    "commands": [
-      "reviews.decline"
     ]
   },
   {
@@ -5053,6 +5089,15 @@
   },
   {
     "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/change-plan",
+    "operation_id": "changeSubscriptionPlan",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.change-plan"
+    ]
+  },
+  {
+    "method": "POST",
     "path": "/v1/subscriptions/{subscription_id}/line-items",
     "operation_id": "createSubscriptionLineItem",
     "classification": "resource",
@@ -5166,6 +5211,15 @@
     "classification": "resource",
     "commands": [
       "webhook-deliveries.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/webhook-deliveries",
+    "operation_id": "createWebhookDelivery",
+    "classification": "resource",
+    "commands": [
+      "webhook-deliveries.create"
     ]
   },
   {
@@ -5292,6 +5346,51 @@
     "classification": "resource",
     "commands": [
       "webhook-events.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/workload-identities",
+    "operation_id": "listWorkloadIdentities",
+    "classification": "resource",
+    "commands": [
+      "workload-identities.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/workload-identities",
+    "operation_id": "createWorkloadIdentity",
+    "classification": "resource",
+    "commands": [
+      "workload-identities.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/workload-identities/{workload_identity_id}",
+    "operation_id": "deleteWorkloadIdentity",
+    "classification": "resource",
+    "commands": [
+      "workload-identities.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/workload-identities/{workload_identity_id}",
+    "operation_id": "getWorkloadIdentity",
+    "classification": "resource",
+    "commands": [
+      "workload-identities.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/workload-identities/{workload_identity_id}",
+    "operation_id": "updateWorkloadIdentity",
+    "classification": "resource",
+    "commands": [
+      "workload-identities.update"
     ]
   }
 ]

@@ -83,7 +83,7 @@ type contextList struct {
 }
 
 func (a *App) savedContextSession(opts Options) (ResolvedConfig, oauthCredential, *CLIError) {
-	for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_WORKLOAD_IDENTITY_ID", "FLINT_CHECKOUT_SESSION_SECRET"} {
+	for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_WORKLOAD_IDENTITY_ID"} {
 		if strings.TrimSpace(os.Getenv(name)) != "" {
 			return ResolvedConfig{}, oauthCredential{}, configError("ENVIRONMENT_CREDENTIAL_ACTIVE", "Unset "+name+" to manage the saved browser session.", nil)
 		}

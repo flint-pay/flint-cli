@@ -307,18 +307,34 @@ func TestMCPQueryParametersKeepTheirContract(t *testing.T) {
 	if err := validateMCPArguments(mustMCPTool(t, app, "customers.list"), map[string]any{"sort_by": "nonsense"}); err == nil {
 		t.Fatal("an undocumented sort_by value passed validation")
 	}
+	if got := fmt.Sprint(lookupPathValue(schema, "properties.status.type")); got != "array" {
+		t.Fatalf("status filter type = %s", got)
+	}
+	for _, fixture := range []struct {
+		status any
+		valid  bool
+	}{
+		{[]any{"active", "deleted"}, true},
+		{[]any{"nonsense"}, false},
+		{"active", false},
+	} {
+		err := validateMCPArguments(mustMCPTool(t, app, "customers.list"), map[string]any{"status": fixture.status})
+		if (err == nil) != fixture.valid {
+			t.Errorf("status filter %#v: %v (valid=%v)", fixture.status, err, fixture.valid)
+		}
+	}
 	enums := 0
 	for _, tool := range app.mcpAllTools() {
 		if !tool.Supports.Pagination {
 			continue
 		}
 		toolSchema, _ := schemaForMCPTool(tool, mcpPolicy{})
-		if _, ok := lookupPath(toolSchema, "properties.status.enum"); ok {
+		if _, ok := lookupPath(toolSchema, "properties.status.items.enum"); ok {
 			enums++
 		}
 	}
 	if enums < 20 {
-		t.Fatalf("only %d list tools keep a status enum", enums)
+		t.Fatalf("only %d list tools keep a status item enum", enums)
 	}
 	get, _ := schemaForMCPTool(mustMCPTool(t, app, "customers.get"), mcpPolicy{})
 	if description := fmt.Sprint(lookupPathValue(get, "properties.customer_id.description")); !strings.Contains(description, "cus_") {
@@ -349,7 +365,7 @@ func TestMCPDescriptionsSayWhatTitlesDoNot(t *testing.T) {
 	}
 	for name, wants := range map[string][]string{
 		"payment-intents_create":   {"Provide exactly one of", "{amount_money, payment_options}", "order", "minor units"},
-		"checkout-sessions_create": {"order_id", "quick_pay_item", "subscription_plan_id"},
+		"checkout-sessions_create": {"order_id", "quick_pay_item", "Set type to one of: order, quick_pay, subscription_plan"},
 		"refunds_create":           {"at least one of", "payment_intent_id"},
 		"products_create":          {"default_variant", "{options, variants}"},
 		"bundles_update":           {"expected_version is required when sending"},

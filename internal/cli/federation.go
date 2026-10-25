@@ -51,7 +51,7 @@ var federationCache = struct {
 func workloadIdentityID() string { return strings.TrimSpace(os.Getenv("FLINT_WORKLOAD_IDENTITY_ID")) }
 
 func environmentCredentialActive() bool {
-	return credentialFromEnvironment() != "" || strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) != "" || workloadIdentityID() != "" || strings.TrimSpace(os.Getenv("FLINT_CHECKOUT_SESSION_SECRET")) != ""
+	return credentialFromEnvironment() != "" || strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) != "" || workloadIdentityID() != ""
 }
 
 func (a *App) warnAmbiguousCredentials() {

@@ -22,7 +22,7 @@ func TestCanceledLocalMutationsDoNotWaitOrWrite(t *testing.T) {
 	} {
 		t.Run(strings.Join(command, "-"), func(t *testing.T) {
 			a, out, stderr := testApp(t, "")
-			for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_CHECKOUT_SESSION_SECRET"} {
+			for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN"} {
 				t.Setenv(name, "")
 			}
 			a.DeleteCredential = func(string) error { t.Error("canceled logout deleted a credential"); return nil }

@@ -13,10 +13,10 @@ import (
 )
 
 func TestVerifiedLogoutRejectsEnvironmentCredentials(t *testing.T) {
-	for _, variable := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_CHECKOUT_SESSION_SECRET"} {
+	for _, variable := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN"} {
 		t.Run(variable, func(t *testing.T) {
 			a, out, _ := testApp(t, "")
-			for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_CHECKOUT_SESSION_SECRET"} {
+			for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN"} {
 				t.Setenv(name, "")
 			}
 			t.Setenv(variable, "synthetic-credential")

@@ -383,7 +383,7 @@ func (a *App) saveCredentialProfileUnlocked(profile, key string, updateProfile f
 }
 
 func (a *App) localLogout(cmd *Command, opts Options) int {
-	for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_WORKLOAD_IDENTITY_ID", "FLINT_CHECKOUT_SESSION_SECRET"} {
+	for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_WORKLOAD_IDENTITY_ID"} {
 		if strings.TrimSpace(os.Getenv(name)) != "" {
 			return a.fail(configError("ENVIRONMENT_CREDENTIAL_ACTIVE", name+" is active and cannot be removed by flint auth logout. Unset it in the calling environment.", nil), opts)
 		}

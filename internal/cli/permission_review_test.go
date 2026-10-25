@@ -21,10 +21,8 @@ func TestSessionPermissionPreviewDoesNotAssumeMerchantScopes(t *testing.T) {
 			app, stdout, stderr := testApp(t, server.URL)
 			t.Setenv("FLINT_API_KEY", "")
 			t.Setenv("FLINT_ACCESS_TOKEN", "")
-			t.Setenv("FLINT_CHECKOUT_SESSION_SECRET", "")
 			if source == "checkout" {
-				t.Setenv("FLINT_CHECKOUT_SESSION_ID", "cs_test")
-				t.Setenv("FLINT_CHECKOUT_SESSION_SECRET", "secret_test")
+				t.Setenv("FLINT_ACCESS_TOKEN", "ckat_v1.x")
 			} else {
 				t.Setenv("FLINT_ACCESS_TOKEN", "session_test")
 			}
@@ -57,7 +55,6 @@ func TestMissingScopeRemediationUsesCredentialSourceAndProfile(t *testing.T) {
 				defer server.Close()
 				app, stdout, stderr := testApp(t, server.URL)
 				t.Setenv("FLINT_ACCESS_TOKEN", "")
-				t.Setenv("FLINT_CHECKOUT_SESSION_SECRET", "")
 				if err := app.updateConfig(func(cfg *Config) error {
 					cfg.Profiles["restricted"] = Profile{}
 					return nil

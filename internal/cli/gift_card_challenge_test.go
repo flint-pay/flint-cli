@@ -25,6 +25,7 @@ func TestEmbeddedCheckoutOriginJSONInput(t *testing.T) {
 		t.Run(fixture.command, func(t *testing.T) {
 			body := map[string]any{"surface": "embedded", "page_origin": "https://shop.example.com"}
 			if fixture.resourceID == "" {
+				body["type"] = "order"
 				body["order_id"] = "ord_test"
 			}
 			var sent map[string]any
@@ -180,8 +181,7 @@ func TestGiftCardChallengeErrorPreservesRemediation(t *testing.T) {
 			defer server.Close()
 			app, out, stderr := testApp(t, server.URL)
 			t.Setenv("FLINT_API_KEY", "")
-			t.Setenv("FLINT_CHECKOUT_SESSION_ID", "cs_test")
-			t.Setenv("FLINT_CHECKOUT_SESSION_SECRET", "secret_test")
+			t.Setenv("FLINT_ACCESS_TOKEN", "ckat_v1.x")
 			app.Stdin = strings.NewReader(`{"code":"synthetic-code","expected_version":7}`)
 			if exit := app.Run([]string{"orders", "gift-cards", "ord_test", "--input", "-", "--output", "json"}); exit != ExitAPI || stderr.Len() != 0 {
 				t.Fatalf("exit=%d stdout=%s stderr=%s", exit, out, stderr)
