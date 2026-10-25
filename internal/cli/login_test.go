@@ -258,7 +258,7 @@ func TestBrowserLoginURLs(t *testing.T) {
 }
 
 func TestBrowserLoginRejectsOverridesAndAutomation(t *testing.T) {
-	for _, variable := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_CHECKOUT_SESSION_SECRET", "no-input"} {
+	for _, variable := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "no-input"} {
 		t.Run(variable, func(t *testing.T) {
 			app, out, _ := testApp(t, "http://127.0.0.1:1")
 			t.Setenv("FLINT_API_KEY", "")

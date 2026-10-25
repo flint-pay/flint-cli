@@ -201,14 +201,6 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		req.Header.Set("X-Flint-CLI-Version", a.Info.Version)
 		req.Header.Set("Flint-Version", apispec.APIVersion())
 		if command := responseContract(ctx); command != nil {
-			for _, requirement := range command.Security {
-				if _, ok := requirement["CheckoutSessionSecretHeader"]; ok {
-					if secret := os.Getenv("FLINT_CHECKOUT_SESSION_SECRET"); secret != "" {
-						req.Header.Set("X-Checkout-Session-Secret", secret)
-						req.Header.Set("X-Checkout-Session-ID", os.Getenv("FLINT_CHECKOUT_SESSION_ID"))
-					}
-				}
-			}
 			if operation, ok := openAPIOperationByID(command.OperationID); ok {
 				for _, parameter := range operation.Parameters {
 					if parameter["name"] == "X-Turnstile-Token" {

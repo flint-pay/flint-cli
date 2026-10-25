@@ -728,6 +728,10 @@ func TestExpandAndOpenFlagsExecuteEndToEnd(t *testing.T) {
 				fmt.Fprint(w, exhaustiveAuthContextJSON("sandbox"))
 				return
 			}
+			var body map[string]any
+			if err := json.NewDecoder(request.Body).Decode(&body); err != nil || body["type"] != "quick_pay" {
+				t.Errorf("checkout body=%#v error=%v", body, err)
+			}
 			fmt.Fprint(w, `{"data":{"checkout_session":{"checkout_session_id":"cs_test","url":"https://checkout.example.com/cs_test"},"checkout_access":{"checkout_auth_token":"csauth_test"}}}`)
 		}))
 		defer server.Close()

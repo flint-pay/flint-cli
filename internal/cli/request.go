@@ -139,6 +139,13 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 			}
 		}
 	}
+	// Convenience quick-pay flags select the corresponding checkout variant. JSON
+	// input keeps its explicit discriminator and must satisfy the public contract.
+	if cmd.CanonicalName == "checkout-sessions.create" {
+		if _, hasType := body["type"]; !hasType && (len(opts.Raw["quick-pay-name"]) > 0 || len(opts.Raw["amount"]) > 0 || len(opts.Raw["currency"]) > 0) {
+			body["type"] = "quick_pay"
+		}
+	}
 	query := url.Values{}
 	for _, arg := range cmd.Arguments {
 		if arg.Query == "" {

@@ -375,6 +375,9 @@ func listenEventTypes() []string {
 			continue
 		}
 		schema, _ := parameter["schema"].(map[string]any)
+		if schema["type"] == "array" {
+			schema, _ = schema["items"].(map[string]any)
+		}
 		values, _ := schema["enum"].([]any)
 		types := make([]string, 0, len(values))
 		for _, value := range values {

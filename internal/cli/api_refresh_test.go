@@ -107,12 +107,9 @@ func TestOAuthTokenOutputSchemaAcceptsPartnerAndCLITokens(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := schema["anyOf"]; !ok {
-		t.Fatal("OAuth output schema omitted the public token alternatives")
-	}
 	for _, response := range []map[string]any{
 		{"access_token": "synthetic", "expires_in": 900, "refresh_token": "synthetic", "scope": "customers.read", "token_type": "Bearer"},
-		{"access_token": "synthetic", "expires_in": 3600, "environment_grant_id": "egrt_example", "merchant_id": "mer_example", "mode": "test", "partner_app_id": "papp_example", "partner_app_install_id": "pinst_example", "token_type": "bearer"},
+		{"access_token": "synthetic", "expires_in": 3600, "refresh_token": "synthetic", "scope": "read_customers", "environment_grant_id": "egrt_example", "merchant_id": "mer_example", "mode": "test", "sandbox_id": "test_example", "partner_app_id": "papp_example", "partner_app_install_id": "pinst_example", "token_type": "Bearer"},
 	} {
 		assertMCPOutputMatchesSchema(t, schema, response)
 	}
@@ -124,7 +121,7 @@ func TestCheckoutExpirationInputBoundaries(t *testing.T) {
 		field   string
 		body    map[string]any
 	}{
-		{"checkout-sessions.create", "expiration.expires_in_seconds", map[string]any{"order_id": "ord_test"}},
+		{"checkout-sessions.create", "expires_in_seconds", map[string]any{"type": "order", "order_id": "ord_test"}},
 		{"settings.update", "checkout.default_expires_in_seconds", map[string]any{}},
 	} {
 		t.Run(target.command, func(t *testing.T) {

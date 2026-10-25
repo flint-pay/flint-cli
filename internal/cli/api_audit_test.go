@@ -39,6 +39,11 @@ func TestAuditRenamedParametersKeepTheirRequestBindings(t *testing.T) {
 		{[]string{"webhook-deliveries", "list", "--webhook-event-id", "whev_test"}, "/v1/webhook-deliveries?webhook_event_id=whev_test"},
 		{[]string{"subscriptions", "list", "--next-billing-after", "2026-10-22"}, "/v1/subscriptions?next_billing_after=2026-10-22T00%3A00%3A00Z"},
 		{[]string{"inventory-movements", "list", "--sort-direction", "asc"}, "/v1/inventory-movements?sort_direction=asc"},
+		{[]string{"invoices", "manual-payments", "create", "inv_test", "--idempotency-key", "manual-test", "--input", `{"amount_money":{"amount":5000,"currency":"USD"},"payment_reference":"check-1024"}`}, "/v1/invoices/inv_test/manual-payments"},
+		{[]string{"invoices", "manual-payments", "list", "inv_test", "--page-size", "10"}, "/v1/invoices/inv_test/manual-payments?page_size=10"},
+		{[]string{"invoices", "manual-payments", "get", "inv_test", "imp_test"}, "/v1/invoices/inv_test/manual-payments/imp_test"},
+		{[]string{"invoices", "manual-payments", "reverse", "inv_test", "imp_test", "--input", `{"reversal_note":"Payment returned"}`}, "/v1/invoices/inv_test/manual-payments/imp_test/reverse"},
+		{[]string{"payment-intents", "send-receipt", "pi_test", "--input", `{}`}, "/v1/payment-intents/pi_test/send-receipt"},
 	} {
 		t.Run(strings.Join(test.argv[:2], "."), func(t *testing.T) {
 			app, _, _ := testApp(t, "")
@@ -107,5 +112,13 @@ func TestAuditCustomerEmailIsOptional(t *testing.T) {
 	app, stdout, _ := testApp(t, "")
 	if exit, result := runJSON(t, app, stdout, "customers", "create", "--name", "Ada", "--dry-run=client"); exit != ExitOK {
 		t.Fatalf("exit=%d result=%v", exit, result)
+	}
+}
+
+func TestInvoiceManualPaymentReversalRequiresPaymentID(t *testing.T) {
+	app, _, _ := testApp(t, "")
+	_, _, _, err := parseInvocation(app.Registry, []string{"invoices", "manual-payments", "reverse", "inv_test", "--input", `{}`})
+	if err == nil {
+		t.Fatal("reversal accepted without a manual payment ID")
 	}
 }

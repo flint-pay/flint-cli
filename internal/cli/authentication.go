@@ -122,12 +122,9 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 	}
 	checkoutSession := false
 	for _, requirement := range command.Security {
-		if _, ok := requirement["CheckoutSessionSecretHeader"]; ok && os.Getenv("FLINT_CHECKOUT_SESSION_SECRET") != "" {
+		if _, ok := requirement["CheckoutSessionBearer"]; ok && strings.HasPrefix(token, "ckat_") {
 			checkoutSession = true
 		}
-	}
-	if checkoutSession && os.Getenv("FLINT_CHECKOUT_SESSION_ID") == "" {
-		return "", "", envelope, configError("CHECKOUT_SESSION_ID_REQUIRED", "Set FLINT_CHECKOUT_SESSION_ID with FLINT_CHECKOUT_SESSION_SECRET.", nil)
 	}
 	if !command.AuthRequired || token != "" || checkoutSession {
 		mode := "sandbox"
@@ -156,7 +153,9 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 		}
 		credentialScope := ""
 		if token != "" || checkoutSession {
-			digest := sha256.Sum256([]byte(token + "\x00" + os.Getenv("FLINT_CHECKOUT_SESSION_ID") + "\x00" + os.Getenv("FLINT_CHECKOUT_SESSION_SECRET")))
+			// Preserve existing bearer-token history scopes after retiring the two
+			// checkout-secret fields from this credential encoding.
+			digest := sha256.Sum256([]byte(token + "\x00\x00"))
 			credentialScope = hex.EncodeToString(digest[:])
 		}
 		// An access token's format does not reveal its environment. Before a

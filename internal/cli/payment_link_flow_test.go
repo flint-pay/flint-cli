@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -44,6 +45,12 @@ func TestPaymentLinkAndCheckoutOpen(t *testing.T) {
 						creates++
 						if r.Method != http.MethodPost {
 							t.Fatalf("method=%s", r.Method)
+						}
+						if command.name == "checkout" {
+							var body map[string]any
+							if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body["type"] != "quick_pay" {
+								t.Errorf("checkout body=%#v error=%v", body, err)
+							}
 						}
 						if tc.fail {
 							w.WriteHeader(http.StatusBadRequest)
@@ -191,6 +198,48 @@ func TestDoctorRejectedCredentialRecommendsLogin(t *testing.T) {
 			}
 			if exit := app.Run([]string{"doctor", "--profile", "development", "--output", "json"}); exit != ExitAuth || !strings.Contains(out.String(), "flint login --profile development") || strings.Contains(out.String(), "flint auth login") {
 				t.Fatalf("exit=%d out=%s stderr=%s", exit, out, stderr)
+			}
+		})
+	}
+}
+
+func TestCheckoutCreateDiscriminatorInput(t *testing.T) {
+	quickPayFlags := []string{"--quick-pay-name", "Test", "--amount", "1000", "--currency", "USD"}
+	for _, fixture := range []struct {
+		name, input, wantType string
+		flags                 []string
+		wantError             bool
+	}{
+		{name: "flags infer quick pay", flags: quickPayFlags, wantType: "quick_pay"},
+		{name: "explicit quick pay", input: `{"type":"quick_pay"}`, flags: quickPayFlags, wantType: "quick_pay"},
+		{name: "explicit order", input: `{"type":"order","order_id":"ord_test"}`, wantType: "order"},
+		{name: "conflicting explicit type", input: `{"type":"order","order_id":"ord_test"}`, flags: quickPayFlags, wantError: true},
+		{name: "explicit null type", input: `{"type":null}`, flags: quickPayFlags, wantError: true},
+		{name: "JSON requires discriminator", input: `{"quick_pay_item":{"name":"Test","amount_money":{"amount":1000,"currency":"USD"}}}`, wantError: true},
+	} {
+		t.Run(fixture.name, func(t *testing.T) {
+			app, _, _ := testApp(t, "")
+			argv := append([]string{"checkout", "create"}, fixture.flags...)
+			if fixture.input != "" {
+				app.Stdin = strings.NewReader(fixture.input)
+				argv = append(argv, "--input", "-")
+			}
+			command, options, _, parseErr := parseInvocation(app.Registry, argv)
+			if parseErr != nil {
+				t.Fatal(parseErr)
+			}
+			request, err := app.prepareRequest(context.Background(), command, options, ResolvedConfig{}, "", "")
+			if fixture.wantError {
+				if err == nil {
+					t.Fatalf("invalid explicit request accepted: %s", request.Body)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if request.BodyValue["type"] != fixture.wantType {
+				t.Fatalf("type=%v want=%s", request.BodyValue["type"], fixture.wantType)
 			}
 		})
 	}

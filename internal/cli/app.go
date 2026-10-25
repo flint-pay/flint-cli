@@ -488,8 +488,6 @@ func (a *App) printRootHelp() {
 		{"FLINT_NO_INPUT", "1, true, yes, or on to disable prompts"},
 		{"FLINT_PROFILE", "Profile to use, like --profile"},
 		{"FLINT_MERCHANT", "Merchant guard, like --merchant"},
-		{"FLINT_CHECKOUT_SESSION_SECRET", "Checkout session signing credential"},
-		{"FLINT_CHECKOUT_SESSION_ID", "Checkout session ID"},
 		{"FLINT_WEBHOOK_SECRET", "signing secret for flint listen"},
 		{"FLINT_ACCESS_TOKEN", "Access token; takes precedence over FLINT_API_KEY"},
 		{"FLINT_WORKLOAD_IDENTITY_ID", "Workload identity; overrides saved login and contexts"},

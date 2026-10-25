@@ -51,7 +51,7 @@ func TestVerificationCreateResponsesRecordHistoryAndResolveReferences(t *testing
 		{
 			name: "customer", createOperation: "createCustomerVerification", confirmOperation: "confirmCustomerVerification",
 			id: "cver_created", resourceType: "customer_verification",
-			createBody: `{"customer_id":"cus_test","email":"buyer@example.com","purpose":"link_guest_purchases"}`,
+			createBody: `{"customer_id":"cus_test","purpose":"link_guest_purchases"}`,
 			response:   `{"data":{"customer_verification_id":"cver_created","customer_id":"cus_test","channel":"email","email":"buyer@example.com","purpose":"link_guest_purchases","status":"pending","created_at":"2026-03-17T14:30:00Z","expires_at":"2026-03-17T14:45:00Z"}}`,
 		},
 		{
@@ -116,8 +116,7 @@ func TestVerificationCreateResponsesRecordHistoryAndResolveReferences(t *testing
 			app, stdout, stderr := testApp(t, server.URL)
 			if scenario.checkout {
 				t.Setenv("FLINT_API_KEY", "")
-				t.Setenv("FLINT_CHECKOUT_SESSION_ID", "cs_test")
-				t.Setenv("FLINT_CHECKOUT_SESSION_SECRET", "secret_test")
+				t.Setenv("FLINT_ACCESS_TOKEN", "ckat_v1.x")
 			}
 			run := func(command *Command, args []string, body string) {
 				t.Helper()
@@ -550,22 +549,21 @@ func TestAccessTokenCannotBypassAPIKeyIntrospection(t *testing.T) {
 	}
 }
 
-func TestCheckoutSessionHeadersSkipAPIKeyAuthentication(t *testing.T) {
+func TestCheckoutSessionBearerSkipsAPIKeyAuthentication(t *testing.T) {
 	calls := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
 		if r.URL.Path != "/v1/checkout-sessions/cs_test" {
 			t.Errorf("unexpected path %s", r.URL.Path)
 		}
-		if r.Header.Get("Authorization") != "" || r.Header.Get("X-Checkout-Session-ID") != "cs_test" || r.Header.Get("X-Checkout-Session-Secret") != "secret_test" {
+		if r.Header.Get("Authorization") != "Bearer ckat_v1.x" || r.Header.Get("X-Checkout-Session-ID") != "" || r.Header.Get("X-Checkout-Session-Secret") != "" {
 			t.Error("incorrect checkout authentication")
 		}
 		fmt.Fprint(w, `{"data":{"checkout_session_id":"cs_test"}}`)
 	}))
 	defer server.Close()
 	app, out, _ := testApp(t, server.URL)
-	t.Setenv("FLINT_CHECKOUT_SESSION_ID", "cs_test")
-	t.Setenv("FLINT_CHECKOUT_SESSION_SECRET", "secret_test")
+	t.Setenv("FLINT_ACCESS_TOKEN", "ckat_v1.x")
 	t.Setenv("FLINT_API_KEY", "")
 	if err := app.updateConfig(func(cfg *Config) error {
 		cfg.Profiles["default"] = Profile{ContextID: "ctx_saved"}

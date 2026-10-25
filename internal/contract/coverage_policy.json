@@ -355,13 +355,13 @@
   },
   {
     "method": "POST",
-    "path": "/v1/customers/{customer_id}/deletion-requests",
+    "path": "/v1/customer-deletion-requests",
     "operation_id": "createCustomerDeletionRequest",
     "classification": "resource"
   },
   {
     "method": "GET",
-    "path": "/v1/customers/{customer_id}/deletion-requests/{customer_deletion_request_id}",
+    "path": "/v1/customer-deletion-requests/{customer_deletion_request_id}",
     "operation_id": "getCustomerDeletionRequest",
     "classification": "resource"
   },
@@ -643,18 +643,6 @@
   },
   {
     "method": "GET",
-    "path": "/v1/developer/request-logs",
-    "operation_id": "listCurrentAPIKeyRequestLogs",
-    "classification": "resource"
-  },
-  {
-    "method": "GET",
-    "path": "/v1/developer/request-logs/{api_request_log_id}",
-    "operation_id": "getCurrentAPIKeyRequestLog",
-    "classification": "resource"
-  },
-  {
-    "method": "GET",
     "path": "/v1/developer/resource-timelines/{resource_id}",
     "operation_id": "getResourceTimeline",
     "classification": "workflow"
@@ -885,18 +873,6 @@
     "classification": "resource"
   },
   {
-    "method": "POST",
-    "path": "/v1/inventory-counts/{inventory_count_id}/apply",
-    "operation_id": "applyInventoryCount",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/inventory-counts/{inventory_count_id}/cancel",
-    "operation_id": "cancelInventoryCount",
-    "classification": "resource"
-  },
-  {
     "method": "GET",
     "path": "/v1/inventory-items",
     "operation_id": "listInventoryItems",
@@ -948,24 +924,6 @@
     "method": "POST",
     "path": "/v1/inventory-reservations",
     "operation_id": "createInventoryReservation",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/inventory-reservations/{inventory_reservation_id}/commit",
-    "operation_id": "commitInventoryReservation",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/inventory-reservations/{inventory_reservation_id}/consume",
-    "operation_id": "consumeInventoryReservation",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/inventory-reservations/{inventory_reservation_id}/release",
-    "operation_id": "releaseInventoryReservation",
     "classification": "resource"
   },
   {
@@ -1080,18 +1038,6 @@
     "method": "POST",
     "path": "/v1/invoices/{invoice_id}/issue",
     "operation_id": "issueInvoice",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/invoices/{invoice_id}/manual-payments",
-    "operation_id": "recordManualInvoicePayment",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/invoices/{invoice_id}/manual-payments/reverse",
-    "operation_id": "reverseManualInvoicePayment",
     "classification": "resource"
   },
   {
@@ -1324,18 +1270,6 @@
   },
   {
     "method": "POST",
-    "path": "/v1/me/payment-methods",
-    "operation_id": "saveMePaymentMethod",
-    "classification": "resource"
-  },
-  {
-    "method": "DELETE",
-    "path": "/v1/me/payment-methods/{payment_method_id}",
-    "operation_id": "removeMePaymentMethod",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
     "path": "/v1/me/payment-methods/{payment_method_id}/set-default",
     "operation_id": "setDefaultMePaymentMethod",
     "classification": "resource"
@@ -1542,12 +1476,6 @@
     "method": "GET",
     "path": "/v1/oauth/authorize/preview",
     "operation_id": "previewPartnerInstallAuthorization",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/oauth/token",
-    "operation_id": "exchangePartnerInstallToken",
     "classification": "resource"
   },
   {
@@ -1950,18 +1878,6 @@
     "method": "GET",
     "path": "/v1/payment-methods",
     "operation_id": "listPaymentMethods",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/payment-methods",
-    "operation_id": "savePaymentMethod",
-    "classification": "resource"
-  },
-  {
-    "method": "DELETE",
-    "path": "/v1/payment-methods/{payment_method_id}",
-    "operation_id": "removePaymentMethod",
     "classification": "resource"
   },
   {
@@ -2500,12 +2416,6 @@
   },
   {
     "method": "POST",
-    "path": "/v1/returns/{return_id}/process",
-    "operation_id": "processExistingReturn",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
     "path": "/v1/returns/{return_id}/receipts",
     "operation_id": "createReturnReceipt",
     "classification": "resource"
@@ -2520,30 +2430,6 @@
     "method": "POST",
     "path": "/v1/returns/{return_id}/resolutions",
     "operation_id": "createReturnResolution",
-    "classification": "resource"
-  },
-  {
-    "method": "GET",
-    "path": "/v1/reviews",
-    "operation_id": "listReviews",
-    "classification": "resource"
-  },
-  {
-    "method": "GET",
-    "path": "/v1/reviews/{review_id}",
-    "operation_id": "getReview",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/reviews/{review_id}/approve",
-    "operation_id": "approveReview",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/reviews/{review_id}/decline",
-    "operation_id": "declineReview",
     "classification": "resource"
   },
   {
@@ -3094,12 +2980,6 @@
   },
   {
     "method": "POST",
-    "path": "/v1/oauth/revoke",
-    "operation_id": "revokeCLIGrant",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
     "path": "/v1/orders/{order_id}/gift-cards",
     "operation_id": "applyOrderGiftCard",
     "classification": "resource"
@@ -3532,8 +3412,194 @@
   },
   {
     "method": "POST",
-    "path": "/v1/payment-intents/{payment_intent_id}/receipts",
+    "path": "/v1/payment-intents/{payment_intent_id}/send-receipt",
     "operation_id": "sendPaymentIntentReceipt",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/request-logs",
+    "operation_id": "listAPIRequestLogs",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/request-logs/{api_request_log_id}",
+    "operation_id": "getAPIRequestLog",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/files/{file_id}",
+    "operation_id": "getFile",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-counts/{inventory_count_id}/transitions",
+    "operation_id": "transitionInventoryCount",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/inventory-reservations/{inventory_reservation_id}",
+    "operation_id": "updateInventoryReservation",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-reservations/{inventory_reservation_id}/transitions",
+    "operation_id": "transitionInventoryReservation",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/manual-payments",
+    "operation_id": "listInvoiceManualPayments",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/manual-payments",
+    "operation_id": "createInvoiceManualPayment",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/manual-payments/{invoice_manual_payment_id}",
+    "operation_id": "getInvoiceManualPayment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/invoices/{invoice_id}/manual-payments/{invoice_manual_payment_id}/reverse",
+    "operation_id": "reverseInvoiceManualPayment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/payment-methods",
+    "operation_id": "createMePaymentMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/me/payment-methods/{payment_method_id}",
+    "operation_id": "deleteMePaymentMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/session/revoke",
+    "operation_id": "revokeMeSession",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/merchant-billing-entries",
+    "operation_id": "listMerchantBillingEntries",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/oauth/revoke",
+    "operation_id": "revokeOAuthToken",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/oauth/token",
+    "operation_id": "exchangeOAuthToken",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-methods",
+    "operation_id": "createPaymentMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/payment-methods/{payment_method_id}",
+    "operation_id": "deletePaymentMethod",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-reviews",
+    "operation_id": "listPaymentReviews",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-reviews/{payment_review_id}",
+    "operation_id": "getPaymentReview",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-reviews/{payment_review_id}/approve",
+    "operation_id": "approvePaymentReview",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/payment-reviews/{payment_review_id}/decline",
+    "operation_id": "declinePaymentReview",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/returns/{return_id}/activities",
+    "operation_id": "listReturnActivities",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/returns/{return_id}/process",
+    "operation_id": "processReturn",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/change-plan",
+    "operation_id": "changeSubscriptionPlan",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/webhook-deliveries",
+    "operation_id": "createWebhookDelivery",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/workload-identities",
+    "operation_id": "listWorkloadIdentities",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/workload-identities",
+    "operation_id": "createWorkloadIdentity",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/workload-identities/{workload_identity_id}",
+    "operation_id": "deleteWorkloadIdentity",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/workload-identities/{workload_identity_id}",
+    "operation_id": "getWorkloadIdentity",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/workload-identities/{workload_identity_id}",
+    "operation_id": "updateWorkloadIdentity",
     "classification": "resource"
   }
 ]
