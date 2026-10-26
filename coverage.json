@@ -1130,7 +1130,7 @@
     "operation_id": "issueDeveloperSandboxTestKey",
     "classification": "resource",
     "commands": [
-      "sandboxes.test-key"
+      "sandboxes.api-keys.create"
     ]
   },
   {

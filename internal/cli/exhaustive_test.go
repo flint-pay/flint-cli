@@ -1619,6 +1619,9 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 	t.Helper()
 	wantMethod := command.Method
 	wantPath := command.APIPath
+	if command.PreferredAPIPath != "" {
+		wantPath = command.PreferredAPIPath
+	}
 	if command.CanonicalName == "api" {
 		wantMethod = http.MethodPost
 		wantPath = "/v1/payment-intents"

@@ -1074,13 +1074,13 @@ func TestSignupIssuesScopedSandboxKeyAndStoresOnlyInCredentialStore(t *testing.T
 		case "/v1/onboarding/api-key":
 			var body struct {
 				Name      string          `json:"name"`
-				SandboxID string          `json:"sandbox_id"`
+				SandboxID json.RawMessage `json:"sandbox_id"`
 				Scopes    json.RawMessage `json:"scopes"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				t.Error(err)
 			}
-			if body.Name != "flint-cli" || body.SandboxID != "test_123" || body.Scopes != nil {
+			if body.Name != "flint-cli" || body.SandboxID != nil || body.Scopes != nil {
 				t.Errorf("unexpected initial key request: %#v", body)
 			}
 			fmt.Fprint(w, `{"data":{"api_key_id":"key_123","merchant_id":"mer_123","sandbox_id":"test_123","secret_key":"flint_test_secret"}}`)

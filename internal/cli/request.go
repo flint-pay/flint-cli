@@ -19,6 +19,7 @@ import (
 type preparedRequest struct {
 	Method         string
 	Path           string
+	FallbackPath   string
 	Body           []byte
 	BodyValue      map[string]any
 	IdempotencyKey string
@@ -65,6 +66,9 @@ func requestIdempotencyKey(cmd *Command, opts Options) (string, *CLIError) {
 
 func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, resolved ResolvedConfig, key, baseURL string) (req preparedRequest, requestErr *CLIError) {
 	req = preparedRequest{Method: cmd.Method, Path: cmd.APIPath}
+	if cmd.PreferredAPIPath != "" {
+		req.Path, req.FallbackPath = cmd.PreferredAPIPath, cmd.APIPath
+	}
 	req.IdempotencyKey, requestErr = requestIdempotencyKey(cmd, opts)
 	if requestErr != nil {
 		return req, requestErr
@@ -114,6 +118,7 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 			}
 			if arg.Positional > 0 {
 				req.Path = strings.Replace(req.Path, "{"+arg.Name+"}", url.PathEscape(value), 1)
+				req.FallbackPath = strings.Replace(req.FallbackPath, "{"+arg.Name+"}", url.PathEscape(value), 1)
 			}
 			if arg.Query != "" {
 				continue
@@ -225,16 +230,15 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		}
 	}
 	if len(query) > 0 {
-		parsed, err := url.Parse(req.Path)
-		if err != nil {
-			return req, usageError("INVALID_REQUEST_URL", err.Error(), "path")
+		var e *CLIError
+		if req.Path, e = withRequestQuery(req.Path, query); e != nil {
+			return req, e
 		}
-		merged := parsed.Query()
-		for name, values := range query {
-			merged[name] = values
+		if req.FallbackPath != "" {
+			if req.FallbackPath, e = withRequestQuery(req.FallbackPath, query); e != nil {
+				return req, e
+			}
 		}
-		parsed.RawQuery = merged.Encode()
-		req.Path = parsed.String()
 	}
 	// Public API handlers with request schemas decode JSON even when every field
 	// is optional. Send an empty object so omission means no fields, not invalid JSON.
@@ -266,6 +270,19 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		req.BodyValue = body
 	}
 	return req, nil
+}
+
+func withRequestQuery(path string, query url.Values) (string, *CLIError) {
+	parsed, err := url.Parse(path)
+	if err != nil {
+		return path, usageError("INVALID_REQUEST_URL", err.Error(), "path")
+	}
+	merged := parsed.Query()
+	for name, values := range query {
+		merged[name] = values
+	}
+	parsed.RawQuery = merged.Encode()
+	return parsed.String(), nil
 }
 
 // validateBody checks the merged JSON body locally. The raw api command is the
