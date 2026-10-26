@@ -40,7 +40,9 @@ func additionalCommands(page []Arg, input Arg) []*Command {
 		apiCommand("sandboxes.list", "List developer sandboxes using a live management key", "GET", "/v1/developer/sandboxes", "listDeveloperSandboxes", "", "SandboxListResponse", page, false, false, false, false, "flint sandboxes list --live"),
 		apiCommand("sandboxes.create", "Create a developer sandbox using a live management key", "POST", "/v1/developer/sandboxes", "createDeveloperSandbox", "CreateSandboxRequest", "SandboxWithAPIKeyResponse", []Arg{flag("name", "string", "name", "", "Sandbox name", true), input}, true, true, false, false, "flint sandboxes create --name qa-scenarios --live"),
 		apiCommand("sandboxes.reset", "Reset a developer sandbox using a live management key", "POST", "/v1/developer/sandboxes/{sandbox_id}/reset", "resetDeveloperSandbox", "", "SandboxResponse", []Arg{pos("sandbox_id", "test_", "Flint sandbox ID")}, true, true, true, false, "flint sandboxes reset test_123 --live --confirm"),
-		apiCommand("sandboxes.test-key", "Issue a sandbox-bound test key using a live management key", "POST", "/v1/developer/sandboxes/{sandbox_id}/test-key", "issueDeveloperSandboxTestKey", "IssueSandboxAPIKeyRequest", "CreateAPIKeyResponse", []Arg{pos("sandbox_id", "test_", "Flint sandbox ID"), input}, true, true, false, false, "flint sandboxes test-key test_123 --input key.json --live"),
+		// The sandbox API-key route replaces /test-key; the embedded contract
+		// still describes the old path, which stays as the fallback.
+		withPreferredAPIPath(alias(apiCommand("sandboxes.api-keys.create", "Issue a sandbox-bound test key using a live management key", "POST", "/v1/developer/sandboxes/{sandbox_id}/test-key", "issueDeveloperSandboxTestKey", "IssueSandboxAPIKeyRequest", "CreateAPIKeyResponse", []Arg{pos("sandbox_id", "test_", "Flint sandbox ID"), input}, true, true, false, false, "flint sandboxes api-keys create test_123 --input key.json --live", "flint sandboxes test-key test_123 --input key.json --live"), "sandboxes.test-key"), "/v1/developer/sandboxes/{sandbox_id}/api-keys"),
 		apiCommand("api-keys.create", "Create a scoped API key", "POST", "/v1/api-keys", "createAPIKey", "CreateAPIKeyRequest", "CreateAPIKeyResponse", []Arg{flag("name", "string", "name", "", "API key name", true), {Name: "scope", Flag: "--scope", Type: "string", BodyPath: "scopes", Repeat: true, Required: true, Description: "Scope to grant"}, input}, true, true, false, false, "flint api-keys create --name local-dev --scope payments.payment_intents.read"),
 		apiCommand("api-keys.list", "List API keys", "GET", "/v1/api-keys", "listAPIKeys", "", "APIKeyListResponse", page, false, false, false, false, "flint api-keys list"),
 		apiCommand("api-keys.revoke", "Revoke an API key", "POST", "/v1/api-keys/{api_key_id}/revoke", "revokeAPIKey", "", "APIKeyResponse", []Arg{pos("api_key_id", "key_", "Flint API key ID")}, true, true, true, false, "flint api-keys revoke key_123 --preview", "flint api-keys revoke key_123 --confirm"),
@@ -129,6 +131,11 @@ func additionalCommands(page []Arg, input Arg) []*Command {
 			),
 		},
 	}
+}
+
+func withPreferredAPIPath(command *Command, path string) *Command {
+	command.PreferredAPIPath = path
+	return command
 }
 
 func withEnvironmentAffinity(command *Command, affinity EnvironmentAffinity) *Command {

@@ -70,6 +70,11 @@ type Command struct {
 	Render              string                `json:"-"`
 	MCPHidden           bool                  `json:"-"`
 	EnvironmentAffinity EnvironmentAffinity   `json:"environment_affinity,omitempty"`
+	// PreferredAPIPath is a route Flint is moving this operation to that the
+	// embedded contract does not describe yet. Requests try it first and
+	// retry APIPath once when the server has no such route. Remove it when the
+	// embedded contract gains the new route.
+	PreferredAPIPath string `json:"-"`
 }
 
 type EnvironmentAffinity string

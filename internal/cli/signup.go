@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 
 	apispec "github.com/flint-pay/flint-cli/internal/spec"
@@ -68,7 +69,8 @@ func (a *App) runSignup(opts Options) int {
 	if sandboxID == "" {
 		return a.fail(invalidResponseError("INVALID_SIGNUP_RESPONSE", "Flint did not return a default sandbox for the initial API key.", nil), opts)
 	}
-	keyBody, _ := json.Marshal(map[string]any{"name": "flint-cli", "sandbox_id": sandboxID})
+	// The onboarding session always issues the key in the default sandbox.
+	keyBody, _ := json.Marshal(map[string]any{"name": "flint-cli"})
 	issueKey, err := newIdempotencyKey()
 	if err != nil {
 		return a.fail(networkError("IDEMPOTENCY_KEY_GENERATION_FAILED", "Could not generate an idempotency key.", err), opts)
@@ -180,28 +182,14 @@ func (a *App) advanceSignupUntilKeyAvailable(baseURL, sessionToken string, state
 				state,
 			)
 		}
-		machineCompletable, _ := step["machine_completable"].(bool)
-		if !machineCompletable {
-			return nil, signupStateError(
-				"SIGNUP_HUMAN_ACTION_REQUIRED",
-				"Initial key issuance is blocked on a human onboarding action. Complete the returned onboarding step, then retry signup.",
-				state,
-			)
+		endpoint, issueKey, stepErr := signupStepEndpoint(baseURL, step, state)
+		if stepErr != nil {
+			return nil, stepErr
 		}
-		method, _ := step["submit_method"].(string)
-		if method == "" {
-			method = http.MethodPost
+		if issueKey {
+			return state, nil
 		}
-		if !strings.EqualFold(method, http.MethodPost) {
-			return nil, signupStateError("INVALID_SIGNUP_RESPONSE", "Flint returned an unsupported onboarding step method.", state)
-		}
-		rawEndpoint, _ := step["submit_endpoint"].(string)
-		endpoint, endpointErr := signupPublicEndpoint(baseURL, rawEndpoint)
-		if endpointErr != nil {
-			return nil, invalidResponseError("INVALID_SIGNUP_RESPONSE", endpointErr.Error(), endpointErr)
-		}
-		stepCode, _ := step["code"].(string)
-		stepKey := strings.TrimSpace(stepCode) + "|" + endpoint
+		stepKey := signupStepKey(step, endpoint)
 		if _, repeated := seenSteps[stepKey]; repeated {
 			return nil, signupStateError(
 				"SIGNUP_ONBOARDING_STALLED",
@@ -223,6 +211,91 @@ func (a *App) advanceSignupUntilKeyAvailable(baseURL, sessionToken string, state
 			return nil, bodyErr
 		}
 	}
+}
+
+// signupOnboardingAdvancePath is where every integrator-owned
+// advance_onboarding action is submitted.
+const signupOnboardingAdvancePath = "/v1/onboarding/advance"
+
+// signupStepEndpoint decides what signup does with the onboarding next step.
+// It returns the endpoint to submit an automatable step to, or issueKey when
+// the step is to create the initial API key.
+//
+// Flint describes the step as a readiness action (action_type and owner).
+// Servers that predate that shape send code, machine_completable,
+// submit_method, and submit_endpoint instead; those are still honored when
+// action_type is absent.
+func signupStepEndpoint(baseURL string, step map[string]any, state *apiResponse) (endpoint string, issueKey bool, err *CLIError) {
+	actionType, _ := step["action_type"].(string)
+	actionType = strings.TrimSpace(actionType)
+	if actionType == "" {
+		return signupLegacyStepEndpoint(baseURL, step, state)
+	}
+	owner, _ := step["owner"].(string)
+	if owner = strings.TrimSpace(owner); owner != "" && owner != "integrator" {
+		return "", false, signupHumanActionRequired(state)
+	}
+	switch actionType {
+	case "advance_onboarding":
+		return signupOnboardingAdvancePath, false, nil
+	case "create_api_key":
+		return "", true, nil
+	default:
+		// create_merchant_account_session needs the account owner in embedded
+		// onboarding. Any other action is one this CLI cannot complete.
+		return "", false, signupHumanActionRequired(state)
+	}
+}
+
+func signupLegacyStepEndpoint(baseURL string, step map[string]any, state *apiResponse) (string, bool, *CLIError) {
+	if code, _ := step["code"].(string); strings.TrimSpace(code) == "create_api_key" {
+		return "", true, nil
+	}
+	machineCompletable, _ := step["machine_completable"].(bool)
+	if !machineCompletable {
+		return "", false, signupHumanActionRequired(state)
+	}
+	method, _ := step["submit_method"].(string)
+	if method == "" {
+		method = http.MethodPost
+	}
+	if !strings.EqualFold(method, http.MethodPost) {
+		return "", false, signupStateError("INVALID_SIGNUP_RESPONSE", "Flint returned an unsupported onboarding step method.", state)
+	}
+	rawEndpoint, _ := step["submit_endpoint"].(string)
+	endpoint, endpointErr := signupPublicEndpoint(baseURL, rawEndpoint)
+	if endpointErr != nil {
+		return "", false, invalidResponseError("INVALID_SIGNUP_RESPONSE", endpointErr.Error(), endpointErr)
+	}
+	return endpoint, false, nil
+}
+
+func signupHumanActionRequired(state *apiResponse) *CLIError {
+	return signupStateError(
+		"SIGNUP_HUMAN_ACTION_REQUIRED",
+		"Initial key issuance is blocked on a human onboarding action. Complete the returned onboarding step, then retry signup.",
+		state,
+	)
+}
+
+// signupStepKey identifies a submitted step so signup can stop when Flint
+// returns it again unchanged. Readiness actions reuse advance_onboarding for
+// every profile step, so the fields it asks for are part of the identity.
+func signupStepKey(step map[string]any, endpoint string) string {
+	name, _ := step["action_type"].(string)
+	if strings.TrimSpace(name) == "" {
+		name, _ = step["code"].(string)
+	}
+	fields := []string{}
+	if values, ok := step["required_fields"].([]any); ok {
+		for _, raw := range values {
+			if field, ok := raw.(string); ok {
+				fields = append(fields, strings.TrimSpace(field))
+			}
+		}
+	}
+	sort.Strings(fields)
+	return strings.TrimSpace(name) + "|" + endpoint + "|" + strings.Join(fields, ",")
 }
 
 func signupStateError(code, message string, state *apiResponse) *CLIError {
