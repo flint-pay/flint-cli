@@ -275,7 +275,7 @@ var publicResourceIDPrefixes = map[string]string{
 	"dispute_id":                         "du_",
 	"environment_id":                     "menv_",
 	"expected_delivery_selection_id":     "dsel_",
-	"fraud_warning_id":                   "fw_",
+	"fraud_warning_id":                   "frw_",
 	"gift_card_id":                       "gc_",
 	"gift_card_load_id":                  "gcl_",
 	"gift_card_notification_id":          "gcn_",
