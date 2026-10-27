@@ -186,8 +186,7 @@ func sandboxAPIKeyServer(t *testing.T, handler func(w http.ResponseWriter, r *ht
 
 func TestSandboxAPIKeysCreateRoutes(t *testing.T) {
 	const created = `{"data":{"api_key_id":"key_sandbox","secret_key":"flint_test_synthetic_sandbox"}}`
-	newPath := "/v1/developer/sandboxes/test_123/api-keys"
-	oldPath := "/v1/developer/sandboxes/test_123/test-key"
+	path := "/v1/developer/sandboxes/test_123/api-keys"
 	for _, test := range []struct {
 		name    string
 		argv    []string
@@ -197,43 +196,25 @@ func TestSandboxAPIKeysCreateRoutes(t *testing.T) {
 		want    []string
 	}{
 		{
-			name: "new route",
+			name: "api-keys create",
 			argv: []string{"sandboxes", "api-keys", "create", "test_123"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, created)
 			},
 			exit: ExitOK,
-			want: []string{"POST " + newPath + " idem_sandbox_key"},
+			want: []string{"POST " + path + " idem_sandbox_key"},
 		},
 		{
-			name: "old server falls back once",
+			name: "test-key alias",
 			argv: []string{"sandboxes", "test-key", "test_123"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path == newPath {
-					w.WriteHeader(http.StatusNotFound)
-					fmt.Fprint(w, `{"error":{"type":"request_error","code":"ROUTE_NOT_FOUND","message":"No public API route matches this request."}}`)
-					return
-				}
 				fmt.Fprint(w, created)
 			},
 			exit: ExitOK,
-			want: []string{"POST " + newPath + " idem_sandbox_key", "POST " + oldPath + " idem_sandbox_key"},
+			want: []string{"POST " + path + " idem_sandbox_key"},
 		},
 		{
-			name: "fallback without a Flint error body",
-			argv: []string{"sandboxes", "api-keys", "create", "test_123"},
-			handler: func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path == newPath {
-					http.NotFound(w, r)
-					return
-				}
-				fmt.Fprint(w, created)
-			},
-			exit: ExitOK,
-			want: []string{"POST " + newPath + " idem_sandbox_key", "POST " + oldPath + " idem_sandbox_key"},
-		},
-		{
-			name: "missing sandbox does not fall back",
+			name: "missing sandbox",
 			argv: []string{"sandboxes", "api-keys", "create", "test_123"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
@@ -241,10 +222,10 @@ func TestSandboxAPIKeysCreateRoutes(t *testing.T) {
 			},
 			exit: ExitAPI,
 			code: "SANDBOX_NOT_FOUND",
-			want: []string{"POST " + newPath + " idem_sandbox_key"},
+			want: []string{"POST " + path + " idem_sandbox_key"},
 		},
 		{
-			name: "fallback is tried only once",
+			name: "missing route is not retried",
 			argv: []string{"sandboxes", "api-keys", "create", "test_123"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
@@ -252,7 +233,7 @@ func TestSandboxAPIKeysCreateRoutes(t *testing.T) {
 			},
 			exit: ExitAPI,
 			code: "ROUTE_NOT_FOUND",
-			want: []string{"POST " + newPath + " idem_sandbox_key", "POST " + oldPath + " idem_sandbox_key"},
+			want: []string{"POST " + path + " idem_sandbox_key"},
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -270,7 +251,7 @@ func TestSandboxAPIKeysCreateRoutes(t *testing.T) {
 	}
 }
 
-func TestSandboxAPIKeysCreateDryRunShowsNewRoute(t *testing.T) {
+func TestSandboxAPIKeysCreateDryRunShowsRoute(t *testing.T) {
 	server, requests := sandboxAPIKeyServer(t, func(w http.ResponseWriter, r *http.Request) {})
 	app, out, _ := testApp(t, server.URL)
 	t.Setenv("FLINT_API_KEY", "flint_live_synthetic")

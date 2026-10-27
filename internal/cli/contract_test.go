@@ -755,7 +755,7 @@ func TestCommandPermissionErrorExplainsMissingScopes(t *testing.T) {
 	if err := commandPermissionError(cmd, AuthContext{AuthType: "api_key", Scopes: []string{"commerce.subscriptions.write"}}, "default"); err != nil {
 		t.Fatalf("write-capable API key failed any-scope requirement: %v", err)
 	}
-	allErr := commandPermissionError(&Command{CanonicalName: "sandboxes.test-key", OperationID: "issueDeveloperSandboxTestKey"}, AuthContext{
+	allErr := commandPermissionError(&Command{CanonicalName: "sandboxes.api-keys.create", OperationID: "createSandboxAPIKey"}, AuthContext{
 		AuthType: "api_key",
 		Scopes:   []string{"accounts.api_keys.write"},
 	}, "default")

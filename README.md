@@ -237,6 +237,10 @@ Server flags:
 
 Agents can always inspect a write first with `_flint.dry_run: "client"` or, for destructive operations, `_flint.preview`. Successful results that reached the API include a `Flint environment: sandbox|live` line, followed by a `Warnings:` block when the CLI printed warnings. The `help` tool returns a short index without a topic, a tool's arguments and required fields when given a tool name, and control details for `controls`. `schema_input` and `schema_output` return a tool's full schemas on demand, and `schema_events` lists webhook event types (pass `event_type` for payload schemas). Agents can add a `_flint.merchant` guard but cannot replace the profile, merchant guard, or context the server uses. `config set`, `config unset`, and `auth logout` are not available over MCP.
 
+## Migrating from 0.11.0
+
+0.12.0 refreshes the embedded public API snapshot, which renames and removes commands; for example, `payout-settings destinations` commands are now `payout-destinations`, `merchant-account-sessions refresh` is now `merchant-account-session-refreshes create`, and `flint organizations create` requires `--parent-organization`. See [the 0.12.0 migration notes](docs/migrating-0.12.md) for the command and MCP tool changes.
+
 ## Migrating from 0.10.0
 
 0.11.0 refreshes the embedded public API snapshot, which renames and removes commands; for example, `reviews` commands are now `payment-reviews` and `flint sandboxes test-key` is now `flint sandboxes api-keys create` (the old name still works). See [the 0.11.0 migration notes](docs/migrating-0.11.md) for the command and MCP tool changes.

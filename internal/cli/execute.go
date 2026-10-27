@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"net/url"
 	"os/exec"
 	"runtime"
@@ -36,12 +35,6 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 		return a.executeAllPages(ctx, cmd, opts, req, key, baseURL)
 	}
 	resp, e := a.doRequestWithin(ctx, opts.Timeout, baseURL, key, req.Method, req.Path, req.Body, req.IdempotencyKey, opts.Debug)
-	if e != nil && req.FallbackPath != "" && routeNotFound(e) {
-		if opts.Debug {
-			fmt.Fprintf(a.Stderr, "debug: %s is not available on this server; retrying %s\n", req.Path, req.FallbackPath)
-		}
-		resp, e = a.doRequestWithin(ctx, opts.Timeout, baseURL, key, req.Method, req.FallbackPath, req.Body, req.IdempotencyKey, opts.Debug)
-	}
 	if e != nil {
 		return nil, e
 	}
@@ -64,10 +57,6 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 
 // routeNotFound reports a 404 for the route itself rather than for a resource
 // the route names, such as a sandbox that does not exist.
-func routeNotFound(err *CLIError) bool {
-	return err != nil && err.HTTPStatus == http.StatusNotFound && (err.Code == "ROUTE_NOT_FOUND" || err.Code == "HTTP_404")
-}
-
 func previewRequest(req preparedRequest, cmd *Command, authContext AuthContext, preview bool) map[string]any {
 	headers := map[string]any{}
 	if req.IdempotencyKey != "" {

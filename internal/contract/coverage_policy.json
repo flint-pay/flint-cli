@@ -678,12 +678,6 @@
     "classification": "resource"
   },
   {
-    "method": "POST",
-    "path": "/v1/developer/sandboxes/{sandbox_id}/test-key",
-    "operation_id": "issueDeveloperSandboxTestKey",
-    "classification": "resource"
-  },
-  {
     "method": "GET",
     "path": "/v1/devices",
     "operation_id": "listDevices",
@@ -1269,12 +1263,6 @@
     "classification": "resource"
   },
   {
-    "method": "POST",
-    "path": "/v1/me/payment-methods/{payment_method_id}/set-default",
-    "operation_id": "setDefaultMePaymentMethod",
-    "classification": "resource"
-  },
-  {
     "method": "GET",
     "path": "/v1/me/payments",
     "operation_id": "listMePayments",
@@ -1378,7 +1366,7 @@
   },
   {
     "method": "POST",
-    "path": "/v1/merchant-account-sessions/refresh",
+    "path": "/v1/merchant-account-session-refreshes",
     "operation_id": "refreshMerchantAccountSession",
     "classification": "resource"
   },
@@ -1547,7 +1535,7 @@
   {
     "method": "POST",
     "path": "/v1/orders/{order_id}/charges",
-    "operation_id": "addOrderCharge",
+    "operation_id": "createOrderCharge",
     "classification": "resource"
   },
   {
@@ -1607,7 +1595,7 @@
   {
     "method": "POST",
     "path": "/v1/orders/{order_id}/line-items",
-    "operation_id": "addOrderLineItems",
+    "operation_id": "createOrderLineItems",
     "classification": "resource"
   },
   {
@@ -1697,7 +1685,7 @@
   {
     "method": "DELETE",
     "path": "/v1/organizations/{organization_id}/memberships/{user_id}",
-    "operation_id": "revokeOrganizationMembership",
+    "operation_id": "removeOrganizationMembership",
     "classification": "resource"
   },
   {
@@ -1875,12 +1863,6 @@
     "classification": "resource"
   },
   {
-    "method": "POST",
-    "path": "/v1/payment-methods/{payment_method_id}/set-default",
-    "operation_id": "setDefaultPaymentMethod",
-    "classification": "resource"
-  },
-  {
     "method": "GET",
     "path": "/v1/payout-settings",
     "operation_id": "getPayoutSettings",
@@ -1894,25 +1876,25 @@
   },
   {
     "method": "GET",
-    "path": "/v1/payout-settings/destinations",
+    "path": "/v1/payout-destinations",
     "operation_id": "listPayoutDestinations",
     "classification": "resource"
   },
   {
     "method": "DELETE",
-    "path": "/v1/payout-settings/destinations/{payout_destination_id}",
+    "path": "/v1/payout-destinations/{payout_destination_id}",
     "operation_id": "deletePayoutDestination",
     "classification": "resource"
   },
   {
     "method": "GET",
-    "path": "/v1/payout-settings/destinations/{payout_destination_id}",
+    "path": "/v1/payout-destinations/{payout_destination_id}",
     "operation_id": "getPayoutDestination",
     "classification": "resource"
   },
   {
     "method": "PATCH",
-    "path": "/v1/payout-settings/destinations/{payout_destination_id}",
+    "path": "/v1/payout-destinations/{payout_destination_id}",
     "operation_id": "updatePayoutDestination",
     "classification": "resource"
   },
@@ -2201,7 +2183,7 @@
   {
     "method": "POST",
     "path": "/v1/return-policies/{return_policy_id}/revisions",
-    "operation_id": "publishReturnPolicyRevision",
+    "operation_id": "createReturnPolicyRevision",
     "classification": "resource"
   },
   {
@@ -2369,7 +2351,7 @@
   {
     "method": "POST",
     "path": "/v1/returns/{return_id}/line-items",
-    "operation_id": "addReturnLineItem",
+    "operation_id": "createReturnLineItem",
     "classification": "resource"
   },
   {
@@ -2399,7 +2381,7 @@
   {
     "method": "POST",
     "path": "/v1/returns/{return_id}/line-items/{return_line_item_id}/waive-inspection",
-    "operation_id": "waiveReturnLineInspection",
+    "operation_id": "waiveReturnLineItemInspection",
     "classification": "resource"
   },
   {
@@ -2459,7 +2441,7 @@
   {
     "method": "POST",
     "path": "/v1/risk-lists/{risk_list_id}/items",
-    "operation_id": "addRiskListItems",
+    "operation_id": "createRiskListItems",
     "classification": "resource"
   },
   {
@@ -2507,7 +2489,7 @@
   {
     "method": "GET",
     "path": "/v1/risk-rules/attributes",
-    "operation_id": "getRiskRuleAttributeRegistry",
+    "operation_id": "getRiskRuleAttributes",
     "classification": "resource"
   },
   {
@@ -2729,7 +2711,7 @@
   {
     "method": "POST",
     "path": "/v1/webhook-endpoints/{webhook_endpoint_id}/rotate-secret",
-    "operation_id": "rotateWebhookSecret",
+    "operation_id": "rotateWebhookEndpointSecret",
     "classification": "resource"
   },
   {
@@ -2771,7 +2753,7 @@
   {
     "method": "POST",
     "path": "/v1/invoices/{invoice_id}/late-fees",
-    "operation_id": "assessInvoiceLateFee",
+    "operation_id": "createInvoiceLateFee",
     "classification": "resource"
   },
   {
@@ -3064,7 +3046,7 @@
   },
   {
     "method": "POST",
-    "path": "/v1/settings/custom-domains/{domain_type}/validate",
+    "path": "/v1/custom-domains/{custom_domain_id}/validate",
     "operation_id": "validateCustomDomain",
     "classification": "resource"
   },
@@ -3588,6 +3570,102 @@
     "method": "PATCH",
     "path": "/v1/workload-identities/{workload_identity_id}",
     "operation_id": "updateWorkloadIdentity",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/custom-domains",
+    "operation_id": "listCustomDomains",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/custom-domains",
+    "operation_id": "createCustomDomain",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/custom-domains/{custom_domain_id}",
+    "operation_id": "deleteCustomDomain",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/custom-domains/{custom_domain_id}",
+    "operation_id": "getCustomDomain",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/developer/partner/apps/{partner_app_id}",
+    "operation_id": "deleteDeveloperPartnerApp",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/developer/sandboxes/{sandbox_id}/api-keys",
+    "operation_id": "createSandboxAPIKey",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/fulfillments/{fulfillment_id}",
+    "operation_id": "getMeFulfillment",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/packages/{package_id}",
+    "operation_id": "getMePackage",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/payments/{payment_intent_id}",
+    "operation_id": "getMePayment",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/refunds/{refund_id}",
+    "operation_id": "getMeRefund",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/return-resolutions/{return_resolution_id}",
+    "operation_id": "getMeReturnResolution",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/shipments/{shipment_id}",
+    "operation_id": "getMeShipment",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/me/subscriptions/{subscription_id}",
+    "operation_id": "updateMeSubscription",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/subscriptions/{subscription_id}/payment-retries",
+    "operation_id": "listMeSubscriptionPaymentRetries",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/partner-app-installs",
+    "operation_id": "listMerchantPartnerAppInstalls",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/partner-app-installs/{partner_app_install_id}/revoke",
+    "operation_id": "revokeMerchantPartnerAppInstall",
     "classification": "resource"
   }
 ]

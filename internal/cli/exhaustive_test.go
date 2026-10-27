@@ -1619,9 +1619,6 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 	t.Helper()
 	wantMethod := command.Method
 	wantPath := command.APIPath
-	if command.PreferredAPIPath != "" {
-		wantPath = command.PreferredAPIPath
-	}
 	if command.CanonicalName == "api" {
 		wantMethod = http.MethodPost
 		wantPath = "/v1/payment-intents"
@@ -1775,6 +1772,8 @@ func exhaustiveArgumentValues(argument Arg) []string {
 		value = "test-cards"
 	case "amount":
 		value = "2500"
+	case "expected_version":
+		value = "3"
 	case "currency":
 		value = "USD"
 	case "email", "recipient_email", "support_email":

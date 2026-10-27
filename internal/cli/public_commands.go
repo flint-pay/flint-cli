@@ -253,6 +253,7 @@ var publicResourceIDPrefixes = map[string]string{
 	"corrects_return_resolution_id":      "retres_",
 	"customer_address_id":                "caddr_",
 	"customer_deletion_request_id":       "cdel_",
+	"custom_domain_id":                   "cdom_",
 	"customer_id":                        "cus_",
 	"customer_session_id":                "cses_",
 	"customer_verification_id":           "cver_",
