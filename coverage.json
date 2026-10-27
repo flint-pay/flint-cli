@@ -3379,24 +3379,6 @@
   },
   {
     "method": "POST",
-    "path": "/v1/orders/{order_id}/payment-intents/{payment_intent_id}/cancel",
-    "operation_id": "cancelOrderPayment",
-    "classification": "resource",
-    "commands": [
-      "orders.payment-intents.cancel"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/orders/{order_id}/payment-intents/{payment_intent_id}/capture",
-    "operation_id": "captureOrderPayment",
-    "classification": "resource",
-    "commands": [
-      "orders.payment-intents.capture"
-    ]
-  },
-  {
-    "method": "POST",
     "path": "/v1/orders/{order_id}/send-receipt",
     "operation_id": "sendOrderReceipt",
     "classification": "resource",
