@@ -398,7 +398,7 @@ func (a *App) printCommandHelp(cmd *Command) {
 	if cmd.Supports.JQ {
 		capabilities = append(capabilities, "--jq EXPR")
 	}
-	if !cmd.Local || cmd.CanonicalName == "auth.import" || cmd.CanonicalName == "auth.login" || cmd.CanonicalName == "auth.reauth" || strings.HasPrefix(cmd.CanonicalName, "context.") || cmd.CanonicalName == "auth.logout" || cmd.CanonicalName == "config.validate" || cmd.CanonicalName == "doctor" || cmd.CanonicalName == "upgrade" || cmd.CanonicalName == "init" || cmd.CanonicalName == "signup" || cmd.CanonicalName == "mcp.serve" || cmd.CanonicalName == "help.search" {
+	if !cmd.Local || cmd.CanonicalName == "auth.import" || cmd.CanonicalName == "auth.token" || cmd.CanonicalName == "auth.login" || cmd.CanonicalName == "auth.reauth" || strings.HasPrefix(cmd.CanonicalName, "context.") || cmd.CanonicalName == "auth.logout" || cmd.CanonicalName == "config.validate" || cmd.CanonicalName == "doctor" || cmd.CanonicalName == "upgrade" || cmd.CanonicalName == "init" || cmd.CanonicalName == "signup" || cmd.CanonicalName == "mcp.serve" || cmd.CanonicalName == "help.search" {
 		capabilities = append(capabilities, "--timeout DURATION")
 	}
 	if cmd.Stream || cmd.Supports.Pagination || cmd.Supports.WaitFor || cmd.CanonicalName == "api" || cmd.CanonicalName == "upgrade" {

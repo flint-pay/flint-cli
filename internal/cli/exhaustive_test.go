@@ -1291,6 +1291,9 @@ func TestEveryLocalCommandExecutes(t *testing.T) {
 			case "auth.reauth":
 				TestContextReauthorization(t)
 				return
+			case "auth.token":
+				TestAuthTokenOAuthRefresh(t)
+				return
 			}
 			if command.CanonicalName == "auth.login" {
 				TestBrowserLoginSuccess(t)

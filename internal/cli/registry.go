@@ -79,7 +79,7 @@ func newRegistry(includeAPI bool) *Registry {
 		}
 		c.Supports.JSONOutput = true
 		c.Supports.NoInput = true
-		transforms := !c.Stream && c.CanonicalName != "mcp.serve"
+		transforms := !c.Stream && c.CanonicalName != "mcp.serve" && c.CanonicalName != "auth.token"
 		c.Supports.Field = transforms
 		c.Supports.Select = transforms
 		c.Supports.JQ = transforms
@@ -218,6 +218,7 @@ func curatedCommandDefinitions() []*Command {
 		alias(&Command{Name: "auth.reauth", Path: pathWithFlint("auth", "reauth"), Description: "Change authorized contexts or add scopes in the browser", Local: true, MCPHidden: true, Arguments: []Arg{{Name: "scope", Flag: "--scope", Type: "string", Repeat: true, Description: "Add a public API scope to the active context"}, {Name: "no_open", Flag: "--no-open", Type: "boolean"}}, Examples: ex("flint reauth", "flint reauth --scope commerce.subscriptions.read")}, "reauth"),
 		{Name: "context.list", Path: pathWithFlint("context", "list"), Description: "List authorized contexts and the active selection", Local: true, MCPHidden: true, Examples: ex("flint context list")},
 		{Name: "context.switch", Path: pathWithFlint("context", "switch"), Description: "Choose the active merchant and environment", Local: true, MCPHidden: true, Arguments: []Arg{{Name: "context_id", Type: "string", Positional: 1}}, Examples: ex("flint context switch", "flint context switch ctx_123", "flint context switch ctx_live --live")},
+		{Name: "auth.token", Path: pathWithFlint("auth", "token"), Description: "Export an OAuth or workload identity access token as JSON", Local: true, MCPHidden: true, Examples: ex("flint auth token --output json")},
 		{Name: "auth.import", Path: pathWithFlint("auth", "import"), Description: "Manually import and validate a Flint API key", Local: true, MCPHidden: true, Arguments: []Arg{{Name: "stdin", Flag: "--stdin", Type: "boolean", Description: "Read the key from stdin"}}, Examples: ex("flint auth import --stdin < token.txt")},
 		alias(apiCommand("auth.status", "Show the active credential context", "GET", "/v1/developer/auth-context", "getDeveloperAuthContext", "", "DeveloperAuthContextResponse", nil, false, false, false, true, "flint auth status --output json"), "whoami"),
 		alias(&Command{Name: "auth.logout", Path: pathWithFlint("auth", "logout"), Description: "Revoke the active OAuth session and remove the profile credential", Local: true, Destructive: true, Examples: ex("flint auth logout --confirm")}, "logout"),

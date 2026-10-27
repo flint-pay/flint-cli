@@ -2,6 +2,11 @@ name: CLI Sandbox Check
 
 on:
   workflow_dispatch:
+    inputs:
+      auth-context-only:
+        description: Read the sandbox identity without creating test fixtures
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -20,7 +25,27 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
+      - name: Identify the configured sandbox
+        run: |
+          python3 - <<'PYTHON'
+          import json
+          import os
+          import urllib.request
+          with open("internal/spec/openapi.json", encoding="utf-8") as spec:
+              api_version = json.load(spec)["x-flint-api-version"]
+          request = urllib.request.Request(
+              os.environ["FLINT_BASE_URL"] + "/v1/developer/auth-context",
+              headers={"Authorization": "Bearer " + os.environ["FLINT_API_KEY"], "Flint-Version": api_version},
+          )
+          with urllib.request.urlopen(request, timeout=15) as response:
+              context = json.load(response)["data"]
+          identity = {key: context.get(key) for key in ("merchant_id", "sandbox_id", "environment", "auth_type")}
+          if identity["environment"] not in ("sandbox", "test") or not identity["merchant_id"] or not identity["sandbox_id"]:
+              raise SystemExit("A configured staging sandbox identity is required.")
+          print(json.dumps(identity))
+          PYTHON
       - name: Inspect stream response
+        if: ${{ !inputs.auth-context-only }}
         run: |
           python3 - <<'PYTHON'
           import json
@@ -46,6 +71,7 @@ jobs:
               print("Stream transport failed before response headers.")
           PYTHON
       - name: Check sandbox listener
+        if: ${{ !inputs.auth-context-only }}
         run: |
           go build -trimpath -buildvcs=false -o "$RUNNER_TEMP/flint" ./cmd/flint
           FLINT_BIN="$RUNNER_TEMP/flint" bash scripts/test-sandbox-listener.sh
