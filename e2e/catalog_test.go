@@ -373,6 +373,7 @@ func builtArgumentValues(argument cli.Arg) []string {
 			"email":                "dev@example.com",
 			"enabled_event":        "payment_intent.succeeded",
 			"event_type":           "payment_intent.succeeded",
+			"expected_version":     "3",
 			"input":                "-",
 			"item_name":            "Test item",
 			"method":               "POST",

@@ -135,7 +135,7 @@ func TestVerifiedMCPPreservesFlagLikeValues(t *testing.T) {
 	a, _, _ := testApp(t, "")
 	for _, name := range []string{"--help", "--live", "--", "--name=value"} {
 		response := a.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{
-			"name": "organizations.create", "arguments": map[string]any{"name": name, "_flint": map[string]any{"dry_run": "client"}},
+			"name": "organizations.create", "arguments": map[string]any{"name": name, "parent_organization_id": "org_parent", "_flint": map[string]any{"dry_run": "client"}},
 		}}, mcpAllToolsOptions(t))
 		if got, _ := lookupPath(response, "result.structuredContent.data.body.name"); got != name {
 			t.Fatalf("name=%q response=%v", name, response)

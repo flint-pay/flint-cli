@@ -19,7 +19,6 @@ import (
 type preparedRequest struct {
 	Method         string
 	Path           string
-	FallbackPath   string
 	Body           []byte
 	BodyValue      map[string]any
 	IdempotencyKey string
@@ -66,9 +65,6 @@ func requestIdempotencyKey(cmd *Command, opts Options) (string, *CLIError) {
 
 func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, resolved ResolvedConfig, key, baseURL string) (req preparedRequest, requestErr *CLIError) {
 	req = preparedRequest{Method: cmd.Method, Path: cmd.APIPath}
-	if cmd.PreferredAPIPath != "" {
-		req.Path, req.FallbackPath = cmd.PreferredAPIPath, cmd.APIPath
-	}
 	req.IdempotencyKey, requestErr = requestIdempotencyKey(cmd, opts)
 	if requestErr != nil {
 		return req, requestErr
@@ -118,7 +114,6 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 			}
 			if arg.Positional > 0 {
 				req.Path = strings.Replace(req.Path, "{"+arg.Name+"}", url.PathEscape(value), 1)
-				req.FallbackPath = strings.Replace(req.FallbackPath, "{"+arg.Name+"}", url.PathEscape(value), 1)
 			}
 			if arg.Query != "" {
 				continue
@@ -233,11 +228,6 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		var e *CLIError
 		if req.Path, e = withRequestQuery(req.Path, query); e != nil {
 			return req, e
-		}
-		if req.FallbackPath != "" {
-			if req.FallbackPath, e = withRequestQuery(req.FallbackPath, query); e != nil {
-				return req, e
-			}
 		}
 	}
 	// Public API handlers with request schemas decode JSON even when every field
