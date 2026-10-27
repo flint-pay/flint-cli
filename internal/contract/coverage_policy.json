@@ -1653,18 +1653,6 @@
     "classification": "resource"
   },
   {
-    "method": "POST",
-    "path": "/v1/orders/{order_id}/payment-intents/{payment_intent_id}/cancel",
-    "operation_id": "cancelOrderPayment",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/orders/{order_id}/payment-intents/{payment_intent_id}/capture",
-    "operation_id": "captureOrderPayment",
-    "classification": "resource"
-  },
-  {
     "method": "GET",
     "path": "/v1/organizations",
     "operation_id": "listOrganizations",
