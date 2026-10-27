@@ -59,6 +59,8 @@ Browser login grants baseline permissions for common development workflows. Some
 
 Access tokens refresh automatically as needed. `flint auth logout --confirm` revokes the OAuth session before removing its local credentials. If the server does not confirm revocation, logout reports failure and retains the credentials for retry. Imported API-key logout still removes only the local key.
 
+To pass a short-lived bearer token to another local tool, run `flint auth token --output json`. The flat JSON contains `access_token`, `token_type` (`Bearer`), and `expires_at` (RFC3339) when the expiry is known. Saved OAuth sessions refresh before export; configured workload identities exchange their OIDC token. The command validates the active context, merchant and sandbox guards, and live-mode acknowledgement before exporting. Imported and environment API keys fail with `API_KEY_NOT_EXPORTABLE`. Other session token types cannot be exported. Treat the output as a secret and never write it to logs. Token export is unavailable through MCP.
+
 `flint login` is a shortcut for `flint auth login`. Related shortcuts: `flint logout` for `flint auth logout`, and `flint whoami` for `flint auth status`.
 
 ### Sessions and contexts

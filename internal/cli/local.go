@@ -38,6 +38,8 @@ func (a *App) runLocal(cmd *Command, opts Options) int {
 		return a.localContext(cmd, opts)
 	case "auth.login", "auth.reauth":
 		return a.localAuthLogin(cmd, opts)
+	case "auth.token":
+		return a.localAuthToken(cmd, opts)
 	case "auth.import":
 		return a.localAuthImport(cmd, opts)
 	case "auth.logout":
