@@ -1,6 +1,13 @@
-# Migrating to Flint CLI 0.14.1
+# Migrating to Flint CLI 0.14.2
 
-This release adds API key access flags. Existing commands and `--input` bodies keep working. 0.14.0 was not released: its npm wrapper package never published, so install 0.14.1.
+This release adds API key access flags. Existing commands and `--input` bodies keep working. 0.14.0 was not released: its npm wrapper package never published, so install 0.14.2.
+
+## 0.14.2 fixes
+
+0.14.2 needs no changes to commands or scripts.
+
+- `flint listen` forwards and prints events from current Flint servers again. They send each event as the delivery envelope (`webhook_event_id`, `event_type`, `payload_version`, `data`, and so on) without a `payload` field, so 0.13.0 and 0.14.1 withheld every event, even for a full-access key. The listener now forwards that envelope, the same body a webhook delivery carries, and still reads `payload` from older servers.
+- Human output shows future timestamps as `in 8d` instead of `8d ago`, for example a dispute's evidence deadline.
 
 ## API key access flags
 
