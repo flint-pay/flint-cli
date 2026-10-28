@@ -146,6 +146,9 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 			body["type"] = "quick_pay"
 		}
 	}
+	if e := selectRequestUnionTags(cmd, opts, body); e != nil {
+		return req, e
+	}
 	query := url.Values{}
 	for _, arg := range cmd.Arguments {
 		if arg.Query == "" {
@@ -260,6 +263,73 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		req.BodyValue = body
 	}
 	return req, nil
+}
+
+// selectRequestUnionTags fills the discriminator that a convenience flag
+// implies. The public contract requires an explicit tag on every union
+// request body; a tag already present in --input is kept, so JSON input must
+// still satisfy the contract on its own.
+func selectRequestUnionTags(cmd *Command, opts Options, body map[string]any) *CLIError {
+	flagged := func(names ...string) bool {
+		for _, name := range names {
+			if len(opts.Raw[name]) > 0 {
+				return true
+			}
+		}
+		return false
+	}
+	switch cmd.CanonicalName {
+	case "payment-links.create":
+		if !flagged("item-name", "amount", "currency") {
+			return nil
+		}
+		items, _ := body["line_items"].([]any)
+		if len(items) == 0 {
+			return nil
+		}
+		if item, ok := items[0].(map[string]any); ok {
+			if _, hasType := item["type"]; !hasType {
+				item["type"] = "custom_fixed"
+			}
+		}
+	case "payment-intents.confirm":
+		credentials := map[string]string{
+			"confirmation-token":   "stripe_confirmation_token",
+			"payment-source-token": "token",
+			"payment-method":       "payment_method",
+		}
+		var selected []string
+		for _, name := range []string{"confirmation-token", "payment-source-token", "payment-method"} {
+			if flagged(name) {
+				selected = append(selected, name)
+			}
+		}
+		if len(selected) == 0 {
+			// Without a credential, confirm continues with the attached payment
+			// source, such as after the buyer completes current_payment_action.
+			if _, present := body["credential_type"]; !present && opts.Input == "" {
+				body["credential_type"] = "attached"
+			}
+			return nil
+		}
+		if len(selected) > 1 {
+			return usageError("CONFLICTING_ARGUMENTS", "Use only one of --confirmation-token, --payment-source-token, or --payment-method.", strings.ReplaceAll(selected[1], "-", "_"))
+		}
+		credentialType := credentials[selected[0]]
+		if existing, present := body["credential_type"]; present && existing != credentialType {
+			return usageError("CONFLICTING_ARGUMENTS", fmt.Sprintf("--%s requires credential_type %s.", selected[0], credentialType), "credential_type")
+		}
+		body["credential_type"] = credentialType
+	case "invoices.create":
+		if !flagged("order") {
+			return nil
+		}
+		if existing, present := body["type"]; present && existing != "order" {
+			return usageError("CONFLICTING_ARGUMENTS", "--order requires type order.", "type")
+		}
+		body["type"] = "order"
+	}
+	return nil
 }
 
 func withRequestQuery(path string, query url.Values) (string, *CLIError) {
@@ -570,7 +640,7 @@ func (a *App) prepareOrderPayment(ctx context.Context, body map[string]any, cmd 
 		if !strings.HasPrefix(intentID, "pi_") {
 			return usageError("INVALID_PAYMENT_INTENT_ID", "--payment-source-token map keys must be payment intent IDs.", "payment_source_token")
 		}
-		selections = append(selections, map[string]any{"payment_intent_id": intentID, "token": token})
+		selections = append(selections, map[string]any{"credential_type": "token", "payment_intent_id": intentID, "token": token})
 	}
 	body["payment_intents"] = selections
 	return nil

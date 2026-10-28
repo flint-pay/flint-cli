@@ -46,7 +46,7 @@ func TestMissingScopeRemediationUsesCredentialSourceAndProfile(t *testing.T) {
 		for _, output := range []string{"human", "json"} {
 			t.Run(source+"/"+output, func(t *testing.T) {
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path != "/v1/developer/auth-context" {
+					if r.URL.Path != "/v1/auth-context" {
 						t.Errorf("unauthorized resource request: %s", r.URL.Path)
 					}
 					w.Header().Set("Content-Type", "application/json")

@@ -39,7 +39,7 @@ func TestOAuthCommandLockAndRefreshBudgets(t *testing.T) {
 				return nil, r.Context().Err()
 			}
 			writeTestTokens(w, "new-access", "new-refresh")
-		case "/v1/developer/auth-context":
+		case "/v1/auth-context":
 			fmt.Fprint(w, oauthAuthJSON("sandbox"))
 		default:
 			t.Errorf("unexpected request: %s", r.URL.Path)
@@ -107,7 +107,7 @@ func TestOAuthCommandRetainsAPIRequestTimeout(t *testing.T) {
 	installTestOAuth(t, app, testOAuthCredential(t, "https://api.example.test", time.Now().Add(time.Hour)))
 	requestCanceled := false
 	app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(r *http.Request) (*http.Response, error) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			w := httptest.NewRecorder()
 			fmt.Fprint(w, oauthAuthJSON("sandbox"))
 			return w.Result(), nil

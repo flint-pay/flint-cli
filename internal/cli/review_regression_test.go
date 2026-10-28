@@ -14,7 +14,7 @@ import (
 func TestReviewRawAPIQueryFlagsPreserveFilters(t *testing.T) {
 	var queries []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			io.WriteString(w, authContextJSON("sandbox"))
 			return
 		}
@@ -84,7 +84,7 @@ func TestReviewHelpFalseRunsCommand(t *testing.T) {
 
 func TestReviewEmptyAllPagesRemainsArray(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			io.WriteString(w, authContextJSON("sandbox"))
 			return
 		}
@@ -119,7 +119,7 @@ func TestReviewHumanOutputEmptyMetadataKeys(t *testing.T) {
 func TestReviewLargeIntegersSurviveOutput(t *testing.T) {
 	const amount = "9007199254740993"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			io.WriteString(w, authContextJSON("sandbox"))
 			return
 		}

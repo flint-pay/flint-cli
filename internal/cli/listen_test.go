@@ -157,7 +157,7 @@ func TestListenMaxEventsCountsWithheldRecords(t *testing.T) {
 	const withheldID = "whev_01ABCDEFGHIJKLMNOPQRSTUVWX"
 	streamClosed := make(chan struct{})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
@@ -201,7 +201,7 @@ func TestListenReconnectsWithLastEventID(t *testing.T) {
 
 	connections := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
@@ -249,7 +249,7 @@ func TestListenMaxEventsStopsAnOpenStream(t *testing.T) {
 	defer local.Close()
 	streamClosed := make(chan struct{})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
@@ -289,7 +289,7 @@ func TestListenReconnectsAfterTransientStreamReadError(t *testing.T) {
 	streamCalls := 0
 	lastEventIDs := []string{}
 	transport := listenRoundTripFunc(func(req *http.Request) (*http.Response, error) {
-		if req.URL.Path == "/v1/developer/auth-context" {
+		if req.URL.Path == "/v1/auth-context" {
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     http.Header{"Content-Type": []string{"application/json"}},
@@ -338,7 +338,7 @@ func TestListenReconnectsAfterTransientStreamReadError(t *testing.T) {
 
 func TestListenTimeoutBoundsStreamResponseHeaders(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
@@ -404,7 +404,7 @@ func TestListenReconnectsWhenStreamGoesIdle(t *testing.T) {
 func TestListenReportsCursorGapAndUsesResumeCursor(t *testing.T) {
 	const resumeID = "whev_01ABCDEFGHIJKLMNOPQRSTUVWX"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
@@ -529,7 +529,7 @@ func listenAPI(t *testing.T, stream func(w http.ResponseWriter, r *http.Request,
 	t.Helper()
 	var connections atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return

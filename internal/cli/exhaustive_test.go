@@ -302,7 +302,7 @@ func TestEveryAliasExecutesLikeItsCanonicalCommand(t *testing.T) {
 			t.Run(aliasName, func(t *testing.T) {
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 					w.Header().Set("Content-Type", "application/json")
-					if request.URL.Path == "/v1/developer/auth-context" {
+					if request.URL.Path == "/v1/auth-context" {
 						fmt.Fprint(w, exhaustiveAuthContextJSON("sandbox"))
 						return
 					}
@@ -703,7 +703,7 @@ func TestExpandAndOpenFlagsExecuteEndToEnd(t *testing.T) {
 		expand := ""
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			if request.URL.Path == "/v1/developer/auth-context" {
+			if request.URL.Path == "/v1/auth-context" {
 				fmt.Fprint(w, exhaustiveAuthContextJSON("sandbox"))
 				return
 			}
@@ -724,7 +724,7 @@ func TestExpandAndOpenFlagsExecuteEndToEnd(t *testing.T) {
 	t.Run("open without TTY", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			if request.URL.Path == "/v1/developer/auth-context" {
+			if request.URL.Path == "/v1/auth-context" {
 				fmt.Fprint(w, exhaustiveAuthContextJSON("sandbox"))
 				return
 			}
@@ -783,7 +783,7 @@ func TestProgressAndQuietFlagBehavior(t *testing.T) {
 func TestDebugFlagPrintsMetadataWithoutCredential(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if request.URL.Path == "/v1/developer/auth-context" {
+		if request.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, exhaustiveAuthContextJSON("sandbox"))
 			return
 		}
@@ -883,7 +883,7 @@ func TestInputFlagReadsAFile(t *testing.T) {
 	var body map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if request.URL.Path == "/v1/developer/auth-context" {
+		if request.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, exhaustiveAuthContextJSON("sandbox"))
 			return
 		}
@@ -907,7 +907,7 @@ func TestListenExecutesEveryDeclaredArgument(t *testing.T) {
 	const cursor = "whev_01ABCDEFGHIJKLMNOPQRSTUVWX"
 	var eventType, lastEventID, cursorQuery string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		if request.URL.Path == "/v1/developer/auth-context" {
+		if request.URL.Path == "/v1/auth-context" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, exhaustiveAuthContextJSON("sandbox"))
 			return
@@ -971,7 +971,7 @@ func TestEveryRemoteCommandBuildsAndExecutesARequest(t *testing.T) {
 			var captured *exhaustiveHTTPRequest
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				if request.URL.Path == "/v1/developer/auth-context" {
+				if request.URL.Path == "/v1/auth-context" {
 					fmt.Fprint(w, exhaustiveAuthContextJSON(environment))
 					return
 				}
@@ -1099,7 +1099,7 @@ func TestEveryDestructiveMutationExecutesPreviewWithoutMutation(t *testing.T) {
 			}
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				if request.URL.Path == "/v1/developer/auth-context" {
+				if request.URL.Path == "/v1/auth-context" {
 					fmt.Fprint(w, exhaustiveAuthContextJSON(environment))
 					return
 				}
@@ -1139,7 +1139,7 @@ func TestEveryDestructiveMutationExecutesPreviewWithoutMutation(t *testing.T) {
 		endpointCalls := 0
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			if request.URL.Path == "/v1/developer/auth-context" {
+			if request.URL.Path == "/v1/auth-context" {
 				fmt.Fprint(w, exhaustiveAuthContextJSON("sandbox"))
 				return
 			}
@@ -1171,7 +1171,7 @@ func TestEveryWaitCapableCommandExecutesMatchingWait(t *testing.T) {
 			}
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				if request.URL.Path == "/v1/developer/auth-context" {
+				if request.URL.Path == "/v1/auth-context" {
 					fmt.Fprint(w, exhaustiveAuthContextJSON(environment))
 					return
 				}
@@ -1213,7 +1213,7 @@ func TestEveryPaginatedCommandExecutesAllPages(t *testing.T) {
 			}
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				if request.URL.Path == "/v1/developer/auth-context" {
+				if request.URL.Path == "/v1/auth-context" {
 					fmt.Fprint(w, exhaustiveAuthContextJSON(environment))
 					return
 				}
@@ -1316,7 +1316,7 @@ func TestEveryLocalCommandExecutes(t *testing.T) {
 					return
 				}
 				w.Header().Set("Content-Type", "application/json")
-				if request.URL.Path != "/v1/developer/auth-context" {
+				if request.URL.Path != "/v1/auth-context" {
 					t.Errorf("unexpected local-command API request: %s %s", request.Method, request.URL.Path)
 				}
 				fmt.Fprint(w, exhaustiveAuthContextJSON("sandbox"))
@@ -1556,7 +1556,12 @@ func historyReferenceOptions(t *testing.T, registry *Registry, command *Command,
 		delete(options.Raw, "transaction-purpose")
 	}
 	if command.CanonicalName == "payment-intents.confirm" {
+		// A credential flag selects its own credential_type; otherwise confirm
+		// continues with the attached payment source.
 		options.Input = "{}"
+		if argument.Positional > 0 {
+			options.Input = `{"credential_type":"attached"}`
+		}
 	}
 	return options
 }

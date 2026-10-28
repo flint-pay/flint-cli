@@ -326,7 +326,7 @@ func TestAllPaginationUsesTimeoutPerRequest(t *testing.T) {
 	pages := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
@@ -354,7 +354,7 @@ func TestRawAPIPaginationUsesDocumentedRouteAndWritesEveryPage(t *testing.T) {
 	pages := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
@@ -407,7 +407,7 @@ func TestNestedPaymentLinkFlagsBuildOneLineItem(t *testing.T) {
 	}
 	item := lineItems[0].(map[string]any)
 	money := item["unit_price_money"].(map[string]any)
-	if item["name"] != "T-shirt" || money["amount"] != float64(2500) || money["currency"] != "USD" {
+	if item["type"] != "custom_fixed" || item["name"] != "T-shirt" || money["amount"] != float64(2500) || money["currency"] != "USD" {
 		t.Fatalf("item = %#v", item)
 	}
 }
@@ -417,7 +417,7 @@ func TestOrderPaymentBareTokenResolvesSingleAwaitingIntent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case r.URL.Path == "/v1/developer/auth-context":
+		case r.URL.Path == "/v1/auth-context":
 			fmt.Fprint(w, authContextJSON("sandbox"))
 		case r.Method == http.MethodGet && r.URL.Path == "/v1/orders/ord_123":
 			if r.URL.Query().Get("expand") != "payment_intents" {
@@ -445,7 +445,7 @@ func TestOrderPaymentBareTokenResolvesSingleAwaitingIntent(t *testing.T) {
 		t.Fatalf("paid body = %#v", paid)
 	}
 	selection := intents[0].(map[string]any)
-	if selection["payment_intent_id"] != "pi_ready" || selection["token"] != "pm_card_visa" {
+	if selection["credential_type"] != "token" || selection["payment_intent_id"] != "pi_ready" || selection["token"] != "pm_card_visa" {
 		t.Fatalf("selection = %#v", selection)
 	}
 }
@@ -469,7 +469,7 @@ func TestRelativeTimesFlagSuggestionsAndDebugMetadata(t *testing.T) {
 	if cliErr == nil || !strings.Contains(fmt.Sprint(cliErr.Details), "--output") {
 		t.Fatalf("flag suggestion error = %#v", cliErr)
 	}
-	if !isSensitivePath("/v1/api-keys") || !isSensitivePath("/v1/developer/sandboxes/test_123/test-key") || isSensitivePath("/v1/customers") {
+	if !isSensitivePath("/v1/api-keys") || !isSensitivePath("/v1/sandboxes/test_123/test-key") || isSensitivePath("/v1/customers") {
 		t.Fatal("sensitive path classification is incorrect")
 	}
 	var debug strings.Builder
@@ -485,7 +485,7 @@ func TestRelativeTimesFlagSuggestionsAndDebugMetadata(t *testing.T) {
 func TestPaginationRejectsRepeatedTokens(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
@@ -505,7 +505,7 @@ func TestDurationBoundedListenLimitsInFlightRequest(t *testing.T) {
 	requestCanceled := make(chan struct{})
 	app, stdout, stderr := testApp(t, "https://api.example.test")
 	app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(r *http.Request) (*http.Response, error) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(authContextJSON("sandbox")))}, nil
 		}
 		// Check the request's bound directly, independent of scheduler delays.
@@ -825,7 +825,7 @@ func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("write fa
 func TestBoundedListenReportsOutputWriteFailure(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}

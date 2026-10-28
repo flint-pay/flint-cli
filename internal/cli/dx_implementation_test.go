@@ -212,7 +212,7 @@ func TestDXTimesAndNullWait(t *testing.T) {
 		t.Fatalf("ok=%v observed=%v", ok, observed)
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
@@ -315,7 +315,7 @@ func TestDXPaginationLimitAndHistory(t *testing.T) {
 	}{{2, 1, ""}, {3, 1, "p2"}, {5, 2, ""}, {6, 2, "p3"}, {8, 3, ""}} {
 		calls := 0
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/v1/developer/auth-context" {
+			if r.URL.Path == "/v1/auth-context" {
 				fmt.Fprint(w, authContextJSON("sandbox"))
 				return
 			}
@@ -417,7 +417,7 @@ func TestDXAuthContextCache(t *testing.T) {
 	authCalls := 0
 	status := 200
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			authCalls++
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
@@ -488,7 +488,7 @@ func TestDXLoginNoWaitResume(t *testing.T) {
 		case loginTokenPath:
 			polls++
 			writeTestTokens(w, testOAuthAccess, testOAuthRefresh)
-		case "/v1/developer/auth-context":
+		case "/v1/auth-context":
 			fmt.Fprint(w, oauthAuthJSON("sandbox"))
 		default:
 			t.Error(r.URL.Path)
@@ -684,7 +684,7 @@ func TestDXPendingReplacementLoginWinsOverValidSession(t *testing.T) {
 		case loginTokenPath:
 			polls++
 			writeTestTokens(w, "replacement-access", "replacement-refresh")
-		case "/v1/developer/auth-context":
+		case "/v1/auth-context":
 			fmt.Fprint(w, oauthAuthJSON("sandbox"))
 		case oauthRevokePath:
 		default:

@@ -182,7 +182,7 @@
   {
     "method": "GET",
     "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections/{delivery_selection_id}",
-    "operation_id": "getCheckoutSessionDeliverySelectionHistory",
+    "operation_id": "getCheckoutSessionDeliverySelection",
     "classification": "resource"
   },
   {
@@ -571,128 +571,128 @@
   },
   {
     "method": "POST",
-    "path": "/v1/demo-sessions/reset",
+    "path": "/v1/demo-sessions/{demo_session_id}/reset",
     "operation_id": "resetDemoSession",
     "classification": "resource"
   },
   {
     "method": "GET",
-    "path": "/v1/developer/auth-context",
-    "operation_id": "getDeveloperAuthContext",
+    "path": "/v1/auth-context",
+    "operation_id": "getAuthContext",
     "classification": "workflow"
   },
   {
     "method": "GET",
-    "path": "/v1/developer/partner/apps",
-    "operation_id": "listDeveloperPartnerApps",
+    "path": "/v1/partner-apps",
+    "operation_id": "listPartnerApps",
     "classification": "resource"
   },
   {
     "method": "POST",
-    "path": "/v1/developer/partner/apps",
-    "operation_id": "createDeveloperPartnerApp",
+    "path": "/v1/partner-apps",
+    "operation_id": "createPartnerApp",
     "classification": "resource"
   },
   {
     "method": "GET",
-    "path": "/v1/developer/partner/apps/{partner_app_id}",
-    "operation_id": "getDeveloperPartnerApp",
+    "path": "/v1/partner-apps/{partner_app_id}",
+    "operation_id": "getPartnerApp",
     "classification": "resource"
   },
   {
     "method": "PATCH",
-    "path": "/v1/developer/partner/apps/{partner_app_id}",
-    "operation_id": "updateDeveloperPartnerApp",
+    "path": "/v1/partner-apps/{partner_app_id}",
+    "operation_id": "updatePartnerApp",
     "classification": "resource"
   },
   {
     "method": "GET",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/credentials",
-    "operation_id": "listDeveloperPartnerAppCredentials",
+    "path": "/v1/partner-apps/{partner_app_id}/credentials",
+    "operation_id": "listPartnerAppCredentials",
     "classification": "resource"
   },
   {
     "method": "POST",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/credentials",
-    "operation_id": "createDeveloperPartnerAppCredential",
+    "path": "/v1/partner-apps/{partner_app_id}/credentials",
+    "operation_id": "createPartnerAppCredential",
     "classification": "resource"
   },
   {
     "method": "DELETE",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/credentials/{partner_app_credential_id}",
-    "operation_id": "deleteDeveloperPartnerAppCredential",
+    "path": "/v1/partner-apps/{partner_app_id}/credentials/{partner_app_credential_id}",
+    "operation_id": "deletePartnerAppCredential",
     "classification": "resource"
   },
   {
     "method": "GET",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/credentials/{partner_app_credential_id}",
-    "operation_id": "getDeveloperPartnerAppCredential",
+    "path": "/v1/partner-apps/{partner_app_id}/credentials/{partner_app_credential_id}",
+    "operation_id": "getPartnerAppCredential",
     "classification": "resource"
   },
   {
     "method": "GET",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/installs",
-    "operation_id": "listDeveloperPartnerAppInstalls",
+    "path": "/v1/partner-apps/{partner_app_id}/installs",
+    "operation_id": "listPartnerAppInstalls",
     "classification": "resource"
   },
   {
     "method": "GET",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/installs/{partner_app_install_id}",
-    "operation_id": "getDeveloperPartnerAppInstall",
+    "path": "/v1/partner-apps/{partner_app_id}/installs/{partner_app_install_id}",
+    "operation_id": "getPartnerAppInstall",
     "classification": "resource"
   },
   {
     "method": "POST",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/installs/{partner_app_install_id}/environment-grants/{environment_grant_id}/revoke",
-    "operation_id": "revokeDeveloperPartnerEnvironmentGrant",
+    "path": "/v1/partner-apps/{partner_app_id}/installs/{partner_app_install_id}/environment-grants/{environment_grant_id}/revoke",
+    "operation_id": "revokePartnerAppEnvironmentGrant",
     "classification": "resource"
   },
   {
     "method": "POST",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/installs/{partner_app_install_id}/revoke",
-    "operation_id": "revokeDeveloperPartnerAppInstall",
+    "path": "/v1/partner-apps/{partner_app_id}/installs/{partner_app_install_id}/revoke",
+    "operation_id": "revokePartnerAppInstall",
     "classification": "resource"
   },
   {
     "method": "POST",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/rotate-secret",
-    "operation_id": "rotateDeveloperPartnerAppSecret",
+    "path": "/v1/partner-apps/{partner_app_id}/rotate-secret",
+    "operation_id": "rotatePartnerAppSecret",
     "classification": "resource"
   },
   {
     "method": "GET",
-    "path": "/v1/developer/resource-timelines/{resource_id}",
+    "path": "/v1/resource-timelines/{resource_id}",
     "operation_id": "getResourceTimeline",
     "classification": "workflow"
   },
   {
     "method": "GET",
-    "path": "/v1/developer/sandboxes",
-    "operation_id": "listDeveloperSandboxes",
+    "path": "/v1/sandboxes",
+    "operation_id": "listSandboxes",
     "classification": "resource"
   },
   {
     "method": "POST",
-    "path": "/v1/developer/sandboxes",
-    "operation_id": "createDeveloperSandbox",
+    "path": "/v1/sandboxes",
+    "operation_id": "createSandbox",
     "classification": "resource"
   },
   {
     "method": "GET",
-    "path": "/v1/developer/sandboxes/{sandbox_id}",
-    "operation_id": "getDeveloperSandbox",
+    "path": "/v1/sandboxes/{sandbox_id}",
+    "operation_id": "getSandbox",
     "classification": "resource"
   },
   {
     "method": "DELETE",
-    "path": "/v1/developer/sandboxes/{sandbox_id}",
-    "operation_id": "deleteDeveloperSandbox",
+    "path": "/v1/sandboxes/{sandbox_id}",
+    "operation_id": "deleteSandbox",
     "classification": "resource"
   },
   {
     "method": "POST",
-    "path": "/v1/developer/sandboxes/{sandbox_id}/reset",
-    "operation_id": "resetDeveloperSandbox",
+    "path": "/v1/sandboxes/{sandbox_id}/reset",
+    "operation_id": "resetSandbox",
     "classification": "resource"
   },
   {
@@ -1036,8 +1036,8 @@
   },
   {
     "method": "POST",
-    "path": "/v1/invoices/{invoice_id}/checkout-session",
-    "operation_id": "getOrCreateInvoiceCheckoutSession",
+    "path": "/v1/invoices/{invoice_id}/checkout-sessions",
+    "operation_id": "createInvoiceCheckoutSession",
     "classification": "resource"
   },
   {
@@ -1222,7 +1222,7 @@
   },
   {
     "method": "POST",
-    "path": "/v1/me/invoices/{invoice_id}/checkout-session",
+    "path": "/v1/me/invoices/{invoice_id}/checkout-sessions",
     "operation_id": "createMeInvoiceCheckoutSession",
     "classification": "resource"
   },
@@ -1282,8 +1282,8 @@
   },
   {
     "method": "GET",
-    "path": "/v1/me/payments",
-    "operation_id": "listMePayments",
+    "path": "/v1/me/payment-intents",
+    "operation_id": "listMePaymentIntents",
     "classification": "resource"
   },
   {
@@ -1300,7 +1300,7 @@
   },
   {
     "method": "POST",
-    "path": "/v1/me/return-resolutions/{return_resolution_id}/checkout-session",
+    "path": "/v1/me/return-resolutions/{return_resolution_id}/checkout-sessions",
     "operation_id": "createMeReturnResolutionCheckoutSession",
     "classification": "resource"
   },
@@ -2272,8 +2272,8 @@
   },
   {
     "method": "POST",
-    "path": "/v1/return-resolutions/{return_resolution_id}/checkout-session",
-    "operation_id": "getOrCreateReturnResolutionCheckoutSession",
+    "path": "/v1/return-resolutions/{return_resolution_id}/checkout-sessions",
+    "operation_id": "createReturnResolutionCheckoutSession",
     "classification": "resource"
   },
   {
@@ -3112,13 +3112,13 @@
   },
   {
     "method": "GET",
-    "path": "/v1/me/flint-wallet/payment-methods",
-    "operation_id": "listMeFlintWalletPaymentMethods",
+    "path": "/v1/me/flint-wallet/cards",
+    "operation_id": "listMeFlintWalletCards",
     "classification": "resource"
   },
   {
     "method": "POST",
-    "path": "/v1/me/flint-wallet/payment-methods/{id}/store-setups",
+    "path": "/v1/me/flint-wallet/cards/{flint_wallet_card_id}/store-setups",
     "operation_id": "createMeFlintWalletStoreSetup",
     "classification": "resource"
   },
@@ -3364,12 +3364,6 @@
   },
   {
     "method": "GET",
-    "path": "/v1/developer/partner/installs",
-    "operation_id": "listDeveloperPartnerInstalls",
-    "classification": "resource"
-  },
-  {
-    "method": "GET",
     "path": "/v1/gift-card-funding-dispositions",
     "operation_id": "listGiftCardFundingDispositions",
     "classification": "resource"
@@ -3400,13 +3394,13 @@
   },
   {
     "method": "GET",
-    "path": "/v1/developer/request-logs",
+    "path": "/v1/api-request-logs",
     "operation_id": "listAPIRequestLogs",
     "classification": "resource"
   },
   {
     "method": "GET",
-    "path": "/v1/developer/request-logs/{api_request_log_id}",
+    "path": "/v1/api-request-logs/{api_request_log_id}",
     "operation_id": "getAPIRequestLog",
     "classification": "resource"
   },
@@ -3610,13 +3604,13 @@
   },
   {
     "method": "DELETE",
-    "path": "/v1/developer/partner/apps/{partner_app_id}",
-    "operation_id": "deleteDeveloperPartnerApp",
+    "path": "/v1/partner-apps/{partner_app_id}",
+    "operation_id": "deletePartnerApp",
     "classification": "resource"
   },
   {
     "method": "POST",
-    "path": "/v1/developer/sandboxes/{sandbox_id}/api-keys",
+    "path": "/v1/sandboxes/{sandbox_id}/api-keys",
     "operation_id": "createSandboxAPIKey",
     "classification": "resource"
   },
@@ -3634,8 +3628,8 @@
   },
   {
     "method": "GET",
-    "path": "/v1/me/payments/{payment_intent_id}",
-    "operation_id": "getMePayment",
+    "path": "/v1/me/payment-intents/{payment_intent_id}",
+    "operation_id": "getMePaymentIntent",
     "classification": "resource"
   },
   {
@@ -3678,6 +3672,24 @@
     "method": "POST",
     "path": "/v1/partner-app-installs/{partner_app_install_id}/revoke",
     "operation_id": "revokeMerchantPartnerAppInstall",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections",
+    "operation_id": "listCheckoutSessionDeliverySelections",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-revocations",
+    "operation_id": "listDeliveryRevocations",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/tax-connection/disconnect",
+    "operation_id": "disconnectTaxConnection",
     "classification": "resource"
   }
 ]

@@ -152,7 +152,7 @@ func TestRawMutationPaginationFailsBeforeAnyRequest(t *testing.T) {
 func TestDefaultHTTPClientReusesConnectionsAcrossAppCopies(t *testing.T) {
 	var connections atomic.Int32
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			io.WriteString(w, authContextJSON("sandbox"))
 			return
 		}

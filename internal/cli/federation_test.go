@@ -320,7 +320,7 @@ func TestFederationGuardsAnd401(t *testing.T) {
 			writeExchange(w, int(exchanges.Add(1)))
 			return
 		}
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			_, _ = io.WriteString(w, workloadAuthJSON(mode.Load().(string)))
 			return
 		}

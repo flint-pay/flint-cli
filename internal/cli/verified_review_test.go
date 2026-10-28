@@ -67,7 +67,7 @@ func TestVerifiedLocalRequestsHonorCancellation(t *testing.T) {
 			var requests atomic.Int64
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				requests.Add(1)
-				if r.URL.Path != "/v1/developer/auth-context" {
+				if r.URL.Path != "/v1/auth-context" {
 					t.Error("request continued after cancellation")
 					return
 				}
@@ -172,7 +172,7 @@ func TestVerifiedMCPCommandHelpIsStructured(t *testing.T) {
 
 func TestVerifiedCheckoutTransformsRemainVisible(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			io.WriteString(w, authContextJSON("sandbox"))
 			return
 		}

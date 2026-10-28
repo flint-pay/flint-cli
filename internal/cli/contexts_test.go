@@ -120,7 +120,7 @@ func newContextTestApp(t *testing.T) (*App, *bytes.Buffer, *bytes.Buffer, *conte
 				scopes = append(scopes, approved...)
 			}
 			_ = json.NewEncoder(w).Encode(map[string]any{"access_token": access, "refresh_token": fmt.Sprintf("refresh-%d", state.refreshes), "token_type": "Bearer", "expires_in": 3600, "scope": strings.Join(scopes, " "), "oauth_session_id": session, "context_id": id})
-		case "/v1/developer/auth-context":
+		case "/v1/auth-context":
 			if state.revokedOriginal && r.Header.Get("Authorization") == "Bearer "+testOAuthAccess {
 				w.WriteHeader(401)
 				return

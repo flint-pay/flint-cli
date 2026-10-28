@@ -14,7 +14,7 @@ func TestHistoryEnvironmentKeyOverridesSavedContext(t *testing.T) {
 	for _, savedEnvironment := range []string{"live", "sandbox"} {
 		t.Run(savedEnvironment, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path == "/v1/developer/auth-context" {
+				if r.URL.Path == "/v1/auth-context" {
 					fmt.Fprint(w, `{"data":{"environment":"sandbox","merchant_id":"mer_current","sandbox_id":"test_current"}}`)
 					return
 				}

@@ -35,7 +35,7 @@ func installTestOAuth(t *testing.T, a *App, credential oauthCredential) func() s
 }
 
 func TestOAuthManagedCommandsRefresh(t *testing.T) {
-	for _, command := range [][]string{{"auth", "status"}, {"doctor"}, {"config", "validate"}, {"api", "get", "/v1/developer/auth-context"}} {
+	for _, command := range [][]string{{"auth", "status"}, {"doctor"}, {"config", "validate"}, {"api", "get", "/v1/auth-context"}} {
 		t.Run(strings.Join(command, "-"), func(t *testing.T) {
 			var refreshes atomic.Int32
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +48,7 @@ func TestOAuthManagedCommandsRefresh(t *testing.T) {
 					}
 					refreshes.Add(1)
 					writeTestTokens(w, "new-access", "new-refresh")
-				case "/v1/developer/auth-context":
+				case "/v1/auth-context":
 					if r.Header.Get("Authorization") != "Bearer new-access" {
 						t.Error("expired token sent to API")
 					}
@@ -265,7 +265,7 @@ func TestOAuthRefreshDuringLongCommandAndNoMutationReplay(t *testing.T) {
 		case loginTokenPath:
 			refreshed.Add(1)
 			writeTestTokens(w, "new-access", "new-refresh")
-		case "/v1/developer/auth-context":
+		case "/v1/auth-context":
 			fmt.Fprint(w, oauthAuthJSON("sandbox"))
 		default:
 			writes.Add(1)
@@ -338,7 +338,7 @@ func TestOAuthScopeValidationSurvivesRetry(t *testing.T) {
 				case loginTokenPath:
 					refreshes++
 					writeTestTokens(w, "new-access", "new-refresh")
-				case "/v1/developer/auth-context":
+				case "/v1/auth-context":
 					if unavailable.Load() {
 						w.WriteHeader(http.StatusServiceUnavailable)
 						return

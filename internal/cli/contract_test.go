@@ -223,7 +223,7 @@ func TestJSONMutationRetriesWithOneIdempotencyKey(t *testing.T) {
 	var keys []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
@@ -270,7 +270,7 @@ func TestRequestsIdentifyCLIAndVersion(t *testing.T) {
 		userAgents = append(userAgents, r.UserAgent())
 		cliVersions = append(cliVersions, r.Header.Get("X-Flint-CLI-Version"))
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
@@ -296,7 +296,7 @@ func TestPaymentIntentCreateSendsRepeatablePaymentOptions(t *testing.T) {
 	var body map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
@@ -348,7 +348,7 @@ func TestPaymentIntentConfirmSendsConfirmationToken(t *testing.T) {
 	var body map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
@@ -364,7 +364,7 @@ func TestPaymentIntentConfirmSendsConfirmationToken(t *testing.T) {
 
 	app, stdout, stderr := testApp(t, server.URL)
 	exit := app.Run([]string{"payment-intents", "confirm", "pi_123", "--confirmation-token", "ctoken_123", "--output", "json"})
-	if exit != ExitOK || stderr.Len() != 0 || body["stripe"].(map[string]any)["confirmation_token"] != "ctoken_123" {
+	if exit != ExitOK || stderr.Len() != 0 || body["credential_type"] != "stripe_confirmation_token" || body["stripe"].(map[string]any)["confirmation_token"] != "ctoken_123" {
 		t.Fatalf("exit=%d body=%#v stdout=%s stderr=%s", exit, body, stdout, stderr)
 	}
 }
@@ -374,7 +374,7 @@ func TestPaymentIntentCancelSendsEmptyJSONObject(t *testing.T) {
 	var contentType string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
@@ -402,7 +402,7 @@ func TestLiveJSONMutationFailsClosedWithoutConfirm(t *testing.T) {
 	mutations := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("live"))
 			return
 		}
@@ -434,7 +434,7 @@ func TestSandboxDestructiveMutationUsesGenericConfirmationCode(t *testing.T) {
 	mutations := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
@@ -472,7 +472,7 @@ func TestClientDryRunPerformsNoNetworkRequest(t *testing.T) {
 func TestHistoryReferenceResolvesBeforeRequest(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
@@ -498,7 +498,7 @@ func TestHistoryReferenceResolvesBeforeRequest(t *testing.T) {
 func TestWaitBoundPrintsLastResourceAndExitSix(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
@@ -525,7 +525,7 @@ func TestWaitBoundPrintsLastResourceAndExitSix(t *testing.T) {
 func TestWaitBoundCapsTheFirstResourceRequest(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
@@ -782,7 +782,7 @@ func TestOrderPaymentIntentPermissionUsesOrderScope(t *testing.T) {
 				requests := 0
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.Header().Set("Content-Type", "application/json")
-					if r.URL.Path == "/v1/developer/auth-context" {
+					if r.URL.Path == "/v1/auth-context" {
 						fmt.Fprintf(w, `{"data":{"auth_type":"api_key","api_key_id":"key_123","merchant_id":"mer_123","sandbox_id":"test_123","environment":"sandbox","scopes":[%q]}}`, scope)
 						return
 					}
@@ -828,7 +828,7 @@ func TestCommandRejectsMissingScopesBeforeAPIRequest(t *testing.T) {
 			requests := 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				if r.URL.Path == "/v1/developer/auth-context" {
+				if r.URL.Path == "/v1/auth-context" {
 					fmt.Fprint(w, limitedAuthContextJSON("sandbox"))
 					return
 				}
@@ -866,7 +866,7 @@ func TestListenForwardsExactPayloadWithCanonicalSignatureAndCheckpoint(t *testin
 
 	var streamVersion string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
@@ -927,7 +927,7 @@ func TestListenForwardsExactPayloadWithCanonicalSignatureAndCheckpoint(t *testin
 
 func TestDurationBoundedEmptyListenExitsWithCheckpoint(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
@@ -1202,9 +1202,9 @@ func TestPayOrderActionInputAndTokenShortcut(t *testing.T) {
 	command, _ := NewRegistry().ByName("orders.pay")
 	for _, body := range []string{
 		`{"action":"pay"}`,
-		`{"action":"pay","payment_source":{"stripe":{"confirmation_token":"ctoken_test"}}}`,
-		`{"action":"confirm_payment_intents","payment_intents":[{"payment_intent_id":"pi_test"}],"completion_behavior":"partial_payment"}`,
-		`{"action":"setup","setup_payment_source":{"token":"src_test"}}`,
+		`{"action":"pay","payment_source":{"credential_type":"stripe_confirmation_token","stripe":{"confirmation_token":"ctoken_test"}}}`,
+		`{"action":"confirm_payment_intents","payment_intents":[{"credential_type":"attached","payment_intent_id":"pi_test"}],"completion_behavior":"partial_payment"}`,
+		`{"action":"setup","setup_payment_source":{"credential_type":"token","token":"src_test"}}`,
 		`{"action":"resume","order_payment_attempt_id":"opat_test"}`,
 	} {
 		t.Run(body, func(t *testing.T) {
@@ -1269,8 +1269,8 @@ func TestPayOrderMCPActionBranchesAcceptCLIArguments(t *testing.T) {
 	command, _ := NewRegistry().ByName("orders.pay")
 	for _, body := range []string{
 		`{"action":"pay"}`,
-		`{"action":"confirm_payment_intents","payment_intents":[{"payment_intent_id":"pi_test"}]}`,
-		`{"action":"setup","setup_payment_source":{"token":"src_test"}}`,
+		`{"action":"confirm_payment_intents","payment_intents":[{"credential_type":"attached","payment_intent_id":"pi_test"}]}`,
+		`{"action":"setup","setup_payment_source":{"credential_type":"token","token":"src_test"}}`,
 		`{"action":"resume","order_payment_attempt_id":"opat_test"}`,
 	} {
 		var arguments map[string]any

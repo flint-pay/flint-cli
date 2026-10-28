@@ -66,7 +66,7 @@ func TestBrowserLoginSuccess(t *testing.T) {
 				return
 			}
 			writeTestTokens(w, testOAuthAccess, testOAuthRefresh)
-		case "/v1/developer/auth-context":
+		case "/v1/auth-context":
 			if r.Header.Get("Authorization") != "Bearer "+testOAuthAccess {
 				t.Error("wrong access token")
 			}
@@ -131,7 +131,7 @@ func TestBrowserLoginRequestsBaselineAndAdditionalScopes(t *testing.T) {
 			writeTestDevice(w)
 		case loginTokenPath:
 			fmt.Fprintf(w, `{"access_token":%q,"refresh_token":%q,"token_type":"Bearer","expires_in":3600,"scope":%q,"oauth_session_id":"session_one","context_id":"ctx_a"}`, testOAuthAccess, testOAuthRefresh, strings.Join(appendUniqueStrings(append([]string(nil), initialCLIScopes...), requested), " "))
-		case "/v1/developer/auth-context":
+		case "/v1/auth-context":
 			auth := contextTestAuth("ctx_a")
 			auth.Scopes = appendUniqueStrings(append([]string(nil), initialCLIScopes...), requested)
 			_ = json.NewEncoder(w).Encode(map[string]any{"data": auth})
@@ -285,7 +285,7 @@ func TestBrowserLoginFailureRevokesOAuthGrant(t *testing.T) {
 					writeTestDevice(w)
 				case loginTokenPath:
 					writeTestTokens(w, testOAuthAccess, testOAuthRefresh)
-				case "/v1/developer/auth-context":
+				case "/v1/auth-context":
 					env := "sandbox"
 					if scenario == "environment" {
 						env = "live"
@@ -365,7 +365,7 @@ func TestSavedLoginOutput(t *testing.T) {
 				auth.OAuthSessionID = ""
 			}
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/v1/developer/auth-context" {
+				if r.URL.Path != "/v1/auth-context" {
 					t.Errorf("reused login made unexpected request: %s", r.URL.Path)
 					http.NotFound(w, r)
 					return

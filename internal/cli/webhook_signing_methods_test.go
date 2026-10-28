@@ -85,7 +85,7 @@ func testSigningMethodRequests(t *testing.T, family signingMethodFamily) {
 			var got map[string]any
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				if r.URL.Path == "/v1/developer/auth-context" {
+				if r.URL.Path == "/v1/auth-context" {
 					fmt.Fprint(w, authContextJSON("sandbox"))
 					return
 				}
@@ -224,7 +224,7 @@ func TestWebhookCreateOutputSchemaAllowsAbsentSecret(t *testing.T) {
 		body := map[string]any{"data": map[string]any{
 			"webhook_endpoint_id": "whep_test", "api_version": "default", "enabled_events": []any{"payment_intent.succeeded"},
 			"signing_methods": []any{"jwt"}, "status": "active", "url": "https://example.com/webhooks/flint", "version": float64(1),
-		}}
+		}, "request_id": "req_01J0000000000000000000000A"}
 		if withSecret {
 			body["data"].(map[string]any)["secret"] = "synthetic-shared-secret"
 			body["data"].(map[string]any)["signing_methods"] = []any{"hmac"}
@@ -261,7 +261,7 @@ func TestDeliveryRateCallbackCreateOutputSchemaAllowsAbsentSecret(t *testing.T) 
 			data["signing_methods"] = []any{"jwt", "hmac"}
 			data["secret"], data["key_id"] = "synthetic-secret", "key_synthetic"
 		}
-		if err := compiled.Validate(map[string]any{"data": data}); err != nil {
+		if err := compiled.Validate(map[string]any{"data": data, "request_id": "req_01J0000000000000000000000A"}); err != nil {
 			t.Errorf("withSecret=%v: %v", withSecret, err)
 		}
 	}
@@ -271,7 +271,7 @@ func TestDeliveryRateCallbackRotateSecretRequest(t *testing.T) {
 	var method, path string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}

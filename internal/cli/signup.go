@@ -417,7 +417,7 @@ func (a *App) revokeIssuedSignupKey(baseURL, secret, apiKeyID string, opts Optio
 	cleanup.Context = context.Background()
 	apiKeyID = strings.TrimSpace(apiKeyID)
 	if apiKeyID == "" {
-		authContext, err := cleanup.doSignupRequest(baseURL, secret, http.MethodGet, "/v1/developer/auth-context", nil, "", opts)
+		authContext, err := cleanup.doSignupRequest(baseURL, secret, http.MethodGet, "/v1/auth-context", nil, "", opts)
 		if err != nil {
 			return err
 		}

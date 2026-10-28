@@ -73,6 +73,33 @@
   },
   {
     "method": "GET",
+    "path": "/v1/api-request-logs",
+    "operation_id": "listAPIRequestLogs",
+    "classification": "resource",
+    "commands": [
+      "request-logs.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/api-request-logs/{api_request_log_id}",
+    "operation_id": "getAPIRequestLog",
+    "classification": "resource",
+    "commands": [
+      "request-logs.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/auth-context",
+    "operation_id": "getAuthContext",
+    "classification": "workflow",
+    "commands": [
+      "auth.status"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/balance-transactions",
     "operation_id": "listBalanceTransactions",
     "classification": "resource",
@@ -279,6 +306,15 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections",
+    "operation_id": "listCheckoutSessionDeliverySelections",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.delivery-selections.list"
+    ]
+  },
+  {
     "method": "POST",
     "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections",
     "operation_id": "createCheckoutSessionDeliverySelection",
@@ -308,7 +344,7 @@
   {
     "method": "GET",
     "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections/{delivery_selection_id}",
-    "operation_id": "getCheckoutSessionDeliverySelectionHistory",
+    "operation_id": "getCheckoutSessionDeliverySelection",
     "classification": "resource",
     "commands": [
       "checkout-sessions.delivery-selections.get"
@@ -909,6 +945,15 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/delivery-revocations",
+    "operation_id": "listDeliveryRevocations",
+    "classification": "resource",
+    "commands": [
+      "delivery-revocations.list"
+    ]
+  },
+  {
     "method": "POST",
     "path": "/v1/delivery-revocations",
     "operation_id": "revokeDeliveryDependency",
@@ -982,236 +1027,11 @@
   },
   {
     "method": "POST",
-    "path": "/v1/demo-sessions/reset",
+    "path": "/v1/demo-sessions/{demo_session_id}/reset",
     "operation_id": "resetDemoSession",
     "classification": "resource",
     "commands": [
       "demo-sessions.reset"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/developer/auth-context",
-    "operation_id": "getDeveloperAuthContext",
-    "classification": "workflow",
-    "commands": [
-      "auth.status"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/developer/partner/apps",
-    "operation_id": "listDeveloperPartnerApps",
-    "classification": "resource",
-    "commands": [
-      "developer.partner.apps.list"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/developer/partner/apps",
-    "operation_id": "createDeveloperPartnerApp",
-    "classification": "resource",
-    "commands": [
-      "developer.partner.apps.create"
-    ]
-  },
-  {
-    "method": "DELETE",
-    "path": "/v1/developer/partner/apps/{partner_app_id}",
-    "operation_id": "deleteDeveloperPartnerApp",
-    "classification": "resource",
-    "commands": [
-      "developer.partner.apps.delete"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/developer/partner/apps/{partner_app_id}",
-    "operation_id": "getDeveloperPartnerApp",
-    "classification": "resource",
-    "commands": [
-      "developer.partner.apps.get"
-    ]
-  },
-  {
-    "method": "PATCH",
-    "path": "/v1/developer/partner/apps/{partner_app_id}",
-    "operation_id": "updateDeveloperPartnerApp",
-    "classification": "resource",
-    "commands": [
-      "developer.partner.apps.update"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/credentials",
-    "operation_id": "listDeveloperPartnerAppCredentials",
-    "classification": "resource",
-    "commands": [
-      "developer.partner.apps.credentials.list"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/credentials",
-    "operation_id": "createDeveloperPartnerAppCredential",
-    "classification": "resource",
-    "commands": [
-      "developer.partner.apps.credentials.create"
-    ]
-  },
-  {
-    "method": "DELETE",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/credentials/{partner_app_credential_id}",
-    "operation_id": "deleteDeveloperPartnerAppCredential",
-    "classification": "resource",
-    "commands": [
-      "developer.partner.apps.credentials.delete"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/credentials/{partner_app_credential_id}",
-    "operation_id": "getDeveloperPartnerAppCredential",
-    "classification": "resource",
-    "commands": [
-      "developer.partner.apps.credentials.get"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/installs",
-    "operation_id": "listDeveloperPartnerAppInstalls",
-    "classification": "resource",
-    "commands": [
-      "developer.partner.apps.installs.list"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/installs/{partner_app_install_id}",
-    "operation_id": "getDeveloperPartnerAppInstall",
-    "classification": "resource",
-    "commands": [
-      "developer.partner.apps.installs.get"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/installs/{partner_app_install_id}/environment-grants/{environment_grant_id}/revoke",
-    "operation_id": "revokeDeveloperPartnerEnvironmentGrant",
-    "classification": "resource",
-    "commands": [
-      "developer.partner.apps.installs.environment-grants.revoke"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/installs/{partner_app_install_id}/revoke",
-    "operation_id": "revokeDeveloperPartnerAppInstall",
-    "classification": "resource",
-    "commands": [
-      "developer.partner.apps.installs.revoke"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/developer/partner/apps/{partner_app_id}/rotate-secret",
-    "operation_id": "rotateDeveloperPartnerAppSecret",
-    "classification": "resource",
-    "commands": [
-      "developer.partner.apps.rotate-secret"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/developer/partner/installs",
-    "operation_id": "listDeveloperPartnerInstalls",
-    "classification": "resource",
-    "commands": [
-      "developer.partner.installs.list"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/developer/request-logs",
-    "operation_id": "listAPIRequestLogs",
-    "classification": "resource",
-    "commands": [
-      "request-logs.list"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/developer/request-logs/{api_request_log_id}",
-    "operation_id": "getAPIRequestLog",
-    "classification": "resource",
-    "commands": [
-      "request-logs.get"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/developer/resource-timelines/{resource_id}",
-    "operation_id": "getResourceTimeline",
-    "classification": "workflow",
-    "commands": [
-      "timeline"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/developer/sandboxes",
-    "operation_id": "listDeveloperSandboxes",
-    "classification": "resource",
-    "commands": [
-      "sandboxes.list"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/developer/sandboxes",
-    "operation_id": "createDeveloperSandbox",
-    "classification": "resource",
-    "commands": [
-      "sandboxes.create"
-    ]
-  },
-  {
-    "method": "DELETE",
-    "path": "/v1/developer/sandboxes/{sandbox_id}",
-    "operation_id": "deleteDeveloperSandbox",
-    "classification": "resource",
-    "commands": [
-      "sandboxes.delete"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/developer/sandboxes/{sandbox_id}",
-    "operation_id": "getDeveloperSandbox",
-    "classification": "resource",
-    "commands": [
-      "sandboxes.get"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/developer/sandboxes/{sandbox_id}/api-keys",
-    "operation_id": "createSandboxAPIKey",
-    "classification": "resource",
-    "commands": [
-      "sandboxes.api-keys.create"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/developer/sandboxes/{sandbox_id}/reset",
-    "operation_id": "resetDeveloperSandbox",
-    "classification": "resource",
-    "commands": [
-      "sandboxes.reset"
     ]
   },
   {
@@ -2137,11 +1957,11 @@
   },
   {
     "method": "POST",
-    "path": "/v1/invoices/{invoice_id}/checkout-session",
-    "operation_id": "getOrCreateInvoiceCheckoutSession",
+    "path": "/v1/invoices/{invoice_id}/checkout-sessions",
+    "operation_id": "createInvoiceCheckoutSession",
     "classification": "resource",
     "commands": [
-      "invoices.checkout-session"
+      "invoices.checkout-sessions.create"
     ]
   },
   {
@@ -2470,20 +2290,20 @@
   },
   {
     "method": "GET",
-    "path": "/v1/me/flint-wallet/payment-methods",
-    "operation_id": "listMeFlintWalletPaymentMethods",
+    "path": "/v1/me/flint-wallet/cards",
+    "operation_id": "listMeFlintWalletCards",
     "classification": "resource",
     "commands": [
-      "me.flint-wallet.payment-methods.list"
+      "me.flint-wallet.cards.list"
     ]
   },
   {
     "method": "POST",
-    "path": "/v1/me/flint-wallet/payment-methods/{id}/store-setups",
+    "path": "/v1/me/flint-wallet/cards/{flint_wallet_card_id}/store-setups",
     "operation_id": "createMeFlintWalletStoreSetup",
     "classification": "resource",
     "commands": [
-      "me.flint-wallet.payment-methods.store-setups.create"
+      "me.flint-wallet.cards.store-setups.create"
     ]
   },
   {
@@ -2578,11 +2398,11 @@
   },
   {
     "method": "POST",
-    "path": "/v1/me/invoices/{invoice_id}/checkout-session",
+    "path": "/v1/me/invoices/{invoice_id}/checkout-sessions",
     "operation_id": "createMeInvoiceCheckoutSession",
     "classification": "resource",
     "commands": [
-      "me.invoices.checkout-session.create"
+      "me.invoices.checkout-sessions.create"
     ]
   },
   {
@@ -2677,6 +2497,24 @@
   },
   {
     "method": "GET",
+    "path": "/v1/me/payment-intents",
+    "operation_id": "listMePaymentIntents",
+    "classification": "resource",
+    "commands": [
+      "me.payment-intents.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/payment-intents/{payment_intent_id}",
+    "operation_id": "getMePaymentIntent",
+    "classification": "resource",
+    "commands": [
+      "me.payment-intents.get"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/me/payment-methods",
     "operation_id": "listMePaymentMethods",
     "classification": "resource",
@@ -2709,24 +2547,6 @@
     "classification": "resource",
     "commands": [
       "me.payment-methods.get"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/me/payments",
-    "operation_id": "listMePayments",
-    "classification": "resource",
-    "commands": [
-      "me.payments.list"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/me/payments/{payment_intent_id}",
-    "operation_id": "getMePayment",
-    "classification": "resource",
-    "commands": [
-      "me.payments.get"
     ]
   },
   {
@@ -2767,11 +2587,11 @@
   },
   {
     "method": "POST",
-    "path": "/v1/me/return-resolutions/{return_resolution_id}/checkout-session",
+    "path": "/v1/me/return-resolutions/{return_resolution_id}/checkout-sessions",
     "operation_id": "createMeReturnResolutionCheckoutSession",
     "classification": "resource",
     "commands": [
-      "me.return-resolutions.checkout-session.create"
+      "me.return-resolutions.checkout-sessions.create"
     ]
   },
   {
@@ -3667,6 +3487,132 @@
   },
   {
     "method": "GET",
+    "path": "/v1/partner-apps",
+    "operation_id": "listPartnerApps",
+    "classification": "resource",
+    "commands": [
+      "partner-apps.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/partner-apps",
+    "operation_id": "createPartnerApp",
+    "classification": "resource",
+    "commands": [
+      "partner-apps.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/partner-apps/{partner_app_id}",
+    "operation_id": "deletePartnerApp",
+    "classification": "resource",
+    "commands": [
+      "partner-apps.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/partner-apps/{partner_app_id}",
+    "operation_id": "getPartnerApp",
+    "classification": "resource",
+    "commands": [
+      "partner-apps.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/partner-apps/{partner_app_id}",
+    "operation_id": "updatePartnerApp",
+    "classification": "resource",
+    "commands": [
+      "partner-apps.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/partner-apps/{partner_app_id}/credentials",
+    "operation_id": "listPartnerAppCredentials",
+    "classification": "resource",
+    "commands": [
+      "partner-apps.credentials.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/partner-apps/{partner_app_id}/credentials",
+    "operation_id": "createPartnerAppCredential",
+    "classification": "resource",
+    "commands": [
+      "partner-apps.credentials.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/partner-apps/{partner_app_id}/credentials/{partner_app_credential_id}",
+    "operation_id": "deletePartnerAppCredential",
+    "classification": "resource",
+    "commands": [
+      "partner-apps.credentials.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/partner-apps/{partner_app_id}/credentials/{partner_app_credential_id}",
+    "operation_id": "getPartnerAppCredential",
+    "classification": "resource",
+    "commands": [
+      "partner-apps.credentials.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/partner-apps/{partner_app_id}/installs",
+    "operation_id": "listPartnerAppInstalls",
+    "classification": "resource",
+    "commands": [
+      "partner-apps.installs.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/partner-apps/{partner_app_id}/installs/{partner_app_install_id}",
+    "operation_id": "getPartnerAppInstall",
+    "classification": "resource",
+    "commands": [
+      "partner-apps.installs.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/partner-apps/{partner_app_id}/installs/{partner_app_install_id}/environment-grants/{environment_grant_id}/revoke",
+    "operation_id": "revokePartnerAppEnvironmentGrant",
+    "classification": "resource",
+    "commands": [
+      "partner-apps.installs.environment-grants.revoke"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/partner-apps/{partner_app_id}/installs/{partner_app_install_id}/revoke",
+    "operation_id": "revokePartnerAppInstall",
+    "classification": "resource",
+    "commands": [
+      "partner-apps.installs.revoke"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/partner-apps/{partner_app_id}/rotate-secret",
+    "operation_id": "rotatePartnerAppSecret",
+    "classification": "resource",
+    "commands": [
+      "partner-apps.rotate-secret"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/payment-intents",
     "operation_id": "listPaymentIntents",
     "classification": "resource",
@@ -4270,6 +4216,15 @@
   },
   {
     "method": "GET",
+    "path": "/v1/resource-timelines/{resource_id}",
+    "operation_id": "getResourceTimeline",
+    "classification": "workflow",
+    "commands": [
+      "timeline"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/return-dispositions",
     "operation_id": "listReturnDispositions",
     "classification": "resource",
@@ -4522,11 +4477,11 @@
   },
   {
     "method": "POST",
-    "path": "/v1/return-resolutions/{return_resolution_id}/checkout-session",
-    "operation_id": "getOrCreateReturnResolutionCheckoutSession",
+    "path": "/v1/return-resolutions/{return_resolution_id}/checkout-sessions",
+    "operation_id": "createReturnResolutionCheckoutSession",
     "classification": "resource",
     "commands": [
-      "return-resolutions.checkout-session"
+      "return-resolutions.checkout-sessions.create"
     ]
   },
   {
@@ -4896,6 +4851,60 @@
     "classification": "resource",
     "commands": [
       "risk-rules.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/sandboxes",
+    "operation_id": "listSandboxes",
+    "classification": "resource",
+    "commands": [
+      "sandboxes.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/sandboxes",
+    "operation_id": "createSandbox",
+    "classification": "resource",
+    "commands": [
+      "sandboxes.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/sandboxes/{sandbox_id}",
+    "operation_id": "deleteSandbox",
+    "classification": "resource",
+    "commands": [
+      "sandboxes.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/sandboxes/{sandbox_id}",
+    "operation_id": "getSandbox",
+    "classification": "resource",
+    "commands": [
+      "sandboxes.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/sandboxes/{sandbox_id}/api-keys",
+    "operation_id": "createSandboxAPIKey",
+    "classification": "resource",
+    "commands": [
+      "sandboxes.api-keys.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/sandboxes/{sandbox_id}/reset",
+    "operation_id": "resetSandbox",
+    "classification": "resource",
+    "commands": [
+      "sandboxes.reset"
     ]
   },
   {
@@ -5274,6 +5283,15 @@
     "classification": "resource",
     "commands": [
       "tax-connection.connect"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/tax-connection/disconnect",
+    "operation_id": "disconnectTaxConnection",
+    "classification": "resource",
+    "commands": [
+      "tax-connection.disconnect"
     ]
   },
   {
