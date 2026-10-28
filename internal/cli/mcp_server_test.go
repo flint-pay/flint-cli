@@ -103,10 +103,11 @@ func TestMCPToolsListIsCompactAndFilterable(t *testing.T) {
 	app, _, _ := testApp(t, "")
 	tools, size := mcpListedTools(t, app, mcpAllToolsOptions(t), latestMCPProtocolVersion)
 	// The refreshed public request schemas include larger checkout, delivery,
-	// and subscription unions. Keep a bounded catalog and check output schemas
-	// separately so their accidental inclusion cannot hide inside this budget.
-	if size > 5<<19 {
-		t.Fatalf("tools/list is %d bytes; expected at most 2.5 MiB", size)
+	// and subscription unions, and named variants such as the API key access
+	// branches. Keep a bounded catalog and check output schemas separately so
+	// their accidental inclusion cannot hide inside this budget.
+	if size > 3<<20 {
+		t.Fatalf("tools/list is %d bytes; expected at most 3 MiB", size)
 	}
 	for _, tool := range tools {
 		if _, ok := tool["outputSchema"]; ok {

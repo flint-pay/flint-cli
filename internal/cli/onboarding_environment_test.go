@@ -166,7 +166,7 @@ func TestSignupLegacyStepShapes(t *testing.T) {
 	})
 }
 
-const sandboxAPIKeyInput = `{"name":"ci","scopes":["payments.payment_intents.read"]}`
+const sandboxAPIKeyInput = `{"name":"ci","access":"restricted","scopes":["payments.payment_intents.read"]}`
 
 func sandboxAPIKeyServer(t *testing.T, handler func(w http.ResponseWriter, r *http.Request)) (*httptest.Server, *[]string) {
 	t.Helper()
