@@ -52,9 +52,17 @@ type listenSSEFrame struct {
 }
 
 type listenWebhookEvent struct {
-	WebhookEventID string          `json:"webhook_event_id"`
-	EventType      string          `json:"event_type"`
-	Payload        json.RawMessage `json:"payload"`
+	WebhookEventID string `json:"webhook_event_id"`
+	EventType      string `json:"event_type"`
+	// Payload is the delivery body. Flint servers before October 26, 2026 sent
+	// it under "payload"; current ones send the event itself, the same envelope
+	// a webhook delivery carries, with the resource under "data".
+	Payload json.RawMessage `json:"payload"`
+	Data    json.RawMessage `json:"data"`
+}
+
+func listenRawPresent(raw json.RawMessage) bool {
+	return len(raw) > 0 && !bytes.Equal(bytes.TrimSpace(raw), []byte("null"))
 }
 
 type listenStreamState struct {
@@ -850,7 +858,10 @@ func (a *App) consumeListenWebhookEvent(ctx context.Context, frame listenSSEFram
 		return writeErr
 	}
 	eventLabel := terminalSafe(event.EventType) + " " + terminalSafe(event.WebhookEventID)
-	if len(event.Payload) == 0 || bytes.Equal(bytes.TrimSpace(event.Payload), []byte("null")) {
+	if !listenRawPresent(event.Payload) && listenRawPresent(event.Data) {
+		event.Payload = frame.Data
+	}
+	if !listenRawPresent(event.Payload) {
 		// One event the key cannot read must not stop the listener.
 		const message = "This API key can read webhook event metadata but not this event's resource payload. Use a key with read access to the event's resource type."
 		state.cursor = event.WebhookEventID
