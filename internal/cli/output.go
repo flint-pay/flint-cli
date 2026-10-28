@@ -561,20 +561,29 @@ func formatHumanScalar(v any, now time.Time) string {
 	}
 	return fmt.Sprint(v)
 }
+
+// relativeAge describes how far t is from now: "5m ago" for the past and
+// "in 8d" for the future, such as an evidence deadline.
 func relativeAge(d time.Duration) string {
-	if d < 0 {
+	future := d < 0
+	if future {
 		d = -d
 	}
-	if d < time.Minute {
-		return fmt.Sprintf("%ds ago", int(d.Seconds()))
+	var span string
+	switch {
+	case d < time.Minute:
+		span = fmt.Sprintf("%ds", int(d.Seconds()))
+	case d < time.Hour:
+		span = fmt.Sprintf("%dm", int(d.Minutes()))
+	case d < 24*time.Hour:
+		span = fmt.Sprintf("%dh", int(d.Hours()))
+	default:
+		span = fmt.Sprintf("%dd", int(d.Hours()/24))
 	}
-	if d < time.Hour {
-		return fmt.Sprintf("%dm ago", int(d.Minutes()))
+	if future {
+		return "in " + span
 	}
-	if d < 24*time.Hour {
-		return fmt.Sprintf("%dh ago", int(d.Hours()))
-	}
-	return fmt.Sprintf("%dd ago", int(d.Hours()/24))
+	return span + " ago"
 }
 func firstStringAt(v any, paths ...string) (string, bool) {
 	for _, p := range paths {
