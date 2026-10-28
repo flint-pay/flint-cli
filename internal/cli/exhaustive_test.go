@@ -1799,6 +1799,8 @@ func exhaustiveArgumentValues(argument Arg) []string {
 		value = "https://example.com/webhooks/flint"
 	case "forward_to":
 		value = "http://127.0.0.1:8080/webhooks"
+	case "signing_method":
+		value = "jwt"
 	case "event_type", "enabled_event":
 		value = "payment_intent.succeeded"
 	case "delivery_status":
@@ -1869,6 +1871,8 @@ func exhaustiveArgumentValues(argument Arg) []string {
 		second = "pi_second=pm_card_mastercard"
 	case "payment_option":
 		second = "ach_debit"
+	case "signing_method":
+		second = "hmac"
 	case "enabled_event", "event_type":
 		second = "refund.created"
 	case "scope":

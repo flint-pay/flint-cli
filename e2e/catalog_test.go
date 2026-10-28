@@ -389,6 +389,7 @@ func builtArgumentValues(argument cli.Arg) []string {
 			"recipient_email":      "dev@example.com",
 			"request_id":           "req_test",
 			"scope":                "customers.read",
+			"signing_method":       "jwt",
 			"status":               "succeeded",
 			"status_bucket":        "success",
 			"purpose":              "link_guest_purchases",
@@ -405,6 +406,8 @@ func builtArgumentValues(argument cli.Arg) []string {
 	}
 	second := value + "_second"
 	switch argument.Name {
+	case "signing_method":
+		second = "hmac"
 	case "enabled_event", "event_type":
 		second = "refund.created"
 	case "payment_option":

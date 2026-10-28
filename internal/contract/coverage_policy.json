@@ -613,6 +613,30 @@
   },
   {
     "method": "GET",
+    "path": "/v1/developer/partner/apps/{partner_app_id}/credentials",
+    "operation_id": "listDeveloperPartnerAppCredentials",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/developer/partner/apps/{partner_app_id}/credentials",
+    "operation_id": "createDeveloperPartnerAppCredential",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/developer/partner/apps/{partner_app_id}/credentials/{partner_app_credential_id}",
+    "operation_id": "deleteDeveloperPartnerAppCredential",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/developer/partner/apps/{partner_app_id}/credentials/{partner_app_credential_id}",
+    "operation_id": "getDeveloperPartnerAppCredential",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
     "path": "/v1/developer/partner/apps/{partner_app_id}/installs",
     "operation_id": "listDeveloperPartnerAppInstalls",
     "classification": "resource"
@@ -1338,18 +1362,6 @@
     "method": "POST",
     "path": "/v1/me/subscriptions/{subscription_id}/pause",
     "operation_id": "pauseMeSubscription",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/me/subscriptions/{subscription_id}/payment-method",
-    "operation_id": "changeMeSubscriptionPaymentMethod",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/me/subscriptions/{subscription_id}/reactivate",
-    "operation_id": "reactivateMeSubscription",
     "classification": "resource"
   },
   {
@@ -2601,12 +2613,6 @@
     "classification": "resource"
   },
   {
-    "method": "PATCH",
-    "path": "/v1/subscriptions/{subscription_id}/billing-schedule",
-    "operation_id": "updateSubscriptionBillingSchedule",
-    "classification": "resource"
-  },
-  {
     "method": "POST",
     "path": "/v1/subscriptions/{subscription_id}/cancel",
     "operation_id": "cancelSubscription",
@@ -2616,12 +2622,6 @@
     "method": "POST",
     "path": "/v1/subscriptions/{subscription_id}/pause",
     "operation_id": "pauseSubscription",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/subscriptions/{subscription_id}/payment-method",
-    "operation_id": "changeSubscriptionPaymentMethod",
     "classification": "resource"
   },
   {
@@ -2644,12 +2644,6 @@
   },
   {
     "method": "POST",
-    "path": "/v1/subscriptions/{subscription_id}/reactivate",
-    "operation_id": "reactivateSubscription",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
     "path": "/v1/subscriptions/{subscription_id}/resume",
     "operation_id": "resumeSubscription",
     "classification": "resource"
@@ -2658,6 +2652,48 @@
     "method": "POST",
     "path": "/v1/subscriptions/{subscription_id}/skip-cycle",
     "operation_id": "skipSubscriptionCycle",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tax-connection",
+    "operation_id": "getTaxConnection",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/tax-connection/connect",
+    "operation_id": "connectTaxConnection",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tax-connection/registrations",
+    "operation_id": "listTaxRegistrations",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/tax-connection/registrations",
+    "operation_id": "createTaxRegistration",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/tax-connection/registrations/{tax_registration_id}",
+    "operation_id": "deleteTaxRegistration",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tax-connection/registrations/{tax_registration_id}",
+    "operation_id": "getTaxRegistration",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/tax-connection/registrations/{tax_registration_id}",
+    "operation_id": "updateTaxRegistration",
     "classification": "resource"
   },
   {
@@ -3123,27 +3159,9 @@
     "classification": "resource"
   },
   {
-    "method": "POST",
-    "path": "/v1/me/subscriptions/{subscription_id}/billing-interval",
-    "operation_id": "changeMeSubscriptionBillingInterval",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/me/subscriptions/{subscription_id}/delivery",
-    "operation_id": "changeMeSubscriptionDelivery",
-    "classification": "resource"
-  },
-  {
     "method": "PATCH",
     "path": "/v1/me/subscriptions/{subscription_id}/line-items/{subscription_line_item_id}",
     "operation_id": "updateMeSubscriptionLineItem",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/me/subscriptions/{subscription_id}/quantity",
-    "operation_id": "changeMeSubscriptionQuantity",
     "classification": "resource"
   },
   {

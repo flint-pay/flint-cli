@@ -1295,7 +1295,7 @@ var mcpLocalTools = map[string]struct{ title, description string }{
 	"config.validate": {"Validate configuration", "Validate the global and project Flint configuration and the credential they select."},
 	"signup":          {"Sign up for Flint", "Create a Flint account and sandbox API key in two calls: first email, first_name, and last_name (Flint emails a code), then verification_code. Only for a profile without a saved credential."},
 	"api":             {"Call a Flint API route", "Call any documented Flint public API route by method and /v1 path, with a JSON body for writes. Prefer a dedicated tool when one exists."},
-	"listen":          {"Stream webhook events", "Print Flint webhook events or forward them to a local forward_to endpoint. Set _flint.max_events or _flint.for (up to 100 events or 2m). print_secret returns the signing secret without connecting."},
+	"listen":          {"Stream webhook events", "Print Flint webhook events or forward them locally with the HMAC listen secret, regardless of endpoint signing methods. JWT handlers need an HMAC path or a local test bypass. Set _flint.max_events or _flint.for (up to 100 events or 2m). print_secret returns the local secret without connecting."},
 }
 
 // mcpToolTitle prefers the description's first sentence when it is short and
@@ -1342,6 +1342,14 @@ func mcpToolDescription(cmd *Command, schema map[string]any) string {
 // mcpBaseDescription uses the public API's operation description, trimmed to
 // its first sentences, when it says more than the CLI's one-line summary.
 func mcpBaseDescription(cmd *Command) string {
+	switch cmd.CanonicalName {
+	case "webhook-endpoints.create":
+		return "Create a webhook endpoint. signing_methods defaults to [jwt]; verify Authorization: Bearer <token> with Flint's JWKS. A shared secret is returned only when hmac is included; save it if present."
+	case "webhook-endpoints.update":
+		return "Update a webhook endpoint. signing_methods replaces the set; omit to leave unchanged. Adding hmac without an issued secret returns 409 WEBHOOK_SECRET_NOT_ISSUED; use rotate-secret to issue one and enable hmac. Removing hmac deletes shared secrets."
+	case "webhook-endpoints.rotate-secret":
+		return "Rotate a webhook endpoint secret, or issue the first one and enable hmac. Save the returned secret."
+	}
 	if local, ok := mcpLocalTools[cmd.CanonicalName]; ok {
 		return local.description
 	}
