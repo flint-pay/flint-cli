@@ -251,7 +251,7 @@ Agents can always inspect a write first with `_flint.dry_run: "client"` or, for 
 
 ## Migrating from 0.13.0
 
-0.14.1 adds `--access` and `--scope` to `api-keys create`, `api-keys update`, `sandboxes api-keys create`, and `sandboxes create`; `--scope` alone selects restricted access. See [the 0.14.1 migration notes](docs/migrating-0.14.md) for details.
+0.14.1 adds `--access` and `--scope` to `api-keys create`, `api-keys update`, `sandboxes api-keys create`, and `sandboxes create`; `--scope` alone selects restricted access. 0.14.2 fixes `flint listen` withholding every event from current Flint servers. See [the 0.14.2 migration notes](docs/migrating-0.14.md) for details.
 
 ## Migrating from 0.12.0
 
