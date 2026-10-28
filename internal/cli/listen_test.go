@@ -1135,3 +1135,74 @@ func TestListenErrorCatalogListsBoundedRunCodes(t *testing.T) {
 		t.Errorf("listen error catalog is missing %s", code)
 	}
 }
+
+// Current Flint servers stream the event itself, the envelope a webhook
+// delivery carries, with the resource under data and no payload field.
+func TestListenForwardsCurrentEventEnvelope(t *testing.T) {
+	secret, err := webhooksigning.GenerateSecret()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(listenSecretEnv, secret)
+	const eventID = "whev_01ABCDEFGHIJKLMNOPQRSTUVWX"
+	envelope := `{"webhook_event_id":"` + eventID + `","event_type":"customer.created","payload_version":2,"api_version":"2026-09-07","mode":"test","data":{"object":{"customer_id":"cus_1"}}}`
+	var forwarded atomic.Value
+	var signatureValid atomic.Bool
+	local := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		forwarded.Store(string(body))
+		err := webhooksigning.VerifyStandardWebhook(secret, r.Header.Get("webhook-id"), r.Header.Get("webhook-timestamp"), r.Header.Get("webhook-signature"), body, time.Now(), time.Minute)
+		signatureValid.Store(err == nil)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer local.Close()
+	server := listenAPI(t, func(w http.ResponseWriter, r *http.Request, _ int) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprint(w, "event: ready\ndata: {\"cursor\":\"\"}\n\n")
+		fmt.Fprintf(w, "id: %s\nevent: webhook.event\ndata: %s\n\n", eventID, envelope)
+		w.(http.Flusher).Flush()
+		<-r.Context().Done()
+	})
+
+	app, stdout, stderr := testApp(t, server.URL)
+	if exit := app.Run([]string{"listen", "--forward-to", local.URL, "--max-events", "1", "--output", "ndjson"}); exit != ExitOK || stderr.Len() != 0 {
+		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
+	}
+	if got, _ := forwarded.Load().(string); got != envelope || !signatureValid.Load() {
+		t.Fatalf("forwarded body = %q (signature valid %t), want the event envelope", got, signatureValid.Load())
+	}
+	if forward := findListenRecord(t, stdout.String(), "forward"); forward["status_code"] != float64(204) {
+		t.Fatalf("forward record = %#v", forward)
+	}
+	if checkpoint := findListenRecord(t, stdout.String(), "checkpoint"); checkpoint["forwarded"] != float64(1) || checkpoint["withheld"] != float64(0) {
+		t.Fatalf("checkpoint = %#v", checkpoint)
+	}
+
+	stdout.Reset()
+	if exit := app.Run([]string{"listen", "--max-events", "1"}); exit != ExitOK {
+		t.Fatalf("print exit=%d stdout=%s", exit, stdout)
+	}
+	if human := stdout.String(); !strings.Contains(human, `customer.created `+eventID+` {"object":{"customer_id":"cus_1"}}`) || !strings.Contains(human, "withheld=0") {
+		t.Fatalf("human output = %s", human)
+	}
+}
+
+// A current-format event without data is one the key can't read.
+func TestListenWithholdsCurrentEventWithoutData(t *testing.T) {
+	t.Setenv(listenSecretEnv, "")
+	const eventID = "whev_01ABCDEFGHIJKLMNOPQRSTUVWX"
+	server := listenAPI(t, func(w http.ResponseWriter, r *http.Request, _ int) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprint(w, "event: ready\ndata: {\"cursor\":\"\"}\n\n")
+		fmt.Fprintf(w, "id: %s\nevent: webhook.event\ndata: {\"webhook_event_id\":\"%s\",\"event_type\":\"customer.created\",\"payload_version\":2}\n\n", eventID, eventID)
+		w.(http.Flusher).Flush()
+		<-r.Context().Done()
+	})
+	app, stdout, stderr := testApp(t, server.URL)
+	if exit := app.Run([]string{"listen", "--max-events", "1", "--output", "ndjson"}); exit != ExitOK || stderr.Len() != 0 {
+		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
+	}
+	if withheld := findListenRecord(t, stdout.String(), "withheld"); withheld["webhook_event_id"] != eventID {
+		t.Fatalf("withheld record = %#v", withheld)
+	}
+}
