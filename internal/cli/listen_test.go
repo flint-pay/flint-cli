@@ -658,6 +658,10 @@ func TestListenSavesSigningSecretOutsideConfig(t *testing.T) {
 	var signatureValid atomic.Bool
 	local := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
+		// Forwarding always uses the local HMAC secret, without a JWT or API credential.
+		if authorization := r.Header.Get("Authorization"); authorization != "" {
+			t.Error("forwarded request unexpectedly contains Authorization")
+		}
 		err := webhooksigning.VerifyStandardWebhook(secret, r.Header.Get("webhook-id"), r.Header.Get("webhook-timestamp"), r.Header.Get("webhook-signature"), body, time.Now(), time.Minute)
 		signatureValid.Store(err == nil)
 		w.WriteHeader(http.StatusNoContent)

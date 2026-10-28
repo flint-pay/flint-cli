@@ -122,7 +122,15 @@ flint payment-links create --name T-shirt --item-name T-shirt --amount 2500 --cu
 flint listen --forward-to http://localhost:8080/webhooks/flint
 ```
 
-`flint listen` signs forwarded events with a secret it saves and reuses across runs; print it with `flint listen --print-secret`, or pin your own with `--webhook-secret` or `FLINT_WEBHOOK_SECRET`. Without `--forward-to` it prints events instead. `--forward-to` accepts localhost, loopback IPs, and `host.docker.internal`. With `--max-events` or `--for`, it exits 1 if any delivery failed, 5 if it never connected, and 6 if fewer than `--max-events` events arrived before `--for` ended; the checkpoint's `replay_cursor` resumes from the first failure with `--cursor`. `--save-to -` writes a downloaded file to stdout.
+`flint listen --forward-to` always signs forwarded events locally with HMAC using its listen secret, regardless of the registered endpoint's signing methods. Handlers written for JWT need an HMAC verification path or a local test bypass when using `listen`. The CLI saves and reuses the listen secret across runs; print it with `flint listen --print-secret`, or pin your own with `--webhook-secret` or `FLINT_WEBHOOK_SECRET`. Without `--forward-to` it prints events instead. `--forward-to` accepts localhost, loopback IPs, and `host.docker.internal`. With `--max-events` or `--for`, it exits 1 if any delivery failed, 5 if it never connected, and 6 if fewer than `--max-events` events arrived before `--for` ended; the checkpoint's `replay_cursor` resumes from the first failure with `--cursor`. `--save-to -` writes a downloaded file to stdout.
+
+Create a webhook endpoint with JWT signing (the default):
+
+```sh
+flint webhook-endpoints create --url https://example.com/webhooks/flint --enabled-event payment_intent.succeeded --signing-method jwt
+```
+
+Repeat `--signing-method` to select `jwt`, `hmac`, or both. JWT deliveries carry `Authorization: Bearer <token>`; verify the token with [Flint's JWKS](https://api.withflintpay.com/.well-known/jwks.json), including its issuer, endpoint audience, expiry, and raw body hash. Creation returns `secret` only when `hmac` is included; save it if present. `webhook-endpoints update --signing-method ... --expected-version N` replaces the set; omitting the flag leaves it unchanged. Removing `hmac` deletes shared secrets. Adding `hmac` without an issued secret returns `409 WEBHOOK_SECRET_NOT_ISSUED`; run `flint webhook-endpoints rotate-secret whep_... --confirm` to issue the first secret and enable `hmac`.
 
 `flint`, `flint --help`, and `flint help` list starting points, API resource groups, and examples for creating primitives. `flint schema commands customers --output json` returns the commands under one group as data, such as `customers` or `customers addresses`; without a group, `flint schema commands --output json` returns the whole catalog, which is large. Root help with `--output json` or `FLINT_OUTPUT=json` returns a compact index instead. `flint schema command customers create --output json` describes one command; dotted names such as `customers.create` work too. Command descriptions and offline help topics return a `{"data": ...}` envelope in JSON mode. `schema input` and `schema output` are exceptions: they return raw JSON Schema documents. Human schema output is indented. `flint help events` lists event types with short descriptions; `flint help events customer.created` shows one event's details. `flint help errors` describes the error envelope; `flint help exit-codes` lists exit codes.
 
@@ -238,6 +246,10 @@ Server flags:
 - `--allow-destructive` lets agents confirm destructive operations, and sensitive operations in live mode, with `_flint.confirm`. Without it, the server asks you through MCP elicitation when the client supports it, and otherwise refuses with instructions for you.
 
 Agents can always inspect a write first with `_flint.dry_run: "client"` or, for destructive operations, `_flint.preview`. Successful results that reached the API include a `Flint environment: sandbox|live` line, followed by a `Warnings:` block when the CLI printed warnings. The `help` tool returns a short index without a topic, a tool's arguments and required fields when given a tool name, and control details for `controls`. `schema_input` and `schema_output` return a tool's full schemas on demand, and `schema_events` lists webhook event types (pass `event_type` for payload schemas). Agents can add a `_flint.merchant` guard but cannot replace the profile, merchant guard, or context the server uses. `config set`, `config unset`, and `auth logout` are not available over MCP.
+
+## Migrating from 0.12.0
+
+0.13.0 adds webhook signing method flags and refreshes the embedded API snapshot. Webhook endpoints default to JWT and return a shared secret only when HMAC is included. The refresh also adds partner-app credential and tax-connection commands and removes older subscription actions. See [the 0.13.0 migration notes](docs/migrating-0.13.md) for details.
 
 ## Migrating from 0.11.0
 
