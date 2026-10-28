@@ -50,7 +50,7 @@ func signupFlowSuccess(t *testing.T, w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `{"data":{"can_issue_api_key":true,"default_sandbox_id":"test_new"}}`)
 	case "/v1/onboarding/api-key":
 		fmt.Fprint(w, `{"data":{"api_key_id":"key_new","merchant_id":"mer_new","secret_key":"flint_test_synthetic_new"}}`)
-	case "/v1/developer/auth-context":
+	case "/v1/auth-context":
 		fmt.Fprint(w, authContextJSON("sandbox"))
 	case "/v1/payment-intents":
 		fmt.Fprint(w, `{"data":[]}`)

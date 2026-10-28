@@ -41,7 +41,7 @@ func assertMCPOutputMatchesSchema(t *testing.T, schema map[string]any, value any
 
 func TestMCPPreviewResultsMatchAdvertisedSchemas(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/developer/auth-context" {
+		if r.URL.Path != "/v1/auth-context" {
 			t.Errorf("preview sent unexpected request: %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -90,11 +90,11 @@ func TestTimelineAllPreservesEnvelopeAndCollectsEntries(t *testing.T) {
 			var tokens []string
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				if r.URL.Path == "/v1/developer/auth-context" {
+				if r.URL.Path == "/v1/auth-context" {
 					fmt.Fprint(w, authContextJSON("sandbox"))
 					return
 				}
-				if r.URL.Path != "/v1/developer/resource-timelines/pi_test" || r.URL.Query().Get("page_size") != "1" {
+				if r.URL.Path != "/v1/resource-timelines/pi_test" || r.URL.Query().Get("page_size") != "1" {
 					t.Errorf("unexpected timeline request: %s", r.URL)
 				}
 				token := r.URL.Query().Get("page_token")
@@ -113,7 +113,7 @@ func TestTimelineAllPreservesEnvelopeAndCollectsEntries(t *testing.T) {
 				arguments := map[string]any{"resource_id": "pi_test", "page_size": float64(1), "_flint": map[string]any{"all": true}}
 				if raw {
 					name = "api"
-					arguments = map[string]any{"method": "GET", "path": "/v1/developer/resource-timelines/pi_test", "_flint": map[string]any{"all": true, "page_size": float64(1)}}
+					arguments = map[string]any{"method": "GET", "path": "/v1/resource-timelines/pi_test", "_flint": map[string]any{"all": true, "page_size": float64(1)}}
 				}
 				response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{
 					"name": name, "arguments": arguments,
@@ -126,7 +126,7 @@ func TestTimelineAllPreservesEnvelopeAndCollectsEntries(t *testing.T) {
 			} else {
 				argv := []string{"timeline", "pi_test"}
 				if raw {
-					argv = []string{"api", "get", "/v1/developer/resource-timelines/pi_test"}
+					argv = []string{"api", "get", "/v1/resource-timelines/pi_test"}
 				}
 				argv = append(argv, "--all", "--page-size", "1", "--output", "json")
 				if exit := app.Run(argv); exit != ExitOK {

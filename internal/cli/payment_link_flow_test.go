@@ -39,7 +39,7 @@ func TestPaymentLinkAndCheckoutOpen(t *testing.T) {
 				creates, opened := 0, 0
 				app, out, stderr := signupFlowApp(t, func(w http.ResponseWriter, r *http.Request) {
 					switch r.URL.Path {
-					case "/v1/developer/auth-context":
+					case "/v1/auth-context":
 						fmt.Fprint(w, authContextJSON("sandbox"))
 					case command.path:
 						creates++
@@ -180,7 +180,7 @@ func TestDoctorRejectedCredentialRecommendsLogin(t *testing.T) {
 	for _, source := range []string{"keychain", "environment_access_token"} {
 		t.Run(source, func(t *testing.T) {
 			app, out, stderr := signupFlowApp(t, func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/v1/developer/auth-context" {
+				if r.URL.Path != "/v1/auth-context" {
 					t.Fatalf("unexpected request: %s", r.URL.Path)
 				}
 				w.WriteHeader(http.StatusUnauthorized)

@@ -118,7 +118,7 @@ func (a *App) fetchAuthContextResponse(ctx context.Context, baseURL, key string,
 		a.observeCachedAuthContext(envelope.Data)
 		return envelope, nil
 	}
-	resp, e := a.doRequest(ctx, baseURL, key, http.MethodGet, "/v1/developer/auth-context", nil, "", debug)
+	resp, e := a.doRequest(ctx, baseURL, key, http.MethodGet, "/v1/auth-context", nil, "", debug)
 	if e != nil {
 		return authContextEnvelope{}, e
 	}
@@ -203,9 +203,9 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		if command := responseContract(ctx); command != nil {
 			if operation, ok := openAPIOperationByID(command.OperationID); ok {
 				for _, parameter := range operation.Parameters {
-					if parameter["name"] == "X-Turnstile-Token" {
-						if token := os.Getenv("FLINT_TURNSTILE_TOKEN"); token != "" {
-							req.Header.Set("X-Turnstile-Token", token)
+					if parameter["name"] == "Flint-Challenge-Token" {
+						if token := os.Getenv("FLINT_CHALLENGE_TOKEN"); token != "" {
+							req.Header.Set("Flint-Challenge-Token", token)
 						}
 					}
 				}

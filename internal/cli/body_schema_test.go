@@ -67,6 +67,7 @@ func exhaustiveInputBody(t testing.TB, command *Command) map[string]any {
 			delete(body, "payment_source_token")
 			delete(body, "payment_method_id")
 		}
+		flagged := Options{Input: "-", Raw: map[string][]string{}}
 		for _, arg := range command.Arguments {
 			if skipExhaustiveConfirmationFlag(command, arg) {
 				continue
@@ -74,6 +75,7 @@ func exhaustiveInputBody(t testing.TB, command *Command) map[string]any {
 			if arg.BodyPath == "" || arg.Name == "input" || arg.Positional > 0 || arg.Query != "" || (command.CanonicalName == "payment-intents.create" && arg.Name == "order") {
 				continue
 			}
+			flagged.Raw[strings.TrimPrefix(arg.Flag, "--")] = exhaustiveArgumentValues(arg)
 			for _, value := range exhaustiveArgumentValues(arg) {
 				converted, err := convertValue(value, arg.Type)
 				if err != nil {
@@ -87,6 +89,7 @@ func exhaustiveInputBody(t testing.TB, command *Command) map[string]any {
 				_ = setBodyPath(body, arg.BodyPath, converted)
 			}
 		}
+		_ = selectRequestUnionTags(command, flagged, body)
 		return body
 	}
 	schema, e := requestBodySchema(command)
@@ -232,7 +235,7 @@ func TestInvalidRequestBodyIsNeverSent(t *testing.T) {
 	calls := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, exhaustiveAuthContextJSON("sandbox"))
 			return
 		}

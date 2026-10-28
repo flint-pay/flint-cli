@@ -44,7 +44,7 @@ func TestBuiltCLIExecutesEveryRemoteCommand(t *testing.T) {
 			resourceCalls := 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				if request.URL.Path == "/v1/developer/auth-context" {
+				if request.URL.Path == "/v1/auth-context" {
 					_ = json.NewEncoder(w).Encode(map[string]any{
 						"data": map[string]any{
 							"auth_type": "api_key", "api_key_id": "key_test", "environment": environment,
@@ -270,6 +270,14 @@ func builtInputBody(t *testing.T, bin string, command *cli.Command) string {
 				value = values
 			}
 			body = setBuiltBodyPath(body, strings.Split(argument.BodyPath, "."), value).(map[string]any)
+		}
+		// Mirror the CLI: payment link item flags describe a custom_fixed line item.
+		if command.CanonicalName == "payment-links.create" {
+			if items, _ := body["line_items"].([]any); len(items) > 0 {
+				if item, ok := items[0].(map[string]any); ok && item["type"] == nil {
+					item["type"] = "custom_fixed"
+				}
+			}
 		}
 		return body
 	}

@@ -84,9 +84,10 @@ func TestMCPDefaultToolSetIsCuratedAndAllIsOptIn(t *testing.T) {
 	defaults, defaultSize := names(defaultOptions())
 	t.Logf("default tools/list: %d tools, %d bytes in compact result JSON", len(defaults), defaultSize)
 	all, allSize := names(mcpAllToolsOptions(t))
-	// The reviewed refund credential/mode unions increase schema size; keep
-	// the same 32 tools and a bounded default payload.
-	if len(all) != len(app.mcpAllTools()) || len(defaults) >= len(all)/4 || defaultSize >= allSize/4 || len(defaults) > 40 || defaultSize > 180000 {
+	// Explicit union tags on checkout, payment link, and customer request
+	// bodies (CLI 0.13.0) grew the default payload from about 175 KB to 222 KB;
+	// keep the same 32 tools and a bounded default payload.
+	if len(all) != len(app.mcpAllTools()) || len(defaults) >= len(all)/4 || defaultSize >= allSize/4 || len(defaults) > 40 || defaultSize > 240000 {
 		t.Fatalf("default exposes %d tools in %d bytes; all exposes %d in %d", len(defaults), defaultSize, len(all), allSize)
 	}
 	for _, want := range []string{"help", "schema_input", "schema_output", "customers_create", "payment-intents_create", "checkout-sessions_create", "payment-links_create", "refunds_create", "webhook-endpoints_create", "webhook-events_list", "products_create"} {
@@ -367,7 +368,7 @@ func TestMCPDescriptionsSayWhatTitlesDoNot(t *testing.T) {
 		"payment-intents_create":   {"Provide exactly one of", "{amount_money, payment_options}", "order", "minor units"},
 		"checkout-sessions_create": {"order_id", "quick_pay_item", "Set type to one of: order, quick_pay, subscription_plan"},
 		"refunds_create":           {"at least one of", "payment_intent_id"},
-		"products_create":          {"default_variant", "{options, variants}"},
+		"products_create":          {"default_variant", "send options, variants"},
 		"bundles_update":           {"expected_version is required when sending"},
 		"gift-cards_transitions":   {"Set action to one of: freeze, unfreeze, close", "reason"},
 		"customers_list":           {"next_page_token", "page_token"},
@@ -550,7 +551,7 @@ func TestMCPRefusesOversizedReadResults(t *testing.T) {
 func TestMCPCallsReportProgress(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}

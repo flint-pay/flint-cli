@@ -34,7 +34,7 @@ jobs:
           with open("internal/spec/openapi.json", encoding="utf-8") as spec:
               api_version = json.load(spec)["x-flint-api-version"]
           request = urllib.request.Request(
-              os.environ["FLINT_BASE_URL"] + "/v1/developer/auth-context",
+              os.environ["FLINT_BASE_URL"] + "/v1/auth-context",
               headers={"Authorization": "Bearer " + os.environ["FLINT_API_KEY"], "Flint-Version": api_version},
           )
           with urllib.request.urlopen(request, timeout=15) as response:

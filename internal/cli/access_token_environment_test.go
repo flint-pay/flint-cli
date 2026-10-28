@@ -36,7 +36,7 @@ func TestAccessTokenWritesUseIntrospectedOrUnverifiedEnvironment(t *testing.T) {
 				if got := r.Header.Get("Authorization"); got != "Bearer partner_token" {
 					t.Errorf("Authorization = %q", got)
 				}
-				if r.URL.Path == "/v1/developer/auth-context" {
+				if r.URL.Path == "/v1/auth-context" {
 					w.WriteHeader(scenario.authStatus)
 					fmt.Fprint(w, scenario.authBody)
 					return

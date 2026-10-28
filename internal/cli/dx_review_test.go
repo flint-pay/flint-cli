@@ -15,7 +15,7 @@ func dxCustomerServer(t *testing.T) *httptest.Server {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case r.URL.Path == "/v1/developer/auth-context":
+		case r.URL.Path == "/v1/auth-context":
 			fmt.Fprint(w, authContextJSON("sandbox"))
 		case r.URL.Path == "/v1/customers":
 			fmt.Fprint(w, `{"data":[{"customer_id":"cus_1"},{"customer_id":"cus_2"}],"next_page_token":"tok_2","request_id":"req_list"}`)

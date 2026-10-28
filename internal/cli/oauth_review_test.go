@@ -22,7 +22,7 @@ func TestOAuthReviewRefreshSurvivesContextOutage(t *testing.T) {
 			writeTestTokens(w, "new-access", "new-refresh")
 		case oauthRevokePath:
 			revocations.Add(1)
-		case "/v1/developer/auth-context":
+		case "/v1/auth-context":
 			if unavailable.Load() {
 				w.WriteHeader(500)
 				return
@@ -108,7 +108,7 @@ func TestOAuthReviewChecksHonorAccessTokenOverride(t *testing.T) {
 func TestOAuthReviewPendingSessionCannotReachBusinessEndpoint(t *testing.T) {
 	var businessRequests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			w.WriteHeader(500)
 			return
 		}

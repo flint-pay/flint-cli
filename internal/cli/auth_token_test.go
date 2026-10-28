@@ -18,7 +18,7 @@ func TestAuthTokenOAuthRefresh(t *testing.T) {
 		case loginTokenPath:
 			refreshes++
 			writeTestTokens(w, "new-access", "new-refresh")
-		case "/v1/developer/auth-context":
+		case "/v1/auth-context":
 			if r.Header.Get("Authorization") != "Bearer new-access" {
 				t.Error("export validated the wrong token")
 			}

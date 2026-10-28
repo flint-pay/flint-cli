@@ -31,7 +31,7 @@ func TestMixedAuthAccessTokenMutationSafety(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			auths, writes := 0, 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path == "/v1/developer/auth-context" {
+				if r.URL.Path == "/v1/auth-context" {
 					auths++
 					w.WriteHeader(test.status)
 					if test.status == 200 {
@@ -72,7 +72,7 @@ func TestMCPMixedAuthAccessTokenSafety(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			auths, writes := 0, 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path == "/v1/developer/auth-context" {
+				if r.URL.Path == "/v1/auth-context" {
 					auths++
 					fmt.Fprint(w, strings.ReplaceAll(authContextJSON("live"), `"api_key"`, `"oauth"`))
 					return
@@ -107,7 +107,7 @@ func TestMCPUnverifiedEnvironmentElicitsConfirmation(t *testing.T) {
 		t.Run(fmt.Sprint(approve), func(t *testing.T) {
 			writes := 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path == "/v1/developer/auth-context" {
+				if r.URL.Path == "/v1/auth-context" {
 					w.WriteHeader(http.StatusUnauthorized)
 					fmt.Fprint(w, `{"error":{"type":"authentication_error","code":"UNAUTHORIZED","message":"unsupported token"}}`)
 					return
@@ -140,7 +140,7 @@ func TestMCPUnverifiedEnvironmentElicitsConfirmation(t *testing.T) {
 
 func TestMCPOptionalFieldProjectionsMatchCLI(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
@@ -188,7 +188,7 @@ func TestPendingLiveLoginPreservesAcknowledgement(t *testing.T) {
 		case loginTokenPath:
 			polls++
 			writeTestTokens(w, testOAuthAccess, testOAuthRefresh)
-		case "/v1/developer/auth-context":
+		case "/v1/auth-context":
 			fmt.Fprint(w, oauthAuthJSON("live"))
 		case oauthRevokePath:
 			revokes++

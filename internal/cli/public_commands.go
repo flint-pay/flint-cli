@@ -508,7 +508,7 @@ func applyPublicOperationMetadata(command *Command) {
 	command.Security = operation.Security
 	command.OutputSchema = responseSchemaName(operation.Responses)
 	command.AuthRequired = len(operation.Security) > 0
-	if strings.HasPrefix(command.APIPath, "/v1/developer/partner/") || strings.HasPrefix(command.APIPath, "/v1/developer/sandboxes") || strings.HasPrefix(command.APIPath, "/v1/onboarding/") || strings.HasPrefix(command.APIPath, "/v1/oauth/") {
+	if command.APIPath == "/v1/partner-apps" || strings.HasPrefix(command.APIPath, "/v1/partner-apps/") || command.APIPath == "/v1/sandboxes" || strings.HasPrefix(command.APIPath, "/v1/sandboxes/") || strings.HasPrefix(command.APIPath, "/v1/onboarding/") || strings.HasPrefix(command.APIPath, "/v1/oauth/") {
 		command.EnvironmentAffinity = EnvironmentAffinityAccount
 	}
 	if !command.AuthRequired {

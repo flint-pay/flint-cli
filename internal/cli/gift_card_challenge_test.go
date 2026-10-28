@@ -17,10 +17,10 @@ func TestEmbeddedCheckoutOriginJSONInput(t *testing.T) {
 		command, resourceID, path string
 	}{
 		{"checkout-sessions.create", "", "/v1/checkout-sessions"},
-		{"invoices.checkout-session", "inv_test", "/v1/invoices/inv_test/checkout-session"},
-		{"me.invoices.checkout-session.create", "inv_test", "/v1/me/invoices/inv_test/checkout-session"},
-		{"return-resolutions.checkout-session", "rres_test", "/v1/return-resolutions/rres_test/checkout-session"},
-		{"me.return-resolutions.checkout-session.create", "rres_test", "/v1/me/return-resolutions/rres_test/checkout-session"},
+		{"invoices.checkout-sessions.create", "inv_test", "/v1/invoices/inv_test/checkout-sessions"},
+		{"me.invoices.checkout-sessions.create", "inv_test", "/v1/me/invoices/inv_test/checkout-sessions"},
+		{"return-resolutions.checkout-sessions.create", "rres_test", "/v1/return-resolutions/rres_test/checkout-sessions"},
+		{"me.return-resolutions.checkout-sessions.create", "rres_test", "/v1/me/return-resolutions/rres_test/checkout-sessions"},
 	} {
 		t.Run(fixture.command, func(t *testing.T) {
 			body := map[string]any{"surface": "embedded", "page_origin": "https://shop.example.com"}
@@ -33,7 +33,7 @@ func TestEmbeddedCheckoutOriginJSONInput(t *testing.T) {
 			const challengeURL = "https://checkout.example.com/gift-card-challenge/opaque"
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				if r.URL.Path == "/v1/developer/auth-context" {
+				if r.URL.Path == "/v1/auth-context" {
 					fmt.Fprint(w, authContextJSON("sandbox"))
 					return
 				}
@@ -98,7 +98,7 @@ func TestCustomerAccountJSONInputPreservesSparseUpdates(t *testing.T) {
 			calls := 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				if r.URL.Path == "/v1/developer/auth-context" {
+				if r.URL.Path == "/v1/auth-context" {
 					fmt.Fprint(w, authContextJSON("sandbox"))
 					return
 				}

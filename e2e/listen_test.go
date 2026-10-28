@@ -42,7 +42,7 @@ func TestBuiltCLIListenForwardsSignedWebhook(t *testing.T) {
 
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/v1/developer/auth-context":
+		case "/v1/auth-context":
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, `{"data":{"auth_type":"api_key","api_key_id":"key_test","environment":"sandbox","merchant_id":"mer_test","sandbox_id":"test_test","scopes":["webhooks.read","payments.payment_intents.read"]},"request_id":"req_test","meta":{"api_version":"2026-02-01"}}`)
 		case "/v1/webhook-events/stream":
@@ -103,7 +103,7 @@ func TestBuiltCLIListenReusesSavedSigningSecret(t *testing.T) {
 	payload := []byte(`{"customer_id":"cus_test"}`)
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/v1/developer/auth-context":
+		case "/v1/auth-context":
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, `{"data":{"auth_type":"api_key","api_key_id":"key_test","environment":"sandbox","merchant_id":"mer_test","sandbox_id":"test_test","scopes":["webhooks.read","customers.read"]},"request_id":"req_test","meta":{"api_version":"2026-02-01"}}`)
 		case "/v1/webhook-events/stream":

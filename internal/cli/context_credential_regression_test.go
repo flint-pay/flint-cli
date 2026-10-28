@@ -26,7 +26,7 @@ func TestEnvironmentCredentialOverridesConfiguredContext(t *testing.T) {
 					server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						w.Header().Set("Content-Type", "application/json")
 						switch r.URL.Path {
-						case "/v1/developer/auth-context":
+						case "/v1/auth-context":
 							requests.Add(1)
 							if r.Header.Get("Authorization") != "Bearer "+token {
 								t.Error("did not use environment credential")

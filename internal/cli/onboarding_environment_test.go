@@ -173,7 +173,7 @@ func sandboxAPIKeyServer(t *testing.T, handler func(w http.ResponseWriter, r *ht
 	var requests []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("live"))
 			return
 		}
@@ -186,7 +186,7 @@ func sandboxAPIKeyServer(t *testing.T, handler func(w http.ResponseWriter, r *ht
 
 func TestSandboxAPIKeysCreateRoutes(t *testing.T) {
 	const created = `{"data":{"api_key_id":"key_sandbox","secret_key":"flint_test_synthetic_sandbox"}}`
-	path := "/v1/developer/sandboxes/test_123/api-keys"
+	path := "/v1/sandboxes/test_123/api-keys"
 	for _, test := range []struct {
 		name    string
 		argv    []string
@@ -256,7 +256,7 @@ func TestSandboxAPIKeysCreateDryRunShowsRoute(t *testing.T) {
 	app, out, _ := testApp(t, server.URL)
 	t.Setenv("FLINT_API_KEY", "flint_live_synthetic")
 	exit, result := runJSON(t, app, out, "sandboxes", "test-key", "test_123", "--input", sandboxAPIKeyInput, "--live", "--dry-run", "client")
-	if exit != ExitOK || lookupPathValue(result, "data.path") != "/v1/developer/sandboxes/test_123/api-keys" || len(*requests) != 0 {
+	if exit != ExitOK || lookupPathValue(result, "data.path") != "/v1/sandboxes/test_123/api-keys" || len(*requests) != 0 {
 		t.Fatalf("exit=%d requests=%v result=%v", exit, *requests, result)
 	}
 }

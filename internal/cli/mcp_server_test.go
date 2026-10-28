@@ -26,7 +26,7 @@ func newMCPTestAPI(t *testing.T, environment string) (*httptest.Server, *mcpTest
 	state := &mcpTestAPI{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON(environment))
 			return
 		}
@@ -265,7 +265,7 @@ func TestMCPToolAnnotationsReflectSafety(t *testing.T) {
 	}{
 		{"refunds.create", false, true, false, true},
 		{"gift-cards.cash-out", false, true, false, true},
-		{"developer.partner.apps.rotate-secret", false, true, false, true},
+		{"partner-apps.rotate-secret", false, true, false, true},
 		{"customer-sessions.revoke", false, true, false, true},
 		{"customers.list", true, false, true, true},
 		{"history", true, false, true, false},

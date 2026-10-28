@@ -1,8 +1,45 @@
 # Migrating to Flint CLI 0.13.0
 
-This snapshot refresh removes subscription action commands, so it requires a minor version bump before 1.0. Package versions are stamped during release preparation; this change does not publish a release.
+This release moves every command to Flint's canonical API paths and removes or renames commands, so it requires a minor version bump before 1.0.
 
-The embedded snapshot is copied byte-for-byte from [`web/apps/developers/src/generated/openapi.json`](https://github.com/flint-pay/flint/blob/2c72e968fc4bc14005de219cd7a7b3ae4d168a58/web/apps/developers/src/generated/openapi.json) at Flint main `2c72e968fc4bc14005de219cd7a7b3ae4d168a58`. SHA-256: `429475c94aba920a8ce9f0a29b8a7d14b653eee8864258fb900b94058aabfc41`.
+The embedded snapshot is copied byte-for-byte from [`web/apps/developers/src/generated/openapi.json`](https://github.com/flint-pay/flint/blob/0f83faf086dd659e279da39ae653918b38450ae5/web/apps/developers/src/generated/openapi.json) at Flint main `0f83faf086dd659e279da39ae653918b38450ae5`. SHA-256: `e8fff8a6422b34e3142deea2983568beb1a7cccc697f02368b4931e331c6dd1e`.
+
+## Canonical API paths
+
+Every command now calls the canonical paths, which the Flint API serves before it removes the old ones. CLI 0.13.0 needs a Flint API that serves them; earlier CLI versions keep working until the old paths are removed, so upgrade before then.
+
+- Every command checks the credential with `GET /v1/auth-context` instead of `GET /v1/developer/auth-context`, including `flint auth status` and `flint whoami`.
+- `flint sandboxes` commands call `/v1/sandboxes`, `flint request-logs` calls `/v1/api-request-logs`, and `flint timeline` calls `/v1/resource-timelines/{resource_id}`. Their command names don't change.
+- Commands that send a bot-check token, such as `demo-sessions create`, read it from `FLINT_CHALLENGE_TOKEN` and send it as `Flint-Challenge-Token`. `FLINT_TURNSTILE_TOKEN` and `X-Turnstile-Token` are gone.
+
+Renamed commands, written with dots; invoke `partner-apps.list` as `flint partner-apps list`. MCP tool names replace dots with underscores.
+
+| 0.12.0 | 0.13.0 |
+| --- | --- |
+| `developer.partner.apps.*`, including `.credentials.*`, `.installs.*`, and `.rotate-secret` | `partner-apps.*`, such as `partner-apps.list` and `partner-apps.installs.revoke` |
+| `developer.partner.installs.list` | Removed with its route; list one app's installs with `partner-apps.installs.list` |
+| `invoices.checkout-session` | `invoices.checkout-sessions.create` |
+| `return-resolutions.checkout-session` | `return-resolutions.checkout-sessions.create` |
+| `me.invoices.checkout-session.create` | `me.invoices.checkout-sessions.create` |
+| `me.return-resolutions.checkout-session.create` | `me.return-resolutions.checkout-sessions.create` |
+| `me.payments.list`, `me.payments.get` | `me.payment-intents.list`, `me.payment-intents.get` |
+| `me.flint-wallet.payment-methods.list` | `me.flint-wallet.cards.list`, which returns `flint_wallet_card_id` with nested `card` details |
+| `me.flint-wallet.payment-methods.store-setups.create ID` | `me.flint-wallet.cards.store-setups.create FLINT_WALLET_CARD_ID` |
+| `demo-sessions.reset` | `demo-sessions.reset DEMO_SESSION_ID`, which names the session to reset |
+
+New commands: `checkout-sessions.delivery-selections.list`, `delivery-revocations.list`, and `tax-connection.disconnect`.
+
+## Union tags in request bodies
+
+Request bodies that accept alternatives now require their tag. Convenience flags set it for you; JSON from `--input` must include it, and a flag that conflicts with the tag in `--input` fails with `CONFLICTING_ARGUMENTS`.
+
+- `payment-intents confirm` sets `credential_type`: `stripe_confirmation_token` with `--confirmation-token`, `token` with `--payment-source-token`, and `payment_method` with `--payment-method`. Without a credential flag or `--input`, it sends `attached` to continue with the payment source already attached, such as after the buyer completes `current_payment_action`.
+- `orders pay --payment-source-token` sends `credential_type: token` on each `payment_intents` entry. With `--input`, each `payment_intents` entry and `payment_source` needs its own `credential_type`.
+- `payment-links create --item-name/--amount/--currency` sends a `custom_fixed` line item. Line items in `--input` need `type`: `variant`, `bundle`, `custom_fixed`, or `custom_variable`.
+- `invoices create --order` sends `type: order`. Quick-pay invoices take `type: quick_pay` in `--input`.
+- Payment link line item writes reject `resolved_name`, `resolved_unit_price_money`, `resolved_price_range`, `is_catalog_item_unavailable`, and `product_id`. Remove them before sending a fetched line item back.
+
+Run `flint schema input COMMAND` to see each body's alternatives.
 
 ## Webhook signing
 
@@ -44,7 +81,7 @@ Command names below use dots; invoke `tax-connection.get` as `flint tax-connecti
 New commands:
 
 - `disputes.accept`, which accepts a chargeback without contesting it. It can't be undone, so it requires `--confirm`.
-- `developer.partner.apps.credentials.create`, `.delete`, `.get`, and `.list`.
+- `partner-apps.credentials.create`, `.delete`, `.get`, and `.list`.
 - `tax-connection.connect` and `.get`.
 - `tax-connection.registrations.create`, `.delete`, `.get`, `.list`, and `.update`.
 

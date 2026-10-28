@@ -2259,7 +2259,7 @@ type mcpReplayBody struct {
 }
 
 func (o *mcpEnvironmentObserver) RoundTrip(req *http.Request) (*http.Response, error) {
-	authContext := req.Method == http.MethodGet && strings.HasSuffix(req.URL.Path, "/v1/developer/auth-context")
+	authContext := req.Method == http.MethodGet && strings.HasSuffix(req.URL.Path, "/v1/auth-context")
 	o.mu.Lock()
 	if o.environment == "live" && !o.allowLive && !authContext && req.Header.Get("Authorization") != "" {
 		o.blocked = true

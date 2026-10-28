@@ -82,7 +82,7 @@ func TestVerificationCreateResponsesRecordHistoryAndResolveReferences(t *testing
 			confirmCalls, linkCalls := 0, 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				if r.URL.Path == "/v1/developer/auth-context" {
+				if r.URL.Path == "/v1/auth-context" {
 					fmt.Fprint(w, authContextJSON("sandbox"))
 					return
 				}
@@ -319,7 +319,7 @@ func TestPublicAndSessionCommandsUseTheirOwnAuthentication(t *testing.T) {
 			calls := 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				calls++
-				if r.URL.Path == "/v1/developer/auth-context" {
+				if r.URL.Path == "/v1/auth-context" {
 					t.Error("session/public request attempted API-key introspection")
 				}
 				if got := r.Header.Get("Authorization"); got != scenario.wantAuthorization {
@@ -345,7 +345,7 @@ func TestPublicAndSessionCommandsUseTheirOwnAuthentication(t *testing.T) {
 func TestPDFDownloadSavesExactBytesAndNeverOverwrites(t *testing.T) {
 	pdf := []byte("%PDF-1.7\n\x00\xff test file\n%%EOF")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
@@ -487,7 +487,7 @@ func TestReportRedirectDownloadsWithoutForwardingCredentials(t *testing.T) {
 	}))
 	defer storage.Close()
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/developer/auth-context" {
+		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
@@ -512,8 +512,9 @@ func TestOperationSpecificSchemasPreserveAPIAlternatives(t *testing.T) {
 		valid bool
 	}{
 		{map[string]any{}, false},
-		{map[string]any{"order_id": "ord_test"}, true},
-		{map[string]any{"order_id": "ord_test", "quick_pay": map[string]any{}}, false},
+		{map[string]any{"order_id": "ord_test"}, false},
+		{map[string]any{"type": "order", "order_id": "ord_test"}, true},
+		{map[string]any{"type": "order", "order_id": "ord_test", "quick_pay": map[string]any{}}, false},
 	} {
 		test.body["_flint"] = map[string]any{"idempotency_key": "saved-test-action-1"}
 		if err := validateMCPArguments(invoice, test.body); (err == nil) != test.valid {
@@ -636,7 +637,7 @@ func TestRawOperationMatchingPrefersLiteralSubresources(t *testing.T) {
 		}
 	}
 	operation, ok := matchPublicOperation("GET", "/v1/checkout-sessions/cs_test/delivery-selections/dsel_test")
-	if !ok || operation.OperationID != "getCheckoutSessionDeliverySelectionHistory" {
+	if !ok || operation.OperationID != "getCheckoutSessionDeliverySelection" {
 		t.Fatalf("matched history as %s", operation.OperationID)
 	}
 }
