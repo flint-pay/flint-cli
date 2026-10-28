@@ -360,6 +360,7 @@ func builtArgumentValues(argument cli.Arg) []string {
 	value := argument.IDPrefix + "test"
 	if argument.IDPrefix == "" {
 		value = map[string]string{
+			"access":               "restricted",
 			"amount":               "2500",
 			"cancellation_reason":  "abandoned",
 			"capture_method":       "automatic",

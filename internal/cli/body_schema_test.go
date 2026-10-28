@@ -196,18 +196,20 @@ func TestSchemaInputDescribesTheInputBody(t *testing.T) {
 }
 
 func TestClientDryRunValidatesTheRequestBody(t *testing.T) {
+	customerCreate := []string{"customers", "create"}
 	cases := []struct {
 		name, input, path, contains string
+		command                     []string
 	}{
-		{"wrong type", `{"email":123}`, "$.email", "got number, want string"},
-		{"misspelled required", `{"emial":"a@example.com"}`, "$.emial", "did you mean email?"},
-		{"nested", `{"email":"a@example.com","billing_address":{"city":"X"}}`, "$.billing_address.country", "required field is missing"},
+		{"wrong type", `{"email":123}`, "$.email", "got number, want string", customerCreate},
+		{"misspelled required", `{"emial":"a@example.com"}`, "$.emial", "did you mean email?", customerCreate},
+		{"nested", `{"recipient_name":"Ada Lovelace","address":{"city":"X"}}`, "$.address.country", "required field is missing", []string{"customers", "addresses", "create", "cus_123"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			app, stdout, _ := testApp(t, "http://127.0.0.1:1")
 			app.Stdin = strings.NewReader(tc.input)
-			exit, result := runJSON(t, app, stdout, "customers", "create", "--input", "-", "--dry-run", "client")
+			exit, result := runJSON(t, app, stdout, append(append([]string{}, tc.command...), "--input", "-", "--dry-run", "client")...)
 			errorBody, _ := result["error"].(map[string]any)
 			if exit != ExitUsage || errorBody["code"] != "INVALID_REQUEST_BODY" {
 				t.Fatalf("exit=%d result=%v", exit, result)
@@ -365,5 +367,34 @@ func TestSchemaLookupsAcceptSpacedNamesAndSuggest(t *testing.T) {
 	stderr.Reset()
 	if exit := app.Run([]string{"schema", "command", "customer", "create"}); exit != ExitUsage || !strings.Contains(stderr.String(), "Did you mean: customers.create") {
 		t.Fatalf("human exit=%d stderr=%q", exit, stderr)
+	}
+}
+
+func TestAPIKeyCreateAccessFlag(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+		exit int
+		body map[string]any
+	}{
+		{"read only", []string{"--access", "read_only"}, ExitOK, map[string]any{"name": "ci", "access": "read_only"}},
+		{"full", []string{"--access", "full"}, ExitOK, map[string]any{"name": "ci", "access": "full"}},
+		{"restricted", []string{"--access", "restricted", "--scope", "customers.read"}, ExitOK, map[string]any{"name": "ci", "access": "restricted", "scopes": []any{"customers.read"}}},
+		{"restricted without scope", []string{"--access", "restricted"}, ExitUsage, nil},
+		{"full with scope", []string{"--access", "full", "--scope", "customers.read"}, ExitUsage, nil},
+		{"missing access", []string{"--scope", "customers.read"}, ExitUsage, nil},
+		{"unknown access", []string{"--access", "admin"}, ExitUsage, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app, stdout, _ := testApp(t, "http://127.0.0.1:1")
+			argv := append([]string{"api-keys", "create", "--name", "ci"}, tc.args...)
+			exit, result := runJSON(t, app, stdout, append(argv, "--dry-run", "client")...)
+			if exit != tc.exit {
+				t.Fatalf("exit=%d result=%v", exit, result)
+			}
+			if tc.body != nil && !reflect.DeepEqual(lookupPathValue(result, "data.body"), tc.body) {
+				t.Fatalf("body=%v want %v", lookupPathValue(result, "data.body"), tc.body)
+			}
+		})
 	}
 }

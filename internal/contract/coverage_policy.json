@@ -349,12 +349,6 @@
   },
   {
     "method": "POST",
-    "path": "/v1/customers/{customer_id}/addresses/{customer_address_id}/set-default",
-    "operation_id": "setDefaultCustomerAddress",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
     "path": "/v1/customer-deletion-requests",
     "operation_id": "createCustomerDeletionRequest",
     "classification": "resource"
@@ -741,6 +735,12 @@
     "method": "GET",
     "path": "/v1/disputes/{dispute_id}",
     "operation_id": "getDispute",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/disputes/{dispute_id}/accept",
+    "operation_id": "acceptDispute",
     "classification": "resource"
   },
   {
@@ -1176,12 +1176,6 @@
     "method": "PATCH",
     "path": "/v1/me/addresses/{customer_address_id}",
     "operation_id": "updateMeAddress",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/me/addresses/{customer_address_id}/set-default",
-    "operation_id": "setDefaultMeAddress",
     "classification": "resource"
   },
   {
