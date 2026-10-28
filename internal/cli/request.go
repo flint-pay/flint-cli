@@ -320,6 +320,8 @@ func selectRequestUnionTags(cmd *Command, opts Options, body map[string]any) *CL
 			return usageError("CONFLICTING_ARGUMENTS", fmt.Sprintf("--%s requires credential_type %s.", selected[0], credentialType), "credential_type")
 		}
 		body["credential_type"] = credentialType
+	case "api-keys.create", "api-keys.update", "sandboxes.api-keys.create", "sandboxes.create":
+		return inferAPIKeyAccess(cmd, opts, body)
 	case "invoices.create":
 		if !flagged("order") {
 			return nil
@@ -687,4 +689,29 @@ func validateRawPublicRoute(method, path string) *CLIError {
 		return nil
 	}
 	return usageError("UNDOCUMENTED_API_OPERATION", fmt.Sprintf("%s %s is not present in Flint's public OpenAPI contract.", method, u.Path), "path")
+}
+
+// inferAPIKeyAccess fills the access discriminator for API key commands.
+// --scope without --access selects restricted, as the Dashboard does, and
+// --access, --scope, or --test-key-name on sandboxes create imply
+// issue_test_key. JSON input keeps its explicit fields and must satisfy the
+// public contract. Creating a key with no access choice names the flags
+// instead of reporting a schema branch.
+func inferAPIKeyAccess(cmd *Command, opts Options, body map[string]any) *CLIError {
+	if _, hasAccess := body["access"]; !hasAccess && len(opts.Raw["scope"]) > 0 {
+		body["access"] = "restricted"
+	}
+	creates := cmd.CanonicalName != "api-keys.update"
+	if cmd.CanonicalName == "sandboxes.create" {
+		_, hasIssue := body["issue_test_key"]
+		if !hasIssue && (len(opts.Raw["access"]) > 0 || len(opts.Raw["scope"]) > 0 || len(opts.Raw["test-key-name"]) > 0) {
+			body["issue_test_key"] = true
+		}
+		issue, _ := body["issue_test_key"].(bool)
+		creates = issue
+	}
+	if _, hasAccess := body["access"]; creates && !hasAccess {
+		return usageError("MISSING_REQUIRED_ARGUMENT", "Choose the key's access with --access full, --access read_only, or --scope SCOPE for restricted access.", "access")
+	}
+	return nil
 }

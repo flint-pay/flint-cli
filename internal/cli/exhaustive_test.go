@@ -1518,10 +1518,6 @@ func minimalInvocation(t testing.TB, command *Command) []string {
 	if command.CanonicalName == "payment-intents.create" {
 		return append(argv, "--amount", "2500", "--currency", "USD", "--payment-option", "card")
 	}
-	if command.CanonicalName == "api-keys.create" {
-		// The --access fixture is restricted, which needs at least one scope.
-		argv = append(argv, "--scope", exhaustiveArgumentValues(Arg{Name: "scope"})[0])
-	}
 	// Required request fields that no required flag supplies come from a
 	// minimal body derived from the command's --input schema.
 	if body := minimalRequestBody(t, command); len(body) > 0 && slices.ContainsFunc(command.Arguments, func(a Arg) bool { return a.Name == "input" }) {

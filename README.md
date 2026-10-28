@@ -249,6 +249,10 @@ Server flags:
 
 Agents can always inspect a write first with `_flint.dry_run: "client"` or, for destructive operations, `_flint.preview`. Successful results that reached the API include a `Flint environment: sandbox|live` line, followed by a `Warnings:` block when the CLI printed warnings. The `help` tool returns a short index without a topic, a tool's arguments and required fields when given a tool name, and control details for `controls`. `schema_input` and `schema_output` return a tool's full schemas on demand, and `schema_events` lists webhook event types (pass `event_type` for payload schemas). Agents can add a `_flint.merchant` guard but cannot replace the profile, merchant guard, or context the server uses. `config set`, `config unset`, and `auth logout` are not available over MCP.
 
+## Migrating from 0.13.0
+
+0.14.0 adds `--access` and `--scope` to `api-keys create`, `api-keys update`, `sandboxes api-keys create`, and `sandboxes create`; `--scope` alone selects restricted access. See [the 0.14.0 migration notes](docs/migrating-0.14.md) for details.
+
 ## Migrating from 0.12.0
 
 0.13.0 moves every command to Flint's canonical API paths, so it needs a Flint API that serves them; for example, it checks credentials with `GET /v1/auth-context`, `developer partner apps` commands are now `partner-apps`, and `me payments` commands are now `me payment-intents`. Convenience flags set the union tags request bodies now require, such as `credential_type` on `payment-intents confirm`, and bot-check tokens come from `FLINT_CHALLENGE_TOKEN`. It also adds webhook endpoint and delivery rate callback signing method flags, which default to JWT and return a shared secret only when HMAC is included, partner-app credential, tax-connection, and `disputes accept` commands, requires `--access` on `api-keys create`, and removes older subscription actions and the address `set-default` commands. See [the 0.13.0 migration notes](docs/migrating-0.13.md) for details.

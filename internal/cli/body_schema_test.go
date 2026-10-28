@@ -385,8 +385,11 @@ func TestAPIKeyCreateAccessFlag(t *testing.T) {
 		{"restricted", []string{"--access", "restricted", "--scope", "customers.read"}, ExitOK, map[string]any{"name": "ci", "access": "restricted", "scopes": []any{"customers.read"}}},
 		{"restricted without scope", []string{"--access", "restricted"}, ExitUsage, nil},
 		{"full with scope", []string{"--access", "full", "--scope", "customers.read"}, ExitUsage, nil},
-		{"missing access", []string{"--scope", "customers.read"}, ExitUsage, nil},
+		{"scope implies restricted", []string{"--scope", "customers.read"}, ExitOK, map[string]any{"name": "ci", "access": "restricted", "scopes": []any{"customers.read"}}},
+		{"no access choice", nil, ExitUsage, nil},
 		{"unknown access", []string{"--access", "admin"}, ExitUsage, nil},
+		{"input keeps its access", []string{"--input", `{"access":"read_only"}`}, ExitOK, map[string]any{"name": "ci", "access": "read_only"}},
+		{"input scopes without access", []string{"--input", `{"scopes":["customers.read"]}`}, ExitUsage, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			app, stdout, _ := testApp(t, "http://127.0.0.1:1")
@@ -399,5 +402,58 @@ func TestAPIKeyCreateAccessFlag(t *testing.T) {
 				t.Fatalf("body=%v want %v", lookupPathValue(result, "data.body"), tc.body)
 			}
 		})
+	}
+}
+
+// Every API key create and update path sends access: --scope alone selects
+// restricted, and sandbox test-key flags imply issue_test_key.
+func TestAPIKeyAccessFlagsOnUpdateAndSandboxCommands(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		argv []string
+		exit int
+		code string
+		body map[string]any
+	}{
+		{"update scope implies restricted", []string{"api-keys", "update", "key_123", "--scope", "customers.read", "--expected-version", "3"}, ExitOK, "", map[string]any{"access": "restricted", "scopes": []any{"customers.read"}, "expected_version": float64(3)}},
+		{"update to read only", []string{"api-keys", "update", "key_123", "--access", "read_only", "--expected-version", "3"}, ExitOK, "", map[string]any{"access": "read_only", "expected_version": float64(3)}},
+		{"update name only", []string{"api-keys", "update", "key_123", "--name", "ci"}, ExitOK, "", map[string]any{"name": "ci"}},
+		{"update full with scope", []string{"api-keys", "update", "key_123", "--access", "full", "--scope", "customers.read", "--expected-version", "3"}, ExitUsage, "INVALID_REQUEST_BODY", nil},
+		{"update input scopes without access", []string{"api-keys", "update", "key_123", "--input", `{"scopes":["customers.read"],"expected_version":3}`}, ExitUsage, "INVALID_REQUEST_BODY", nil},
+		{"test key scope implies restricted", []string{"sandboxes", "test-key", "test_123", "--name", "qa", "--scope", "customers.read"}, ExitOK, "", map[string]any{"name": "qa", "access": "restricted", "scopes": []any{"customers.read"}}},
+		{"test key full", []string{"sandboxes", "api-keys", "create", "test_123", "--name", "qa", "--access", "full"}, ExitOK, "", map[string]any{"name": "qa", "access": "full"}},
+		{"test key without access", []string{"sandboxes", "test-key", "test_123", "--name", "qa"}, ExitUsage, "MISSING_REQUIRED_ARGUMENT", nil},
+		{"sandbox scope issues a restricted key", []string{"sandboxes", "create", "--name", "qa", "--scope", "customers.read", "--test-key-name", "qa key"}, ExitOK, "", map[string]any{"name": "qa", "issue_test_key": true, "access": "restricted", "scopes": []any{"customers.read"}, "test_key_name": "qa key"}},
+		{"sandbox read only key", []string{"sandboxes", "create", "--name", "qa", "--access", "read_only"}, ExitOK, "", map[string]any{"name": "qa", "issue_test_key": true, "access": "read_only"}},
+		{"sandbox without key", []string{"sandboxes", "create", "--name", "qa"}, ExitOK, "", map[string]any{"name": "qa"}},
+		{"sandbox key name without access", []string{"sandboxes", "create", "--name", "qa", "--test-key-name", "qa key"}, ExitUsage, "MISSING_REQUIRED_ARGUMENT", nil},
+		{"sandbox declined key with access", []string{"sandboxes", "create", "--name", "qa", "--access", "full", "--input", `{"issue_test_key":false}`}, ExitUsage, "INVALID_REQUEST_BODY", nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app, stdout, _ := testApp(t, "http://127.0.0.1:1")
+			t.Setenv("FLINT_API_KEY", "flint_live_synthetic")
+			exit, result := runJSON(t, app, stdout, append(tc.argv, "--live", "--dry-run", "client")...)
+			if exit != tc.exit || (tc.code != "" && lookupPathValue(result, "error.code") != tc.code) {
+				t.Fatalf("exit=%d result=%v", exit, result)
+			}
+			if tc.body != nil && !reflect.DeepEqual(lookupPathValue(result, "data.body"), tc.body) {
+				t.Fatalf("body=%v want %v", lookupPathValue(result, "data.body"), tc.body)
+			}
+		})
+	}
+}
+
+// MCP tools take the request schema directly, so scopes without access are
+// refused before any request.
+func TestMCPAPIKeyCreateRequiresAccess(t *testing.T) {
+	app, _, _ := testApp(t, "http://127.0.0.1:1")
+	refused := mcpCall(t, app, mcpAllToolsOptions(t), "api-keys_create", map[string]any{"name": "ci", "scopes": []any{"customers.read"}, "_flint": map[string]any{"dry_run": "client"}})
+	if refused["isError"] != true || !strings.Contains(mcpResultText(refused), "missing property 'access'") {
+		t.Fatalf("scopes without access = %s", mcpResultText(refused))
+	}
+	accepted := mcpCall(t, app, mcpAllToolsOptions(t), "api-keys_create", map[string]any{"name": "ci", "access": "restricted", "scopes": []any{"customers.read"}, "_flint": map[string]any{"dry_run": "client"}})
+	want := map[string]any{"name": "ci", "access": "restricted", "scopes": []any{"customers.read"}}
+	if body := lookupPathValue(accepted["structuredContent"].(map[string]any), "data.body"); accepted["isError"] == true || !reflect.DeepEqual(body, want) {
+		t.Fatalf("restricted create = %v (%s)", body, mcpResultText(accepted))
 	}
 }
