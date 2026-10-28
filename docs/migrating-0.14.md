@@ -1,6 +1,6 @@
-# Migrating to Flint CLI 0.14.0
+# Migrating to Flint CLI 0.14.1
 
-This release adds API key access flags. Existing commands and `--input` bodies keep working.
+This release adds API key access flags. Existing commands and `--input` bodies keep working. 0.14.0 was not released: its npm wrapper package never published, so install 0.14.1.
 
 ## API key access flags
 

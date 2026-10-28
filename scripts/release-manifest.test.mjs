@@ -173,7 +173,11 @@ test("npm publishes frozen tarballs in platform-before-wrapper order and verifie
       assert.equal(args[0], "view", "Retries must not write existing npm versions");
       return { status: 0, stdout: JSON.stringify(f.manifest.npm.find(item => args[1].startsWith(`${item.name}@`)).integrity) };
     });
-    for (const result of [{ status: 0, stdout: '"sha512-wrong"' }, { status: 1, stdout: '{"error":{"code":"E401"}}' }, { status: 1, stdout: "network error" }]) {
+    await publishNpm(f, (command, args) => {
+      assert.equal(args[0], "view", "npm 12 array output must also verify existing versions");
+      return { status: 0, stdout: JSON.stringify([f.manifest.npm.find(item => args[1].startsWith(`${item.name}@`)).integrity]) };
+    });
+    for (const result of [{ status: 0, stdout: '"sha512-wrong"' }, { status: 0, stdout: '["sha512-wrong"]' }, { status: 0, stdout: '["sha512-a","sha512-b"]' }, { status: 1, stdout: '{"error":{"code":"E401"}}' }, { status: 1, stdout: "network error" }]) {
       await assert.rejects(publishNpm(f, () => result));
     }
   }

@@ -18,7 +18,9 @@ export async function publishNpm({ directory, reviewHash, tag, commit }, run = s
     let metadata;
     try { metadata = JSON.parse(result.stdout); } catch { throw new Error(`Cannot establish npm version state for ${name}`); }
     if (result.status === 0) {
-      assert.equal(metadata, artifact.integrity, `Published ${name}@${version} differs from review`);
+      // npm 12 wraps a single version's field in an array; older npm returns the value.
+      const integrity = Array.isArray(metadata) && metadata.length === 1 ? metadata[0] : metadata;
+      assert.equal(integrity, artifact.integrity, `Published ${name}@${version} differs from review`);
     } else {
       assert.ok(result.status !== null && metadata?.error?.code === "E404", `Cannot establish npm version state for ${name}: ${metadata?.error?.code ?? result.error?.message}`);
       const published = run("npm", ["publish", join(directory, artifact.filename), "--ignore-scripts", "--access", "public", "--provenance", "--tag", version.includes("-") ? "next" : "latest"], { stdio: "inherit" });
