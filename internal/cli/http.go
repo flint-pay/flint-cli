@@ -212,6 +212,13 @@ func (a *App) doAPIRequest(ctx context.Context, baseURL, key, method, path strin
 		if err != nil {
 			return nil, usageError("INVALID_REQUEST_URL", err.Error(), "path")
 		}
+		if method != http.MethodGet && unknownRawOperation(responseContract(ctx)) {
+			// A caller key is forwarded without promising replay safety. Prevent
+			// net/http from transparently replaying on a reused connection, even
+			// for an empty body, independently of our explicit retry loop.
+			req.Body = io.NopCloser(bytes.NewReader(body))
+			req.GetBody = nil
+		}
 		req.Header.Set("Accept", "application/json")
 		if command := responseContract(ctx); command != nil && command.ResponseMediaType != "" {
 			req.Header.Set("Accept", command.ResponseMediaType)

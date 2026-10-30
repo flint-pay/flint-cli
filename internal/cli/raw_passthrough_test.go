@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -110,5 +111,46 @@ func TestUnknownRawTransportFailureIsNotReplayed(t *testing.T) {
 	exit := app.Run([]string{"api", "post", "/v1/future-resources", "--idempotency-key", "caller-saved-key", "--confirm", "--output", "json"})
 	if exit != ExitNetwork || calls != 1 || !strings.Contains(out.String(), `"idempotency_key":"caller-saved-key"`) || strings.Contains(out.String(), "is safe") {
 		t.Fatalf("exit=%d calls=%d out=%s", exit, calls, out)
+	}
+}
+
+func TestUnknownRawWriteCannotReplayInHTTPTransport(t *testing.T) {
+	for _, body := range []string{"", `{"action":true}`} {
+		t.Run(body, func(t *testing.T) {
+			var writes atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodGet {
+					io.WriteString(w, `{"data":{}}`)
+					return
+				}
+				io.Copy(io.Discard, r.Body)
+				if r.Header.Get("Idempotency-Key") != "caller-key" {
+					t.Error("caller key was not forwarded")
+				}
+				if writes.Add(1) == 1 {
+					conn, _, err := w.(http.Hijacker).Hijack()
+					if err != nil {
+						t.Error(err)
+						return
+					}
+					conn.Close()
+					return
+				}
+				io.WriteString(w, `{"data":{"ok":true}}`)
+			}))
+			defer server.Close()
+			app, _, _ := testApp(t, server.URL)
+			transport := http.DefaultTransport.(*http.Transport).Clone()
+			defer transport.CloseIdleConnections()
+			app.HTTPClient = &http.Client{Transport: transport}
+			if _, e := app.doRequest(context.Background(), server.URL, "", http.MethodGet, "/v1/prime", nil, "", false); e != nil {
+				t.Fatal(e)
+			}
+			ctx := context.WithValue(context.Background(), responseContractKey{}, &Command{CanonicalName: "api", Method: http.MethodPost, APIPath: "/v1/future-resources", Mutation: true})
+			_, e := app.doRequest(ctx, server.URL, "", http.MethodPost, "/v1/future-resources", []byte(body), "caller-key", false)
+			if e == nil || writes.Load() != 1 {
+				t.Fatalf("writes=%d error=%v", writes.Load(), e)
+			}
+		})
 	}
 }
