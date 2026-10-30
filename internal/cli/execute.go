@@ -20,6 +20,12 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 		return nil, e
 	}
 	if opts.DryRun == "client" || opts.Preview {
+		if authContext.AuthType == "none" {
+			req.Warnings = append(req.Warnings, map[string]any{
+				"message":        unauthenticatedDryRunWarning,
+				"skipped_checks": []string{"scopes", "merchant_guard", "sandbox_guard"},
+			})
+		}
 		return previewRequest(req, permissionCommand(cmd, opts), authContext, opts.Preview), nil
 	}
 	if cmd.CanonicalName == "listen" {
@@ -63,6 +69,9 @@ func previewRequest(req preparedRequest, cmd *Command, authContext AuthContext, 
 		headers["Idempotency-Key"] = req.IdempotencyKey
 	}
 	data := map[string]any{"method": req.Method, "path": req.Path, "headers": headers, "body": req.BodyValue, "persistent_side_effects": false}
+	if authContext.AuthType == "none" {
+		data["environment"] = authContext.Environment
+	}
 	if len(req.Warnings) > 0 {
 		data["warnings"] = req.Warnings
 	}
@@ -93,6 +102,9 @@ func permissionCommand(cmd *Command, opts Options) *Command {
 }
 
 func permissionPreview(cmd *Command, authContext AuthContext) map[string]any {
+	if authContext.AuthType == "none" {
+		return map[string]any{"status": "unknown", "reason": "No credential is configured, so scope checks were skipped."}
+	}
 	if authContext.AuthType == "session" {
 		return map[string]any{"status": "unknown", "reason": "Session credential permissions are validated by the API and cannot be checked locally."}
 	}
@@ -210,7 +222,7 @@ func commandPermissionError(cmd *Command, authContext AuthContext, profile strin
 		}
 		actions = append(actions, map[string]any{"command": "flint auth import", "url": dashboardAPIKeysURL})
 	}
-	err := cliError(ExitAuth, "authorization_error", "MISSING_REQUIRED_SCOPES", message)
+	err := cliError(ExitAuth, errorTypeAuthorization, "MISSING_REQUIRED_SCOPES", message)
 	err.Details = map[string]any{
 		"auth_type":       authContext.AuthType,
 		"command":         cmd.CanonicalName,
@@ -318,7 +330,7 @@ func (a *App) executeWait(ctx context.Context, cmd *Command, opts Options, req p
 	for {
 		remaining := deadline.Sub(a.Now())
 		if remaining <= 0 {
-			err := cliError(ExitWait, "wait_condition_unmet", "WAIT_CONDITION_UNMET", "The wait bound passed before the requested condition was met.")
+			err := cliError(ExitWait, errorTypeWaitConditionUnmet, "WAIT_CONDITION_UNMET", "The wait bound passed before the requested condition was met.")
 			err.Details = map[string]any{"conditions": opts.WaitFor, "observed": observedConditions(last, conditions), "last": last}
 			return last, err
 		}
@@ -326,7 +338,7 @@ func (a *App) executeWait(ctx context.Context, cmd *Command, opts Options, req p
 		resp, requestErr := a.doRequestWithin(ctx, requestTimeout, baseURL, key, req.Method, req.Path, nil, "", opts.Debug)
 		if requestErr != nil {
 			if !a.Now().Before(deadline) {
-				err := cliError(ExitWait, "wait_condition_unmet", "WAIT_CONDITION_UNMET", "The wait bound passed before the requested condition was met.")
+				err := cliError(ExitWait, errorTypeWaitConditionUnmet, "WAIT_CONDITION_UNMET", "The wait bound passed before the requested condition was met.")
 				err.Details = map[string]any{"conditions": opts.WaitFor, "observed": observedConditions(last, conditions), "last": last}
 				return last, err
 			}
@@ -345,7 +357,7 @@ func (a *App) executeWait(ctx context.Context, cmd *Command, opts Options, req p
 			}
 		}
 		if terminallyImpossible(cmd, conditions, observed) {
-			err := cliError(ExitWait, "wait_condition_unmet", "WAIT_CONDITION_IMPOSSIBLE", "The resource reached a terminal state that cannot satisfy the requested condition.")
+			err := cliError(ExitWait, errorTypeWaitConditionUnmet, "WAIT_CONDITION_IMPOSSIBLE", "The resource reached a terminal state that cannot satisfy the requested condition.")
 			err.Details = map[string]any{"conditions": opts.WaitFor, "observed": observed, "last": last}
 			return last, err
 		}
@@ -353,7 +365,7 @@ func (a *App) executeWait(ctx context.Context, cmd *Command, opts Options, req p
 			return last, e
 		}
 		if !a.Now().Before(deadline) {
-			err := cliError(ExitWait, "wait_condition_unmet", "WAIT_CONDITION_UNMET", "The wait bound passed before the requested condition was met.")
+			err := cliError(ExitWait, errorTypeWaitConditionUnmet, "WAIT_CONDITION_UNMET", "The wait bound passed before the requested condition was met.")
 			err.Details = map[string]any{"conditions": opts.WaitFor, "observed": observed, "last": last}
 			return last, err
 		}

@@ -4,12 +4,15 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"net/url"
 	"os"
 	"strings"
 
 	apispec "github.com/flint-pay/flint-cli/internal/spec"
 )
+
+const unauthenticatedDryRunWarning = "No credential is configured. Scope, merchant-guard, and sandbox-guard checks were skipped for this client dry run."
 
 func unknownRawOperation(cmd *Command) bool {
 	return cmd != nil && cmd.CanonicalName == "api" && cmd.OperationID == ""
@@ -203,6 +206,23 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 		return "", "", envelope, credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The credential could not be read from the selected credential store.", err)
 	}
 	if key == "" {
+		if opts.DryRun == "client" {
+			mode, baseKey := "sandbox", "flint_test_"
+			if opts.Live {
+				mode, baseKey = "live", "flint_live_"
+			}
+			baseURL, err := a.baseURLForCredential(baseKey)
+			if err != nil {
+				return "", "", envelope, configError("INVALID_BASE_URL", err.Error(), err)
+			}
+			// Guards are assertions about a credential, not evidence of a context.
+			// Leave resource IDs empty rather than presenting guards as verified.
+			envelope.Data = AuthContext{AuthType: "none", Environment: mode}
+			if !opts.Quiet {
+				fmt.Fprintln(a.Stderr, "warning: "+unauthenticatedDryRunWarning)
+			}
+			return "", baseURL, envelope, nil
+		}
 		e := configError("API_KEY_REQUIRED", missingCredentialMessage(resolved.ProfileName), nil)
 		e.Details = map[string]any{"remediation": map[string]any{"next_actions": []any{map[string]any{"command": "flint auth login"}, map[string]any{"command": "flint auth import", "url": dashboardAPIKeysURL}, map[string]any{"command": "flint signup"}}}}
 		return "", "", envelope, e

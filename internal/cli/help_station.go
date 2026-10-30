@@ -32,6 +32,7 @@ var supportProductAreas = []string{
 	"checkout",
 	"payments",
 	"payouts",
+	"disputes",
 	"invoices",
 	"subscriptions",
 	"payment_links",
@@ -135,7 +136,7 @@ func (a *App) searchFlintHelp(base, query string, opts Options) ([]helpSearchRes
 	response, err := a.helpHTTPClient().Do(request)
 	if err != nil {
 		if ctx.Err() != nil {
-			return nil, &CLIError{ExitCode: ExitNetwork, Type: "timeout_error", Code: "HELP_SEARCH_TIMEOUT", Message: "Flint Help did not respond before the timeout.", Cause: err}
+			return nil, &CLIError{ExitCode: ExitNetwork, Type: errorTypeTimeout, Code: "HELP_SEARCH_TIMEOUT", Message: "Flint Help did not respond before the timeout.", Cause: err}
 		}
 		return nil, networkError("HELP_SEARCH_UNREACHABLE", "Flint Help could not be reached: "+err.Error(), err)
 	}
@@ -147,7 +148,7 @@ func (a *App) searchFlintHelp(base, query string, opts Options) ([]helpSearchRes
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return nil, &CLIError{
 			ExitCode: ExitAPI,
-			Type:     "unavailable_error",
+			Type:     errorTypeUnavailable,
 			Code:     "HELP_SEARCH_FAILED",
 			Message:  fmt.Sprintf("Flint Help search returned HTTP %d.", response.StatusCode),
 			Details:  map[string]any{"status": response.StatusCode, "url": target},

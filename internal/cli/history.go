@@ -330,7 +330,7 @@ func (a *App) resolveHistoryRef(ref, expectedPrefix string, scope historyScope) 
 	}
 	h, err := a.loadHistory()
 	if err != nil {
-		return "", &CLIError{ExitCode: ExitUsage, Type: "usage_error", Code: "HISTORY_READ_FAILED", Message: err.Error(), Cause: err}
+		return "", &CLIError{ExitCode: ExitUsage, Type: errorTypeUsage, Code: "HISTORY_READ_FAILED", Message: err.Error(), Cause: err}
 	}
 	for _, e := range h.Entries {
 		if historyEntryMatchesScope(e, scope) && strings.HasPrefix(e.ID, prefix) {

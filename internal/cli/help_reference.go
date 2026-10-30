@@ -102,7 +102,7 @@ func eventHelpIndex() ([]map[string]any, error) {
 func eventHelpDetail(name string) (map[string]any, *CLIError) {
 	doc, err := loadOpenAPI()
 	if err != nil {
-		return nil, cliError(ExitSoftware, "internal_error", "SCHEMA_SNAPSHOT_INVALID", err.Error())
+		return nil, cliError(ExitSoftware, errorTypeInternal, "SCHEMA_SNAPSHOT_INVALID", err.Error())
 	}
 	raw, ok := doc.Webhooks[name]
 	if !ok {

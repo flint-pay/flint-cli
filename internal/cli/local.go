@@ -62,7 +62,7 @@ func (a *App) runLocal(cmd *Command, opts Options) int {
 	case "signup":
 		return a.localSignup(cmd, opts)
 	default:
-		return a.fail(cliError(ExitUsage, "usage_error", "NOT_IMPLEMENTED", "Local command is not implemented: "+cmd.Name), opts)
+		return a.fail(cliError(ExitUsage, errorTypeUsage, "NOT_IMPLEMENTED", "Local command is not implemented: "+cmd.Name), opts)
 	}
 }
 
@@ -493,7 +493,7 @@ func (a *App) confirmLocal(message string, opts Options) *CLIError {
 		return nil
 	}
 	if opts.NoInput || !a.IsTTY() {
-		return &CLIError{ExitCode: ExitConfirmation, Type: "confirmation_required", Code: "CONFIRMATION_REQUIRED", Message: message + " Re-run with --confirm."}
+		return &CLIError{ExitCode: ExitConfirmation, Type: errorTypeConfirmationRequired, Code: "CONFIRMATION_REQUIRED", Message: message + " Re-run with --confirm."}
 	}
 	fmt.Fprint(a.Stderr, message+" [y/N] ")
 	line, err := bufio.NewReader(&contextInputReader{ctx: a.commandContext(), reader: a.Stdin}).ReadString('\n')
@@ -502,7 +502,7 @@ func (a *App) confirmLocal(message string, opts Options) *CLIError {
 	}
 	answer := strings.ToLower(strings.TrimSpace(line))
 	if answer != "y" && answer != "yes" {
-		return &CLIError{ExitCode: ExitConfirmation, Type: "confirmation_required", Code: "CONFIRMATION_DECLINED", Message: "Operation canceled."}
+		return &CLIError{ExitCode: ExitConfirmation, Type: errorTypeConfirmationRequired, Code: "CONFIRMATION_DECLINED", Message: "Operation canceled."}
 	}
 	return nil
 }
@@ -534,13 +534,25 @@ func (a *App) localSchema(cmd *Command, opts Options) int {
 		}
 		value = map[string]any{"data": commands}
 	case "schema.errors":
-		value = errorCatalog()
+		value = map[string]any{"data": errorCatalog()}
 	case "schema.events":
-		v, err := eventCatalog()
-		if err != nil {
-			return a.fail(cliError(ExitUsage, "internal_error", "SCHEMA_SNAPSHOT_INVALID", err.Error()), opts)
+		var e *CLIError
+		if len(opts.Positionals) == 0 {
+			var catalog map[string]any
+			catalog, e = mcpEventList()
+			if e == nil {
+				catalog["data"].(map[string]any)["next"] = "Run flint schema events <type-or-prefix> for payload schemas, for example flint schema events payment_intent."
+			}
+			value = catalog
+		} else {
+			value, e = mcpEventSchemas(opts.Positionals[0])
+			if e != nil {
+				e.Message = strings.ReplaceAll(e.Message, "Call schema_events without event_type to list event types.", "Run flint schema events to list event types.")
+			}
 		}
-		value = v
+		if e != nil {
+			return a.fail(e, opts)
+		}
 	default:
 		requested := commandNameFromWords(opts.Positionals)
 		target, ok := a.Registry.ByName(requested)

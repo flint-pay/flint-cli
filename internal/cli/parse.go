@@ -469,7 +469,7 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 }
 
 func usageError(code, message, param string) *CLIError {
-	e := cliError(ExitUsage, "usage_error", code, message)
+	e := cliError(ExitUsage, errorTypeUsage, code, message)
 	e.Param = param
 	return e
 }

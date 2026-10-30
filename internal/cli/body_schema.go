@@ -34,7 +34,7 @@ func requestBodyValidator(c *Command) (*bodyValidator, *CLIError) {
 		return nil, e
 	}
 	invalid := func(err error) *CLIError {
-		return cliError(ExitUsage, "internal_error", "SCHEMA_SNAPSHOT_INVALID", "Request body schema for "+c.CanonicalName+" is invalid: "+err.Error())
+		return cliError(ExitUsage, errorTypeInternal, "SCHEMA_SNAPSHOT_INVALID", "Request body schema for "+c.CanonicalName+" is invalid: "+err.Error())
 	}
 	raw, err := json.Marshal(schema)
 	if err != nil {

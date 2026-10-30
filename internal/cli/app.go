@@ -126,8 +126,10 @@ func (a *App) Run(argv []string) int {
 		// requires the same explicit acknowledgement as before.
 		affinity = EnvironmentAffinityAccount
 	}
-	if e := validateResolvedCredentialIntent(authContext, opts, resolved, affinity); (effective.AuthRequired || effective.OperationID == "authorizePartnerInstall") && e != nil {
-		return a.fail(e, opts)
+	if !(opts.DryRun == "client" && authContext.AuthType == "none") {
+		if e := validateResolvedCredentialIntent(authContext, opts, resolved, affinity); (effective.AuthRequired || effective.OperationID == "authorizePartnerInstall") && e != nil {
+			return a.fail(e, opts)
+		}
 	}
 	if cmd.CanonicalName == "auth.status" {
 		if e := a.writeResult(map[string]any{"data": authEnvelope.Data, "request_id": authEnvelope.RequestID, "meta": authEnvelope.Meta}, cmd, opts); e != nil {
@@ -275,7 +277,7 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 		code = "UNVERIFIED_ENVIRONMENT_CONFIRMATION_REQUIRED"
 	}
 	if opts.NoInput || !a.IsTTY() {
-		return &CLIError{ExitCode: ExitConfirmation, Type: "confirmation_required", Code: code, Message: message + " Re-run with --confirm."}
+		return &CLIError{ExitCode: ExitConfirmation, Type: errorTypeConfirmationRequired, Code: code, Message: message + " Re-run with --confirm."}
 	}
 	fmt.Fprintf(a.Stderr, "%s Continue? [y/N] ", message)
 	line, err := bufio.NewReader(&contextInputReader{ctx: a.commandContext(), reader: a.Stdin}).ReadString('\n')
@@ -284,7 +286,7 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 	}
 	line = strings.TrimSpace(strings.ToLower(line))
 	if line != "y" && line != "yes" {
-		return &CLIError{ExitCode: ExitConfirmation, Type: "confirmation_required", Code: "CONFIRMATION_DECLINED", Message: "Operation canceled."}
+		return &CLIError{ExitCode: ExitConfirmation, Type: errorTypeConfirmationRequired, Code: "CONFIRMATION_DECLINED", Message: "Operation canceled."}
 	}
 	return nil
 }
@@ -296,7 +298,7 @@ func configError(code, message string, cause error) *CLIError {
 	if errors.Is(cause, context.Canceled) {
 		return networkError("CLIENT_CANCELED", "The command was canceled.", cause)
 	}
-	return &CLIError{ExitCode: ExitAuth, Type: "configuration_error", Code: code, Message: message, Cause: cause}
+	return &CLIError{ExitCode: ExitAuth, Type: errorTypeConfiguration, Code: code, Message: message, Cause: cause}
 }
 func (a *App) fail(err *CLIError, opts Options) int { a.writeError(err, opts); return err.ExitCode }
 
@@ -470,7 +472,7 @@ func (a *App) printRootHelp() {
 	fmt.Fprintln(a.Stdout, "  flint orders create --input order.json")
 	fmt.Fprintln(a.Stdout, "  flint schema input subscription-plans.create --output json")
 	fmt.Fprintln(a.Stdout, "  flint subscription-plans create --input plan.json")
-	fmt.Fprintln(a.Stdout, "  # With credentials configured, validate and inspect a request locally")
+	fmt.Fprintln(a.Stdout, "  # Validate and inspect a request locally, with or without credentials")
 	fmt.Fprintln(a.Stdout, "  flint products create --input product.json --dry-run=client --output json")
 	fmt.Fprintln(a.Stdout)
 	fmt.Fprintln(a.Stdout, "API resource groups (run flint <resource> --help):")
