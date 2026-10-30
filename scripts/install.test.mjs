@@ -27,7 +27,7 @@ function runInstaller(releases, expectedVersion, requestedVersion = "latest", op
     if (options.systemDir !== "missing") mkdirSync(systemDir);
     if (options.systemDir === "read-only") chmodSync(systemDir, 0o555);
     writeFileSync(join(contents, "flint"), `#!/bin/sh
-if [ "\${2:-}" = --field ]; then
+if [ "\${2:-}" = --jq ]; then
   printf '%s\\n' '${options.binaryVersion ?? expectedVersion}'
   exit ${options.binaryExitCode ?? 0}
 fi

@@ -2647,7 +2647,7 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 			}
 			projected, transformErr := applyCommandOutputTransforms(childCtx, result, selectionCommand, transformOptions)
 			if transformErr != nil {
-				if cmd.Mutation && (transformErr.Code == "INVALID_SELECT" || transformErr.Code == "FIELD_NOT_FOUND") {
+				if cmd.Mutation && (transformErr.Code == "UNKNOWN_OUTPUT_FIELD" || transformErr.Code == "OUTPUT_FIELD_ROOT") {
 					// Presentation must not hide a committed mutation or invite a duplicate write.
 					outcome.value = result
 					outcome.warnings += "\nThe mutation succeeded, but output selection failed: " + transformErr.Message + " Returning the complete successful result."
