@@ -261,6 +261,8 @@ Failures after a keyed write is dispatched include `details.idempotency_key` as 
 
 ## MCP server
 
+The stdio transport accepts one UTF-8 JSON-RPC message per line. Request IDs and progress tokens must be strings or integers within ±(2^53 − 1), written without a fraction or exponent. Errors omit the ID when it cannot be determined; malformed messages do not stop the server.
+
 `flint mcp serve` exposes Flint commands as Model Context Protocol tools over stdio, so an AI agent can call the Flint API with your credential. Tools are named `<resource>_<action>`, such as `customers_create`; dotted names such as `customers.create` are still accepted in tool calls and `--tools`. The server uses the same credential as the CLI: a saved `flint login`, the profile named by `FLINT_PROFILE`, or `FLINT_API_KEY`.
 
 Claude Code:

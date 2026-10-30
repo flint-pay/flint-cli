@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -570,6 +571,9 @@ func mcpClassifyMessage(record mcpInputRecord) mcpMessage {
 		return mcpMessage{kind: mcpMessageBlank}
 	}
 	var value any
+	if !utf8.Valid(record.line) {
+		return mcpMessage{kind: mcpMessageInvalid, response: rpcError(nil, -32700, "Parse error: invalid UTF-8")}
+	}
 	if err := decodeJSONNumbers(trimmed, &value); err != nil {
 		return mcpMessage{kind: mcpMessageInvalid, response: rpcError(nil, -32700, "Parse error")}
 	}
@@ -581,11 +585,7 @@ func mcpClassifyMessage(record mcpInputRecord) mcpMessage {
 		return mcpMessage{kind: mcpMessageInvalid, response: rpcError(nil, -32600, "Invalid Request")}
 	}
 	id, hasID := object["id"]
-	validID := false
-	switch id.(type) {
-	case string, json.Number:
-		validID = true
-	}
+	validID := mcpValidID(id)
 	responseID := any(nil)
 	if validID {
 		responseID = id
@@ -616,12 +616,33 @@ func mcpClassifyMessage(record mcpInputRecord) mcpMessage {
 			}
 			return mcpMessage{kind: mcpMessageInvalid, response: rpcError(id, -32602, "Invalid params: params must be an object")}
 		}
+		if meta, ok := params["_meta"].(map[string]any); ok {
+			if token, exists := meta["progressToken"]; exists && !mcpValidID(token) {
+				if !hasID {
+					return mcpMessage{kind: mcpMessageBlank}
+				}
+				return mcpMessage{kind: mcpMessageInvalid, response: rpcError(id, -32602, "Invalid params: _meta.progressToken must be a string or safe integer")}
+			}
+		}
 		req.Params = params
 	}
 	if !hasID {
 		return mcpMessage{kind: mcpMessageNotification, request: req}
 	}
 	return mcpMessage{kind: mcpMessageRequest, request: req}
+}
+
+// mcpValidID preserves the JSON spelling: fractional and exponent forms are
+// invalid even when their numeric value is an integer.
+func mcpValidID(id any) bool {
+	switch value := id.(type) {
+	case string:
+		return true
+	case json.Number:
+		integer, err := strconv.ParseInt(string(value), 10, 64)
+		return err == nil && integer >= -(1<<53-1) && integer <= 1<<53-1
+	}
+	return false
 }
 
 func (a *App) handleMCP(req jsonRPCRequest, opts Options) map[string]any {
@@ -3031,5 +3052,9 @@ func rpcResult(id, result any) map[string]any {
 	return map[string]any{"jsonrpc": "2.0", "id": id, "result": result}
 }
 func rpcError(id any, code int, message string) map[string]any {
-	return map[string]any{"jsonrpc": "2.0", "id": id, "error": map[string]any{"code": code, "message": message}}
+	response := map[string]any{"jsonrpc": "2.0", "error": map[string]any{"code": code, "message": message}}
+	if id != nil {
+		response["id"] = id
+	}
+	return response
 }

@@ -57,7 +57,7 @@ func additionalCommands(page []Arg, input Arg) []*Command {
 		{Name: "schema.events", CanonicalName: "schema.events", Path: pathWithFlint("schema", "events"), Description: "List webhook event types, or print payload schemas for a type or prefix", Local: true, Arguments: []Arg{{Name: "event_type", Type: "string", Positional: 1, Description: "Exact event type or prefix, such as payment_intent.succeeded or payment_intent"}}, Examples: ex("flint schema events --output json", "flint schema events payment_intent --output json", "flint schema events payment_intent.succeeded --output json")},
 		{
 			Name: "mcp.serve", CanonicalName: "mcp.serve", Path: pathWithFlint("mcp", "serve"),
-			Description: "Serve canonical Flint commands as MCP tools over stdio. Uses the CLI credential: FLINT_API_KEY, the FLINT_PROFILE (or --profile) profile, or a saved flint login",
+			Description: "Serve canonical Flint commands as MCP tools over stdio (UTF-8 JSON, string or safe integer request IDs). Uses the CLI credential: FLINT_API_KEY, the FLINT_PROFILE (or --profile) profile, or a saved flint login",
 			Local:       true,
 			Arguments: []Arg{
 				{Name: "tools", Flag: "--tools", Type: "string", Repeat: true, Description: "Tool groups or tools to expose, comma-separated or repeatable (e.g. customers,payment-intents). Without it, a default set for typical integrations; all exposes every tool; default,GROUP adds to the default. help and schema tools are always exposed"},
