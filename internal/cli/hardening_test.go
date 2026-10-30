@@ -383,7 +383,7 @@ func TestRawAPIPaginationUsesDocumentedRouteAndWritesEveryPage(t *testing.T) {
 	if pages != 2 || strings.Count(strings.TrimSpace(stdout.String()), "\n") != 1 || !strings.Contains(stdout.String(), `"customer_id":"cus_2"`) {
 		t.Fatalf("pages=%d stdout=%s", pages, stdout)
 	}
-	if cliErr := validateRawPublicRoute(http.MethodGet, "/v1/private"); cliErr == nil || cliErr.Code != "UNDOCUMENTED_API_OPERATION" {
+	if cliErr := validateRawPublicRoute(http.MethodGet, "/v1/private"); cliErr != nil {
 		t.Fatalf("undocumented route error = %#v", cliErr)
 	}
 }

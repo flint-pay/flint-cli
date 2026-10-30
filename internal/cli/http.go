@@ -135,25 +135,42 @@ func (a *App) fetchAuthContextResponse(ctx context.Context, baseURL, key string,
 }
 
 func (a *App) fetchCurrentAPIVersion(ctx context.Context, baseURL string, debug bool) (string, *CLIError) {
-	response, requestError := a.doRequest(ctx, baseURL, "", http.MethodGet, "/v1/openapi.json", nil, "", debug)
+	baseURL, err := validateBaseURL(baseURL)
+	if err != nil {
+		return "", usageError("INVALID_BASE_URL", err.Error(), "FLINT_BASE_URL")
+	}
+	response, requestError := a.doAPIRequest(ctx, baseURL, "", http.MethodGet, "/v1/openapi.json", nil, "", debug, true)
 	if requestError != nil {
 		return "", requestError
 	}
-	document, _ := response.Value.(map[string]any)
-	catalog, _ := document["x-flint-api-releases"].(map[string]any)
-	version, _ := catalog["current_version"].(string)
+	version := response.Headers.Get("Flint-Version")
 	if _, err := time.Parse(time.DateOnly, version); err != nil {
-		return "", invalidResponseError("INVALID_RESPONSE", "The OpenAPI release catalog did not include a valid current API version.", err)
+		e := invalidResponseError("INVALID_RESPONSE", "The OpenAPI response did not include a valid Flint-Version header.", err)
+		e.RequestID = response.Headers.Get("X-Request-Id")
+		return "", e
 	}
 	return version, nil
 }
 
-func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, body []byte, idempotencyKey string, debug bool) (result *apiResponse, requestErr *CLIError) {
+func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, body []byte, idempotencyKey string, debug bool) (*apiResponse, *CLIError) {
+	return a.doAPIRequest(ctx, baseURL, key, method, path, body, idempotencyKey, debug, false)
+}
+
+// versionProbe omits the version pin and reads only response headers. Doctor can
+// discover the server's default version without downloading the OpenAPI document.
+func (a *App) doAPIRequest(ctx context.Context, baseURL, key, method, path string, body []byte, idempotencyKey string, debug, versionProbe bool) (result *apiResponse, requestErr *CLIError) {
 	responseStatus := 0
 	history := requestHistory{started: time.Now()}
-	replaySafe := method == http.MethodGet || idempotencyKey != ""
+	replaySafe := method == http.MethodGet || idempotencyKey != "" && !unknownRawOperation(responseContract(ctx))
+	responseLimit := 16 << 20
+	if method == http.MethodGet && strings.SplitN(path, "?", 2)[0] == "/v1/openapi.json" {
+		responseLimit = 64 << 20
+	}
 	defer func() {
 		if requestErr != nil {
+			if requestErr.RequestID == "" && len(history.requestIDs) > 0 {
+				requestErr.RequestID = history.requestIDs[len(history.requestIDs)-1]
+			}
 			if requestErr.HTTPStatus == 0 {
 				requestErr.HTTPStatus = responseStatus
 			}
@@ -161,7 +178,9 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 			requestErr.retryable = &retryable
 			requestErr = history.finalError(ctx, requestErr, method, path, idempotencyKey)
 			requestErr.requestSent = history.sent
-			requestErr = withIdempotencyRetryContext(requestErr, idempotencyKey)
+			if !unknownRawOperation(responseContract(ctx)) {
+				requestErr = withIdempotencyRetryContext(requestErr, idempotencyKey)
+			}
 		}
 	}()
 	if !strings.HasPrefix(path, "/v1/") && path != "/v1" {
@@ -170,7 +189,7 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 	client := a.HTTPClient
 	if client == nil {
 		client = defaultAPIHTTPClient
-	} else if client.CheckRedirect == nil {
+	} else if versionProbe || client.CheckRedirect == nil {
 		clone := *client
 		clone.CheckRedirect = rejectAPIRedirect
 		client = &clone
@@ -193,6 +212,13 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		if err != nil {
 			return nil, usageError("INVALID_REQUEST_URL", err.Error(), "path")
 		}
+		if method != http.MethodGet && unknownRawOperation(responseContract(ctx)) {
+			// A caller key is forwarded without promising replay safety. Prevent
+			// net/http from transparently replaying on a reused connection, even
+			// for an empty body, independently of our explicit retry loop.
+			req.Body = io.NopCloser(bytes.NewReader(body))
+			req.GetBody = nil
+		}
 		req.Header.Set("Accept", "application/json")
 		if command := responseContract(ctx); command != nil && command.ResponseMediaType != "" {
 			req.Header.Set("Accept", command.ResponseMediaType)
@@ -202,7 +228,9 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		}
 		req.Header.Set("User-Agent", "flintpay-cli/"+a.Info.Version)
 		req.Header.Set("X-Flint-CLI-Version", a.Info.Version)
-		req.Header.Set("Flint-Version", apispec.APIVersion())
+		if !versionProbe {
+			req.Header.Set("Flint-Version", apispec.APIVersion())
+		}
 		if command := responseContract(ctx); command != nil {
 			if operation, ok := openAPIOperationByID(command.OperationID); ok {
 				for _, parameter := range operation.Parameters {
@@ -292,7 +320,21 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 			a.invalidateAuthContext(baseURL, key)
 		}
-		raw, readErr := io.ReadAll(io.LimitReader(resp.Body, (16<<20)+1))
+		if versionProbe {
+			resp.Body.Close()
+			cancelAttempt()
+			result := &apiResponse{Status: resp.StatusCode, Headers: resp.Header.Clone()}
+			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+				return result, nil
+			}
+			e := apiErrorFromResponse(result)
+			history.failure(fact, e, false)
+			if errorRetryable(e) && retryRequest(ctx, attempt, resp.Header.Get("Retry-After")) {
+				continue
+			}
+			return nil, e
+		}
+		raw, readErr := io.ReadAll(io.LimitReader(resp.Body, int64(responseLimit)+1))
 		resp.Body.Close()
 		cancelAttempt()
 		if readErr != nil {
@@ -316,7 +358,7 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 			}
 			return nil, e
 		}
-		if len(raw) > 16<<20 {
+		if len(raw) > responseLimit {
 			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 				e := apiErrorFromResponse(&apiResponse{Status: resp.StatusCode, Headers: resp.Header.Clone()})
 				e.Code = "RESPONSE_TOO_LARGE"
@@ -327,7 +369,7 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 				}
 				return nil, e
 			}
-			return nil, invalidResponseError("RESPONSE_TOO_LARGE", "The Flint response exceeded 16 MiB.", nil)
+			return nil, invalidResponseError("RESPONSE_TOO_LARGE", fmt.Sprintf("The Flint response exceeded %d MiB.", responseLimit>>20), nil)
 		}
 
 		command := responseContract(ctx)

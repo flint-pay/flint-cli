@@ -761,10 +761,11 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 	if discoveryError != nil {
 		versionCheck["status"] = "warning"
 		versionCheck["fix"] = discoveryError.Message
-		checks = append(checks, versionCheck)
-		return checks, ExitOK
+		if discoveryError.RequestID != "" {
+			versionCheck["request_id"] = discoveryError.RequestID
+		}
 	}
-	if observedVersion != a.Info.APIVersion {
+	if discoveryError == nil && observedVersion != a.Info.APIVersion {
 		versionCheck["status"] = "info"
 		versionCheck["note"] = "The server's current API version is " + observedVersion + ". This CLI requests " + a.Info.APIVersion + "."
 		versionCheck["changelog_url"] = "https://developers.withflintpay.com/changelog"

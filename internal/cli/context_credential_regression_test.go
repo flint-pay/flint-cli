@@ -33,7 +33,7 @@ func TestEnvironmentCredentialOverridesConfiguredContext(t *testing.T) {
 							}
 							fmt.Fprint(w, `{"data":{"auth_type":"api_key","api_key_id":"key_override","environment":"sandbox","merchant_id":"mer_override","sandbox_id":"test_override","scopes":["payments.payment_intents.read"]}}`)
 						case "/v1/openapi.json":
-							fmt.Fprint(w, `{"x-flint-api-releases":{"current_version":"2026-02-01"}}`)
+							w.Header().Set("Flint-Version", "2026-02-01")
 						default:
 							t.Errorf("unexpected request %s", r.URL.Path)
 							http.NotFound(w, r)

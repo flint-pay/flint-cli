@@ -988,7 +988,7 @@ func TestDoctorComparesObservedAPIVersion(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Path == "/v1/openapi.json" {
-			fmt.Fprint(w, `{"x-flint-api-releases":{"current_version":"2026-02-01"}}`)
+			w.Header().Set("Flint-Version", "2026-02-01")
 			return
 		}
 		fmt.Fprint(w, authContextJSON("sandbox"))
@@ -1018,7 +1018,7 @@ func TestInitPrintsGoldenPathsInCanonicalOrder(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Path == "/v1/openapi.json" {
-			fmt.Fprint(w, `{"x-flint-api-releases":{"current_version":"2026-02-01"}}`)
+			w.Header().Set("Flint-Version", "2026-02-01")
 			return
 		}
 		fmt.Fprint(w, authContextJSON("sandbox"))
@@ -1299,15 +1299,18 @@ func TestPayOrderMCPActionBranchesAcceptCLIArguments(t *testing.T) {
 func TestDoctorDiscoversNewerVersionWhileAuthResponseRemainsPinned(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.Header.Get("Flint-Version") != apispec.APIVersion() {
-			t.Errorf("request version=%q", r.Header.Get("Flint-Version"))
-		}
 		if r.URL.Path == "/v1/openapi.json" {
+			if r.Header.Get("Flint-Version") != "" {
+				t.Errorf("discovery version=%q", r.Header.Get("Flint-Version"))
+			}
 			if r.Header.Get("Authorization") != "" {
 				t.Error("public discovery received credentials")
 			}
-			fmt.Fprintf(w, `{"x-flint-api-version":%q,"x-flint-api-releases":{"current_version":"2027-02-01"}}`, apispec.APIVersion())
+			w.Header().Set("Flint-Version", "2027-02-01")
 			return
+		}
+		if r.Header.Get("Flint-Version") != apispec.APIVersion() {
+			t.Errorf("request version=%q", r.Header.Get("Flint-Version"))
 		}
 		fmt.Fprint(w, authContextJSON("sandbox"))
 	}))
@@ -1326,7 +1329,7 @@ func TestDoctorRejectsMissingReleaseDiscovery(t *testing.T) {
 	}))
 	defer server.Close()
 	app, stdout, _ := testApp(t, server.URL)
-	if exit := app.Run([]string{"doctor", "--output", "json"}); exit != ExitOK || !strings.Contains(stdout.String(), "OpenAPI release catalog") || !strings.Contains(stdout.String(), `"status":"warning"`) {
+	if exit := app.Run([]string{"doctor", "--output", "json"}); exit != ExitOK || !strings.Contains(stdout.String(), "Flint-Version header") || !strings.Contains(stdout.String(), `"status":"warning"`) {
 		t.Fatalf("exit=%d stdout=%s", exit, stdout)
 	}
 }

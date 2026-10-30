@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	pathpkg "path"
 	"sort"
 	"strconv"
 	"strings"
@@ -45,6 +46,9 @@ func commandIdempotencyClass(cmd *Command) string {
 func requestIdempotencyKey(cmd *Command, opts Options) (string, *CLIError) {
 	// Match HTTP header whitespace normalization before deciding replay safety.
 	key := strings.Trim(opts.IdempotencyKey, " \t")
+	if unknownRawOperation(cmd) {
+		return key, nil
+	}
 	switch commandIdempotencyClass(permissionCommand(cmd, opts)) {
 	case "required":
 		if strings.TrimSpace(key) == "" {
@@ -77,6 +81,13 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 	if cmd.CanonicalName == "api" {
 		if e := validateRawPublicRoute(cmd.Method, cmd.APIPath); e != nil {
 			return req, e
+		}
+	}
+	if unknownRawOperation(cmd) {
+		warning := fmt.Sprintf("%s %s is absent from CLI %s schema snapshot %s. Body and scope validation are unavailable; unknown writes are sent once, without automatic retries.", cmd.Method, cmd.APIPath, a.Info.Version, embeddedSnapshotHash())
+		req.Warnings = append(req.Warnings, map[string]any{"message": warning})
+		if !opts.Quiet {
+			fmt.Fprintln(a.Stderr, "warning: "+warning)
 		}
 	}
 	body, inputErr := a.readInput(opts.Input)
@@ -676,20 +687,36 @@ func (a *App) resolveSingleOrderPaymentIntent(ctx context.Context, payPath, key,
 }
 
 func validateRawPublicRoute(method, path string) *CLIError {
-	_, err := loadOpenAPI()
-	if err != nil {
-		return cliError(ExitUsage, "internal_error", "SCHEMA_SNAPSHOT_INVALID", err.Error())
+	switch method {
+	case http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+	default:
+		return usageError("INVALID_HTTP_METHOD", "flint api accepts get, post, put, patch, or delete.", "method")
 	}
 	u, err := url.Parse(path)
-	if err != nil || u.IsAbs() || u.Host != "" || u.Fragment != "" || !strings.HasPrefix(u.Path, "/v1/") {
-		return usageError("NON_PUBLIC_API_PATH", "flint api only accepts documented /v1 public API paths.", "path")
+	if err != nil || u.IsAbs() || u.Host != "" || u.Opaque != "" || strings.Contains(path, "#") || !strings.HasPrefix(u.Path, "/v1/") {
+		return usageError("NON_PUBLIC_API_PATH", "flint api only accepts relative /v1/ public API paths without fragments.", "path")
 	}
-	// Validation and safety classification must recognize exactly the same
-	// routes, including escaped paths and trailing slashes.
+	// Reject traversal, separator aliases, double encoding, and control characters
+	// before classification so upstream routing cannot reinterpret the path.
+	if pathpkg.Clean(u.Path) != u.Path || strings.ContainsAny(u.Path, "\\%") {
+		return usageError("UNDOCUMENTED_API_OPERATION", "Use a canonical /v1/ path without traversal or repeated separators.", "path")
+	}
+	for _, ch := range u.Path {
+		if ch < 0x20 || ch == 0x7f {
+			return usageError("NON_PUBLIC_API_PATH", "API paths must not contain control characters.", "path")
+		}
+	}
+	// Escaped slashes change segment boundaries and can bypass known-route safety.
+	if strings.Contains(strings.ToLower(u.EscapedPath()), "%2f") || strings.Contains(strings.ToLower(u.EscapedPath()), "%5c") {
+		return usageError("NON_PUBLIC_API_PATH", "API path separators must not be escaped.", "path")
+	}
 	if _, ok := matchPublicOperation(method, path); ok {
 		return nil
 	}
-	return usageError("UNDOCUMENTED_API_OPERATION", fmt.Sprintf("%s %s is not present in Flint's public OpenAPI contract.", method, u.Path), "path")
+	if u.RawPath != "" {
+		return usageError("UNDOCUMENTED_API_OPERATION", "Unknown API routes require a canonical escaped /v1/ path.", "path")
+	}
+	return nil
 }
 
 // inferAPIKeyAccess fills the access discriminator for API key commands.

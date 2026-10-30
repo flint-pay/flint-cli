@@ -1312,7 +1312,7 @@ func TestEveryLocalCommandExecutes(t *testing.T) {
 				}
 				if request.URL.Path == "/v1/openapi.json" {
 					w.Header().Set("Content-Type", "application/json")
-					fmt.Fprint(w, `{"x-flint-api-releases":{"current_version":"2026-02-01"}}`)
+					w.Header().Set("Flint-Version", "2026-02-01")
 					return
 				}
 				w.Header().Set("Content-Type", "application/json")

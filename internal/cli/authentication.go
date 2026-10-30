@@ -7,7 +7,18 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	apispec "github.com/flint-pay/flint-cli/internal/spec"
 )
+
+func unknownRawOperation(cmd *Command) bool {
+	return cmd != nil && cmd.CanonicalName == "api" && cmd.OperationID == ""
+}
+
+func embeddedSnapshotHash() string {
+	digest := sha256.Sum256(apispec.OpenAPI)
+	return hex.EncodeToString(digest[:])
+}
 
 func matchPublicOperation(method, path string) (openAPIOperation, bool) {
 	doc, err := loadOpenAPI()
@@ -163,7 +174,7 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 		// same live acknowledgement, confirmation, and guard checks as API keys.
 		// Partner tokens cannot be, so their environment stays unverified and
 		// sensitive writes require confirmation as if they were live.
-		if token != "" && !checkoutSession && command.Mutation && !opts.DryRunClient() && merchantBearerRoute(command) && oauthAuthorizationEnvironment(command, opts) == "" {
+		if token != "" && !checkoutSession && command.Mutation && !opts.DryRunClient() && (merchantBearerRoute(command) || unknownRawOperation(command)) && oauthAuthorizationEnvironment(command, opts) == "" {
 			authCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
 			actual, introspectErr := a.fetchAuthContextResponse(authCtx, baseURL, token, opts.Debug)
 			cancel()

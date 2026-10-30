@@ -82,7 +82,7 @@ func TestOAuthReviewChecksHonorAccessTokenOverride(t *testing.T) {
 		t.Run(strings.Join(command, "-"), func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/openapi.json" {
-					fmt.Fprint(w, `{"x-flint-api-releases":{"current_version":"2026-02-01"}}`)
+					w.Header().Set("Flint-Version", "2026-02-01")
 					return
 				}
 				if r.Header.Get("Authorization") == "Bearer expired-environment-token" {

@@ -54,7 +54,7 @@ func TestOAuthManagedCommandsRefresh(t *testing.T) {
 					}
 					fmt.Fprint(w, oauthAuthJSON("sandbox"))
 				case "/v1/openapi.json":
-					fmt.Fprint(w, `{"x-flint-api-releases":{"current_version":"2026-02-01"}}`)
+					w.Header().Set("Flint-Version", "2026-02-01")
 				default:
 					t.Errorf("unexpected path %s", r.URL.Path)
 				}

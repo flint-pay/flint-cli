@@ -2447,6 +2447,13 @@ func (a *App) callMCPCommand(ctx context.Context, cmd *Command, args map[string]
 }
 
 func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]any, parent Options, policy mcpPolicy, extra []string) mcpCallResult {
+	if cmd.CanonicalName == "api" {
+		method, path := strings.ToUpper(fmt.Sprint(args["method"])), fmt.Sprint(args["path"])
+		if _, ok := matchPublicOperation(method, path); !ok {
+			e := usageError("UNDOCUMENTED_API_OPERATION", "Unknown raw API routes are available only through terminal flint api.", "path")
+			return mcpCallResult{value: mcpCLIErrorEnvelope(e), exit: e.ExitCode}
+		}
+	}
 	if cmd.Stream {
 		bound := mcpMaxStreamDuration
 		if controls, ok := args["_flint"].(map[string]any); ok {

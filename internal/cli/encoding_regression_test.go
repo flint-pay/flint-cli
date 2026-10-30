@@ -13,7 +13,7 @@ func TestLocalCommandsRenderStructuredHumanOutput(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Path == "/v1/openapi.json" {
-			fmt.Fprint(w, `{"x-flint-api-releases":{"current_version":"2026-02-01"}}`)
+			w.Header().Set("Flint-Version", "2026-02-01")
 			return
 		}
 		fmt.Fprint(w, authContextJSON("sandbox"))
