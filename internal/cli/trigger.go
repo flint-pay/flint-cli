@@ -123,10 +123,21 @@ func (a *App) localTrigger(cmd *Command, opts Options) int {
 		}
 		prefix = "flint-trigger-" + strings.TrimPrefix(generated, "flint-cli-")
 	}
+	// Pin the resolved selection, including contexts selected by the saved session.
+	// Environment credentials cannot take --context; their merchant guard still applies.
+	opts.Profile = resolved.ProfileName
+	opts.Merchant = auth.MerchantID
+	if auth.OAuthGrantID != "" && !environmentCredentialActive() {
+		opts.ContextID = auth.ContextID
+	}
 	value, e := a.runTrigger(ctx, recipe, entry, opts, auth, key, baseURL, prefix)
 	if e != nil {
 		if opts.Output == "human" {
-			fmt.Fprintln(a.Stderr, "Resume: flint trigger "+entry.Event+" --idempotency-key "+quoteRemediationArgument(prefix))
+			if recipe.Resumable {
+				fmt.Fprintln(a.Stderr, "Resume: "+triggerResumeCommand(entry.Event, prefix, opts))
+			} else {
+				fmt.Fprintln(a.Stderr, "This recipe can't resume; start a new run.")
+			}
 		}
 		return a.fail(e, opts)
 	}
@@ -158,6 +169,22 @@ func (a *App) localTrigger(cmd *Command, opts Options) int {
 		return a.outputTriggerRecord(map[string]any{"type": "result", "data": value["data"]}, opts)
 	}
 	return a.outputLocal(value, cmd, opts)
+}
+
+func triggerResumeCommand(event, prefix string, opts Options) string {
+	command := "flint trigger " + event + " --idempotency-key " + quoteRemediationArgument(prefix)
+	for _, selection := range []struct{ flag, value string }{
+		{"profile", opts.Profile}, {"context", opts.ContextID},
+		{"merchant", opts.Merchant}, {"credential-store", opts.CredentialStore},
+	} {
+		if selection.value != "" {
+			command += " --" + selection.flag + " " + quoteRemediationArgument(selection.value)
+		}
+	}
+	if opts.For > 0 {
+		command += " --for " + opts.For.String()
+	}
+	return command
 }
 
 func triggerOperation(id string) (*Command, bool) {
@@ -245,9 +272,14 @@ func (a *App) runTrigger(ctx context.Context, recipe triggerRecipe, entry trigge
 			also = append(also, event)
 		}
 	}
-	data := map[string]any{"event_type": entry.Event, "recipe": recipe.Name, "sandbox_id": auth.SandboxID, "idempotency_key_prefix": prefix, "expected_events": []string{entry.Event}, "also_arrive": also, "ids": ids}
+	data := map[string]any{"event_type": entry.Event, "recipe": recipe.Name, "resumable": recipe.Resumable, "sandbox_id": auth.SandboxID, "idempotency_key_prefix": prefix, "expected_events": []string{entry.Event}, "also_arrive": also, "ids": ids}
 	fail := func(e *CLIError, step string) (map[string]any, *CLIError) {
-		trigger := map[string]any{"event_type": entry.Event, "completed_steps": records, "failed_step": step, "resume": "flint trigger " + entry.Event + " --idempotency-key " + quoteRemediationArgument(prefix)}
+		trigger := map[string]any{"event_type": entry.Event, "completed_steps": records, "failed_step": step, "resumable": recipe.Resumable}
+		if recipe.Resumable {
+			trigger["resume"] = triggerResumeCommand(entry.Event, prefix, opts)
+		} else {
+			trigger["recovery"] = "This recipe can't resume; start a new run."
+		}
 		addDetails := func(original any) map[string]any {
 			details := map[string]any{}
 			if existing, ok := original.(map[string]any); ok {

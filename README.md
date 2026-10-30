@@ -227,8 +227,12 @@ The output names the primary expected event, related events that also arrive, re
 request IDs. Event delivery can finish after the command returns. Disputes need Stripe webhook
 forwarding; subscription and test-clock recipes need background workers.
 
-Every write uses a separate idempotency key under one run prefix. If a run fails, use the printed
-`flint trigger EVENT --idempotency-key PREFIX` command to replay completed writes and continue.
+Every write uses a separate idempotency key under one run prefix. For resumable recipes, use the
+printed recovery command to replay completed writes and continue. It preserves the resolved
+profile, OAuth context, merchant guard, explicit credential store, and wait limit. Keep the same
+API server, environment credential (if any), and project sandbox guard when resuming.
+Checkout-session recipes cannot resume: a paid session credential cannot replay payment.
+They omit recovery commands and reject `--idempotency-key` before any request; start a new run.
 `--dry-run=client` authenticates and prints the recipe without writing.
 Resuming accepts wait states that have already progressed. The monthly clock recipe advances to
 one calendar month after the clock's original frozen time (clamped to the month's last day), plus
