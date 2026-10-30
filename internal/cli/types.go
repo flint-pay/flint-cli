@@ -132,6 +132,7 @@ type Options struct {
 	Positionals     []string
 
 	allowMissingProfile   bool
+	listCommand           bool
 	outputFromEnvironment bool
 	outputLimit           int // MCP transform output budget; zero leaves CLI output unbounded.
 }

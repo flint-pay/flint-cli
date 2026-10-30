@@ -499,13 +499,14 @@ func (a *App) printRootHelp() {
 	fmt.Fprintln(a.Stdout, "  Use --output json (or FLINT_OUTPUT=json) for JSON results and errors on stdout; it never prompts.")
 	fmt.Fprintln(a.Stdout, "  Exit codes: 0 ok, 1 API error, 2 usage, 3 auth or config, 4 confirmation required, 5 network, 6 wait unmet, 70 internal error.")
 	fmt.Fprintln(a.Stdout, "  Lists return one page; check next_page_token and pass --page-token, or use --all or --limit N.")
+	fmt.Fprintln(a.Stdout, "  List --output ndjson prints one resource per line as pages arrive, without continuation tokens; errors go to stderr.")
 	fmt.Fprintln(a.Stdout, "  Reuse --idempotency-key when retrying a create or update that timed out.")
 	fmt.Fprintln(a.Stdout, "  @last (or @last.pi) is the most recent resource this profile created or changed; all processes share it. Use explicit IDs in parallel commands.")
 	fmt.Fprintln(a.Stdout)
 	fmt.Fprintln(a.Stdout, "Environment:")
 	for _, line := range [][2]string{
 		{"FLINT_API_KEY", "API key; overrides saved credentials"},
-		{"FLINT_OUTPUT", "human, json, or ndjson (streams)"},
+		{"FLINT_OUTPUT", "human, json, or ndjson (streams and lists)"},
 		{"FLINT_NO_INPUT", "1, true, yes, or on to disable prompts"},
 		{"FLINT_PROFILE", "Profile to use, like --profile"},
 		{"FLINT_MERCHANT", "Merchant guard, like --merchant"},
