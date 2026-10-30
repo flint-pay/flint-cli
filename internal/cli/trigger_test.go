@@ -129,6 +129,10 @@ func TestTriggerRecipeCallSequence(t *testing.T) {
 			recipe := triggerRecipes()[entry.Recipe]
 			fixtures := triggerFixtures()
 			count := 0
+			prefix := "trigger-test"
+			if !recipe.Resumable {
+				prefix = ""
+			}
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/auth-context" {
 					fmt.Fprint(w, authContextJSON("sandbox"))
@@ -161,7 +165,13 @@ func TestTriggerRecipeCallSequence(t *testing.T) {
 				}
 				wantKey := ""
 				if r.Method != "GET" {
-					wantKey = "trigger-test-" + step.Name
+					if prefix == "" {
+						prefix = strings.TrimSuffix(r.Header.Get("Idempotency-Key"), "-"+step.Name)
+						if !strings.HasPrefix(prefix, "flint-trigger-") {
+							t.Errorf("missing generated run prefix: %q", prefix)
+						}
+					}
+					wantKey = prefix + "-" + step.Name
 				}
 				if r.Header.Get("Idempotency-Key") != wantKey {
 					t.Errorf("wrong idempotency key: %q", r.Header.Get("Idempotency-Key"))
@@ -196,7 +206,11 @@ func TestTriggerRecipeCallSequence(t *testing.T) {
 			}))
 			defer server.Close()
 			app, out, stderr := testApp(t, server.URL)
-			if code := app.Run([]string{"trigger", entry.Event, "--idempotency-key", "trigger-test", "--output", "json"}); code != 0 {
+			args := []string{"trigger", entry.Event, "--output", "json"}
+			if recipe.Resumable {
+				args = append(args, "--idempotency-key", prefix)
+			}
+			if code := app.Run(args); code != 0 {
 				t.Fatalf("code %d: %s %s", code, stderr, out)
 			}
 			through := len(recipe.Steps)
@@ -527,4 +541,112 @@ func TestTriggerErrorDetailsAndHumanDiscovery(t *testing.T) {
 			t.Fatalf("incomplete discovery: %s %s", out, errOut)
 		}
 	})
+}
+
+func TestTriggerCheckoutCannotResume(t *testing.T) {
+	for _, output := range []string{"human", "json", "ndjson"} {
+		t.Run(output, func(t *testing.T) {
+			requests, writes := 0, 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				if r.URL.Path == "/v1/auth-context" {
+					fmt.Fprint(w, authContextJSON("sandbox"))
+					return
+				}
+				writes++
+				switch r.URL.Path {
+				case "/v1/orders":
+					json.NewEncoder(w).Encode(triggerFixtures()["order"])
+				case "/v1/checkout-sessions":
+					json.NewEncoder(w).Encode(triggerFixtures()["session"])
+				default:
+					// A committed payment with an unusable response is ambiguous.
+					fmt.Fprint(w, `{`)
+				}
+			}))
+			defer server.Close()
+			app, out, stderr := testApp(t, server.URL)
+			if code := app.Run([]string{"trigger", "checkout_session.paid", "--output", output}); code == ExitOK {
+				t.Fatal("ambiguous payment unexpectedly succeeded")
+			}
+			text := out.String() + stderr.String()
+			if writes != 3 || strings.Contains(text, "Resume:") || strings.Contains(text, `"resume":`) || !strings.Contains(text, "start a new run") {
+				t.Fatalf("unsafe recovery (writes=%d): %s", writes, text)
+			}
+			before := requests
+			out.Reset()
+			stderr.Reset()
+			if code := app.Run([]string{"trigger", "checkout_session.paid", "--idempotency-key", "old-run", "--output", output}); code != ExitUsage {
+				t.Fatalf("resume code %d: %s %s", code, out, stderr)
+			}
+			if requests != before || !strings.Contains(out.String()+stderr.String(), "TRIGGER_NOT_RESUMABLE") {
+				t.Fatalf("resume made a request or omitted refusal: %s %s", out, stderr)
+			}
+		})
+	}
+}
+
+func TestTriggerRecoverySelection(t *testing.T) {
+	for _, oauth := range []bool{false, true} {
+		for _, output := range []string{"human", "json"} {
+			t.Run(fmt.Sprintf("%s/oauth=%t", output, oauth), func(t *testing.T) {
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path == "/v1/auth-context" {
+						if oauth {
+							auth := contextTestAuth("ctx_secondary")
+							auth.MerchantID, auth.SandboxID, auth.Scopes = "mer_123", "test_123", allTestScopes()
+							json.NewEncoder(w).Encode(map[string]any{"data": auth})
+						} else {
+							fmt.Fprint(w, authContextJSON("sandbox"))
+						}
+						return
+					}
+					w.WriteHeader(400)
+					fmt.Fprint(w, `{"error":{"code":"INVALID_REQUEST","type":"invalid_request_error","message":"fixture failure"}}`)
+				}))
+				defer server.Close()
+				app, out, stderr := testApp(t, server.URL)
+				// Resolve the profile from the environment, not just the original flags.
+				t.Setenv("FLINT_PROFILE", "secondary profile")
+				if oauth {
+					t.Setenv("FLINT_API_KEY", "")
+					credential := testOAuthCredential(t, server.URL, time.Now().Add(time.Hour))
+					credential.Version, credential.ContextID, credential.SessionID = 2, "ctx_secondary", "session_one"
+					credential.Auth = contextTestAuth("ctx_secondary")
+					credential.Auth.MerchantID, credential.Auth.SandboxID, credential.Auth.Scopes = "mer_123", "test_123", allTestScopes()
+					installTestOAuth(t, app, credential)
+					if err := app.saveConfig(Config{DefaultProfile: "default", Profiles: map[string]Profile{"secondary profile": {ContextID: "ctx_secondary"}}}); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if code := app.Run([]string{"trigger", "customer.created", "--idempotency-key", "selection-run", "--for", "3m", "--output", output}); code != ExitAPI {
+					t.Fatalf("code %d: %s %s", code, out, stderr)
+				}
+				resume := ""
+				if output == "human" {
+					resume = stderr.String()
+				} else {
+					var value any
+					json.Unmarshal(out.Bytes(), &value)
+					v, _ := lookupPath(value, "error.details.trigger.resume")
+					resume, _ = v.(string)
+				}
+				for _, fragment := range []string{"--profile 'secondary profile'", "--merchant mer_123", "--for 3m0s"} {
+					if !strings.Contains(resume, fragment) {
+						t.Errorf("missing %s in %s", fragment, resume)
+					}
+				}
+				if oauth && !strings.Contains(resume, "--context ctx_secondary") {
+					t.Fatalf("lost resolved OAuth context: %s", resume)
+				}
+				if strings.Contains(resume, "flint_test_test") || (!oauth && strings.Contains(resume, "--context")) {
+					t.Fatalf("invalid environment credential recovery: %s", resume)
+				}
+			})
+		}
+	}
+	command := triggerResumeCommand("customer.created", "run", Options{Profile: "secondary", ContextID: "ctx_secondary", Merchant: "mer_123", CredentialStore: "file"})
+	if command != "flint trigger customer.created --idempotency-key run --profile secondary --context ctx_secondary --merchant mer_123 --credential-store file" {
+		t.Fatalf("lost OAuth selection: %s", command)
+	}
 }

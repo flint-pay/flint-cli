@@ -79,7 +79,7 @@ func triggerRecipes() map[string]triggerRecipe {
 		"customer":         {Resumable: true, Name: "customer", Steps: []triggerStep{customer}},
 		"order_payment":    {Resumable: true, Name: "order_payment", Steps: []triggerStep{order, pay}},
 		"refund":           {Resumable: true, Name: "refund", Steps: []triggerStep{order, pay, refund}},
-		"checkout_payment": {Resumable: true, Name: "checkout_payment", Steps: []triggerStep{order, session, checkoutPay}},
+		"checkout_payment": {Resumable: false, Name: "checkout_payment", Steps: []triggerStep{order, session, checkoutPay}},
 		"dispute":          {Resumable: true, Name: "dispute", Async: "stripe_webhook", Steps: []triggerStep{order, disputePay, dispute, simulate}},
 		"saved_card":       {Resumable: true, Name: "saved_card", Async: "background_job", Steps: []triggerStep{customer, intent, confirm, method}},
 		"subscription":     {Resumable: true, Name: "subscription", Async: "temporal", Steps: []triggerStep{clock, clockCustomer, intent, confirm, method, plan, subscription, active, advance, ready}},
