@@ -132,7 +132,7 @@ func (a *App) mcpDispatch(ctx context.Context, id any, tool string, input map[st
 	if message := mcpGateViolation(internal, policy); message != "" && controls["dry_run"] != "client" {
 		e := cliError(ExitConfirmation, errorTypeConfirmationRequired, "CONFIRMATION_REQUIRED", message)
 		if strings.HasPrefix(message, "live ") {
-			e = cliError(ExitAuth, "configuration_error", "LIVE_ACCESS_DISABLED", message)
+			e = cliError(ExitAuth, errorTypeConfiguration, "LIVE_ACCESS_DISABLED", message)
 		}
 		return fail(e)
 	}

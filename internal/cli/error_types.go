@@ -14,6 +14,7 @@ const (
 	errorTypeUnavailable          = "unavailable_error"
 	errorTypeUpgrade              = "upgrade_error"
 	errorTypeUsage                = "usage_error"
+	errorTypeValidation           = "validation_error"
 	errorTypeWaitConditionUnmet   = "wait_condition_unmet"
 )
 
@@ -29,5 +30,6 @@ var localErrorTypes = []string{
 	errorTypeUnavailable,
 	errorTypeUpgrade,
 	errorTypeUsage,
+	errorTypeValidation,
 	errorTypeWaitConditionUnmet,
 }
