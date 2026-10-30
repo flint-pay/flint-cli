@@ -100,7 +100,7 @@ func newRegistry(includeAPI bool) *Registry {
 				c.Supports.Pagination = true
 			}
 		}
-		if c.Stream {
+		if c.Stream || c.Supports.Pagination {
 			c.Supports.NDJSON = true
 		}
 		switch c.CanonicalName {

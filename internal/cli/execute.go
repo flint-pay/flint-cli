@@ -37,7 +37,7 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 	if len(opts.WaitFor) > 0 {
 		return a.executeWait(ctx, cmd, opts, req, key, baseURL)
 	}
-	if opts.All || opts.Limit > 0 {
+	if opts.All || opts.Limit > 0 || opts.Output == "ndjson" {
 		return a.executeAllPages(ctx, cmd, opts, req, key, baseURL)
 	}
 	resp, e := a.doRequestWithin(ctx, opts.Timeout, baseURL, key, req.Method, req.Path, req.Body, req.IdempotencyKey, opts.Debug)
@@ -249,6 +249,8 @@ func quoteRemediationArgument(value string) string {
 
 func (a *App) executeAllPages(ctx context.Context, cmd *Command, opts Options, req preparedRequest, key, baseURL string) (any, *CLIError) {
 	combined := make([]any, 0)
+	count := 0
+	stream := opts.Output == "ndjson"
 	var last, collection map[string]any
 	collectionField := "data"
 	if cmd.OperationID == "getResourceTimeline" {
@@ -259,7 +261,7 @@ func (a *App) executeAllPages(ctx context.Context, cmd *Command, opts Options, r
 	seenPageTokens := map[string]bool{}
 	for {
 		if opts.Limit > 0 {
-			path = setQuery(path, "page_size", fmt.Sprint(min(opts.Limit-len(combined), 100)))
+			path = setQuery(path, "page_size", fmt.Sprint(min(opts.Limit-count, 100)))
 		}
 		if token := pageToken(path); token != "" {
 			if seenPageTokens[token] {
@@ -283,9 +285,23 @@ func (a *App) executeAllPages(ctx context.Context, cmd *Command, opts Options, r
 		if data, ok := collection[collectionField].([]any); ok {
 			remaining := len(data)
 			if opts.Limit > 0 {
-				remaining = min(remaining, opts.Limit-len(combined))
+				remaining = min(remaining, opts.Limit-count)
 			}
-			combined = append(combined, data[:remaining]...)
+			if stream {
+				// Project each page independently, including timeline entries.
+				value, e := applyCommandOutputTransforms(ctx, map[string]any{"data": data[:remaining]}, cmd, opts)
+				if e != nil {
+					return nil, e
+				}
+				for _, resource := range value.(map[string]any)["data"].([]any) {
+					if err := writeJSON(a.Stdout, resource); err != nil {
+						return nil, networkError("OUTPUT_WRITE_FAILED", "Could not write command output.", err)
+					}
+				}
+			} else {
+				combined = append(combined, data[:remaining]...)
+			}
+			count += remaining
 			if remaining < len(data) {
 				delete(m, "next_page_token")
 			}
@@ -297,16 +313,19 @@ func (a *App) executeAllPages(ctx context.Context, cmd *Command, opts Options, r
 		if tokenErr != nil {
 			return nil, tokenErr
 		}
-		if token == "" || (opts.Limit > 0 && len(combined) >= opts.Limit) {
+		if token == "" || (opts.Limit > 0 && count >= opts.Limit) || (stream && !opts.All && opts.Limit == 0) {
 			break
 		}
 		if seenPageTokens[token] {
 			return nil, invalidResponseError("PAGINATION_TOKEN_LOOP", "Flint returned a repeated pagination token.", nil)
 		}
 		path = setQuery(path, "page_token", token)
-		if e := a.writeProgress(opts, map[string]any{"type": "pagination", "pages": pages, "resources": len(combined)}, fmt.Sprintf("Fetched page %d (%d resources)", pages, len(combined))); e != nil {
+		if e := a.writeProgress(opts, map[string]any{"type": "pagination", "pages": pages, "resources": count}, fmt.Sprintf("Fetched page %d (%d resources)", pages, count)); e != nil {
 			return nil, e
 		}
+	}
+	if stream {
+		return outputHandled{}, nil
 	}
 	collection[collectionField] = combined
 	if opts.Limit == 0 {

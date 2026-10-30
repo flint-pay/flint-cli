@@ -86,6 +86,7 @@ func parseInvocation(r *Registry, argv []string) (*Command, Options, bool, *CLIE
 		e.Details = suggestionDetails(input, suggestions)
 		return nil, opts, false, e
 	}
+	opts.streamCommand = cmd.Stream
 	commandFlags := map[string]bool{}
 	for k := range globalFlags {
 		commandFlags[k] = true
@@ -310,11 +311,14 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 		}
 		return usageError("INVALID_OUTPUT", source+" must be human, json, or ndjson.", "output")
 	}
-	if o.Output == "ndjson" && !cmd.Stream && o.outputFromEnvironment {
+	if o.Output == "ndjson" && !cmd.Supports.NDJSON && o.outputFromEnvironment {
 		o.Output = "json"
 	}
-	if o.Output == "ndjson" && !cmd.Stream {
-		return usageError("UNSUPPORTED_FLAG", "--output ndjson applies only to streaming commands.", "output")
+	if o.Output == "ndjson" && !cmd.Supports.NDJSON {
+		return usageError("UNSUPPORTED_FLAG", "--output ndjson applies only to streaming and paginated list commands.", "output")
+	}
+	if o.Output == "ndjson" && !cmd.Stream && (o.JQ != "" || o.Field != "" || len(o.WaitFor) > 0) {
+		return usageError("UNSUPPORTED_FLAG", "--jq, --field, and --wait-for do not apply to list NDJSON output; use --select to choose resource fields.", "output")
 	}
 	if o.Progress != "auto" && o.Progress != "plain" && o.Progress != "json" && o.Progress != "quiet" {
 		return usageError("INVALID_PROGRESS", "--progress must be auto, plain, json, or quiet.", "progress")
