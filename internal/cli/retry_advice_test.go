@@ -185,3 +185,54 @@ func TestRetryAdviceKeepsKeyAfterSentOutputFailure(t *testing.T) {
 		t.Fatalf("writes=%d exit=%d out=%s", writes, exit, out)
 	}
 }
+
+func TestRetryAdviceCanonicalWireKeys(t *testing.T) {
+	registry := NewRegistry()
+	for _, name := range []string{"customers.create", "refunds.create"} {
+		cmd, _ := registry.ByName(name)
+		opts := defaultOptions()
+		opts.IdempotencyKey = " \tsaved-action \t"
+		if key, e := requestIdempotencyKey(cmd, opts); e != nil || key != "saved-action" {
+			t.Fatalf("%s key=%q error=%+v", name, key, e)
+		}
+	}
+	cmd, _ := registry.ByName("refunds.create")
+	opts := defaultOptions()
+	opts.IdempotencyKey = " \t "
+	if _, e := requestIdempotencyKey(cmd, opts); e == nil {
+		t.Fatal("blank required key accepted")
+	}
+
+	writes, commits := 0, 0
+	firstKey := ""
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/auth-context" {
+			w.Header().Set("Connection", "close")
+			fmt.Fprint(w, authContextJSON("sandbox"))
+			return
+		}
+		writes++
+		key := r.Header.Get("Idempotency-Key")
+		if writes == 1 {
+			firstKey = key
+			commits++
+		} else if key == "" || key != firstKey {
+			commits++
+		}
+		// The write commits but its response is lost. Only a stable nonempty wire
+		// key can prevent the retry from committing it again.
+		connection, _, e := w.(http.Hijacker).Hijack()
+		if e != nil {
+			t.Error(e)
+			return
+		}
+		connection.Close()
+	}))
+	defer server.Close()
+	app, out, _ := testApp(t, server.URL)
+	app.HTTPClient = &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
+	exit, env := runJSON(t, app, out, "customers", "create", "--email", "fixture@example.com", "--idempotency-key", " \t ")
+	if exit != ExitNetwork || writes != 3 || commits != 1 || firstKey == "" || lookupPathValue(env, "error.details.idempotency_key") != firstKey {
+		t.Fatalf("writes=%d commits=%d key=%q exit=%d out=%s", writes, commits, firstKey, exit, out)
+	}
+}

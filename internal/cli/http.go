@@ -548,7 +548,7 @@ func networkError(code, message string, cause error) *CLIError {
 }
 
 func withIdempotencyRetryContext(err *CLIError, idempotencyKey string) *CLIError {
-	idempotencyKey = strings.TrimSpace(idempotencyKey)
+	idempotencyKey = strings.Trim(idempotencyKey, " \t")
 	if err == nil || !err.requestSent || idempotencyKey == "" {
 		return err
 	}
