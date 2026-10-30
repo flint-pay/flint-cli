@@ -370,7 +370,9 @@ func builtArgumentValues(argument cli.Arg) []string {
 		return []string{"true"}
 	}
 	if argument.Type == "time" {
-		return []string{"2h"}
+		// Alias subprocesses start at different wall-clock instants. Use an
+		// absolute value so their resolved-time notes can be compared exactly.
+		return []string{"2026-07-23T11:00:00Z"}
 	}
 	value := argument.IDPrefix + "test"
 	if argument.IDPrefix == "" {
