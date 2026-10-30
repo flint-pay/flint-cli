@@ -132,7 +132,14 @@ func TestOAuthPermissionRemediationRunsForExplicitContext(t *testing.T) {
 		t.Fatalf("remediation did not grant required permission: %v", e)
 	}
 	after, err := app.loadConfig()
-	if err != nil || after.Profiles["default"] != before.Profiles["default"] {
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeProfile, afterProfile := before.Profiles["default"], after.Profiles["default"]
+	// Credential migration records presence/backend without changing context selection.
+	beforeProfile.CredentialStore = afterProfile.CredentialStore
+	beforeProfile.CredentialPresent = afterProfile.CredentialPresent
+	if afterProfile != beforeProfile {
 		t.Fatal("explicit context reauthorization changed the profile default")
 	}
 }

@@ -201,6 +201,9 @@ func TestMCPClientCanCancelInFlightListen(t *testing.T) {
 	app.WorkingDir = t.TempDir()
 	app.BaseURL = api.URL
 	app.LoadCredential = func(string) (string, error) { return "flint_test_test", nil }
+	if err := app.saveConfig(Config{DefaultProfile: "default", Profiles: map[string]Profile{"default": {}}}); err != nil {
+		t.Fatal(err)
+	}
 
 	done := make(chan int, 1)
 	go func() {
