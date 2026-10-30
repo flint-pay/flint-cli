@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -87,9 +88,26 @@ func TestTriggerRecipesMatchEmbeddedSpec(t *testing.T) {
 					}
 				}
 				for _, condition := range step.Until {
-					path, _, _ := strings.Cut(condition, "=")
+					path, value, _ := strings.Cut(condition, "=")
 					if !outputSchemaDeclaresPath(command, path) {
 						t.Errorf("%s condition %s not in schema", step.Name, path)
+					}
+					schema, _ := schemaForCommand(command, false)
+					defs, _ := schema["$defs"].(map[string]any)
+					if !strings.HasPrefix(path, "data.") {
+						path = "data." + path
+					}
+					for _, part := range strings.Split(path, ".") {
+						if _, err := strconv.Atoi(part); err == nil {
+							schema = bodyArrayItems(schema, defs, map[string]bool{})
+						} else {
+							props, _ := bodyProperties(schema, defs, map[string]bool{})
+							schema, _ = props[part].(map[string]any)
+						}
+					}
+					values, _ := schema["enum"].([]any)
+					if !slices.Contains(values, any(value)) {
+						t.Errorf("%s condition value %s not in enum %v", step.Name, value, values)
 					}
 				}
 			}
@@ -241,6 +259,9 @@ func TestTriggerLocalChecksAndRefusal(t *testing.T) {
 			}))
 			defer server.Close()
 			app, out, stderr := testApp(t, server.URL)
+			if tc.name == "list" {
+				t.Setenv("FLINT_API_KEY", "")
+			}
 			args := append([]string{"trigger"}, tc.args...)
 			args = append(args, "--output", "json")
 			if code := app.Run(args); code != tc.exit {
