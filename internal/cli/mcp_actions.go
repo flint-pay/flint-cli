@@ -422,30 +422,35 @@ func (a *App) mcpRecoveryActions(cmd *Command, args map[string]any, policy mcpPo
 
 func (a *App) mcpNextActions(cmd *Command, args map[string]any, opts Options, policy mcpPolicy, e *CLIError, environment string) []map[string]any {
 	actions := a.mcpAPIActions(e, policy, environment)
-	if credential := a.mcpCredentialAction(cmd, e, opts, environment); credential != nil {
-		return append(actions, credential)
+	credential := a.mcpCredentialAction(cmd, e, opts, environment)
+	if credential != nil {
+		actions = append(actions, credential)
 	}
 	key := mcpErrorKey(e)
 	unknown := cmd != nil && mcpResultIsWrite(cmd, args) && mcpErrorUnknown(e)
 	if unknown {
-		actions = append(actions, a.mcpRecoveryActions(cmd, args, policy, key, environment)...)
-		if len(actions) == 0 {
-			text := "inspect the affected resources and request logs before acting again."
-			if commandIdempotencyClass(cmd) != "none" && key != "" {
-				text += " If this write is called again, use the same idempotency_key " + quoteRemediationArgument(key) + "."
-			}
-			return []map[string]any{mcpUserAction(text)}
+		recovery := a.mcpRecoveryActions(cmd, args, policy, key, environment)
+		if len(recovery) == 0 {
+			recovery = []map[string]any{mcpUserAction("inspect the affected resources and request logs before acting again.")}
 		}
-		if len(actions) > 0 {
-			if commandIdempotencyClass(cmd) != "none" && key != "" {
-				actions[0]["text"] = fmt.Sprint(actions[0]["text"]) + " If you call this write again, use the same idempotency_key."
-			}
-			return actions
+		if commandIdempotencyClass(cmd) != "none" && key != "" {
+			recovery[0]["text"] = fmt.Sprint(recovery[0]["text"]) + " If you call this write again, use the same idempotency_key " + quoteRemediationArgument(key) + "."
 		}
+		return append(actions, recovery...)
 	}
+	if credential != nil {
+		return actions
+	}
+
 	switch e.Code {
 	case "UNKNOWN_OPERATION":
 		query, _ := args["operation"].(string)
+		if strings.TrimSpace(query) == "" {
+			query, _ = mcpErrorFact(e.Details, "input").(string)
+		}
+		if strings.TrimSpace(query) == "" {
+			query = "operations"
+		}
 		return append(actions, mcpAgentAction("Search for an operation this server can run.", map[string]any{"tool": "flint_search", "arguments": map[string]any{"query": query}}))
 	case "OPERATION_NOT_AVAILABLE":
 		switch mcpErrorFact(e.Details, "reason") {

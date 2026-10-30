@@ -173,7 +173,7 @@ func (a *App) mcpErrorEnvelope(cmd *Command, args map[string]any, opts Options, 
 	if environment != "" {
 		meta["environment"] = environment
 	}
-	if details, ok := e.Details.(map[string]any); ok && details["outcome"] == "unknown" && e.requestSent && mcpResultIsWrite(cmd, args) {
+	if mcpResultIsWrite(cmd, args) && mcpErrorUnknown(e) {
 		meta["outcome"] = "unknown"
 	}
 	if key := mcpErrorKey(e); key != "" && e.requestSent && (cmd == nil || mcpResultIsWrite(cmd, args)) {
@@ -223,6 +223,22 @@ func mcpLocalErrorObject(e *CLIError, cmd *Command, policy mcpPolicy) map[string
 			delete(detail, "remediation")
 			if _, exists := detail["code"]; !exists {
 				detail["code"] = e.Code
+			}
+			if e.Code == "INVALID_REQUEST" {
+				switch detail["code"] {
+				case "REQUIRED", "INVALID_VALUE", "UNKNOWN_FIELD", "NOT_ALLOWED":
+				default:
+					text, _ := detail["message"].(string)
+					if text == "" {
+						text = message
+						detail["message"] = text
+					}
+					text = strings.ToLower(text)
+					detail["code"] = "INVALID_VALUE"
+					if detail["reason"] == "missing_required" || strings.Contains(text, " is required") || strings.Contains(text, " are required") || strings.HasPrefix(text, "missing required ") {
+						detail["code"] = "REQUIRED"
+					}
+				}
 			}
 			if e.Param != "" {
 				if _, exists := detail["param"]; !exists {

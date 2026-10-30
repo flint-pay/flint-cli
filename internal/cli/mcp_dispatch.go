@@ -31,19 +31,23 @@ func (a *App) mcpDispatch(ctx context.Context, id any, tool string, input map[st
 	arguments, controls := map[string]any{}, map[string]any{}
 	discovery := policy.defaultToolSet() && (tool == "flint_read" || tool == "flint_write")
 	if discovery {
-		name, _ = input["operation"].(string)
-		if name == "" {
-			return fail(usageError("INVALID_REQUEST", "operation is required.", "operation"))
+		raw, exists := input["operation"]
+		name, _ = raw.(string)
+		if !exists {
+			return fail(mcpInputError([]mcpInputProblem{mcpPlainProblem(mcpInputBodyLocation, "operation", "REQUIRED", "operation is required.")}))
+		}
+		if strings.TrimSpace(name) == "" {
+			return fail(mcpInputError([]mcpInputProblem{mcpPlainProblem(mcpInputBodyLocation, "operation", "INVALID_VALUE", "operation must be a nonempty string.")}))
 		}
 		if raw, exists := input["arguments"]; exists {
 			if encoded, ok := raw.(string); ok {
 				if err := decodeJSONNumbers([]byte(encoded), &arguments); err != nil || arguments == nil {
-					return fail(usageError("INVALID_REQUEST", "arguments must be a JSON object.", "arguments"))
+					return fail(mcpInputError([]mcpInputProblem{mcpPlainProblem(mcpInputBodyLocation, "arguments", "INVALID_VALUE", "arguments must be a JSON object.")}))
 				}
 			} else if object, ok := raw.(map[string]any); ok {
 				arguments = maps.Clone(object)
 			} else {
-				return fail(usageError("INVALID_REQUEST", "arguments must be an object.", "arguments"))
+				return fail(mcpInputError([]mcpInputProblem{mcpPlainProblem(mcpInputBodyLocation, "arguments", "INVALID_VALUE", "arguments must be an object.")}))
 			}
 		}
 		for key, value := range input {

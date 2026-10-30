@@ -1,11 +1,13 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func mcpActionAPIError(code, retry string, details []any) *CLIError {
@@ -192,6 +194,69 @@ func TestMCPValidationActionsOnlyDescribeDeclaredVariants(t *testing.T) {
 		}
 		if variant != "amount" && lookupPathValue(call, "arguments.variant") != nil {
 			t.Fatal(actions)
+		}
+	}
+}
+
+func TestMCPUnknownOutcomeKeepsCredentialAndRecoveryActions(t *testing.T) {
+	app, _, _ := testApp(t, "")
+	cmd := mustMCPTool(t, app, "refunds.create")
+	for _, code := range []string{"INSUFFICIENT_SCOPE", "INVALID_CREDENTIAL"} {
+		refused := mcpActionAPIError(code, "none", []any{map[string]any{"missing_scopes": []any{"commerce.refunds.write"}}})
+		history := requestHistory{sent: true, started: time.Now(), attempts: []*requestAttempt{{ErrorCode: "CLIENT_TIMEOUT"}, {ErrorCode: code}}, uncertain: networkError("CLIENT_TIMEOUT", "The first request timed out.", context.DeadlineExceeded)}
+		unknown := history.finalError(context.Background(), refused, "POST", "/v1/refunds", "uncertain-refund-key")
+		unknown.requestSent = true
+		result := app.mcpCommandError(cmd, map[string]any{"payment_intent_id": "pi_synthetic", "refund_type": "full"}, defaultOptions(), mcpCallResult{cliError: unknown, exit: unknown.ExitCode}, app.mcpPolicy(defaultOptions()), "")
+		envelope := mcpErrorJSON(t, result)
+		if lookupPathValue(envelope, "cli.outcome") != "unknown" || lookupPathValue(envelope, "cli.idempotency_key") != "uncertain-refund-key" {
+			t.Fatal(envelope)
+		}
+		actions := envelope["cli"].(map[string]any)["next_actions"].([]any)
+		credential, recovery := false, false
+		for _, item := range actions {
+			action := item.(map[string]any)
+			if action["actor"] == "user" {
+				credential = true
+			}
+			if lookupPathValue(action, "call.arguments.operation") == "refunds.list" && strings.Contains(fmt.Sprint(action["text"]), "same idempotency_key") && lookupPathValue(action, "call.arguments.arguments.idempotency_key") == "uncertain-refund-key" {
+				recovery = true
+			}
+		}
+		if !credential || !recovery {
+			t.Fatalf("%s lost guidance: %v", code, actions)
+		}
+	}
+}
+
+func TestMCPUnknownOperationRecoverySearchIsValid(t *testing.T) {
+	app, _, _ := testApp(t, "")
+	result := mcpCall(t, app, defaultOptions(), "flint_write", map[string]any{"operation": "refunds.creat"})
+	envelope := mcpErrorJSON(t, result)
+	call := lookupPathValue(envelope, "cli.next_actions.0.call").(map[string]any)
+	if lookupPathValue(call, "arguments.query") != "refunds.creat" {
+		t.Fatal(call)
+	}
+	query := call["arguments"].(map[string]any)
+	followup := mcpCall(t, app, defaultOptions(), fmt.Sprint(call["tool"]), query)
+	if followup["isError"] == true {
+		t.Fatal(mcpResultText(followup))
+	}
+}
+
+func TestMCPWrapperValidationDetailCodes(t *testing.T) {
+	app, _, _ := testApp(t, "")
+	for _, fixture := range []struct {
+		input       map[string]any
+		code, param string
+	}{
+		{map[string]any{}, "REQUIRED", "operation"},
+		{map[string]any{"operation": 123}, "INVALID_VALUE", "operation"},
+		{map[string]any{"operation": "customers.list", "arguments": false}, "INVALID_VALUE", "arguments"},
+		{map[string]any{"operation": "customers.list", "arguments": "[]"}, "INVALID_VALUE", "arguments"},
+	} {
+		envelope := mcpErrorJSON(t, mcpCall(t, app, defaultOptions(), "flint_read", fixture.input))
+		if lookupPathValue(envelope, "error.details.0.code") != fixture.code || lookupPathValue(envelope, "error.details.0.param") != fixture.param {
+			t.Fatal(envelope)
 		}
 	}
 }

@@ -208,6 +208,92 @@ func TestMCPErrorsUnknownOutcomeRetainsAPIObject(t *testing.T) {
 	}
 }
 
+func TestMCPErrorsClassNoneWriteReportsUnknownOutcome(t *testing.T) {
+	const apiError = `{"error":{"type":"unavailable_error","code":"SERVICE_UNAVAILABLE","message":"Flint is unavailable.","error_source":"flint","details":[],"remediation":{"retry":"none","next_steps":"Inspect the affected resources."}}}`
+	var writes atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/v1/auth-context" {
+			fmt.Fprint(w, authContextJSON("sandbox"))
+			return
+		}
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/delivery-previews" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		if r.Header.Get("Idempotency-Key") != "" {
+			t.Error("class-none write sent an idempotency key")
+		}
+		writes.Add(1)
+		w.WriteHeader(http.StatusServiceUnavailable)
+		fmt.Fprint(w, apiError)
+	}))
+	defer server.Close()
+	app, _, _ := testApp(t, server.URL)
+	cmd, _ := app.Registry.ByName("delivery-previews.create")
+	if commandIdempotencyClass(cmd) != "none" {
+		t.Fatal("fixture requires a class-none operation")
+	}
+	args := map[string]any{
+		"mode": "delivery_options", "currency": "USD",
+		"delivery_method_ids": []any{"dmet_01K1P6G4M7H2N8Q9R3S5T6V7WX"},
+		"destination_address": map[string]any{"country": "US", "postal_code": "11249"},
+		"line_items":          []any{map[string]any{"type": "variant", "variant_id": "var_01K1P6G4M7H2N8Q9R3S5T6V7WX", "quantity": 2}},
+	}
+	outcome := app.runMCPCommand(context.Background(), cmd, args, defaultOptions(), mcpPolicy{}, nil)
+	if writes.Load() != 1 || outcome.cliError == nil || !outcome.cliError.requestSent {
+		t.Fatalf("write did not dispatch: writes=%d outcome=%#v", writes.Load(), outcome)
+	}
+	if mcpErrorFact(outcome.cliError.Details, "outcome") != nil {
+		t.Fatal("fixture unexpectedly acquired keyed history outcome")
+	}
+	envelope := mcpErrorJSON(t, app.mcpCommandError(cmd, args, defaultOptions(), outcome, mcpPolicy{}, ""))
+	if lookupPathValue(envelope, "cli.outcome") != "unknown" || lookupPathValue(envelope, "cli.idempotency_key") != nil {
+		t.Fatalf("class-none outcome metadata=%#v", envelope)
+	}
+	var want map[string]any
+	_ = json.Unmarshal([]byte(apiError), &want)
+	if !reflect.DeepEqual(envelope["error"], want["error"]) {
+		t.Fatalf("API error changed: %#v", envelope)
+	}
+	if strings.Contains(mcpResultText(app.mcpCommandError(cmd, args, defaultOptions(), outcome, mcpPolicy{}, "")), "idempotency_key") {
+		t.Fatalf("class-none result acquired key advice: %#v", envelope)
+	}
+}
+
+func TestMCPErrorsValidationFallbackUsesDetailVocabulary(t *testing.T) {
+	for _, tc := range []struct {
+		name, message string
+		details       any
+		want          []string
+	}{
+		{name: "required operation", message: "operation is required.", want: []string{"REQUIRED"}},
+		{name: "invalid type", message: "arguments must be an object.", want: []string{"INVALID_VALUE"}},
+		{name: "invalid JSON", message: "arguments must be a JSON object.", want: []string{"INVALID_VALUE"}},
+		{name: "missing fact", message: "An input is missing.", details: map[string]any{"reason": "missing_required"}, want: []string{"REQUIRED"}},
+		{name: "existing generic code", message: "Invalid arguments.", details: []any{map[string]any{"code": "INVALID_REQUEST", "message": "arguments must be an object."}}, want: []string{"INVALID_VALUE"}},
+		{name: "translator codes", message: "4 arguments are invalid.", details: []map[string]any{{"code": "REQUIRED"}, {"code": "INVALID_VALUE"}, {"code": "UNKNOWN_FIELD"}, {"code": "NOT_ALLOWED"}}, want: []string{"REQUIRED", "INVALID_VALUE", "UNKNOWN_FIELD", "NOT_ALLOWED"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := usageError("INVALID_REQUEST", tc.message, "arguments")
+			e.Details = tc.details
+			before := cloneErrorJSON(tc.details)
+			envelope := mcpCLIErrorEnvelope(e)
+			details, ok := lookupPathValue(envelope, "error.details").([]any)
+			if !ok || len(details) != len(tc.want) {
+				t.Fatalf("invalid details: %#v", envelope)
+			}
+			for i, code := range tc.want {
+				if detail, ok := details[i].(map[string]any); !ok || detail["code"] != code {
+					t.Fatalf("detail %d = %#v, want %s", i, details[i], code)
+				}
+			}
+			if !reflect.DeepEqual(tc.details, before) {
+				t.Fatal("formatter mutated validation details")
+			}
+		})
+	}
+}
+
 func TestMCPErrorsLocalShapeAndDispatchFacts(t *testing.T) {
 	for _, tc := range []struct {
 		name, operation string
