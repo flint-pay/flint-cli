@@ -296,7 +296,7 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 			return cliError(ExitSoftware, errorTypeInternal, "SCHEMA_SNAPSHOT_INVALID", "The operation's confirmation rule could not be read: "+err.Error())
 		}
 		entry, found := index.Lookup(cmd.CanonicalName)
-		if !found && cmd.CanonicalName == "api" && cmd.OperationID != "" {
+		if cmd.CanonicalName == "api" && cmd.OperationID != "" {
 			for _, candidate := range index.Entries {
 				if candidate.Type == "operation" && candidate.OperationID == cmd.OperationID {
 					entry, found = candidate, true

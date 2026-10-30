@@ -11,10 +11,12 @@ import (
 func TestTerminalIrreversibleBridge(t *testing.T) {
 	for _, scenario := range []struct {
 		name, input          string
-		tty, confirm         bool
+		tty, confirm, raw    bool
 		wantExit, wantWrites int
 	}{
 		{name: "headless", wantExit: ExitConfirmation},
+		{name: "raw headless", raw: true, wantExit: ExitConfirmation},
+		{name: "raw approved", raw: true, tty: true, input: "yes\n", wantWrites: 1},
 		{name: "declined", tty: true, input: "n\n", wantExit: ExitConfirmation},
 		{name: "approved", tty: true, input: "yes\n", wantWrites: 1},
 		{name: "explicit", confirm: true, wantWrites: 1},
@@ -46,17 +48,20 @@ func TestTerminalIrreversibleBridge(t *testing.T) {
 				t.Fatalf("fixture no longer exercises added gate: %+v %+v", cmd, entry)
 			}
 			argv := []string{"invoices", "payment-attempts", "cancel", "inv_fixture", "ipa_fixture"}
+			if scenario.raw {
+				argv = []string{"api", "post", "/v1/invoices/inv_fixture/payment-attempts/ipa_fixture/cancel"}
+			}
 			if scenario.confirm {
 				argv = append(argv, "--confirm")
 			}
-			if scenario.name == "headless" {
+			if !scenario.tty && !scenario.confirm {
 				argv = append(argv, "--output", "json")
 			}
 			exit := app.Run(argv)
 			if exit != scenario.wantExit || writes != scenario.wantWrites {
 				t.Fatalf("exit=%d writes=%d out=%s stderr=%s", exit, writes, out, stderr)
 			}
-			if scenario.name == "headless" && !strings.Contains(out.String(), "CONFIRMATION_REQUIRED") {
+			if !scenario.tty && !scenario.confirm && !strings.Contains(out.String(), "CONFIRMATION_REQUIRED") {
 				t.Fatal(stderr)
 			}
 			if scenario.tty && !strings.Contains(stderr.String(), "Continue? [y/N]") {
