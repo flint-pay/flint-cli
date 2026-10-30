@@ -44,6 +44,7 @@ type authContextEnvelope struct {
 	Data      AuthContext    `json:"data"`
 	RequestID string         `json:"request_id"`
 	Meta      map[string]any `json:"meta,omitempty"`
+	fromCache bool
 }
 
 type apiResponse struct {
@@ -118,6 +119,10 @@ func (a *App) fetchAuthContextResponse(ctx context.Context, baseURL, key string,
 		a.observeCachedAuthContext(envelope.Data)
 		return envelope, nil
 	}
+	return a.fetchFreshAuthContextResponse(ctx, baseURL, key, debug)
+}
+
+func (a *App) fetchFreshAuthContextResponse(ctx context.Context, baseURL, key string, debug bool) (authContextEnvelope, *CLIError) {
 	resp, e := a.doRequest(ctx, baseURL, key, http.MethodGet, "/v1/auth-context", nil, "", debug)
 	if e != nil {
 		return authContextEnvelope{}, e
