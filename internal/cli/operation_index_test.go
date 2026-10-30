@@ -39,7 +39,7 @@ func TestOperationIndexClassification(t *testing.T) {
 		}
 	}
 	t.Logf("audiences=%v merchant-exposed=%d events=%d bridge=%d/%d", counts, exposed, events, ix.PublishedDestructive, ix.DerivedDestructive)
-	if events != 246 || counts["buyer"] != 70 || counts["merchant"] != 531 {
+	if events != 251 || counts["buyer"] != 70 || counts["merchant"] != 531 || counts["local"] != 32 || counts["keyless"] != 15 || exposed != 540 {
 		t.Errorf("classification changed: %v events=%d", counts, events)
 	}
 	if ix.DerivedDestructive == 0 || ix.PublishedDestructive == ix.DerivedDestructive {
@@ -63,7 +63,7 @@ func TestSearchGolden(t *testing.T) {
 		q, want string
 		top     int
 	}{
-		{"refund an order", "refunds.create", 1}, {"refund", "refunds.list", 1}, {"refund status", "refunds.list", 1}, {"orders", "orders.list", 1}, {"today orders", "orders.list", 1},
+		{"refund an order", "refunds.create", 1}, {"refund", "refunds.list", 1}, {"refund status", "refunds.list", 1}, {"refund", "refunds.create", 3}, {"refund status", "refunds.create", 3}, {"orders", "orders.list", 1}, {"today orders", "orders.list", 1},
 		{"create customer", "customers.create", 1}, {"cancel payment intent", "payment-intents.cancel", 1}, {"capture payment", "payment-intents.capture", 1}, {"pay order", "orders.pay", 1},
 		{"webhook deliveries", "webhook-deliveries.list", 1}, {"resend webhook", "webhook-deliveries.resend", 1}, {"rotate webhook secret", "webhook-endpoints.rotate-secret", 1}, {"delete webhook endpoint", "webhook-endpoints.delete", 1},
 		{"payment succeeded event", "payment_intent.succeeded", 1}, {"test card", "test-cards", 1}, {"who am i", "auth.status", 1}, {"timeline of a payment", "timeline", 1}, {"reset sandbox", "sandboxes.reset", 1},
