@@ -505,8 +505,22 @@ func (r *Reader) fixedStrings(schema map[string]any) []string {
 		if depth > 32 {
 			return nil
 		}
-		if values := fixedStrings(node); len(values) > 0 {
-			return values
+		values := fixedStrings(node)
+		mergeValues := func(part []string) {
+			if len(part) == 0 {
+				return
+			}
+			if values == nil {
+				values = append([]string{}, part...)
+				return
+			}
+			common := []string{}
+			for _, value := range values {
+				if slices.Contains(part, value) {
+					common = append(common, value)
+				}
+			}
+			values = common
 		}
 		if ref, ok := node["$ref"].(string); ok {
 			if seen[ref] {
@@ -518,12 +532,13 @@ func (r *Reader) fixedStrings(schema map[string]any) []string {
 			if !ok {
 				return nil
 			}
-			return visit(target, next, depth+1)
+			mergeValues(visit(target, next, depth+1))
 		}
 		for _, raw := range arrayOf(node["allOf"]) {
-			if values := visit(schemaMap(raw), seen, depth+1); len(values) > 0 {
-				return values
-			}
+			mergeValues(visit(schemaMap(raw), seen, depth+1))
+		}
+		if values != nil {
+			return unique(values)
 		}
 		for _, key := range []string{"oneOf", "anyOf"} {
 			branches := arrayOf(node[key])
