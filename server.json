@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "com.withflintpay/cli",
-  "description": "Flint CLI commands as MCP tools, acting on your account behind live and confirmation gates.",
+  "description": "Discover and run Flint API operations through five MCP tools, using your CLI credential.",
   "version": "0.0.0-development",
   "websiteUrl": "https://withflintpay.com/mcp",
   "packages": [
@@ -25,9 +25,18 @@
         {
           "type": "named",
           "name": "--tools",
-          "description": "Without --tools (or with an empty value), the server exposes a curated core set; help and schema_* are always on. Use --tools all to expose every tool, or --tools default,GROUP to add groups to the default set. Choose comma-separated tool groups (customers) or tool names (payment-intents_create); dotted names are accepted.",
+          "description": "Opt into typed tools for comma-separated or repeated operation IDs, dotted resource prefixes, or typed names. Use all for every available operation. Search, describe, and help use the same scope. Omit for five discovery tools.",
           "isRequired": false,
           "format": "string"
+        },
+        {
+          "type": "named",
+          "name": "--read-only",
+          "description": "Expose read operations only and refuse every write.",
+          "isRequired": false,
+          "format": "boolean",
+          "default": "false",
+          "choices": ["true", "false"]
         },
         {
           "type": "named",

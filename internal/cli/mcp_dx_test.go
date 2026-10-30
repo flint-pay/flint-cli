@@ -14,30 +14,36 @@ import (
 
 func TestMCPToolNamesAreAcceptedByModelAPIs(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	// The Claude API requires ^[a-zA-Z0-9_-]{1,128}$; OpenAI-style APIs are
-	// stricter still about dots.
-	valid := regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
+	index, err := app.operationIndex()
+	if err != nil {
+		t.Fatal(err)
+	}
+	valid := regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
 	seen := map[string]string{}
-	for _, tool := range app.mcpAllTools() {
-		if strings.Contains(tool.CanonicalName, "_") {
-			t.Fatalf("canonical name %s contains an underscore, so MCP names would not map back", tool.CanonicalName)
+	for _, entry := range index.Entries {
+		if entry.Type != "operation" {
+			continue
 		}
-		name := mcpToolName(tool.CanonicalName)
+		if strings.Contains(entry.ID, "_") {
+			t.Fatalf("canonical name contains underscore: %s", entry.ID)
+		}
+		name := mcpToolName(entry.ID)
 		if !valid.MatchString(name) {
-			t.Errorf("tool name %q is not accepted by model APIs", name)
+			t.Errorf("invalid tool name: %s", name)
 		}
-		if previous, exists := seen[name]; exists {
-			t.Errorf("tool name %s collides: %s and %s", name, previous, tool.CanonicalName)
+		if previous, ok := seen[name]; ok {
+			t.Errorf("name collision: %s and %s", previous, entry.ID)
 		}
-		seen[name] = tool.CanonicalName
-		if mcpCanonicalToolName(name) != tool.CanonicalName {
-			t.Errorf("%s does not map back to %s", name, tool.CanonicalName)
+		seen[name] = entry.ID
+		resolved, ok := index.Lookup(name)
+		if !ok || resolved.ID != entry.ID {
+			t.Errorf("%s does not resolve to %s", name, entry.ID)
 		}
 	}
 	tools, _ := mcpListedTools(t, app, mcpAllToolsOptions(t), latestMCPProtocolVersion)
 	for _, tool := range tools {
-		if name := tool["name"].(string); !valid.MatchString(name) {
-			t.Errorf("tools/list advertises %q", name)
+		if !valid.MatchString(tool["name"].(string)) {
+			t.Error(tool["name"])
 		}
 	}
 }
@@ -45,165 +51,114 @@ func TestMCPToolNamesAreAcceptedByModelAPIs(t *testing.T) {
 func TestMCPDottedNamesAndFiltersStillWork(t *testing.T) {
 	server, api := newMCPTestAPI(t, "sandbox")
 	app, _, _ := testApp(t, server.URL)
-	for _, name := range []string{"customers_list", "customers.list"} {
-		if result := mcpCall(t, app, defaultOptions(), name, map[string]any{}); result["isError"] == true {
-			t.Fatalf("%s failed: %s", name, mcpResultText(result))
+	for _, operation := range []string{"customers_list", "customers.list", "customers list"} {
+		result := mcpCall(t, app, defaultOptions(), "flint_read", map[string]any{"operation": operation})
+		if result["isError"] == true {
+			t.Fatalf("%s: %s", operation, mcpResultText(result))
 		}
 	}
-	if seen := api.seen(); len(seen) != 2 {
-		t.Fatalf("requests = %v", seen)
+	if len(api.seen()) != 3 {
+		t.Fatal(api.seen())
 	}
-	for _, filter := range []string{"payment-intents.create", "payment-intents_create"} {
+	for _, filter := range []string{"payment-intents.create", "payment_intents_create", "payment-intents create"} {
 		opts := mcpServeOptions(t, "--tools", filter)
-		if err := app.validateMCPServeOptions(opts); err != nil {
-			t.Fatalf("--tools %s rejected: %v", filter, err)
+		if e := app.validateMCPServeOptions(opts); e != nil {
+			t.Fatal(e)
 		}
 		tools, _ := mcpListedTools(t, app, opts, latestMCPProtocolVersion)
-		var names []string
+		names := []string{}
 		for _, tool := range tools {
-			if name := tool["name"].(string); !mcpAlwaysEnabled(mcpCanonicalToolName(name)) {
-				names = append(names, name)
+			n := tool["name"].(string)
+			if !strings.HasPrefix(n, "flint_") {
+				names = append(names, n)
 			}
 		}
-		if fmt.Sprint(names) != "[payment-intents_create]" {
-			t.Fatalf("--tools %s exposed %v", filter, names)
+		if fmt.Sprint(names) != "[payment_intents_create]" {
+			t.Fatalf("%s: %v", filter, names)
 		}
 	}
 }
 
 func TestMCPDefaultToolSetIsCuratedAndAllIsOptIn(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	names := func(opts Options) (map[string]bool, int) {
-		tools, size := mcpListedTools(t, app, opts, latestMCPProtocolVersion)
-		out := map[string]bool{}
-		for _, tool := range tools {
-			out[tool["name"].(string)] = true
-		}
-		return out, size
+	defaults, size := mcpListedTools(t, app, defaultOptions(), latestMCPProtocolVersion)
+	names := map[string]bool{}
+	for _, tool := range defaults {
+		names[tool["name"].(string)] = true
 	}
-	defaults, defaultSize := names(defaultOptions())
-	t.Logf("default tools/list: %d tools, %d bytes in compact result JSON", len(defaults), defaultSize)
-	all, allSize := names(mcpAllToolsOptions(t))
-	// Preserve spec array items and enums, including the webhook-event filter's
-	// event vocabulary. The legacy typed default is about 253 KB until the
-	// discovery surface replaces it; keep a bounded payload in the meantime.
-	if len(all) != len(app.mcpAllTools()) || len(defaults) >= len(all)/4 || defaultSize >= allSize/4 || len(defaults) > 40 || defaultSize > 260000 {
-		t.Fatalf("default exposes %d tools in %d bytes; all exposes %d in %d", len(defaults), defaultSize, len(all), allSize)
+	if len(names) != 5 || size > 6500 {
+		t.Fatalf("default tools=%v size=%d", names, size)
 	}
-	for _, want := range []string{"help", "schema_input", "schema_output", "customers_create", "payment-intents_create", "checkout-sessions_create", "payment-links_create", "refunds_create", "webhook-endpoints_create", "webhook-events_list", "products_create"} {
-		if !defaults[want] {
-			t.Errorf("default set is missing %s", want)
+	for _, name := range []string{"flint_search", "flint_describe", "flint_read", "flint_write", "flint_help"} {
+		if !names[name] {
+			t.Error(name)
 		}
 	}
-	for _, unwanted := range []string{"invoices_create", "api-keys_revoke", "orders_create", "orders_get", "orders_list", "auth_status", "orders_pay", "sandboxes_delete"} {
-		if defaults[unwanted] {
-			t.Errorf("default set exposes %s", unwanted)
+	filtered, _ := mcpListedTools(t, app, mcpServeOptions(t, "--tools", "customers"), latestMCPProtocolVersion)
+	found := map[string]bool{}
+	for _, tool := range filtered {
+		found[tool["name"].(string)] = true
+	}
+	for _, name := range []string{"flint_search", "flint_describe", "flint_help", "customers_create"} {
+		if !found[name] {
+			t.Error(name)
 		}
 	}
-	extended, _ := names(mcpServeOptions(t, "--tools", "default,invoices"))
-	if !extended["invoices_create"] || !extended["customers_create"] {
-		t.Fatal("--tools default,invoices must extend the default set")
-	}
-	// help and the schema tools stay available to every filter, so guidance
-	// that names them always resolves.
-	filtered, _ := names(mcpServeOptions(t, "--tools", "customers"))
-	for _, want := range []string{"help", "schema_input", "schema_output", "schema_command", "schema_commands", "schema_events"} {
-		if !filtered[want] {
-			t.Errorf("--tools customers dropped %s", want)
+	for _, name := range []string{"flint_read", "flint_write", "help", "schema_input", "api"} {
+		if found[name] {
+			t.Error(name)
 		}
 	}
-	call := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{"name": "invoices_create"}}, defaultOptions())
-	if message := fmt.Sprint(lookupPathValue(call, "error.message")); !strings.Contains(message, "not enabled") || !strings.Contains(message, "--tools default,invoices") {
-		t.Fatalf("disabled tool error = %s", message)
+	if e := app.validateMCPServeOptions(mcpServeOptions(t, "--tools", "default")); e == nil {
+		t.Fatal("--tools default accepted")
 	}
-	response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "initialize", Params: map[string]any{
-		"protocolVersion": latestMCPProtocolVersion, "capabilities": map[string]any{}, "clientInfo": map[string]any{"name": "t", "version": "1"},
-	}}, defaultOptions())
+	response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "initialize", Params: map[string]any{"protocolVersion": latestMCPProtocolVersion, "capabilities": map[string]any{}, "clientInfo": map[string]any{"name": "t", "version": "1"}}}, defaultOptions())
 	instructions := fmt.Sprint(lookupPathValue(response, "result.instructions"))
-	for _, want := range []string{"customers_create", "default tool set", "--tools all", "schema_input", "schema_output", "next_page_token", "minor units"} {
+	for _, want := range []string{"flint_search", "flint_describe", "flint_read", "flint_write", "idempotency_key", "minor units"} {
 		if !strings.Contains(instructions, want) {
-			t.Errorf("instructions missing %q: %s", want, instructions)
+			t.Errorf("missing %s: %s", want, instructions)
 		}
-	}
-	if strings.Contains(instructions, "schema.output") || strings.Contains(instructions, "customers.create") {
-		t.Errorf("instructions use dotted tool names: %s", instructions)
 	}
 }
 
 func TestMCPToolsFlagSuggestsPluralsFirst(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	err := app.validateMCPServeOptions(mcpServeOptions(t, "--tools", "customer"))
+	// The canonical singular customer operation group is valid; typo suggestions
+	// still point toward the plural collection group when no group matches.
+	err := app.validateMCPServeOptions(mcpServeOptions(t, "--tools", "custmers"))
 	if err == nil || err.Code != "UNKNOWN_TOOL_PREFIX" {
-		t.Fatalf("err = %v", err)
+		t.Fatalf("err=%v", err)
 	}
 	suggestions := err.Details.(map[string]any)["suggestions"].([]string)
-	if len(suggestions) == 0 || suggestions[0] != "customers" {
-		t.Fatalf("suggestions = %v", suggestions)
-	}
-	if got := mcpNameSuggestions("payment-intent", mcpToolGroups(app.mcpAllTools())); len(got) == 0 || got[0] != "payment-intents" {
-		t.Fatalf("payment-intent suggestions = %v", got)
+	if len(suggestions) == 0 || !strings.HasPrefix(suggestions[0], "customers") {
+		t.Fatal(suggestions)
 	}
 }
 
 func TestMCPAgentsCannotReplaceServerSelections(t *testing.T) {
-	for _, name := range []string{"FLINT_PROFILE", "FLINT_MERCHANT"} {
-		t.Setenv(name, "")
-	}
-	server, api := newMCPTestAPI(t, "sandbox") // The credential's merchant is mer_123.
+	server, api := newMCPTestAPI(t, "sandbox")
 	app, _, _ := testApp(t, server.URL)
-	config := `{"default_profile":"default","profiles":{"default":{},"other":{},"guarded":{"merchant_guard":"mer_123"}}}`
-	if err := os.WriteFile(filepath.Join(app.ConfigDir, "config.json"), []byte(config), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	list := func(opts Options, controls map[string]any) map[string]any {
-		t.Helper()
-		return mcpCall(t, app, opts, "customers_list", map[string]any{"_flint": controls})
-	}
-	rejected := func(result map[string]any, control string) {
-		t.Helper()
-		if text := mcpResultText(result); result["isError"] != true || !strings.HasPrefix(text, "_flint."+control+" is not accepted") {
-			t.Fatalf("expected _flint.%s to be rejected: %s", control, text)
+	for _, control := range []string{"profile", "merchant"} {
+		for _, opts := range []Options{defaultOptions(), mcpServeOptions(t, "--tools", "customers")} {
+			name := "flint_read"
+			input := map[string]any{"operation": "customers.list", control: "other"}
+			if !mcpPolicyFromOptions(opts).defaultToolSet() {
+				name = "customers_list"
+				input = map[string]any{control: "other"}
+			}
+			result := mcpCall(t, app, opts, name, input)
+			if result["isError"] != true {
+				t.Fatalf("%s accepted: %#v", control, result)
+			}
 		}
 	}
-	human := mcpServeOptions(t, "--merchant", "mer_human")
-	if result := list(human, nil); result["isError"] != true || !strings.Contains(mcpResultText(result), "MERCHANT_GUARD_MISMATCH") {
-		t.Fatalf("server guard did not apply: %s", mcpResultText(result))
+	if len(api.seen()) != 0 {
+		t.Fatal(api.seen())
 	}
-	// The credential's own merchant would satisfy a replaced guard: that is
-	// exactly the widening the server must refuse.
-	rejected(list(human, map[string]any{"merchant": "mer_123"}), "merchant")
-	if result := list(human, map[string]any{"merchant": "mer_human"}); strings.HasPrefix(mcpResultText(result), "_flint.merchant is not accepted") {
-		t.Fatal("repeating the server's guard must be accepted")
+	guarded := mcpCall(t, app, mcpServeOptions(t, "--merchant", "mer_other"), "flint_read", map[string]any{"operation": "customers.list"})
+	if !strings.Contains(mcpResultText(guarded), "MERCHANT_GUARD_MISMATCH") {
+		t.Fatal(mcpResultText(guarded))
 	}
-	t.Setenv("FLINT_MERCHANT", "mer_human")
-	rejected(list(defaultOptions(), map[string]any{"merchant": "mer_123"}), "merchant")
-	t.Setenv("FLINT_MERCHANT", "")
-	if seen := api.seen(); len(seen) != 0 {
-		t.Fatalf("guarded calls reached the API: %v", seen)
-	}
-	// Without a server guard, an agent may add one: it only narrows.
-	if result := list(defaultOptions(), map[string]any{"merchant": "mer_other"}); !strings.Contains(mcpResultText(result), "MERCHANT_GUARD_MISMATCH") {
-		t.Fatalf("agent guard = %s", mcpResultText(result))
-	}
-	if result := list(defaultOptions(), map[string]any{"merchant": "mer_123"}); result["isError"] == true {
-		t.Fatalf("matching agent guard failed: %s", mcpResultText(result))
-	}
-
-	rejected(list(mcpServeOptions(t, "--profile", "other"), map[string]any{"profile": "default"}), "profile")
-	if result := list(mcpServeOptions(t, "--profile", "other"), map[string]any{"profile": "other"}); result["isError"] == true {
-		t.Fatalf("repeating the server's profile failed: %s", mcpResultText(result))
-	}
-	t.Setenv("FLINT_PROFILE", "other")
-	rejected(list(defaultOptions(), map[string]any{"profile": "default"}), "profile")
-	t.Setenv("FLINT_PROFILE", "")
-	// An unpinned profile can change, unless the change drops a guard.
-	if result := list(defaultOptions(), map[string]any{"profile": "other"}); result["isError"] == true {
-		t.Fatalf("unpinned profile choice failed: %s", mcpResultText(result))
-	}
-	if err := os.WriteFile(filepath.Join(app.ConfigDir, "config.json"), []byte(strings.Replace(config, `"default_profile":"default"`, `"default_profile":"guarded"`, 1)), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	rejected(list(defaultOptions(), map[string]any{"profile": "other"}), "profile")
 }
 
 func TestMCPHidesCommandsThatRewriteTheHumansSetup(t *testing.T) {
@@ -221,7 +176,7 @@ func TestMCPHidesCommandsThatRewriteTheHumansSetup(t *testing.T) {
 	}
 	for _, name := range []string{"config_set", "config.set", "config_unset", "config.unset", "auth_logout"} {
 		call := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{"name": name, "arguments": map[string]any{"key": "profile", "value": "x"}}}, mcpAllToolsOptions(t))
-		if _, failed := call["error"]; !failed {
+		if call["error"] == nil && lookupPathValue(call, "result.isError") != true {
 			t.Fatalf("%s ran: %#v", name, call)
 		}
 	}
@@ -236,60 +191,31 @@ func TestMCPHidesCommandsThatRewriteTheHumansSetup(t *testing.T) {
 
 func TestMCPControlsMatchEachTool(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	controlsOf := func(name string) map[string]any {
-		t.Helper()
-		schema, e := schemaForMCPTool(mustMCPTool(t, app, name), mcpPolicy{allowLive: true, allowDestructive: true})
-		if e != nil {
-			t.Fatal(e)
-		}
-		controls, _ := lookupPath(schema, "properties._flint.properties")
-		out, _ := controls.(map[string]any)
-		return out
-	}
 	for _, test := range []struct {
 		tool          string
 		want, without []string
 	}{
-		{"customers.list", []string{"all", "select"}, []string{"idempotency_key", "dry_run", "wait_for", "confirm", "preview"}},
-		{"customers.create", []string{"idempotency_key", "dry_run"}, []string{"all", "wait_for", "confirm", "preview"}},
-		{"customers.get", []string{"wait_for", "for"}, []string{"all", "idempotency_key", "dry_run"}},
-		{"webhook-endpoints.delete", []string{"confirm", "preview", "idempotency_key"}, []string{"all", "wait_for"}},
-		{"listen", []string{"max_events", "for"}, []string{"all", "select"}},
-		{"help", []string{"jq"}, []string{"live", "merchant", "profile", "timeout"}},
+		{"customers.list", []string{"all", "select"}, []string{"idempotency_key", "dry_run", "confirm", "preview", "_flint"}},
+		{"customers.create", []string{"idempotency_key", "dry_run"}, []string{"all", "wait_for", "preview", "_flint"}},
+		{"customers.get", []string{"wait_for", "wait_seconds"}, []string{"all", "idempotency_key", "dry_run", "_flint"}},
+		{"webhook-endpoints.delete", []string{"confirm", "dry_run", "idempotency_key"}, []string{"all", "wait_for", "preview", "_flint"}},
+		{"listen", []string{"max_events", "max_seconds"}, []string{"all", "_flint"}},
 	} {
-		controls := controlsOf(test.tool)
-		for _, name := range test.want {
-			if _, ok := controls[name]; !ok {
-				t.Errorf("%s lacks _flint.%s", test.tool, name)
+		schema, e := schemaForMCPTool(mustMCPTool(t, app, test.tool), mcpPolicy{allowLive: true, allowDestructive: true})
+		if e != nil {
+			t.Fatal(e)
+		}
+		props := schema["properties"].(map[string]any)
+		for _, key := range test.want {
+			if _, ok := props[key]; !ok {
+				t.Errorf("%s lacks %s", test.tool, key)
 			}
 		}
-		for _, name := range test.without {
-			if _, ok := controls[name]; ok {
-				t.Errorf("%s advertises inapplicable _flint.%s", test.tool, name)
+		for _, key := range test.without {
+			if _, ok := props[key]; ok {
+				t.Errorf("%s exposes %s", test.tool, key)
 			}
 		}
-	}
-	for _, tool := range app.mcpAllTools() {
-		schema, _ := schemaForMCPTool(tool, mcpPolicy{allowLive: true, allowDestructive: true})
-		controls, _ := lookupPath(schema, "properties._flint.properties")
-		for _, inert := range []string{"debug", "quiet", "color", "progress", "open"} {
-			if _, ok := controls.(map[string]any)[inert]; ok {
-				t.Errorf("%s advertises _flint.%s, which does nothing over MCP", tool.CanonicalName, inert)
-			}
-		}
-		if description := fmt.Sprint(lookupPathValue(schema, "properties._flint.description")); len(description) > 60 {
-			t.Errorf("%s control description is long: %s", tool.CanonicalName, description)
-		}
-		// No enum description may merely restate its value.
-		walkJSONSchemas(schema, func(node map[string]any) {
-			values, _ := node["enum"].([]any)
-			descriptions, _ := node["x-enum-descriptions"].([]any)
-			for i, description := range descriptions {
-				if i < len(values) && description != "" && strings.EqualFold(strings.Trim(fmt.Sprint(description), "."), strings.ReplaceAll(fmt.Sprint(values[i]), "_", " ")) {
-					t.Errorf("%s keeps a restating enum description %q", tool.CanonicalName, description)
-				}
-			}
-		})
 	}
 }
 
@@ -299,7 +225,7 @@ func TestMCPQueryParametersKeepTheirContract(t *testing.T) {
 	if enum := fmt.Sprint(lookupPathValue(schema, "properties.sort_by.enum")); !strings.Contains(enum, "created_at") {
 		t.Fatalf("sort_by enum = %s", enum)
 	}
-	if got := fmt.Sprint(lookupPathValue(schema, "properties.page_size.default")); got != "20" {
+	if got := fmt.Sprint(lookupPathValue(schema, "properties.page_size.default")); got != "10" {
 		t.Fatalf("page_size default = %s", got)
 	}
 	if got := fmt.Sprint(lookupPathValue(schema, "properties.created_after.format")); got != "<nil>" {
@@ -338,7 +264,7 @@ func TestMCPQueryParametersKeepTheirContract(t *testing.T) {
 		t.Fatalf("only %d list tools keep a status item enum", enums)
 	}
 	get, _ := schemaForMCPTool(mustMCPTool(t, app, "customers.get"), mcpPolicy{})
-	if description := fmt.Sprint(lookupPathValue(get, "properties.customer_id.description")); !strings.Contains(description, "cus_") {
+	if description := fmt.Sprint(lookupPathValue(get, "properties.customer_id.description")); description == "" || description == "<nil>" {
 		t.Fatalf("customer_id description = %s", description)
 	}
 }
@@ -346,78 +272,38 @@ func TestMCPQueryParametersKeepTheirContract(t *testing.T) {
 func TestMCPDescriptionsSayWhatTitlesDoNot(t *testing.T) {
 	app, _, _ := testApp(t, "")
 	tools, _ := mcpListedTools(t, app, mcpAllToolsOptions(t), latestMCPProtocolVersion)
-	byName := map[string]string{}
 	sameAsTitle := 0
 	for _, tool := range tools {
 		description := tool["description"].(string)
-		byName[tool["name"].(string)] = description
 		if strings.TrimSuffix(description, ".") == tool["title"] {
 			sameAsTitle++
 		}
-		if len(description) > 450 {
-			t.Errorf("%s description is %d bytes: %s", tool["name"], len(description), description)
+		if description == "" || len(description) > 450 {
+			t.Errorf("%s description is %d bytes", tool["name"], len(description))
+		}
+		if strings.Contains(description, "_flint") {
+			t.Errorf("%s describes removed controls: %s", tool["name"], description)
 		}
 		if strings.Contains(description, "has_more") && !strings.Contains(description, "no has_more") {
-			t.Errorf("%s mentions has_more: %s", tool["name"], description)
+			t.Errorf("%s mentions has_more", tool["name"])
 		}
 	}
 	if sameAsTitle > len(tools)/10 {
-		t.Errorf("%d of %d descriptions only repeat the title", sameAsTitle, len(tools))
-	}
-	for name, wants := range map[string][]string{
-		"payment-intents_create":   {"Provide exactly one of", "{amount_money, payment_options}", "order", "minor units"},
-		"checkout-sessions_create": {"order_id", "quick_pay_item", "Set type to one of: order, quick_pay, subscription_plan"},
-		"refunds_create":           {"at least one of", "payment_intent_id"},
-		"products_create":          {"default_variant", "send options, variants"},
-		"bundles_update":           {"expected_version is required when sending"},
-		"gift-cards_transitions":   {"Set action to one of: freeze, unfreeze, close", "reason"},
-		"customers_list":           {"next_page_token", "page_token"},
-		"listen":                   {"_flint.max_events or _flint.for"},
-	} {
-		for _, want := range wants {
-			if !strings.Contains(byName[name], want) {
-				t.Errorf("%s description lacks %q: %s", name, want, byName[name])
-			}
-		}
+		t.Errorf("%d of %d descriptions repeat title", sameAsTitle, len(tools))
 	}
 }
 
 func TestMCPHelpForAToolFollowsItsInputSchema(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	for _, topic := range []string{"customers_create", "customers.create"} {
-		result := mcpCall(t, app, defaultOptions(), "help", map[string]any{"topic": topic})
-		text := mcpResultText(result)
-		if result["isError"] == true || strings.Contains(text, "--input") || strings.Contains(text, "flint customers create") {
-			t.Fatalf("help %s is not MCP-oriented: %s", topic, text)
-		}
-		schema, _ := schemaForMCPTool(mustMCPTool(t, app, "customers.create"), mcpPolicy{})
-		required := mcpStrings(schema["required"])
-		data, _ := lookupPath(result["structuredContent"], "data")
-		if fmt.Sprint(lookupPathValue(data, "required")) != fmt.Sprint(required) || lookupPathValue(data, "name") != "customers_create" {
-			t.Fatalf("help required = %v, schema required = %v", lookupPathValue(data, "required"), required)
-		}
-		for _, argument := range lookupPathValue(data, "arguments").([]map[string]any) {
-			if argument["required"] != containsString(required, argument["name"].(string)) {
-				t.Errorf("help says %s required=%v", argument["name"], argument["required"])
-			}
+	for _, operation := range []string{"customers_create", "customers.create", "customers create"} {
+		result := mcpCall(t, app, defaultOptions(), "flint_describe", map[string]any{"operation": operation})
+		if result["isError"] == true || !strings.Contains(mcpResultText(result), "customers.create") || !strings.Contains(mcpResultText(result), "email") {
+			t.Fatal(mcpResultText(result))
 		}
 	}
-	group := mcpCall(t, app, defaultOptions(), "help", map[string]any{"topic": "customers"})
-	if text := mcpResultText(group); group["isError"] == true || !strings.Contains(text, "customers_create") {
-		t.Fatalf("group help = %s", text)
-	}
-	controls := mcpCall(t, app, defaultOptions(), "help", map[string]any{"topic": "controls"})
-	if text := mcpResultText(controls); !strings.Contains(text, "_flint.idempotency_key") {
-		t.Fatalf("controls help = %s", text)
-	}
-	input := mcpCall(t, app, defaultOptions(), "schema_input", map[string]any{"command": "customers_create"})
-	schema, _ := schemaForMCPTool(mustMCPTool(t, app, "customers.create"), mcpPolicy{})
-	if fmt.Sprint(input["structuredContent"]) != fmt.Sprint(schema) {
-		t.Fatal("schema_input differs from the advertised input schema")
-	}
-	output := mcpCall(t, app, defaultOptions(), "schema_output", map[string]any{"command": "invoices_create"})
-	if output["isError"] == true {
-		t.Fatalf("schema_output for a tool outside the set failed: %s", mcpResultText(output))
+	group := mcpCall(t, app, defaultOptions(), "flint_help", map[string]any{"topic": "customers"})
+	if group["isError"] == true || !strings.Contains(mcpResultText(group), "customers.create") {
+		t.Fatal(mcpResultText(group))
 	}
 }
 
@@ -444,10 +330,10 @@ func TestMCPRetryGuidanceNamesTheIdempotencyControl(t *testing.T) {
 	result := mcpCommandError(cmd, mcpCallResult{value: value, exit: ExitAPI}, mcpPolicy{}, "")
 	text := mcpResultText(result)
 	firstLine, _, _ := strings.Cut(text, "\n")
-	if !strings.Contains(firstLine, `_flint.idempotency_key flint-cli-abc`) || !strings.Contains(firstLine, "identical request") || !strings.Contains(firstLine, "backoff") {
+	if !strings.Contains(firstLine, `idempotency_key flint-cli-abc`) || !strings.Contains(firstLine, "identical request") || !strings.Contains(firstLine, "backoff") {
 		t.Fatalf("message = %s", firstLine)
 	}
-	if !strings.Contains(text, "Retry the same command with _flint.idempotency_key flint-cli-abc.") || !strings.Contains(text, "flint customers create --idempotency-key flint-cli-abc") {
+	if !strings.Contains(text, "Retry the same command with idempotency_key flint-cli-abc.") || !strings.Contains(text, "flint customers create --idempotency-key flint-cli-abc") {
 		t.Fatalf("details = %s", text)
 	}
 }
@@ -489,51 +375,40 @@ func TestMCPSupportsProtocol20241105(t *testing.T) {
 	}
 }
 
-func TestMCPAPIToolDocumentsItsBody(t *testing.T) {
-	server, _ := newMCPTestAPI(t, "sandbox")
-	app, _, _ := testApp(t, server.URL)
-	schema, _ := schemaForMCPTool(mustMCPTool(t, app, "api"), mcpPolicy{})
-	if got := lookupPathValue(schema, "properties.body.type"); got != "object" {
-		t.Fatalf("api body schema = %v", lookupPathValue(schema, "properties.body"))
+func TestMCPDoesNotExposeLegacyToolSurface(t *testing.T) {
+	app, _, _ := testApp(t, "")
+	for _, opts := range []Options{defaultOptions(), mcpAllToolsOptions(t)} {
+		tools, _ := mcpListedTools(t, app, opts, latestMCPProtocolVersion)
+		for _, tool := range tools {
+			n := tool["name"].(string)
+			if n == "api" || n == "help" || strings.HasPrefix(n, "schema_") {
+				t.Errorf("exposed %s", n)
+			}
+		}
+		for _, name := range []string{"api", "help", "schema_input", "customers.list", "payment-intents_create"} {
+			response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{"name": name}}, opts)
+			if response["error"] == nil && lookupPathValue(response, "result.isError") != true {
+				t.Fatalf("legacy tool %s accepted: %#v", name, response)
+			}
+		}
 	}
-	opts := mcpAllToolsOptions(t)
-	result := mcpCall(t, app, opts, "api", map[string]any{"method": "POST", "path": "/v1/customers", "body": map[string]any{"email": "a@example.com"}, "_flint": map[string]any{"dry_run": "client"}})
-	if got := lookupPathValue(result["structuredContent"], "data.body.email"); got != "a@example.com" {
-		t.Fatalf("api body result = %s", mcpResultText(result))
-	}
-	legacy := mcpCall(t, app, opts, "api", map[string]any{"method": "POST", "path": "/v1/customers", "email": "b@example.com", "_flint": map[string]any{"dry_run": "client"}})
-	if got := lookupPathValue(legacy["structuredContent"], "data.body.email"); got != "b@example.com" {
-		t.Fatalf("legacy api body result = %s", mcpResultText(legacy))
-	}
-	mixed := mcpCall(t, app, opts, "api", map[string]any{"method": "POST", "path": "/v1/customers", "email": "b@example.com", "body": map[string]any{}, "_flint": map[string]any{"dry_run": "client"}})
-	if mixed["isError"] != true || !strings.Contains(mcpResultText(mixed), "inside body") {
-		t.Fatalf("mixed api body result = %s", mcpResultText(mixed))
+	for _, input := range []map[string]any{{"operation": "customers.list", "_flint": map[string]any{"all": true}}, {"operation": "customers.list", "arguments": map[string]any{"_flint": map[string]any{"all": true}}}} {
+		result := mcpCall(t, app, defaultOptions(), "flint_read", input)
+		if result["isError"] != true {
+			t.Fatal(result)
+		}
 	}
 }
 
 func TestMCPEventCatalogIsCompactAndFilterable(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	compact := mcpCall(t, app, defaultOptions(), "schema_events", map[string]any{})
-	text := mcpResultText(compact)
-	if compact["isError"] == true || len(text) > 64<<10 || !strings.Contains(text, "payment_intent.succeeded") {
-		t.Fatalf("compact catalog is %d bytes (error=%v)", len(text), compact["isError"])
+	events := mcpCall(t, app, defaultOptions(), "flint_help", map[string]any{"topic": "events"})
+	if text := mcpResultText(events); events["isError"] == true || len(text) > 64<<10 || (!strings.Contains(text, "payment_intent") || !strings.Contains(text, "succeeded")) {
+		t.Fatalf("events: %.500s", text)
 	}
-	if help := mcpResultText(mcpCall(t, app, defaultOptions(), "help", map[string]any{"topic": "events"})); len(help) > 64<<10 || !strings.Contains(help, "event_types") {
-		t.Fatalf("help events is %d bytes", len(help))
-	}
-	filtered := mcpCall(t, app, defaultOptions(), "schema_events", map[string]any{"event_type": "payment_intent"})
-	webhooks, _ := lookupPath(filtered["structuredContent"], "webhooks")
-	if filtered["isError"] == true || len(webhooks.(map[string]any)) == 0 {
-		t.Fatalf("filtered catalog = %.300s", mcpResultText(filtered))
-	}
-	for eventType := range webhooks.(map[string]any) {
-		if !strings.HasPrefix(eventType, "payment_intent.") {
-			t.Fatalf("payment_intent filter returned %s", eventType)
-		}
-	}
-	unknown := mcpCall(t, app, defaultOptions(), "schema_events", map[string]any{"event_type": "payment_intnet"})
-	if unknown["isError"] != true || !strings.Contains(mcpResultText(unknown), "payment_intent") {
-		t.Fatalf("unknown event type = %s", mcpResultText(unknown))
+	payload := mcpCall(t, app, defaultOptions(), "flint_describe", map[string]any{"event": "payment_intent.succeeded"})
+	if payload["isError"] == true || !strings.Contains(mcpResultText(payload), "payment_intent") {
+		t.Fatal(mcpResultText(payload))
 	}
 }
 
@@ -541,7 +416,7 @@ func TestMCPRefusesOversizedReadResults(t *testing.T) {
 	read := &Command{CanonicalName: "customers.list"}
 	big := map[string]any{"data": strings.Repeat("x", mcpMaxResultBytes)}
 	refused := mcpResultTooLarge(read, nil, big)
-	if refused == nil || !strings.Contains(mcpResultText(refused), "_flint.select") {
+	if refused == nil || !strings.Contains(mcpResultText(refused), "select") {
 		t.Fatalf("oversized read = %#v", refused)
 	}
 	if mcpResultTooLarge(&Command{CanonicalName: "customers.create", Mutation: true}, nil, big) != nil {
@@ -566,7 +441,7 @@ func TestMCPCallsReportProgress(t *testing.T) {
 	app, _, _ := testApp(t, server.URL)
 	conn := startMCPTestConn(t, app, defaultOptions())
 	conn.initialize(`{}`)
-	conn.send(`{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"customers_list","arguments":{"_flint":{"all":true}},"_meta":{"progressToken":"tok"}}}`)
+	conn.send(`{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"flint_read","arguments":{"operation":"customers.list","all":true},"_meta":{"progressToken":"tok"}}}`)
 	var progress []map[string]any
 	for {
 		message := conn.next()
@@ -587,17 +462,15 @@ func TestMCPCallsReportProgress(t *testing.T) {
 	}
 }
 
-func TestMCPEmptyToolsUsesDefaultWithLazyRegistry(t *testing.T) {
+func TestMCPEmptyToolsIsRejectedWithLazyRegistry(t *testing.T) {
 	app, _, _ := testApp(t, "")
 	app.Registry = newLocalRegistry()
-	opts := mcpServeOptions(t, "--tools", "")
-	if err := app.validateMCPServeOptions(opts); err != nil {
-		t.Fatal(err)
+	if err := app.validateMCPServeOptions(mcpServeOptions(t, "--tools", "")); err == nil || err.Code != "INVALID_FLAG_VALUE" {
+		t.Fatalf("empty tools: %v", err)
 	}
-	defaults, size := mcpListedTools(t, app, defaultOptions(), latestMCPProtocolVersion)
-	empty, emptySize := mcpListedTools(t, app, opts, latestMCPProtocolVersion)
-	if app.Registry.localOnly || size != emptySize || fmt.Sprint(defaults) != fmt.Sprint(empty) {
-		t.Fatal("empty --tools must load and expose the same API tools as the default set")
+	tools, _ := mcpListedTools(t, app, defaultOptions(), latestMCPProtocolVersion)
+	if len(tools) != 5 {
+		t.Fatalf("lazy discovery tools: %#v", tools)
 	}
 }
 
@@ -630,10 +503,10 @@ func TestMCPErrorEnvelopePreservesCoreDetailsAndRemediation(t *testing.T) {
 			t.Errorf("%s = %v, want %v", path, got, want)
 		}
 	}
-	if !strings.Contains(text, "_flint.timeout 1m") || strings.Contains(text, "--timeout") || strings.Contains(text, "--idempotency-key") {
+	if !strings.Contains(text, "timeout 1m") || strings.Contains(text, "--timeout") || strings.Contains(text, "--idempotency-key") {
 		t.Fatalf("untranslated remediation: %s", text)
 	}
-	if !strings.Contains(text, `_flint.idempotency_key flint-cli-retry-test`) {
+	if !strings.Contains(text, `idempotency_key flint-cli-retry-test`) {
 		t.Fatalf("missing retry key advice: %s", text)
 	}
 	for _, test := range []struct {

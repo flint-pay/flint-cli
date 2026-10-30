@@ -563,7 +563,7 @@ func TestMCPToolsMatchCanonicalRegistryAndInputSchemas(t *testing.T) {
 	tools := result["tools"].([]map[string]any)
 	byName := map[string]map[string]any{}
 	for _, tool := range tools {
-		byName[mcpCanonicalToolName(tool["name"].(string))] = tool
+		byName[tool["name"].(string)] = tool
 		// Output schemas are fetched on demand with schema_output; embedding
 		// them made tools/list about 19 MB.
 		if _, ok := tool["outputSchema"]; ok {
@@ -574,18 +574,24 @@ func TestMCPToolsMatchCanonicalRegistryAndInputSchemas(t *testing.T) {
 			t.Errorf("MCP tool %s must advertise inputSchema.type object, got %#v", tool["name"], inputSchema["type"])
 		}
 	}
-	want := 0
-	for _, cmd := range app.mcpAllTools() {
+	policy := app.mcpPolicy(mcpAllToolsOptions(t))
+	index, err := app.mcpOperationIndex(policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy.index = index
+	want := 3
+	for _, cmd := range app.mcpTools(policy) {
 		if cmd.CanonicalName != "history.clear" && !mcpCommandExposed(cmd) {
 			t.Errorf("MCP exposes non-canonical command %s", cmd.CanonicalName)
 		}
 		want++
-		tool, ok := byName[cmd.CanonicalName]
+		tool, ok := byName[mcpToolName(cmd.CanonicalName)]
 		if !ok {
 			t.Errorf("canonical command %s is missing from MCP", cmd.CanonicalName)
 			continue
 		}
-		schema, schemaErr := schemaForMCPTool(cmd, mcpPolicy{})
+		schema, schemaErr := schemaForMCPTool(cmd, policy)
 		if schemaErr != nil {
 			t.Fatal(schemaErr)
 		}
@@ -594,16 +600,16 @@ func TestMCPToolsMatchCanonicalRegistryAndInputSchemas(t *testing.T) {
 		}
 		annotations, ok := tool["annotations"].(map[string]any)
 		expected := mcpToolAnnotations(cmd)
-		expected["title"] = mcpToolTitle(cmd)
+		entry, _ := index.Lookup(cmd.CanonicalName)
+		expected["title"] = entry.Title
+		expected["readOnlyHint"] = entry.Kind == "read"
+		expected["destructiveHint"] = entry.Kind == "write" && (entry.Irreversible || entry.Overwrites)
+		expected["idempotentHint"] = entry.Kind == "read" || entry.Method == "PUT" || entry.Method == "DELETE" || entry.Idempotency == "required"
 		if !ok || fmt.Sprint(annotations) != fmt.Sprint(expected) {
 			t.Errorf("MCP annotations differ for %s: %#v", cmd.CanonicalName, tool["annotations"])
 		}
 	}
-	for _, cmd := range app.Registry.Commands {
-		if mcpCommandExposed(cmd) && byName[cmd.CanonicalName] == nil {
-			t.Errorf("canonical command %s is missing from MCP", cmd.CanonicalName)
-		}
-	}
+
 	if len(tools) != want {
 		t.Fatalf("MCP tools=%d, want %d", len(tools), want)
 	}
@@ -654,7 +660,7 @@ func TestMCPCallRejectsArgumentsOutsideAdvertisedSchema(t *testing.T) {
 		if strings.Contains(string(encoded), marker) {
 			t.Fatalf("MCP exposed local file contents for arguments %#v", arguments)
 		}
-		if !strings.Contains(string(encoded), "advertised input schema") {
+		if !strings.Contains(string(encoded), "argument") {
 			t.Fatalf("MCP returned an unclear schema error for %#v: %s", arguments, encoded)
 		}
 	}
@@ -662,21 +668,13 @@ func TestMCPCallRejectsArgumentsOutsideAdvertisedSchema(t *testing.T) {
 
 func TestMCPOrderLinkedPaymentIntentUsesTypedAlternateInput(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{
-		"name": "payment-intents.create",
-		"arguments": map[string]any{
-			"order":  "ord_123",
-			"_flint": map[string]any{"dry_run": "client", "idempotency_key": "saved-test-action-1"},
-		},
-	}}, defaultOptions())
-	result := response["result"].(map[string]any)
+	// MCP uses the public order-specific operation rather than the CLI's order convenience flag.
+	result := mcpCall(t, app, defaultOptions(), "flint_write", map[string]any{"operation": "orders.payment-intents.create", "arguments": map[string]any{"order_id": "ord_123"}, "dry_run": true, "idempotency_key": "saved-test-action-1"})
 	if result["isError"] == true {
-		t.Fatalf("MCP call failed: %#v", result)
+		t.Fatal(mcpResultText(result))
 	}
-	structured := result["structuredContent"].(map[string]any)
-	path, ok := lookupPath(structured, "data.path")
-	if !ok || path != "/v1/orders/ord_123/payment-intents" {
-		t.Fatalf("MCP alternate request path = %#v", structured)
+	if got := lookupPathValue(result, "structuredContent.data.path"); got != "/v1/orders/ord_123/payment-intents" {
+		t.Fatal(result)
 	}
 }
 

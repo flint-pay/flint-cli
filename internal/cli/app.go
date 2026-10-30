@@ -107,7 +107,7 @@ func (a *App) Run(argv []string) int {
 	if authErr != nil {
 		return a.fail(authErr, opts)
 	}
-	if authEnvelope.fromCache && !opts.DryRunClient() && commandPermissionError(permissionCommand(effective, opts), authEnvelope.Data, resolved.ProfileName) != nil {
+	if !a.mcpSkipScopeCheck && authEnvelope.fromCache && !opts.DryRunClient() && commandPermissionError(permissionCommand(effective, opts), authEnvelope.Data, resolved.ProfileName) != nil {
 		// Revalidate a cached denial before any guards, confirmation, or target
 		// request. The refreshed context must pass the normal checks below.
 		authCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
@@ -118,6 +118,10 @@ func (a *App) Run(argv []string) int {
 		}
 	}
 	authContext := authEnvelope.Data
+	a.observeCachedAuthContext(authContext)
+	if a.mcpAuth != nil && authContext.AuthType != "none" {
+		a.mcpAuth.store(authContext)
+	}
 	if authContext.OAuthGrantID != "" && strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) == "" && credentialFromEnvironment() == "" && workloadIdentityID() == "" {
 		ctx = context.WithValue(ctx, oauthSessionKey{}, &oauthSession{Profile: resolved.ProfileName, GrantID: authContext.OAuthGrantID, ContextID: authContext.ContextID, SessionID: authContext.OAuthSessionID, MerchantID: authContext.MerchantID, SandboxID: authContext.SandboxID, Environment: authContext.Environment})
 	}
@@ -146,7 +150,7 @@ func (a *App) Run(argv []string) int {
 		}
 		return ExitOK
 	}
-	if !opts.DryRunClient() {
+	if !a.mcpSkipScopeCheck && !opts.DryRunClient() {
 		if e := commandPermissionError(permissionCommand(effective, opts), authContext, resolved.ProfileName); e != nil {
 			return a.fail(e, opts)
 		}

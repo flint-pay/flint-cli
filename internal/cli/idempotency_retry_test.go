@@ -118,20 +118,20 @@ func TestEveryMCPToolRequiresOnlyItsContractKey(t *testing.T) {
 			delete(schema, "oneOf")
 			delete(schema, "anyOf")
 			props := schema["properties"].(map[string]any)
-			controls, _ := props["_flint"].(map[string]any)
+			controls, _ := props["idempotency_key"].(map[string]any)
 			rootRequired := []any{}
 			if required {
-				rootRequired = append(rootRequired, "_flint")
+				rootRequired = append(rootRequired, "idempotency_key")
 			}
-			requiredNames, _ := schema["required"].([]any)
+			requiredNames := mcpStrings(schema["required"])
 			found := false
 			for _, name := range requiredNames {
-				found = found || name == "_flint"
+				found = found || name == "idempotency_key"
 			}
 			if found != required {
 				t.Fatalf("root required=%v, required key=%v", requiredNames, required)
 			}
-			schema = map[string]any{"type": "object", "required": rootRequired, "properties": map[string]any{"_flint": controls}}
+			schema = map[string]any{"type": "object", "required": rootRequired, "properties": map[string]any{"idempotency_key": controls}}
 			compiler := jsonschema.NewCompiler()
 			if err := compiler.AddResource("https://test.invalid/schema", schema); err != nil {
 				t.Fatal(err)
@@ -140,16 +140,14 @@ func TestEveryMCPToolRequiresOnlyItsContractKey(t *testing.T) {
 			if compileErr != nil {
 				t.Fatal(compileErr)
 			}
-			for _, value := range []any{map[string]any{}, map[string]any{"_flint": map[string]any{}}} {
-				if validationErr := compiled.Validate(value); (validationErr != nil) != required {
-					t.Fatalf("missing key: value=%v required=%v error=%v", value, required, validationErr)
-				}
+			if validationErr := compiled.Validate(map[string]any{}); (validationErr != nil) != required {
+				t.Fatalf("missing key: required=%v error=%v", required, validationErr)
 			}
-			if required && compiled.Validate(map[string]any{"_flint": map[string]any{"idempotency_key": ""}}) == nil {
+			if required && compiled.Validate(map[string]any{"idempotency_key": ""}) == nil {
 				t.Fatal("accepted an empty required key")
 			}
 			if required {
-				if validationErr := compiled.Validate(map[string]any{"_flint": map[string]any{"idempotency_key": "saved-action-1"}}); validationErr != nil {
+				if validationErr := compiled.Validate(map[string]any{"idempotency_key": "saved-action-1"}); validationErr != nil {
 					t.Fatal(validationErr)
 				}
 			}

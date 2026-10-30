@@ -134,35 +134,19 @@ func TestVerifiedListenErrorBodyTimeout(t *testing.T) {
 func TestVerifiedMCPPreservesFlagLikeValues(t *testing.T) {
 	a, _, _ := testApp(t, "")
 	for _, name := range []string{"--help", "--live", "--", "--name=value"} {
-		response := a.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{
-			"name": "organizations.create", "arguments": map[string]any{"name": name, "parent_organization_id": "org_parent", "_flint": map[string]any{"dry_run": "client"}},
-		}}, mcpAllToolsOptions(t))
-		if got, _ := lookupPath(response, "result.structuredContent.data.body.name"); got != name {
-			t.Fatalf("name=%q response=%v", name, response)
+		result := mcpCall(t, a, defaultOptions(), "flint_write", map[string]any{"operation": "organizations.create", "arguments": map[string]any{"name": name, "parent_organization_id": "org_parent"}, "dry_run": true, "idempotency_key": "flag-like-fixture"})
+		if got := lookupPathValue(result, "structuredContent.data.body.name"); got != name {
+			t.Fatalf("%q: %#v", name, result)
 		}
-	}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("q") != "--help" {
-			t.Errorf("query=%s", r.URL.RawQuery)
-		}
-		io.WriteString(w, "[]")
-	}))
-	defer server.Close()
-	t.Setenv("FLINT_HELP_URL", server.URL)
-	response := a.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 2, Method: "tools/call", Params: map[string]any{
-		"name": "help.search", "arguments": map[string]any{"query": "--help"},
-	}}, mcpAllToolsOptions(t))
-	if got, _ := lookupPath(response, "result.structuredContent.data.query"); got != "--help" {
-		t.Fatalf("response=%v", response)
 	}
 }
 
 func TestVerifiedMCPCommandHelpIsStructured(t *testing.T) {
 	a, out, _ := testApp(t, "")
 	response := a.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{
-		"name": "help", "arguments": map[string]any{"topic": "customers.create"},
+		"name": "flint_help", "arguments": map[string]any{"topic": "customers.create"},
 	}}, defaultOptions())
-	if got, _ := lookupPath(response, "result.structuredContent.data.canonical_name"); got != "customers.create" {
+	if got, _ := lookupPath(response, "result.structuredContent.data.operation"); got != "customers.create" {
 		t.Fatalf("response=%v", response)
 	}
 	if exit := a.Run([]string{"help", "customers.create"}); exit != ExitOK || json.Valid(out.Bytes()) || !strings.Contains(out.String(), "Usage:") {

@@ -5,6 +5,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -31,14 +34,27 @@ func TestVerifiedMCPProcessHelper(t *testing.T) {
 }
 
 func TestVerifiedMCPProcessShutdown(t *testing.T) {
-	for _, action := range []string{"eof", "sigterm", "sigint", "jq-eof", "jq-sigterm", "jq-sigint", "jq-cancel"} {
+	for _, action := range []string{"eof", "sigterm", "sigint", "listen-eof", "listen-sigterm", "listen-sigint", "listen-cancel"} {
 		t.Run(action, func(t *testing.T) {
-			shutdownAction := strings.TrimPrefix(action, "jq-")
+			shutdownAction := strings.TrimPrefix(action, "listen-")
 			if runtime.GOOS == "windows" && shutdownAction != "eof" && shutdownAction != "cancel" {
 				t.Skip("Windows does not support sending these process signals")
 			}
+			streamStarted := make(chan struct{}, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/v1/auth-context" {
+					fmt.Fprint(w, authContextJSON("sandbox"))
+					return
+				}
+				w.Header().Set("Content-Type", "text/event-stream")
+				w.WriteHeader(http.StatusOK)
+				w.(http.Flusher).Flush()
+				streamStarted <- struct{}{}
+				<-r.Context().Done()
+			}))
+			defer server.Close()
 			command := exec.Command(os.Args[0], "-test.run=^TestVerifiedMCPProcessHelper$")
-			command.Env = append(os.Environ(), "FLINT_TEST_MCP_PROCESS=1", "FLINT_TEST_MCP_CONFIG_DIR="+t.TempDir(), "FLINT_PROFILE=default", "FLINT_MERCHANT=", "FLINT_OUTPUT=", "FLINT_COLOR=")
+			command.Env = append(os.Environ(), "FLINT_TEST_MCP_PROCESS=1", "FLINT_BASE_URL="+server.URL, "FLINT_API_KEY=flint_test_process_fixture", "FLINT_ACCESS_TOKEN=", "FLINT_TEST_MCP_CONFIG_DIR="+t.TempDir(), "FLINT_PROFILE=default", "FLINT_MERCHANT=", "FLINT_OUTPUT=", "FLINT_COLOR=")
 			stdin, err := command.StdinPipe()
 			if err != nil {
 				t.Fatal(err)
@@ -74,21 +90,24 @@ func TestVerifiedMCPProcessShutdown(t *testing.T) {
 			case <-time.After(15 * time.Second):
 				t.Fatal("MCP initialization timed out")
 			}
-			if strings.HasPrefix(action, "jq-") {
+			if strings.HasPrefix(action, "listen-") {
 				encoder := json.NewEncoder(stdin)
 				for _, request := range []map[string]any{
 					{"jsonrpc": "2.0", "method": "notifications/initialized"},
 					{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": map[string]any{
-						"name": "version", "arguments": map[string]any{"_flint": map[string]any{"jq": "until(false; .)"}},
+						"name": "listen", "arguments": map[string]any{"max_seconds": 120},
 					}},
 				} {
 					if err := encoder.Encode(request); err != nil {
 						t.Fatal(err)
 					}
 				}
-				// Allow the worker to enter the non-producing jq loop before
-				// testing cancellation or process shutdown.
-				time.Sleep(100 * time.Millisecond)
+				// Wait until the cancellable HTTP stream is active.
+				select {
+				case <-streamStarted:
+				case <-time.After(4 * time.Second):
+					t.Fatal("listen did not start")
+				}
 				if shutdownAction == "cancel" {
 					// A cancelled request gets no response; the server keeps serving.
 					for _, message := range []map[string]any{

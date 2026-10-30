@@ -77,30 +77,17 @@ func TestOAuthAuthorizationSafetyForCanonicalAndRawCommands(t *testing.T) {
 	}
 }
 
-func TestMCPRawOAuthUsesProductionConfirmation(t *testing.T) {
+func TestMCPRawOAuthIsUnavailable(t *testing.T) {
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
-		w.Header().Set("Location", "https://example.com/callback?code=synthetic")
-		w.WriteHeader(http.StatusFound)
+		t.Error("removed raw tool reached transport")
 	}))
 	defer server.Close()
 	app, _, _ := testApp(t, server.URL)
-	t.Setenv("FLINT_ACCESS_TOKEN", "synthetic_session")
-	command, _ := app.Registry.ByName("api")
-	args := map[string]any{
-		"method": "GET",
-		"path":   "/v1/oauth/authorize?client_id=papp_test&mode=live&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code&state=test&code_challenge=synthetic_pkce_challenge_012345678901234567890&code_challenge_method=S256",
-		"_flint": map[string]any{"live": true},
-	}
-	result, _, exit := app.callMCPCommand(t.Context(), command, args, defaultOptions())
-	if exit != ExitConfirmation || calls.Load() != 0 {
-		t.Fatalf("exit=%d calls=%d result=%v", exit, calls.Load(), result)
-	}
-	args["_flint"].(map[string]any)["confirm"] = true
-	result, _, exit = app.callMCPCommand(t.Context(), command, args, defaultOptions())
-	if exit != ExitOK || calls.Load() != 1 {
-		t.Fatalf("exit=%d calls=%d result=%v", exit, calls.Load(), result)
+	response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{"name": "api", "arguments": map[string]any{"method": "GET", "path": "/v1/oauth/authorize?mode=live", "live": true, "confirm": true}}}, mcpAllToolsOptions(t, "--allow-live", "--allow-destructive"))
+	if (response["error"] == nil && lookupPathValue(response, "result.isError") != true) || calls.Load() != 0 {
+		t.Fatalf("calls=%d response=%#v", calls.Load(), response)
 	}
 }
 

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -34,7 +35,8 @@ func TestMCPSelectionAfterMutation(t *testing.T) {
 			defer server.Close()
 			// A trailing /v1 also produces an existing CLI warning to preserve.
 			app, _, _ := testApp(t, server.URL+"/v1")
-			result := mcpCall(t, app, defaultOptions(), "customers_create", map[string]any{"email": "fixture@example.com", "_flint": controls})
+			cmd := mustMCPTool(t, app, "customers.create")
+			result := app.runMCPTool(context.Background(), cmd, map[string]any{"email": "fixture@example.com", "_flint": controls}, defaultOptions(), mcpPolicy{}, true)
 			raw, _ := json.Marshal(result)
 			text := mcpResultText(result)
 			invalidInput := fmt.Sprint(controls) == "map[select:[true]]"

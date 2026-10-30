@@ -282,7 +282,7 @@ func TestMCPControlsInInputAreRejected(t *testing.T) {
 	app.Stdin = strings.NewReader(`{"email":"a@example.com","_flint":{"live":true,"idempotency_key":"idem_1","dry_run":"client"}}`)
 	exit, result := runJSON(t, app, stdout, "customers", "create", "--input", "-", "--dry-run", "client")
 	message, _ := lookupPath(result, "error.message")
-	if exit != ExitUsage || !strings.Contains(fmt.Sprint(message), "MCP tool calls only") {
+	if exit != ExitUsage || !strings.Contains(fmt.Sprint(message), "retired _flint control object") {
 		t.Fatalf("exit=%d result=%v", exit, result)
 	}
 	for _, flag := range []string{"--live", "--idempotency-key", "--dry-run=client"} {
@@ -448,7 +448,7 @@ func TestAPIKeyAccessFlagsOnUpdateAndSandboxCommands(t *testing.T) {
 func TestMCPAPIKeyCreateRequiresAccess(t *testing.T) {
 	app, _, _ := testApp(t, "http://127.0.0.1:1")
 	refused := mcpCall(t, app, mcpAllToolsOptions(t), "api-keys_create", map[string]any{"name": "ci", "scopes": []any{"customers.read"}, "_flint": map[string]any{"dry_run": "client"}})
-	if refused["isError"] != true || !strings.Contains(mcpResultText(refused), "missing property 'access'") {
+	if refused["isError"] != true || !strings.Contains(mcpResultText(refused), "$.access: required field is missing") {
 		t.Fatalf("scopes without access = %s", mcpResultText(refused))
 	}
 	accepted := mcpCall(t, app, mcpAllToolsOptions(t), "api-keys_create", map[string]any{"name": "ci", "access": "restricted", "scopes": []any{"customers.read"}, "_flint": map[string]any{"dry_run": "client"}})

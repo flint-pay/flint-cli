@@ -64,7 +64,8 @@ func TestMCPPreviewResultsMatchAdvertisedSchemas(t *testing.T) {
 		{"transformed dry run", "organizations.create", map[string]any{"name": "Audit", "parent_organization_id": "org_parent", "_flint": map[string]any{"dry_run": "client", "field": "method"}}, "value", "POST"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 2, Method: "tools/call", Params: map[string]any{"name": test.tool, "arguments": test.arguments}}, mcpAllToolsOptions(t))
+			cmdForCall := mustMCPTool(t, app, test.tool)
+			response := rpcResult(2, app.runMCPTool(context.Background(), cmdForCall, test.arguments, mcpAllToolsOptions(t), mcpPolicy{allTools: true}, true))
 			value, ok := lookupPath(response, "result.structuredContent")
 			if !ok {
 				t.Fatalf("tool failed: %#v", response)
@@ -83,7 +84,7 @@ func TestMCPPreviewResultsMatchAdvertisedSchemas(t *testing.T) {
 }
 
 func TestTimelineAllPreservesEnvelopeAndCollectsEntries(t *testing.T) {
-	for _, mode := range []string{"cli", "mcp", "raw-cli", "raw-mcp"} {
+	for _, mode := range []string{"cli", "mcp", "raw-cli"} {
 		t.Run(mode, func(t *testing.T) {
 			viaMCP := strings.Contains(mode, "mcp")
 			raw := strings.HasPrefix(mode, "raw")
@@ -109,15 +110,7 @@ func TestTimelineAllPreservesEnvelopeAndCollectsEntries(t *testing.T) {
 			app, out, _ := testApp(t, server.URL)
 			var result any
 			if viaMCP {
-				name := "timeline"
-				arguments := map[string]any{"resource_id": "pi_test", "page_size": float64(1), "_flint": map[string]any{"all": true}}
-				if raw {
-					name = "api"
-					arguments = map[string]any{"method": "GET", "path": "/v1/resource-timelines/pi_test", "_flint": map[string]any{"all": true, "page_size": float64(1)}}
-				}
-				response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{
-					"name": name, "arguments": arguments,
-				}}, mcpAllToolsOptions(t))
+				response := rpcResult(1, mcpCall(t, app, defaultOptions(), "flint_read", map[string]any{"operation": "timeline", "arguments": map[string]any{"resource_id": "pi_test", "page_size": 1}, "all": true}))
 				var ok bool
 				result, ok = lookupPath(response, "result.structuredContent")
 				if !ok {

@@ -101,12 +101,12 @@ func TestMCPStartsAndListsToolsWithoutFeedbackConsent(t *testing.T) {
 		if strings.Contains(name, "feedback") {
 			t.Errorf("feedback tool still listed: %s", name)
 		}
-		if name == "help_search" {
+		if name == "flint_search" {
 			foundHelp = true
 		}
 	}
 	if !foundHelp {
-		t.Error("help.search missing from MCP")
+		t.Error("flint_search missing from MCP")
 	}
 	var extra any
 	if err := decoder.Decode(&extra); err != io.EOF {

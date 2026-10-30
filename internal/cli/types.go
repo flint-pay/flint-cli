@@ -139,6 +139,8 @@ type Options struct {
 }
 
 type App struct {
+	mcpAuth                   *mcpAuthState
+	mcpSkipScopeCheck         bool // MCP forwards scope failures from the API unchanged.
 	credentialStore           string
 	Info                      BuildInfo
 	Stdout                    io.Writer

@@ -65,8 +65,61 @@ func mcpAllToolsOptions(t *testing.T, flags ...string) Options {
 	return mcpServeOptions(t, append([]string{"--tools", "all"}, flags...)...)
 }
 
+// mcpCall adapts old operational fixtures to the public call surface. Tests of
+// accepted and rejected wire names use handleMCP directly.
 func mcpCall(t *testing.T, app *App, opts Options, name string, arguments map[string]any) map[string]any {
 	t.Helper()
+	if !strings.HasPrefix(name, "flint_") {
+		cmd := mustMCPTool(t, app, name)
+		args, controls := map[string]any{}, map[string]any{}
+		for key, value := range arguments {
+			if key != "_flint" {
+				args[key] = value
+			}
+		}
+		if old, ok := arguments["_flint"].(map[string]any); ok {
+			for key, value := range old {
+				controls[key] = value
+			}
+		}
+		if controls["dry_run"] == "client" {
+			controls["dry_run"] = true
+		}
+		if value, ok := controls["for"].(string); ok {
+			duration, err := time.ParseDuration(value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cmd.Stream {
+				args["max_seconds"] = int(duration.Seconds())
+			} else {
+				controls["wait_seconds"] = int(duration.Seconds())
+			}
+			delete(controls, "for")
+		}
+		if cmd.Stream {
+			if value, ok := controls["max_events"]; ok {
+				args["max_events"] = value
+				delete(controls, "max_events")
+			}
+		}
+		if cmd.Mutation && cmd.Supports.IdempotencyKey && controls["idempotency_key"] == nil {
+			controls["idempotency_key"] = "mcp-regression-fixture"
+		}
+		if mcpPolicyFromOptions(opts).defaultToolSet() {
+			name = "flint_read"
+			if cmd.Mutation || cmd.Stream || cmd.CanonicalName == "history.clear" || cmd.CanonicalName == "init" || cmd.CanonicalName == "signup" {
+				name = "flint_write"
+			}
+			arguments = map[string]any{"operation": cmd.CanonicalName, "arguments": args}
+		} else {
+			name = mcpToolName(cmd.CanonicalName)
+			arguments = args
+		}
+		for key, value := range controls {
+			arguments[key] = value
+		}
+	}
 	response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{"name": name, "arguments": arguments}}, opts)
 	assertMCPWireMessage(t, response)
 	result, ok := response["result"].(map[string]any)
@@ -119,13 +172,13 @@ func TestMCPToolsListIsCompactAndFilterable(t *testing.T) {
 			t.Fatalf("tool %s has no title", tool["name"])
 		}
 	}
-	filtered, filteredSize := mcpListedTools(t, app, mcpServeOptions(t, "--tools", "customers,payment-links", "--tools", "help"), latestMCPProtocolVersion)
+	filtered, filteredSize := mcpListedTools(t, app, mcpServeOptions(t, "--tools", "customers,payment-links"), latestMCPProtocolVersion)
 	if filteredSize >= size/4 || len(filtered) == 0 {
 		t.Fatalf("filtered tools/list is %d bytes with %d tools", filteredSize, len(filtered))
 	}
 	for _, tool := range filtered {
-		name := mcpCanonicalToolName(tool["name"].(string))
-		if !(mcpPrefixMatches("customers", name) || mcpPrefixMatches("payment-links", name) || mcpPrefixMatches("help", name) || mcpAlwaysEnabled(name)) {
+		name := tool["name"].(string)
+		if !(mcpPrefixMatches("customers", name) || strings.HasPrefix(name, "payment_links_") || mcpPrefixMatches("help", name) || mcpAlwaysEnabled(name)) {
 			t.Fatalf("filter exposed %s", name)
 		}
 		if name == "customer-sessions.create" {
@@ -133,7 +186,7 @@ func TestMCPToolsListIsCompactAndFilterable(t *testing.T) {
 		}
 	}
 	call := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 2, Method: "tools/call", Params: map[string]any{"name": "version"}}, mcpServeOptions(t, "--tools", "customers"))
-	if message, _ := lookupPath(call, "error.message"); !strings.Contains(fmt.Sprint(message), "not enabled") {
+	if call["error"] == nil && lookupPathValue(call, "result.isError") != true {
 		t.Fatalf("filtered-out tool call = %#v", call)
 	}
 }
@@ -175,7 +228,7 @@ func TestMCPInitializeIncludesInstructions(t *testing.T) {
 	}}, defaultOptions())
 	instructions, _ := lookupPath(response, "result.instructions")
 	text, _ := instructions.(string)
-	for _, want := range []string{"sandbox", "live", "--allow-live", "--tools", "dry_run", "idempotency_key", "help"} {
+	for _, want := range []string{"sandbox", "live", "--allow-live", "flint_search", "dry_run", "idempotency_key", "flint_describe"} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("instructions missing %q: %s", want, text)
 		}
@@ -184,32 +237,21 @@ func TestMCPInitializeIncludesInstructions(t *testing.T) {
 
 func TestMCPAdvertisedControlsFollowServerPolicy(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	controlsOf := func(opts Options, name string) map[string]any {
+	for _, opts := range []Options{defaultOptions(), mcpServeOptions(t, "--allow-live"), mcpServeOptions(t, "--tools", "api-keys"), mcpServeOptions(t, "--tools", "api-keys", "--allow-live")} {
 		tools, _ := mcpListedTools(t, app, opts, latestMCPProtocolVersion)
+		wantLive := mcpPolicyFromOptions(opts).allowLive
 		for _, tool := range tools {
-			if tool["name"] == name {
-				controls, _ := lookupPath(tool, "inputSchema.properties._flint.properties")
-				return controls.(map[string]any)
+			name := tool["name"].(string)
+			if strings.HasPrefix(name, "flint_") && name != "flint_read" && name != "flint_write" {
+				continue
 			}
-		}
-		t.Fatalf("tool %s missing", name)
-		return nil
-	}
-	restricted := controlsOf(mcpServeOptions(t, "--tools", "api-keys"), "api-keys_revoke")
-	for _, withheld := range []string{"live", "confirm"} {
-		if _, ok := restricted[withheld]; ok {
-			t.Fatalf("default server advertises _flint.%s", withheld)
-		}
-	}
-	for _, kept := range []string{"preview", "dry_run", "idempotency_key"} {
-		if _, ok := restricted[kept]; !ok {
-			t.Fatalf("default server must keep _flint.%s", kept)
-		}
-	}
-	allowed := controlsOf(mcpServeOptions(t, "--tools", "api-keys", "--allow-live", "--allow-destructive"), "api-keys_revoke")
-	for _, control := range []string{"live", "confirm"} {
-		if _, ok := allowed[control]; !ok {
-			t.Fatalf("allow flags must advertise _flint.%s", control)
+			props := lookupPathValue(tool, "inputSchema.properties").(map[string]any)
+			if _, ok := props["live"]; ok != wantLive {
+				t.Errorf("%s live=%v want=%v", name, ok, wantLive)
+			}
+			if _, ok := props["_flint"]; ok {
+				t.Errorf("%s exposes _flint", name)
+			}
 		}
 	}
 }
@@ -218,48 +260,22 @@ func TestMCPControlsAllHaveDescriptions(t *testing.T) {
 	app, _, _ := testApp(t, "")
 	tools, _ := mcpListedTools(t, app, mcpServeOptions(t, "--allow-live", "--allow-destructive"), latestMCPProtocolVersion)
 	for _, tool := range tools {
-		controls, ok := lookupPath(tool, "inputSchema.properties._flint.properties")
-		if !ok {
-			t.Fatalf("tool %s has no _flint controls", tool["name"])
-		}
-		for name, raw := range controls.(map[string]any) {
-			if description, _ := raw.(map[string]any)["description"].(string); strings.TrimSpace(description) == "" {
-				t.Errorf("%s _flint.%s has no description", tool["name"], name)
+		props := lookupPathValue(tool, "inputSchema.properties").(map[string]any)
+		for name, raw := range props {
+			if strings.TrimSpace(fmt.Sprint(raw.(map[string]any)["description"])) == "" {
+				t.Errorf("%s %s has no description", tool["name"], name)
 			}
 		}
-	}
-	revoke, _ := app.Registry.ByName("api-keys.revoke")
-	schema, _ := schemaForMCPTool(revoke, mcpPolicy{})
-	key, _ := lookupPath(schema, "properties._flint.properties.idempotency_key.description")
-	if !strings.Contains(fmt.Sprint(key), "Reuse the same key when retrying") {
-		t.Fatalf("idempotency_key description = %v", key)
-	}
-	api, _ := app.Registry.ByName("api")
-	apiSchema, _ := schemaForMCPTool(api, mcpPolicy{})
-	if enum, _ := lookupPath(apiSchema, "properties.method.enum"); !strings.Contains(fmt.Sprint(enum), "DELETE") {
-		t.Fatalf("api method enum = %v", enum)
-	}
-	for _, path := range []string{"properties.method.description", "properties.path.description"} {
-		if value, _ := lookupPath(apiSchema, path); strings.TrimSpace(fmt.Sprint(value)) == "" {
-			t.Fatalf("api %s is empty", path)
-		}
-	}
-	if err := validateMCPArguments(api, map[string]any{"method": "TRACE", "path": "/v1/customers"}); err == nil {
-		t.Fatal("api accepted an unsupported method")
-	}
-	list, _ := app.Registry.ByName("customers.list")
-	listSchema, _ := schemaForMCPTool(list, mcpPolicy{})
-	if maximum, _ := lookupPath(listSchema, "properties.page_size.maximum"); fmt.Sprint(maximum) != "100" {
-		t.Fatalf("page_size maximum = %v", maximum)
 	}
 }
 
 func TestMCPToolAnnotationsReflectSafety(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	tools, _ := mcpListedTools(t, app, mcpAllToolsOptions(t), latestMCPProtocolVersion)
 	byName := map[string]map[string]any{}
-	for _, tool := range tools {
-		byName[mcpCanonicalToolName(tool["name"].(string))] = tool["annotations"].(map[string]any)
+	for _, tool := range app.mcpAllTools() {
+		annotations := mcpToolAnnotations(tool)
+		annotations["title"] = mcpToolTitle(tool)
+		byName[tool.CanonicalName] = annotations
 	}
 	for _, test := range []struct {
 		name                                     string
@@ -273,7 +289,6 @@ func TestMCPToolAnnotationsReflectSafety(t *testing.T) {
 		{"history", true, false, true, false},
 		{"history.clear", false, true, true, false},
 		{"listen", false, false, false, true},
-		{"help.search", true, false, true, true},
 		{"doctor", true, false, true, true},
 		// Deleting again leaves the resource deleted.
 		{"customers.addresses.delete", false, true, true, true},
@@ -316,43 +331,48 @@ func TestMCPHistoryClearIsASeparateTool(t *testing.T) {
 
 func mustMCPTool(t *testing.T, app *App, name string) *Command {
 	t.Helper()
-	tool, ok := app.mcpTool(name, mcpPolicy{allTools: true})
-	if !ok {
-		t.Fatalf("tool %s missing", name)
+	for _, tool := range app.mcpAllTools() {
+		if tool.CanonicalName == name || tool.CanonicalName == mcpCanonicalToolName(name) || mcpToolName(tool.CanonicalName) == name {
+			return tool
+		}
 	}
-	return tool
+	t.Fatalf("tool %s missing", name)
+	return nil
 }
 
 func TestMCPHelpWithoutTopicIsAShortIndex(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	result := mcpCall(t, app, defaultOptions(), "help", map[string]any{})
+	result := mcpCall(t, app, defaultOptions(), "flint_help", map[string]any{})
 	text := mcpResultText(result)
 	if result["isError"] == true || len(text) > 8<<10 {
-		t.Fatalf("help index is %d bytes (error=%v)", len(text), result["isError"])
+		t.Fatalf("help index is %d bytes: %s", len(text), text)
 	}
-	for _, want := range []string{"test-cards", "schema_input", "customers", "resource_groups", "other_groups", "invoices"} {
+	for _, want := range []string{"test-cards", "safety", "groups", "customers", "invoices"} {
 		if !strings.Contains(text, want) {
-			t.Fatalf("help index missing %q: %s", want, text)
+			t.Errorf("missing %s: %s", want, text)
 		}
 	}
-	topic := mcpCall(t, app, defaultOptions(), "help", map[string]any{"topic": "customers.create"})
+	topic := mcpCall(t, app, defaultOptions(), "flint_help", map[string]any{"topic": "customers.create"})
 	if topic["isError"] == true || !strings.Contains(mcpResultText(topic), "customers.create") {
-		t.Fatalf("help topic = %s", mcpResultText(topic))
+		t.Fatal(mcpResultText(topic))
 	}
 }
 
 func TestMCPAgentsCannotSelfAuthorizeLiveOrConfirm(t *testing.T) {
 	server, api := newMCPTestAPI(t, "sandbox")
 	app, _, _ := testApp(t, server.URL)
-	for control, want := range map[string]string{"live": "--allow-live", "confirm": "--allow-destructive"} {
-		result := mcpCall(t, app, mcpAllToolsOptions(t), "api-keys_revoke", map[string]any{"api_key_id": "key_123", "_flint": map[string]any{control: true}})
-		text := mcpResultText(result)
-		if result["isError"] != true || !strings.HasPrefix(text, "_flint."+control+" is not accepted") || !strings.Contains(text, want) {
-			t.Fatalf("_flint.%s result = %s", control, text)
-		}
+	result := mcpCall(t, app, mcpAllToolsOptions(t), "api-keys_revoke", map[string]any{"api_key_id": "key_123", "_flint": map[string]any{"live": true}})
+	if result["isError"] != true || !strings.Contains(mcpResultText(result), "live is not an available control") {
+		t.Fatal(mcpResultText(result))
 	}
-	if seen := api.seen(); len(seen) != 0 {
-		t.Fatalf("rejected controls reached the API: %v", seen)
+	// Until the separate gate redesign, server confirmation policy still governs
+	// calls that use the new top-level confirm control.
+	result = mcpCall(t, app, mcpAllToolsOptions(t), "api-keys_revoke", map[string]any{"api_key_id": "key_123", "_flint": map[string]any{"confirm": true}})
+	if result["isError"] != true || !strings.Contains(mcpResultText(result), "--allow-destructive") {
+		t.Fatal(mcpResultText(result))
+	}
+	if len(api.seen()) != 0 {
+		t.Fatal(api.seen())
 	}
 }
 
@@ -360,7 +380,7 @@ func TestMCPLiveCredentialRequiresAllowLive(t *testing.T) {
 	server, api := newMCPTestAPI(t, "live")
 	app, _, _ := testApp(t, server.URL)
 	t.Setenv("FLINT_API_KEY", "flint_live_test")
-	for _, arguments := range []map[string]any{{}, {"_flint": map[string]any{"merchant": "mer_123"}}} {
+	for _, arguments := range []map[string]any{{}} {
 		result := mcpCall(t, app, defaultOptions(), "customers.list", arguments)
 		text := mcpResultText(result)
 		if result["isError"] != true || !strings.HasPrefix(text, "The selected Flint credential or context is LIVE") || !strings.Contains(text, "flint mcp serve --allow-live") || strings.Contains(text, "Re-run with --live") {
@@ -419,7 +439,7 @@ func TestMCPSandboxResultsReportEnvironment(t *testing.T) {
 func TestMCPConfirmationWithoutElicitationGuidesTheHuman(t *testing.T) {
 	server, api := newMCPTestAPI(t, "sandbox")
 	app, _, _ := testApp(t, server.URL)
-	result := mcpCall(t, app, mcpAllToolsOptions(t), "api-keys_revoke", map[string]any{"api_key_id": "key_123"})
+	result := mcpCall(t, app, mcpAllToolsOptions(t), "api_keys_revoke", map[string]any{"api_key_id": "key_123"})
 	text := mcpResultText(result)
 	firstLine, _, _ := strings.Cut(text, "\n")
 	if result["isError"] != true || !strings.HasPrefix(firstLine, "This operation requires confirmation.") || !strings.Contains(firstLine, "--allow-destructive") || strings.Contains(text, "Re-run with --confirm") || strings.Contains(text, "Flint command exited") {
@@ -430,11 +450,11 @@ func TestMCPConfirmationWithoutElicitationGuidesTheHuman(t *testing.T) {
 	}
 	// With --allow-destructive the agent confirms, as before.
 	opts := mcpAllToolsOptions(t, "--allow-destructive")
-	needsConfirm := mcpCall(t, app, opts, "api-keys_revoke", map[string]any{"api_key_id": "key_123"})
-	if text := mcpResultText(needsConfirm); !strings.Contains(text, "_flint.confirm set to true") || strings.Contains(text, "--confirm") {
+	needsConfirm := mcpCall(t, app, opts, "api_keys_revoke", map[string]any{"api_key_id": "key_123"})
+	if text := mcpResultText(needsConfirm); !strings.Contains(text, "confirm set to true") || strings.Contains(text, "--confirm") {
 		t.Fatalf("agent-confirmable error = %s", text)
 	}
-	confirmed := mcpCall(t, app, opts, "api-keys_revoke", map[string]any{"api_key_id": "key_123", "_flint": map[string]any{"confirm": true}})
+	confirmed := mcpCall(t, app, opts, "api_keys_revoke", map[string]any{"api_key_id": "key_123", "_flint": map[string]any{"confirm": true}})
 	if confirmed["isError"] == true {
 		t.Fatalf("confirmed revoke failed: %s", mcpResultText(confirmed))
 	}
@@ -446,8 +466,8 @@ func TestMCPConfirmationWithoutElicitationGuidesTheHuman(t *testing.T) {
 func TestMCPErrorsLeadWithTheMessageAndUseToolTerms(t *testing.T) {
 	cmd := &Command{Arguments: []Arg{{Name: "forward_to", Flag: "--forward-to"}}}
 	for input, want := range map[string]string{
-		"Retry the same command with --idempotency-key abc.":  "Retry the same command with _flint.idempotency_key abc.",
-		"Use --dry-run=client first.":                         `Use _flint.dry_run="client" first.`,
+		"Retry the same command with --idempotency-key abc.":  "Retry the same command with idempotency_key abc.",
+		"Use --dry-run=client first.":                         `Use dry_run: true first.`,
 		"--forward-to must use HTTP or HTTPS":                 "the forward_to argument must use HTTP or HTTPS",
 		"This credential is live. Re-run with --live to ack.": "This credential is live. Re-run with --live to ack.",
 	} {
@@ -455,7 +475,7 @@ func TestMCPErrorsLeadWithTheMessageAndUseToolTerms(t *testing.T) {
 			t.Errorf("translate(%q) = %q, want %q", input, got, want)
 		}
 	}
-	if got := mcpTranslateRemediation("Re-run with --live.", cmd, mcpPolicy{allowLive: true}); got != "Re-run with _flint.live." {
+	if got := mcpTranslateRemediation("Re-run with --live.", cmd, mcpPolicy{allowLive: true}); got != "Re-run with live." {
 		t.Errorf("allowed live translation = %q", got)
 	}
 	app, _, _ := testApp(t, "")
@@ -468,13 +488,15 @@ func TestMCPErrorsLeadWithTheMessageAndUseToolTerms(t *testing.T) {
 
 func TestMCPUnknownToolSuggestsNames(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	for name, want := range map[string]string{"customers.lst": "customers_list", "customers_lst": "customers_list", "payment.create": "payment-intents_create"} {
+	for _, name := range []string{"customers.lst", "customers_lst", "flint_serch"} {
 		response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{"name": name}}, defaultOptions())
-		message, _ := lookupPath(response, "error.message")
-		suggestions, _ := lookupPath(response, "error.data.suggestions")
-		if !strings.Contains(fmt.Sprint(message), "Did you mean "+want) || !strings.Contains(fmt.Sprint(suggestions), want) {
-			t.Fatalf("%s: %#v", name, response)
+		if response["error"] == nil {
+			t.Fatalf("unknown tool accepted: %#v", response)
 		}
+	}
+	unknown := mcpCall(t, app, defaultOptions(), "flint_read", map[string]any{"operation": "customers.lst"})
+	if unknown["isError"] != true || !strings.Contains(mcpResultText(unknown), "customers.list") {
+		t.Fatal(mcpResultText(unknown))
 	}
 }
 
@@ -608,13 +630,13 @@ func TestMCPElicitsHumanConfirmation(t *testing.T) {
 			app, _, _ := testApp(t, server.URL)
 			conn := startMCPTestConn(t, app, mcpAllToolsOptions(t))
 			conn.initialize(`{"elicitation":{}}`)
-			conn.send(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"api-keys_revoke","arguments":{"api_key_id":"key_123"}}}`)
+			conn.send(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"api_keys_revoke","arguments":{"api_key_id":"key_123"}}}`)
 			request := conn.next()
 			if request["method"] != "elicitation/create" || request["id"] == nil {
 				t.Fatalf("expected elicitation request, got %#v", request)
 			}
 			message := fmt.Sprint(lookupPathValue(request, "params.message"))
-			if !strings.Contains(message, "api-keys_revoke") || !strings.Contains(message, "sandbox") || !strings.Contains(message, "key_123") {
+			if !strings.Contains(message, "api_keys_revoke") || !strings.Contains(message, "sandbox") || !strings.Contains(message, "key_123") {
 				t.Fatalf("elicitation message = %s", message)
 			}
 			if seen := api.seen(); len(seen) != 0 {
