@@ -116,7 +116,8 @@ func (a *App) mcpDispatch(ctx context.Context, id any, tool string, input map[st
 			}
 		}
 	}
-	if entry.Idempotency == "none" && !cmd.Local {
+	// Trigger consumes a local run key to derive its recipe step keys.
+	if entry.Idempotency == "none" && cmd.CanonicalName != "trigger" {
 		delete(controls, "idempotency_key")
 	}
 	internal["_flint"] = controls

@@ -115,3 +115,13 @@ func TestMCPDiscoveryReadOnlyTypedWriteRefusal(t *testing.T) {
 		t.Fatalf("response=%v", response)
 	}
 }
+
+func TestMCPDiscoveryClassNoneKeysIgnored(t *testing.T) {
+	app, _, _ := testApp(t, "http://127.0.0.1:1")
+	result := mcpCall(t, app, mcpServeOptions(t, "--allow-destructive"), "flint_write", map[string]any{
+		"operation": "history.clear", "idempotency_key": "clear-history-1", "confirm": true,
+	})
+	if result["isError"] == true {
+		t.Fatalf("irrelevant key was not ignored: %s", mcpResultText(result))
+	}
+}
