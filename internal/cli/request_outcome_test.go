@@ -118,7 +118,7 @@ func TestRequestOutcomeKeyedAPIResponses(t *testing.T) {
 					if e == nil || e.HTTPStatus != tc.status || attempts != wantAttempts {
 						t.Fatalf("attempts=%d error=%+v", attempts, e)
 					}
-					env := mcpCLIErrorEnvelope(e)
+					env := terminalErrorEnvelope(t, e)
 					if mk.key == "" || !tc.unknown {
 						if e.Code != tc.code || lookupPathValue(env, "error.details.outcome") != nil || lookupPathValue(env, "error.remediation.retry") != tc.retry {
 							t.Fatal(env)
@@ -220,7 +220,7 @@ func TestRequestOutcomeTimeoutBodyAndCancellation(t *testing.T) {
 				if e == nil || e.Code != wantCode || attempts != wantAttempts || errorRetryable(e) {
 					t.Fatalf("attempts=%d e=%+v", attempts, e)
 				}
-				envelope := mcpCLIErrorEnvelope(e)
+				envelope := terminalErrorEnvelope(t, e)
 				for path, want := range map[string]any{"error.details.outcome": "unknown", "error.details.retry": "none", "error.remediation.retry": "none", "error.details.attempt_count": float64(wantAttempts), "error.details.idempotency_key": "saved-action", "error.retryable": false} {
 					if got := lookupPathValue(envelope, path); got != want {
 						t.Errorf("%s=%v want %v", path, got, want)
@@ -266,7 +266,7 @@ func TestRequestOutcomeRetainsTimeoutBeforeInProgress(t *testing.T) {
 		if e == nil || e.Code != "CLIENT_TIMEOUT" || e.HTTPStatus != 409 || attempts != 2 || !errors.Is(e.Cause, context.DeadlineExceeded) {
 			t.Fatalf("attempts=%d e=%+v", attempts, e)
 		}
-		envelope := mcpCLIErrorEnvelope(e)
+		envelope := terminalErrorEnvelope(t, e)
 		for path, want := range map[string]any{
 			"error.details.attempts.0.duration_ms": float64(2000), "error.details.attempts.0.error_code": "CLIENT_TIMEOUT",
 			"error.details.attempts.1.error_code": "IDEMPOTENCY_KEY_IN_PROGRESS", "error.details.request_ids.0": "req_in_progress",
@@ -284,9 +284,11 @@ func TestRequestOutcomeRetainsTimeoutBeforeInProgress(t *testing.T) {
 		if string(original) != string(want) {
 			t.Fatalf("API error changed: %s", original)
 		}
-		result := mcpCommandError(&Command{Mutation: true}, mcpCallResult{value: envelope, exit: e.ExitCode}, mcpPolicy{}, "")
-		if text := mcpResultText(result); strings.Contains(text, "To retry, call the tool again") || !strings.Contains(text, "outcome is unknown") {
-			t.Fatal(text)
+		cmd, _ := NewRegistry().ByName("orders.pay")
+		result := mcpCommandError(cmd, mcpCallResult{value: mcpCLIErrorEnvelope(e), cliError: e, exit: e.ExitCode}, mcpPolicy{}, "")
+		value := mcpErrorJSON(t, result)
+		if lookupPathValue(value, "cli.outcome") != "unknown" || lookupPathValue(value, "cli.idempotency_key") != "saved-action" {
+			t.Fatal(value)
 		}
 	})
 }
@@ -337,7 +339,7 @@ func TestRequestOutcomeRequestIDsAndRetryStops(t *testing.T) {
 				if e == nil || attempts != want || e.Code != "CLIENT_TIMEOUT" {
 					t.Fatalf("attempts=%d e=%+v", attempts, e)
 				}
-				env := mcpCLIErrorEnvelope(e)
+				env := terminalErrorEnvelope(t, e)
 				if lookupPathValue(env, "error.details.request_ids.0") != "req_partial" || lookupPathValue(env, "error.details.request_ids.1") != "req_final" || lookupPathValue(env, "error.details.last_error.remediation.retry") != retry {
 					t.Fatal(env)
 				}
@@ -384,7 +386,7 @@ func TestRequestOutcomeRetainsAmbiguityBeforeRefusedAttempt(t *testing.T) {
 						return response, nil
 					})}
 					_, e := app.doRequestWithin(t.Context(), 80*time.Second, "http://127.0.0.1:1", "", "POST", "/v1/orders/ord_fixture/pay", []byte(`{}`), "saved-action", false)
-					if e == nil || e.Code != "CLIENT_TIMEOUT" || attempts != 2 || lookupPathValue(mcpCLIErrorEnvelope(e), "error.details.last_error.remediation.retry") != "none" {
+					if e == nil || e.Code != "CLIENT_TIMEOUT" || attempts != 2 || lookupPathValue(terminalErrorEnvelope(t, e), "error.details.last_error.remediation.retry") != "none" {
 						t.Fatalf("attempts=%d e=%+v", attempts, e)
 					}
 				})

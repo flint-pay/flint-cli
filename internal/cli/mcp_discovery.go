@@ -398,8 +398,8 @@ func (a *App) mcpDiscovery(tool string, args map[string]any, opts Options, polic
 	for _, definition := range mcpDiscoveryTools(policy, latestMCPProtocolVersion) {
 		if definition["name"] == tool {
 			found = true
-			if err := validateMCPSchema(definition["inputSchema"].(map[string]any), args); err != nil {
-				return nil, usageError("INVALID_REQUEST", "Invalid "+tool+" arguments: "+err.Error(), "arguments")
+			if e := mcpInputError(mcpSchemaProblems(definition["inputSchema"].(map[string]any), args, mcpInputBodyLocation, "")); e != nil {
+				return nil, e
 			}
 			break
 		}
@@ -669,7 +669,7 @@ func (a *App) mcpDiscoveryHelp(topic string, opts Options, policy mcpPolicy, ind
 	case "safety":
 		return map[string]any{"topic": "safety", "live": "Without --allow-live this server refuses live credentials. With it, every live call needs live: true. Unverified credentials use live confirmation rules.", "confirm": "Sensitive or irreversible operations need confirm: true. In a sandbox the agent confirms after checking the effect. In live mode the user must approve through elicitation; when unavailable the error supplies a terminal command. --allow-destructive permits the agent to confirm live operations. Local operations count as sandbox.", "dry_run": "dry_run: true validates and prepares the request without sending it and needs neither confirmation nor live acknowledgement. Its effect lists resource IDs and amounts formatted for their currency.", "idempotency": "Give every write a unique idempotency_key and reuse it only for the same request after a timeout or network error.", "server": "The agent cannot change the server's profile, merchant guard, context, or startup flags. A read-only server exposes no writes.", "mode": mcpInstructions(policy)}, nil
 	case "errors":
-		return map[string]any{"topic": "errors", "shape": "{error, cli}: error is the Flint API error object; cli contains origin, exit_code, and next_actions.", "origin": []string{"api", "cli"}, "retry": []string{"none", "same_request", "after_refresh"}, "actor": "An agent next action can be followed directly. For a user next action, stop and tell the user.", "outcome": "unknown means the request may have committed. Reuse its idempotency key and check the recovery read before trying again.", "cli_codes": []string{"UNKNOWN_OPERATION", "OPERATION_NOT_AVAILABLE", "LIVE_ACCESS_DISABLED", "CONFIRMATION_REQUIRED", "CONFIRMATION_NEEDS_USER", "CONFIRMATION_DECLINED", "RESULT_TOO_LARGE", "CLIENT_TIMEOUT", "CLIENT_CANCELED", "CREDENTIAL_FORMAT_INVALID"}}, nil
+		return map[string]any{"topic": "errors", "shape": "{error, cli} in one JSON text block: API errors pass through unchanged, including details arrays and error_source; cli contains origin, operation, exit_code, environment, and next_actions. Local errors use error_source caller; validation failures use INVALID_REQUEST and public details[].param paths.", "origin": []string{"api", "cli"}, "retry": []string{"none", "same_request", "after_refresh"}, "actor": "An agent next action can be followed directly. For a user next action, stop and tell the user.", "outcome": "unknown means a write may have committed. Check its recovery read before acting again; if you call that write again, keep the same idempotency_key. Follow API remediation.retry: same_request resends identical arguments; after_refresh reads current state, rebuilds, and uses a new key; none never automatically resends. Operations whose idempotency class is none use no key.", "cli_codes": []string{"UNKNOWN_OPERATION", "OPERATION_NOT_AVAILABLE", "LIVE_ACCESS_DISABLED", "CONFIRMATION_REQUIRED", "CONFIRMATION_NEEDS_USER", "CONFIRMATION_DECLINED", "RESULT_TOO_LARGE", "CLIENT_TIMEOUT", "CLIENT_CANCELED", "CREDENTIAL_FORMAT_INVALID", "MCP_COMMAND_FAILED"}}, nil
 	case "events":
 		groups := map[string][]string{}
 		count := 0

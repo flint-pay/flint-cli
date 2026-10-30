@@ -505,11 +505,9 @@ func validateMCPToolArguments(cmd *Command, arguments map[string]any, policy mcp
 			delete(args, name)
 		}
 	}
-	if e := validateMCPControls(entry, controls, policy); e != nil {
-		return e
-	}
-	if _, e := validateMCPOperation(cmd, entry, args); e != nil {
-		return e
+	_, inputErr := mcpValidateInputs(cmd, entry, args, controls, policy)
+	if inputErr != nil {
+		return inputErr
 	}
 	return nil
 }

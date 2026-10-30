@@ -660,8 +660,9 @@ func TestMCPCallRejectsArgumentsOutsideAdvertisedSchema(t *testing.T) {
 		if strings.Contains(string(encoded), marker) {
 			t.Fatalf("MCP exposed local file contents for arguments %#v", arguments)
 		}
-		if !strings.Contains(string(encoded), "argument") {
-			t.Fatalf("MCP returned an unclear schema error for %#v: %s", arguments, encoded)
+		value := mcpErrorJSON(t, result)
+		if lookupPathValue(value, "error.code") != "INVALID_REQUEST" || lookupPathValue(value, "error.details.0.param") == nil {
+			t.Fatalf("MCP validation lost public field paths for %#v: %s", arguments, encoded)
 		}
 	}
 }

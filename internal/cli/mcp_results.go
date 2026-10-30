@@ -27,6 +27,7 @@ func (b *mcpCappedBuffer) Write(value []byte) (int, error) {
 
 // mcpCallResult retains command data separately from its presentation notes.
 type mcpCallResult struct {
+	cliError    *CLIError
 	value       any
 	transformed bool
 	exit        int
@@ -38,6 +39,10 @@ type mcpCallResult struct {
 // mcpResultTooLarge refuses an oversized read result with advice to narrow
 // it. Writes are never refused here: their result reports a completed change.
 func mcpResultTooLarge(cmd *Command, args map[string]any, value any) map[string]any {
+	return (&App{}).mcpResultTooLarge(cmd, args, Options{}, mcpPolicy{}, "", value)
+}
+
+func (a *App) mcpResultTooLarge(cmd *Command, args map[string]any, opts Options, policy mcpPolicy, environment string, value any) map[string]any {
 	if mcpResultIsWrite(cmd, args) {
 		return nil
 	}
@@ -46,7 +51,7 @@ func mcpResultTooLarge(cmd *Command, args map[string]any, value any) map[string]
 		return nil
 	}
 	e := mcpResultSizeError(len(raw), 0)
-	return mcpToolError(e.Message, mcpCLIErrorEnvelope(e))
+	return a.mcpLocalError(cmd, args, opts, policy, e, environment)
 }
 
 func mcpResultIsWrite(cmd *Command, args map[string]any) bool {
@@ -249,5 +254,3 @@ func mcpStreamOutputSchema() map[string]any {
 		"required": []string{"records"},
 	}
 }
-
-// mcpToolError leads with the human-readable message; details follow as JSON.

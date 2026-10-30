@@ -56,7 +56,7 @@ func TestMCPDiscoveryDispatchRefusesBeforeTransport(t *testing.T) {
 		{name: "buyer credential", tool: "flint_read", operation: "me.get", code: "OPERATION_NOT_AVAILABLE"},
 		{name: "no raw api", tool: "flint_read", operation: "api", code: "OPERATION_NOT_AVAILABLE"},
 		{name: "no config writes", tool: "flint_write", operation: "config.set", code: "OPERATION_NOT_AVAILABLE"},
-		{name: "unknown argument", tool: "flint_write", operation: "customers.create", arguments: map[string]any{"customer": "cus_bad"}, code: "INVALID_REQUEST_BODY"},
+		{name: "unknown argument", tool: "flint_write", operation: "customers.create", arguments: map[string]any{"customer": "cus_bad"}, code: "INVALID_REQUEST"},
 		{name: "removed controls", tool: "flint_read", operation: "customers.list", controls: map[string]any{"_flint": map[string]any{"live": true}}, code: "INVALID_REQUEST"},
 		{name: "required key on dry run", tool: "flint_write", operation: "refunds.create", controls: map[string]any{"dry_run": true}, code: "idempotency_key"},
 		{name: "all only on list", tool: "flint_read", operation: "customers.get", arguments: map[string]any{"customer_id": "cus_fixture"}, controls: map[string]any{"all": true}, code: "not allowed"},

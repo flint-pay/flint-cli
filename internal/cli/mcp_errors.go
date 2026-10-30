@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -29,12 +27,10 @@ func mcpErrorField(value any, field string) string {
 
 func mcpErrorText(value any) string { return mcpErrorField(value, "message") }
 
+// mcpCLIErrorEnvelope is also used by compatibility callers without command context.
+// It deliberately does not use the terminal writer, whose diagnostics alter errors.
 func mcpCLIErrorEnvelope(err *CLIError) map[string]any {
-	var stdout bytes.Buffer
-	(&App{Stdout: &stdout}).writeError(err, Options{Output: "json"})
-	var envelope map[string]any
-	_ = json.Unmarshal(stdout.Bytes(), &envelope)
-	return envelope
+	return (&App{}).mcpErrorEnvelope(nil, nil, Options{}, mcpPolicy{}, err, "")
 }
 
 var mcpControlFlags = map[string]string{
@@ -114,67 +110,182 @@ func mcpTranslateDetails(value any, cmd *Command, policy mcpPolicy) any {
 	return value
 }
 
+// mcpCommandError keeps the old internal helper available to callers that do not
+// have an App. Execution paths use the method so actions retain server context.
 func mcpCommandError(cmd *Command, outcome mcpCallResult, policy mcpPolicy, override string) map[string]any {
-	value := outcome.value
-	message := override
-	if message == "" {
-		message = mcpTranslateRemediation(mcpErrorText(value), cmd, policy)
-	}
-	code := mcpErrorField(value, "code")
-	if replacement, ok := mcpCredentialMessages[code]; ok && override == "" {
-		message = replacement + mcpCredentialRemedy
-	}
-	if envelope, ok := value.(map[string]any); ok {
-		if e, ok := envelope["error"].(map[string]any); ok {
-			copyEnvelope := copyMap(envelope)
-			copyError := copyMap(e)
-			if remediation, has := copyError["remediation"]; has {
-				copyError["remediation"] = mcpTranslateDetails(remediation, cmd, policy)
-			}
-			if _, credential := mcpCredentialMessages[code]; credential {
-				copyError["remediation"] = map[string]any{"next_actions": []any{map[string]any{"reason_message": strings.TrimSpace(mcpCredentialRemedy)}}}
-			}
-			if details, has := copyError["details"]; has {
-				translated := mcpTranslateDetails(details, cmd, policy)
-				if _, credential := mcpCredentialMessages[code]; credential {
-					if detailMap, ok := translated.(map[string]any); ok {
-						detailMap["remediation"] = map[string]any{"next_actions": []any{map[string]any{"reason_message": strings.TrimSpace(mcpCredentialRemedy)}}}
-					}
-				}
-				copyError["details"] = translated
-				if detailMap, ok := translated.(map[string]any); ok && commandIdempotencyClass(cmd) != "none" && !strings.Contains(message, "idempotency_key") {
-					if key, ok := detailMap["idempotency_key"].(string); ok && key != "" {
-						advice := idempotencyRetryAdvice(remediationRetry(copyError["remediation"]), key)
-						message = strings.TrimSpace(message + " " + mcpTranslateRemediation(advice, cmd, policy))
-					}
-				}
-			}
-			if _, has := copyError["message"]; has {
-				copyError["message"] = message
-			}
-			copyEnvelope["error"] = copyError
-			value = copyEnvelope
-		}
-	}
-	if strings.TrimSpace(message) == "" {
-		message = fmt.Sprintf("Flint command failed with exit code %d.", outcome.exit)
-	}
-	details := map[string]any{"exit_code": outcome.exit}
-	if outcome.environment != "" {
-		details["environment"] = outcome.environment
-	}
-	if value != nil {
-		details["result"] = value
-	}
-	return mcpToolError(message, details)
+	return (&App{}).mcpCommandError(cmd, nil, Options{}, outcome, policy, override)
 }
 
-// mcpEnvironmentMetaKey names the credential environment in result _meta.
-func mcpToolError(message string, details any) map[string]any {
-	text := message
-	if details != nil {
-		raw, _ := json.Marshal(details)
-		text += "\n\n" + string(raw)
+func (a *App) mcpCommandError(cmd *Command, args map[string]any, opts Options, outcome mcpCallResult, policy mcpPolicy, override string) map[string]any {
+	e := outcome.cliError
+	if e == nil {
+		e = mcpErrorFromValue(outcome.value, outcome.exit)
 	}
-	return map[string]any{"content": []map[string]any{{"type": "text", "text": text}}, "isError": true}
+	if override != "" && e.apiError == nil {
+		copy := *e
+		copy.Message = override
+		if copy.Type == errorTypeConfirmationRequired {
+			copy.Code = "CONFIRMATION_NEEDS_USER"
+		}
+		e = &copy
+	}
+	return a.mcpLocalError(cmd, args, opts, policy, e, outcome.environment)
+}
+
+func (a *App) mcpLocalError(cmd *Command, args map[string]any, opts Options, policy mcpPolicy, e *CLIError, environment string) map[string]any {
+	envelope := a.mcpErrorEnvelope(cmd, args, opts, policy, e, environment)
+	raw, _ := mcpCompactJSON(envelope)
+	result := map[string]any{
+		"content": []map[string]any{{"type": "text", "text": string(raw)}}, "isError": true,
+	}
+	if environment != "" {
+		result["_meta"] = map[string]any{mcpEnvironmentMetaKey: environment}
+	}
+	return result
+}
+
+func (a *App) mcpErrorEnvelope(cmd *Command, args map[string]any, opts Options, policy mcpPolicy, e *CLIError, environment string) map[string]any {
+	if e == nil {
+		e = cliError(ExitSoftware, errorTypeInternal, "MCP_COMMAND_FAILED", "The Flint command failed without an error result.")
+	}
+	copy := *e
+	e = &copy
+	if e.apiError == nil {
+		switch e.Code {
+		case "PRODUCTION_CONFIRMATION_REQUIRED", "UNVERIFIED_ENVIRONMENT_CONFIRMATION_REQUIRED":
+			e.Code = "CONFIRMATION_REQUIRED"
+		case "INVALID_REQUEST":
+			e.Type = "validation_error"
+		case "CLIENT_TIMEOUT":
+			e.Type = errorTypeTimeout
+		}
+	}
+	origin := "cli"
+	errorObject := mcpLocalErrorObject(e, cmd, policy)
+	if e.apiError != nil {
+		origin = "api"
+		errorObject = cloneErrorJSON(e.apiError).(map[string]any)
+	}
+	meta := map[string]any{"origin": origin, "exit_code": e.ExitCode}
+	if cmd != nil && cmd.CanonicalName != "" {
+		meta["operation"] = cmd.CanonicalName
+	}
+	if environment != "" {
+		meta["environment"] = environment
+	}
+	if details, ok := e.Details.(map[string]any); ok && details["outcome"] == "unknown" && e.requestSent && mcpResultIsWrite(cmd, args) {
+		meta["outcome"] = "unknown"
+	}
+	if key := mcpErrorKey(e); key != "" && e.requestSent && (cmd == nil || mcpResultIsWrite(cmd, args)) {
+		meta["idempotency_key"] = key
+	}
+	actions := a.mcpNextActions(cmd, args, opts, policy, e, environment)
+	if len(actions) == 0 {
+		actions = []map[string]any{{"actor": "agent", "text": "Read the error guidance before acting again.", "call": map[string]any{"tool": "flint_help", "arguments": map[string]any{"topic": "errors"}}}}
+	}
+	meta["next_actions"] = actions
+	return map[string]any{"error": errorObject, "cli": meta}
+}
+
+func mcpLocalErrorObject(e *CLIError, cmd *Command, policy mcpPolicy) map[string]any {
+	message := mcpTranslateRemediation(e.Message, cmd, policy)
+	if strings.TrimSpace(message) == "" {
+		message = fmt.Sprintf("Flint command failed with exit code %d.", e.ExitCode)
+	}
+	object := map[string]any{
+		"type": e.Type, "code": e.Code, "message": message, "error_source": "caller",
+		"doc_url": "https://developers.withflintpay.com/docs/guides/cli#mcp-error-codes",
+	}
+	if e.Param != "" {
+		object["param"] = e.Param
+	}
+	if e.Code == "INVALID_REQUEST" {
+		object["doc_url"] = "https://developers.withflintpay.com/docs/errors#invalid_request"
+	}
+	var details []any
+	switch raw := e.Details.(type) {
+	case []any:
+		details = cloneErrorJSON(raw).([]any)
+	case []map[string]any:
+		for _, detail := range raw {
+			details = append(details, cloneErrorJSON(detail))
+		}
+	case map[string]any:
+		detail := cloneErrorJSON(raw).(map[string]any)
+		delete(detail, "remediation")
+		details = []any{detail}
+	}
+	if len(details) == 0 {
+		details = []any{map[string]any{"code": e.Code, "message": message}}
+	}
+	for _, raw := range details {
+		if detail, ok := raw.(map[string]any); ok {
+			delete(detail, "remediation")
+			if _, exists := detail["code"]; !exists {
+				detail["code"] = e.Code
+			}
+			if e.Param != "" {
+				if _, exists := detail["param"]; !exists {
+					detail["param"] = e.Param
+				}
+			}
+		}
+	}
+	object["details"] = mcpTranslateDetails(details, cmd, policy)
+	next := "Follow cli.next_actions before calling again."
+	if e.Code == "INVALID_REQUEST" {
+		next = "Fix the arguments named by details[].param and call again."
+	} else if diagnostics, ok := e.Details.(map[string]any); ok {
+		if remediation, ok := diagnostics["remediation"].(map[string]any); ok {
+			if text, ok := remediation["next_steps"].(string); ok && text != "" {
+				next = mcpTranslateRemediation(text, cmd, policy)
+			}
+		}
+		if diagnostics["outcome"] == "unknown" && e.requestSent {
+			next = "Look up the result before acting again."
+			if mcpResultIsWrite(cmd, nil) && commandIdempotencyClass(cmd) != "none" && mcpErrorKey(e) != "" {
+				next += " If you call this write again, use the same idempotency_key."
+			}
+		}
+	}
+	object["remediation"] = map[string]any{"retry": "none", "next_steps": next}
+	return object
+}
+
+// mcpErrorFromValue supports callers that have a value rather than the captured
+// error. Child execution always retains CLIError and does not take this path.
+func mcpErrorFromValue(value any, exit int) *CLIError {
+	e := cliError(exit, errorTypeUsage, "MCP_COMMAND_FAILED", mcpErrorText(value))
+	envelope, _ := value.(map[string]any)
+	if raw, ok := envelope["error"].(map[string]any); ok {
+		if typ, _ := raw["type"].(string); typ != "" {
+			e.Type = typ
+		}
+		if code, _ := raw["code"].(string); code != "" {
+			e.Code = code
+		}
+		e.Param, _ = raw["param"].(string)
+		e.Details = raw["details"]
+		meta, _ := envelope["cli"].(map[string]any)
+		if meta["origin"] == "api" {
+			e.apiError = cloneErrorJSON(raw).(map[string]any)
+		}
+		if meta["outcome"] == "unknown" {
+			e.Details = map[string]any{"outcome": "unknown"}
+		}
+		if key, ok := meta["idempotency_key"].(string); ok {
+			e.idempotencyKey, e.requestSent = key, true
+		}
+	}
+	return e
+}
+
+// mcpToolError is for compatibility paths without command context. Every tool
+// failure still has a single JSON text block with the same error contract.
+func mcpToolError(message string, details any) map[string]any {
+	e := mcpErrorFromValue(details, ExitUsage)
+	if e.Message == "" {
+		e.Message = message
+	}
+	return (&App{}).mcpLocalError(nil, nil, Options{}, mcpPolicy{}, e, "")
 }

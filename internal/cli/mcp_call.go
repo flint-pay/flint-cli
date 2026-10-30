@@ -22,19 +22,27 @@ func (a *App) runMCPTool(ctx context.Context, cmd *Command, args map[string]any,
 	if outcome.exit != ExitOK && !outcome.liveBlocked && !policy.allowDestructive && mcpConfirmationRequired(outcome.value) {
 		session := mcpSessionFrom(ctx)
 		if !session.canElicit() {
-			return mcpWithEnvironment(mcpCommandError(cmd, outcome, policy, mcpConfirmationUnavailable(cmd, mcpErrorText(outcome.value))), outcome.environment)
+			return a.mcpCommandError(cmd, args, opts, outcome, policy, mcpConfirmationUnavailable(cmd, mcpErrorText(outcome.value)))
 		}
 		approved, message := a.mcpAskConfirmation(ctx, session, cmd, args, outcome)
 		if !approved {
-			return mcpToolError(message, map[string]any{"error": map[string]any{"type": errorTypeConfirmationRequired, "code": "CONFIRMATION_DECLINED", "message": message}})
+			e := cliError(ExitConfirmation, errorTypeConfirmationRequired, "CONFIRMATION_DECLINED", message)
+			reason := "declined"
+			if strings.Contains(message, "did not answer") {
+				reason = "no_answer"
+			} else if strings.Contains(message, "Could not ask") || strings.Contains(message, "could not ask") {
+				reason = "elicitation_failed"
+			}
+			e.Details = map[string]any{"reason": reason}
+			return a.mcpLocalError(cmd, args, opts, policy, e, outcome.environment)
 		}
 		outcome = a.runMCPCommand(ctx, cmd, args, opts, policy, append(extra, "--confirm=true"))
 	}
 	if outcome.exit != ExitOK {
-		return mcpWithEnvironment(mcpCommandError(cmd, outcome, policy, ""), outcome.environment)
+		return a.mcpCommandError(cmd, args, opts, outcome, policy, "")
 	}
-	if refused := mcpResultTooLarge(cmd, args, outcome.value); refused != nil {
-		return mcpWithWarnings(mcpWithEnvironment(refused, outcome.environment), outcome.warnings)
+	if refused := a.mcpResultTooLarge(cmd, args, opts, policy, outcome.environment, outcome.value); refused != nil {
+		return refused
 	}
 	if mcpResultIsWrite(cmd, args) {
 		if raw, err := mcpCompactJSON(outcome.value); err == nil && len(raw) > mcpMaxResultBytes {
@@ -45,12 +53,15 @@ func (a *App) runMCPTool(ctx context.Context, cmd *Command, args map[string]any,
 }
 
 type mcpEnvironmentObserver struct {
-	base        http.RoundTripper
-	allowLive   bool
-	cancel      context.CancelFunc
-	mu          sync.Mutex
-	environment string
-	blocked     bool
+	base              http.RoundTripper
+	allowLive         bool
+	cancel            context.CancelFunc
+	targetOperationID string
+	localMutations    bool // Signup and trigger perform several public API mutations.
+	mu                sync.Mutex
+	environment       string
+	blocked           bool
+	mutationObserved  bool
 }
 
 type mcpReplayBody struct {
@@ -71,6 +82,16 @@ func (o *mcpEnvironmentObserver) RoundTrip(req *http.Request) (*http.Response, e
 			o.cancel()
 		}
 		return nil, errMCPLiveBlocked
+	}
+	// Authentication and preparation reads do not dispatch the requested write.
+	// Observe before RoundTrip because a response may be lost after a mutation;
+	// requestHistory still decides whether a dial failure was definitely unsent.
+	if req.Method != http.MethodGet && req.Method != http.MethodHead && req.URL.Path != loginTokenPath {
+		if operation, ok := matchPublicOperation(req.Method, req.URL.EscapedPath()); ok && operation.OperationID == o.targetOperationID && o.targetOperationID != "" {
+			o.mutationObserved = true
+		} else if o.localMutations && strings.HasPrefix(req.URL.Path, "/v1/") {
+			o.mutationObserved = true
+		}
 	}
 	o.mu.Unlock()
 	resp, err := o.base.RoundTrip(req)
@@ -96,10 +117,10 @@ func (o *mcpEnvironmentObserver) RoundTrip(req *http.Request) (*http.Response, e
 	return resp, nil
 }
 
-func (o *mcpEnvironmentObserver) state() (string, bool) {
+func (o *mcpEnvironmentObserver) state() (string, bool, bool) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
-	return o.environment, o.blocked
+	return o.environment, o.blocked, o.mutationObserved
 }
 
 func (a *App) mcpObservedHTTPClient(observer *mcpEnvironmentObserver) *http.Client {
@@ -225,7 +246,7 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 		method, path := strings.ToUpper(fmt.Sprint(args["method"])), fmt.Sprint(args["path"])
 		if _, ok := matchPublicOperation(method, path); !ok {
 			e := usageError("UNDOCUMENTED_API_OPERATION", "Unknown raw API routes are available only through terminal flint api.", "path")
-			return mcpCallResult{value: mcpCLIErrorEnvelope(e), exit: e.ExitCode}
+			return mcpCallResult{cliError: e, value: mcpCLIErrorEnvelope(e), exit: e.ExitCode}
 		}
 	}
 	if cmd.Stream {
@@ -247,7 +268,7 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	argv = appendInheritedMCPOptions(argv, parent)
 	transformOptions, transformed, transformErr := mcpOutputTransformOptions(cmd, args)
 	if transformErr != nil {
-		return mcpCallResult{value: mcpCLIErrorEnvelope(transformErr), exit: transformErr.ExitCode}
+		return mcpCallResult{cliError: transformErr, value: mcpCLIErrorEnvelope(transformErr), exit: transformErr.ExitCode}
 	}
 	transformOptions.outputLimit = mcpMaxOutputBytes
 	controls, _ := args["_flint"].(map[string]any)
@@ -360,7 +381,8 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	if len(body) > 0 {
 		raw, err := json.Marshal(body)
 		if err != nil {
-			return mcpCallResult{value: map[string]any{"error": "Could not encode MCP tool input: " + err.Error()}, exit: ExitUsage}
+			e := usageError("INVALID_REQUEST", "Could not encode MCP tool input: "+err.Error(), "arguments")
+			return mcpCallResult{cliError: e, value: mcpCLIErrorEnvelope(e), exit: e.ExitCode}
 		}
 		stdin = bytes.NewReader(raw)
 		argv = append(argv, "--input", "-")
@@ -394,7 +416,14 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 			return nil
 		}))
 	}
-	observer := &mcpEnvironmentObserver{allowLive: policy.allowLive, cancel: cancelChild}
+	observer := &mcpEnvironmentObserver{
+		allowLive: policy.allowLive, cancel: cancelChild, targetOperationID: cmd.OperationID,
+		localMutations: cmd.CanonicalName == "trigger" || cmd.CanonicalName == "signup",
+	}
+	if cmd.CanonicalName == "api" {
+		operation, _ := matchPublicOperation(strings.ToUpper(fmt.Sprint(args["method"])), fmt.Sprint(args["path"]))
+		observer.targetOperationID = operation.OperationID
+	}
 	if a.mcpAuth != nil {
 		if auth, known := a.mcpAuth.snapshot(); known {
 			observer.environment = normalizeEnvironment(auth.Environment)
@@ -405,6 +434,8 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	stdout := &mcpCappedBuffer{}
 	stderr := &mcpStderr{kept: mcpCappedBuffer{limit: mcpMaxStderrBytes}, progress: progress, debug: a.Stderr}
 	child := *a
+	var capturedError *CLIError
+	child.mcpErrorObserver = func(e *CLIError) { capturedError = e }
 	child.mcpSkipScopeCheck = true
 	child.Stdout = stdout
 	if progress != nil && cmd.Stream {
@@ -416,8 +447,13 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	child.Context = childCtx
 	child.HTTPClient = a.mcpObservedHTTPClient(observer)
 	exit := child.Run(argv)
-	environment, blocked := observer.state()
-	outcome := mcpCallResult{exit: exit, environment: environment}
+	environment, blocked, mutationObserved := observer.state()
+	if capturedError != nil && mcpResultIsWrite(cmd, args) && !mutationObserved {
+		copy := *capturedError
+		copy.requestSent = false
+		capturedError = &copy
+	}
+	outcome := mcpCallResult{cliError: capturedError, exit: exit, environment: environment}
 	if exit == ExitOK {
 		outcome.warnings = stderr.String()
 		if defaultPageSize {
@@ -430,14 +466,19 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 		if blocked || mcpErrorField(probe, "code") == "LIVE_ACKNOWLEDGEMENT_REQUIRED" {
 			outcome.liveBlocked = true
 			outcome.environment = "live"
-			outcome.value = map[string]any{"error": map[string]any{"type": errorTypeConfiguration, "code": "LIVE_ACCESS_DISABLED", "message": mcpLiveDisabledMessage}}
+			outcome.cliError = configError("LIVE_ACCESS_DISABLED", mcpLiveDisabledMessage, nil)
+			outcome.value = mcpCLIErrorEnvelope(outcome.cliError)
 			outcome.exit = ExitAuth
 			return outcome
 		}
 	}
+	if capturedError != nil && exit != ExitOK {
+		outcome.value = mcpCLIErrorEnvelope(capturedError)
+		return outcome
+	}
 	if stdout.exceeded {
-		outcome.value = map[string]any{"error": fmt.Sprintf("Flint command output exceeded the %d byte MCP safety limit.", mcpMaxOutputBytes)}
-		outcome.exit = ExitNetwork
+		outcome.cliError = usageError("RESULT_TOO_LARGE", fmt.Sprintf("Flint command output exceeded the %d byte MCP safety limit.", mcpMaxOutputBytes), "")
+		outcome.value, outcome.exit = mcpCLIErrorEnvelope(outcome.cliError), outcome.cliError.ExitCode
 		return outcome
 	}
 	trimmed := bytes.TrimSpace(stdout.Bytes())
@@ -453,7 +494,7 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 			}
 			projected, warning, transformErr := mcpProjectResult(childCtx, cmd, result, transformOptions)
 			if transformErr != nil {
-				outcome.value, outcome.exit = mcpCLIErrorEnvelope(transformErr), transformErr.ExitCode
+				outcome.cliError, outcome.value, outcome.exit = transformErr, mcpCLIErrorEnvelope(transformErr), transformErr.ExitCode
 				return outcome
 			}
 			if warning != "" {

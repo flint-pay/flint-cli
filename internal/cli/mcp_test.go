@@ -118,10 +118,10 @@ func TestMCPSparseDeliveryConfigurationUpdates(t *testing.T) {
 					t.Fatal(err)
 				}
 				if valid {
-					if credentialReads != 1 || !strings.Contains(string(raw), "API_KEY_REQUIRED") || strings.Contains(string(raw), "schema") {
+					if credentialReads != 1 || !strings.Contains(string(raw), "API_KEY_REQUIRED") || strings.Contains(string(raw), "INVALID_REQUEST") {
 						t.Fatalf("valid sparse update did not reach authentication: reads=%d result=%s", credentialReads, raw)
 					}
-				} else if credentialReads != 0 || !strings.Contains(string(raw), "schema") {
+				} else if credentialReads != 0 || !strings.Contains(string(raw), "INVALID_REQUEST") {
 					t.Fatalf("invalid update was not rejected before authentication: reads=%d result=%s", credentialReads, raw)
 				}
 			}

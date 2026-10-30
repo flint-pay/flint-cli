@@ -58,8 +58,12 @@ func assertMCPWireMessage(t *testing.T, message map[string]any) {
 			name = "ServerRequest"
 		}
 	} else if result, ok := message["result"].(map[string]any); ok {
-		if _, isToolResult := result["content"]; isToolResult && result["isError"] != true {
-			mcpResultJSON(t, result)
+		if _, isToolResult := result["content"]; isToolResult {
+			if result["isError"] == true {
+				mcpErrorJSON(t, result)
+			} else {
+				mcpResultJSON(t, result)
+			}
 		}
 		value = normalized.(map[string]any)["result"]
 		for field, definition := range map[string]string{"protocolVersion": "InitializeResult", "tools": "ListToolsResult", "content": "CallToolResult"} {

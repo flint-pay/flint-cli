@@ -141,6 +141,7 @@ type Options struct {
 type App struct {
 	mcpAuth                   *mcpAuthState
 	mcpSkipScopeCheck         bool // MCP forwards scope failures from the API unchanged.
+	mcpErrorObserver          func(*CLIError)
 	credentialStore           string
 	Info                      BuildInfo
 	Stdout                    io.Writer
@@ -169,6 +170,7 @@ type App struct {
 }
 
 type CLIError struct {
+	apiError       map[string]any // Immutable decoded API error, separate from terminal diagnostics.
 	idempotencyKey string
 	requestSent    bool // The request reached, or may have reached, the transport.
 	retryable      *bool
@@ -188,4 +190,33 @@ func (e *CLIError) Error() string { return e.Message }
 
 func cliError(exit int, typ, code, message string) *CLIError {
 	return &CLIError{ExitCode: exit, Type: typ, Code: code, Message: message}
+}
+
+// Decoded API errors must not share mutable maps or arrays with terminal
+// diagnostics, which add idempotency and retry advice of their own.
+func cloneErrorJSON(value any) any {
+	switch raw := value.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(raw))
+		for key, item := range raw {
+			out[key] = cloneErrorJSON(item)
+		}
+		return out
+	case []any:
+		out := make([]any, len(raw))
+		for index, item := range raw {
+			out[index] = cloneErrorJSON(item)
+		}
+		return out
+	case []map[string]any:
+		out := make([]map[string]any, len(raw))
+		for index, item := range raw {
+			out[index] = cloneErrorJSON(item).(map[string]any)
+		}
+		return out
+	case []string:
+		return append([]string(nil), raw...)
+	default:
+		return value
+	}
 }
