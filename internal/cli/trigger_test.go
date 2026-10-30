@@ -579,7 +579,7 @@ func TestTriggerCheckoutCannotResume(t *testing.T) {
 			if code := app.Run([]string{"trigger", "checkout_session.paid", "--idempotency-key", "old-run", "--output", output}); code != ExitUsage {
 				t.Fatalf("resume code %d: %s %s", code, out, stderr)
 			}
-			if requests != before || !strings.Contains(out.String()+stderr.String(), "TRIGGER_NOT_RESUMABLE") {
+			if requests != before || !strings.Contains(out.String()+stderr.String(), "start a new run") {
 				t.Fatalf("resume made a request or omitted refusal: %s %s", out, stderr)
 			}
 		})
