@@ -43,15 +43,17 @@ func commandIdempotencyClass(cmd *Command) string {
 }
 
 func requestIdempotencyKey(cmd *Command, opts Options) (string, *CLIError) {
+	// Match HTTP header whitespace normalization before deciding replay safety.
+	key := strings.Trim(opts.IdempotencyKey, " \t")
 	switch commandIdempotencyClass(permissionCommand(cmd, opts)) {
 	case "required":
-		if strings.TrimSpace(opts.IdempotencyKey) == "" {
+		if strings.TrimSpace(key) == "" {
 			return "", usageError("IDEMPOTENCY_KEY_REQUIRED", "--idempotency-key is required for this operation. Save a key with the action before sending and reuse the same key on retry; a key generated for one command cannot protect a later run from repeating the action.", "--idempotency-key")
 		}
-		return opts.IdempotencyKey, nil
+		return key, nil
 	case "optional":
-		if opts.IdempotencyKey != "" {
-			return opts.IdempotencyKey, nil
+		if key != "" {
+			return key, nil
 		}
 		key, err := newIdempotencyKey()
 		if err != nil {
@@ -69,7 +71,6 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 	if requestErr != nil {
 		return req, requestErr
 	}
-	defer func() { requestErr = withIdempotencyRetryContext(requestErr, req.IdempotencyKey) }()
 	if e := validateExpansions(cmd.OperationID, opts.Expand); e != nil {
 		return req, e
 	}

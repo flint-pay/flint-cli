@@ -355,7 +355,7 @@ func TestRetryBackoffAndRetryAfter(t *testing.T) {
 	})
 }
 
-func TestKeyedWriteErrorsAlwaysExposeKey(t *testing.T) {
+func TestKeyedWriteFailuresExposeOnlyDispatchedKey(t *testing.T) {
 	for _, status := range []int{400, 401, 403, 409, 422, 500} {
 		t.Run(fmt.Sprint(status), func(t *testing.T) {
 			app, out, stderr := testApp(t, "")
@@ -376,7 +376,7 @@ func TestKeyedWriteErrorsAlwaysExposeKey(t *testing.T) {
 			}
 			opts.Output = "human"
 			app.writeError(err, opts)
-			if !strings.Contains(stderr.String(), "--idempotency-key saved-action-1") {
+			if !strings.Contains(stderr.String(), "Idempotency key: saved-action-1") {
 				t.Fatal(stderr.String())
 			}
 		})
@@ -390,7 +390,7 @@ func TestKeyedWriteErrorsAlwaysExposeKey(t *testing.T) {
 			}
 			exit, result := runJSON(t, app, out, args...)
 			actual, _ := lookupPath(result, "error.details.idempotency_key")
-			if exit != ExitUsage || actual == nil || (key != "" && actual != key) || (key == "" && !strings.HasPrefix(fmt.Sprint(actual), "flint-cli-")) {
+			if exit != ExitUsage || actual != nil {
 				t.Fatalf("exit=%d result=%v", exit, result)
 			}
 		})
@@ -408,7 +408,7 @@ func TestKeyAdvicePreservesExistingKeyAndAvoidsDuplicates(t *testing.T) {
 		err = withIdempotencyRetryContext(err, "saved-action-1")
 	}
 	app.writeError(err, defaultOptions())
-	if strings.Count(stderr.String(), "--idempotency-key saved-action-1") != 1 {
+	if strings.Count(stderr.String(), "Idempotency key: saved-action-1") != 1 {
 		t.Fatal(stderr.String())
 	}
 }

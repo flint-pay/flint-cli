@@ -195,20 +195,8 @@ func TestGiftCardChallengeErrorPreservesRemediation(t *testing.T) {
 				t.Fatalf("key missing from challenge error: %s", out)
 			}
 			delete(actual, "details")
-			remediation := actual["remediation"].(map[string]any)
-			actions := remediation["next_actions"].([]any)
-			// The CLI appends key guidance after the server's original actions.
-			if reason == "page_origin_required" {
-				if len(actions) != 1 {
-					t.Fatal(actions)
-				}
-				delete(actual, "remediation")
-			} else {
-				if len(actions) != 2 {
-					t.Fatal(actions)
-				}
-				remediation["next_actions"] = actions[:1]
-			}
+			// No retry policy was supplied, so retain the server's remediation
+			// exactly without adding advice about resending this request.
 			apiError["http_status"] = float64(http.StatusBadRequest)
 			if calls != 1 || !reflect.DeepEqual(actual, apiError) {
 				t.Fatalf("calls=%d challenge error changed: %s", calls, out)

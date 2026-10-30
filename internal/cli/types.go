@@ -163,17 +163,19 @@ type App struct {
 }
 
 type CLIError struct {
-	retryable    *bool
-	RetryAfterMs *int64
-	HTTPStatus   int
-	ExitCode     int
-	Type         string
-	Code         string
-	Message      string
-	Param        string
-	Details      any
-	RequestID    string
-	Cause        error
+	idempotencyKey string
+	requestSent    bool // The request reached, or may have reached, the transport.
+	retryable      *bool
+	RetryAfterMs   *int64
+	HTTPStatus     int
+	ExitCode       int
+	Type           string
+	Code           string
+	Message        string
+	Param          string
+	Details        any
+	RequestID      string
+	Cause          error
 }
 
 func (e *CLIError) Error() string { return e.Message }

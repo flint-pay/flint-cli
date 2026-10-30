@@ -432,9 +432,10 @@ func TestMCPMissingCredentialAdviceFitsAClientConfig(t *testing.T) {
 }
 
 func TestMCPRetryGuidanceNamesTheIdempotencyControl(t *testing.T) {
-	cmd := &Command{CanonicalName: "customers.create", Mutation: true}
+	cmd, _ := NewRegistry().ByName("customers.create")
 	value := map[string]any{"error": map[string]any{
 		"type": "unavailable_error", "code": "SERVICE_UNAVAILABLE", "message": "Flint is unavailable.",
+		"remediation": map[string]any{"retry": "same_request"},
 		"details": map[string]any{
 			"idempotency_key": "flint-cli-abc",
 			"remediation":     map[string]any{"next_actions": []any{map[string]any{"reason_message": "Retry the same command with --idempotency-key flint-cli-abc.", "command": "flint customers create --idempotency-key flint-cli-abc"}}},
@@ -443,7 +444,7 @@ func TestMCPRetryGuidanceNamesTheIdempotencyControl(t *testing.T) {
 	result := mcpCommandError(cmd, mcpCallResult{value: value, exit: ExitAPI}, mcpPolicy{}, "")
 	text := mcpResultText(result)
 	firstLine, _, _ := strings.Cut(text, "\n")
-	if !strings.Contains(firstLine, `_flint.idempotency_key set to "flint-cli-abc"`) {
+	if !strings.Contains(firstLine, `_flint.idempotency_key flint-cli-abc`) || !strings.Contains(firstLine, "identical request") || !strings.Contains(firstLine, "backoff") {
 		t.Fatalf("message = %s", firstLine)
 	}
 	if !strings.Contains(text, "Retry the same command with _flint.idempotency_key flint-cli-abc.") || !strings.Contains(text, "flint customers create --idempotency-key flint-cli-abc") {
@@ -601,13 +602,14 @@ func TestMCPEmptyToolsUsesDefaultWithLazyRegistry(t *testing.T) {
 }
 
 func TestMCPErrorEnvelopePreservesCoreDetailsAndRemediation(t *testing.T) {
-	cmd := &Command{CanonicalName: "customers.create", Mutation: true}
+	cmd, _ := NewRegistry().ByName("customers.create")
 	err := &CLIError{
-		ExitCode: ExitAPI, Type: "unavailable_error", Code: "SERVICE_UNAVAILABLE", Message: "Unavailable.", HTTPStatus: http.StatusServiceUnavailable,
+		requestSent: true,
+		ExitCode:    ExitAPI, Type: "unavailable_error", Code: "SERVICE_UNAVAILABLE", Message: "Unavailable.", HTTPStatus: http.StatusServiceUnavailable,
 		Details: map[string]any{
 			"type": "unavailable_error", "code": "SERVICE_UNAVAILABLE", "message": "Unavailable.",
 			"details":     map[string]any{"existing": "preserved"},
-			"remediation": map[string]any{"next_actions": []any{map[string]any{"reason_message": "Retry with --timeout 1m."}}},
+			"remediation": map[string]any{"retry": "same_request", "next_actions": []any{map[string]any{"reason_message": "Retry with --timeout 1m."}}},
 		},
 	}
 	envelope := mcpCLIErrorEnvelope(withIdempotencyRetryContext(err, "flint-cli-retry-test"))
@@ -631,7 +633,7 @@ func TestMCPErrorEnvelopePreservesCoreDetailsAndRemediation(t *testing.T) {
 	if !strings.Contains(text, "_flint.timeout 1m") || strings.Contains(text, "--timeout") || strings.Contains(text, "--idempotency-key") {
 		t.Fatalf("untranslated remediation: %s", text)
 	}
-	if !strings.Contains(text, `_flint.idempotency_key set to "flint-cli-retry-test"`) {
+	if !strings.Contains(text, `_flint.idempotency_key flint-cli-retry-test`) {
 		t.Fatalf("missing retry key advice: %s", text)
 	}
 	for _, test := range []struct {
