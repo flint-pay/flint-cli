@@ -16,7 +16,7 @@ func triggerFixtures() map[string]any {
 	fixtures := map[string]any{
 		"customer":       map[string]any{"customer_id": "cus_01KEZF7C003ACYXT6Q5EQZ78EE"},
 		"order":          map[string]any{"order_id": "ord_01KEZF7C003ACYXT6Q5EQZ78EE", "settlement_amounts": map[string]any{"outstanding_money": money}},
-		"pay":            map[string]any{"order": map[string]any{"order_id": "ord_01KEZF7C003ACYXT6Q5EQZ78EE"}, "order_payment_attempt": map[string]any{"order_payment_attempt_id": "opat_01KEZF7C003ACYXT6Q5EQZ78EE", "payment_intent_id": "pi_01KEZF7C003ACYXT6Q5EQZ78EE"}},
+		"pay":            map[string]any{"order": map[string]any{"order_id": "ord_01KEZF7C003ACYXT6Q5EQZ78EE"}, "order_payment_attempt": map[string]any{"order_payment_attempt_id": "opat_01KEZF7C003ACYXT6Q5EQZ78EE", "payment_intents": []any{map[string]any{"payment_intent_id": "pi_01KEZF7C003ACYXT6Q5EQZ78EE"}}}},
 		"refund":         map[string]any{"refund_id": "ref_01KEZF7C003ACYXT6Q5EQZ78EE"},
 		"session":        map[string]any{"checkout_session_id": "cs_01KEZF7C003ACYXT6Q5EQZ78EE", "checkout_auth_token": "ckat_private_fixture"},
 		"dispute":        []any{map[string]any{"dispute_id": "disp_01KEZF7C003ACYXT6Q5EQZ78EE", "status": "needs_response"}},
@@ -30,7 +30,7 @@ func triggerFixtures() map[string]any {
 		"active":         map[string]any{"status": "active", "next_billing_at": "2026-12-01T00:00:00Z"},
 		"advance":        map[string]any{"status": "advancing"}, "ready": map[string]any{"status": "ready"},
 		"invoice": map[string]any{"invoice_id": "inv_01KEZF7C003ACYXT6Q5EQZ78EE", "outstanding_money": money},
-		"payment": map[string]any{"invoice_manual_payment_id": "imp_01KEZF7C003ACYXT6Q5EQZ78EE"},
+		"payment": map[string]any{"invoice_manual_payment": map[string]any{"invoice_manual_payment_id": "imp_01KEZF7C003ACYXT6Q5EQZ78EE"}},
 	}
 	results := map[string]any{}
 	for name, value := range fixtures {

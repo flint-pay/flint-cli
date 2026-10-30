@@ -31,7 +31,7 @@ func triggerRecipes() map[string]triggerRecipe {
 	line := map[string]any{"type": "custom", "name": "Flint trigger item", "quantity": 1, "unit_price_money": map[string]any{"amount": 2500, "currency": "USD"}, "fulfillment": obj("requirement", "none")}
 	customer := step("customer", "createCustomer", obj("name", "Flint trigger customer"), map[string]string{"customer_id": "data.customer_id"})
 	order := step("order", "createOrder", map[string]any{"line_items": []any{line}, "tax": obj("enabled", false)}, map[string]string{"order_id": "data.order_id"})
-	pay := step("pay", "payOrder", map[string]any{"action": "pay", "payment_source": map[string]any{"credential_type": "token", "token": "pm_card_visa"}, "expected_outstanding_money": "{order.settlement_amounts.outstanding_money}"}, map[string]string{"order_id": "data.order.order_id", "payment_intent_id": "data.order_payment_attempt.payment_intent_id", "order_payment_attempt_id": "data.order_payment_attempt.order_payment_attempt_id"})
+	pay := step("pay", "payOrder", map[string]any{"action": "pay", "payment_source": map[string]any{"credential_type": "token", "token": "pm_card_visa"}, "expected_outstanding_money": "{order.settlement_amounts.outstanding_money}"}, map[string]string{"order_id": "data.order.order_id", "payment_intent_id": "data.order_payment_attempt.payment_intents.0.payment_intent_id", "order_payment_attempt_id": "data.order_payment_attempt.order_payment_attempt_id"})
 	pay.Path = map[string]string{"order_id": "{order.order_id}"}
 	refund := step("refund", "createRefund", map[string]any{"refund_type": "full", "order_id": "{order.order_id}", "reason": "requested_by_customer"}, map[string]string{"refund_id": "data.refund_id"})
 	session := step("session", "createCheckoutSession", map[string]any{"type": "order", "order_id": "{order.order_id}", "tip": obj("enabled", false)}, map[string]string{"checkout_session_id": "data.checkout_session_id"})
@@ -65,7 +65,7 @@ func triggerRecipes() map[string]triggerRecipe {
 	ready.Path = advance.Path
 	ready.Until = []string{"status=ready"}
 	invoice := step("invoice", "createInvoice", map[string]any{"type": "quick_pay", "quick_pay": order.Body, "collection": obj("mode", "external"), "issue": obj("delivery_mode", "caller_managed")}, map[string]string{"invoice_id": "data.invoice_id"})
-	payment := step("payment", "createInvoiceManualPayment", obj("amount_money", "{invoice.outstanding_money}"), map[string]string{"invoice_manual_payment_id": "data.invoice_manual_payment_id"})
+	payment := step("payment", "createInvoiceManualPayment", obj("amount_money", "{invoice.outstanding_money}"), map[string]string{"invoice_manual_payment_id": "data.invoice_manual_payment.invoice_manual_payment_id"})
 	payment.Path = map[string]string{"invoice_id": "{invoice.invoice_id}"}
 	return map[string]triggerRecipe{
 		"customer":         {Name: "customer", Steps: []triggerStep{customer}},
