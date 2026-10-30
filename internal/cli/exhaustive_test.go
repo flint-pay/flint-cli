@@ -578,6 +578,7 @@ func TestEveryBooleanFlagAcceptsExplicitTrueAndFalse(t *testing.T) {
 		"allow-live":        {"mcp", "serve"},
 		"allow-destructive": {"mcp", "serve"},
 		"check":             {"upgrade"},
+		"list":              {"trigger"},
 		"print-secret":      {"listen"},
 	}
 	if len(cases) != len(boolFlags) {
@@ -1027,7 +1028,7 @@ func TestEveryMutationExecutesClientDryRunWithoutNetwork(t *testing.T) {
 	template.Registry.ensureAPICommands()
 	for _, command := range template.Registry.Commands {
 		command := command
-		if !command.Mutation {
+		if !command.Mutation || command.CanonicalName == "trigger" { // Trigger authenticates even a client dry run; covered by TestTriggerLocalChecksAndRefusal.
 			continue
 		}
 		t.Run(command.CanonicalName, func(t *testing.T) {
@@ -1355,6 +1356,8 @@ func TestEveryLocalCommandExecutes(t *testing.T) {
 						t.Error("auth.logout did not delete the credential")
 					}
 				}()
+			case "trigger":
+				argv = append(argv, "--list")
 			case "config.set":
 				argv = append(argv, "profile", "exhaustive")
 			case "config.unset":

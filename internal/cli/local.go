@@ -14,6 +14,8 @@ import (
 
 func (a *App) runLocal(cmd *Command, opts Options) int {
 	switch cmd.CanonicalName {
+	case "trigger":
+		return a.localTrigger(cmd, opts)
 	case "version":
 		return a.outputLocal(map[string]any{"data": map[string]any{
 			"cli_version": a.Info.Version,

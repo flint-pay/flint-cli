@@ -209,7 +209,34 @@ Add `--ai-agent` to identify the reporter as an AI agent. It defaults to false a
 
 Live partner OAuth installs require `--mode live --live` and confirmation (`--confirm` for scripts), including when using `flint api get /v1/oauth/authorize`. Raw API pagination (`--all` or `--paginate`) accepts only read-only GET operations.
 
-### Scripts and agents
+### Trigger sandbox events
+
+`flint trigger` creates sandbox resources through the public API to produce a webhook event:
+
+```bash
+flint trigger --list
+flint listen --event-type order.paid
+# In another terminal, with the same sandbox selected:
+flint trigger order.paid
+flint trigger dispute.won --for 2m
+flint trigger test_clock.ready --for 5m
+```
+
+Trigger refuses live and unverified credentials before creating resources. `--list` works offline.
+The output names the primary expected event, related events that also arrive, resource IDs, and
+request IDs. Event delivery can finish after the command returns. Disputes need Stripe webhook
+forwarding; subscription and test-clock recipes need background workers.
+
+Every write uses a separate idempotency key under one run prefix. If a run fails, use the printed
+`flint trigger EVENT --idempotency-key PREFIX` command to replay completed writes and continue.
+`--dry-run=client` authenticates and prints the recipe without writing.
+Resuming accepts wait states that have already progressed. The monthly clock recipe advances to
+one calendar month after the clock's original frozen time (clamped to the month's last day), plus
+one minute to include due work. That target stays the same when the run is resumed. `--output json` returns one
+result; `--output ndjson` streams finished steps and bounded wait observations. Trigger creates new
+test resources and does not delete them. Reset the sandbox when finished.
+
+## Scripts and agents
 
 Lists return one page. Check `next_page_token`; it is omitted when no more pages remain. Pass it with `--page-token TOKEN`, use `--all` for every page, or `--limit N` to collect up to N resources automatically. `--limit` requests `min(remaining, 100)` items on each page and preserves the exact continuation token. If a server returns more items than requested, the CLI truncates the result and omits the token to avoid skipping resources.
 

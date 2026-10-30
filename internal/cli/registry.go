@@ -45,7 +45,7 @@ func (r *Registry) ensureAPICommands() {
 
 func newRegistry(includeAPI bool) *Registry {
 	r := &Registry{localOnly: !includeAPI, byName: map[string]*Command{}, byPath: map[string]*Command{}}
-	definitions := curatedCommandDefinitions()
+	definitions := append(curatedCommandDefinitions(), triggerCommand())
 	if includeAPI {
 		definitions = append(definitions, publicAPICommands(definitions)...)
 	}
@@ -100,7 +100,7 @@ func newRegistry(includeAPI bool) *Registry {
 				c.Supports.Pagination = true
 			}
 		}
-		if c.Stream || c.Supports.Pagination {
+		if c.Stream || c.Supports.Pagination || c.CanonicalName == "trigger" {
 			c.Supports.NDJSON = true
 		}
 		switch c.CanonicalName {

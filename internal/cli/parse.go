@@ -14,7 +14,7 @@ var boolFlags = map[string]bool{
 	// Command-scoped booleans. They stay out of globalFlags so only the command
 	// that declares them accepts them, but the parser still has to know they
 	// take no value.
-	"new-session": true, "private": true, "no-open": true, "ai-agent": true,
+	"list": true, "new-session": true, "private": true, "no-open": true, "ai-agent": true,
 	"allow-live": true, "allow-destructive": true, "no-wait": true, "check": true, "print-secret": true,
 }
 
@@ -397,7 +397,7 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	if o.MaxEvents > 0 && !cmd.Stream {
 		return usageError("UNSUPPORTED_FLAG", "--max-events and --for apply only to streaming commands.", "for")
 	}
-	if o.For > 0 && !cmd.Stream && len(o.WaitFor) == 0 {
+	if o.For > 0 && !cmd.Stream && len(o.WaitFor) == 0 && cmd.CanonicalName != "trigger" {
 		return usageError("UNSUPPORTED_FLAG", "--for applies only to streaming commands and bounded waits.", "for")
 	}
 	if o.JQ != "" && o.Field != "" {
@@ -447,7 +447,7 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	if used("fix") && cmd.CanonicalName != "doctor" {
 		return usageError("UNSUPPORTED_FLAG", "--fix applies only to flint doctor.", "fix")
 	}
-	if used("progress") && !cmd.Stream && !o.All && !o.Paginate && o.Limit == 0 && len(o.WaitFor) == 0 && cmd.CanonicalName != "upgrade" {
+	if used("progress") && !cmd.Stream && !o.All && !o.Paginate && o.Limit == 0 && len(o.WaitFor) == 0 && cmd.CanonicalName != "upgrade" && cmd.CanonicalName != "trigger" {
 		return usageError("UNSUPPORTED_FLAG", "--progress applies only to pagination, streams, waits, and upgrades.", "progress")
 	}
 	maxPositional := 0
