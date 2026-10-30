@@ -142,6 +142,7 @@ type App struct {
 	mcpAuth                   *mcpAuthState
 	mcpSkipScopeCheck         bool // MCP forwards scope failures from the API unchanged.
 	mcpErrorObserver          func(*CLIError)
+	mcpGate                   *mcpCallGate
 	credentialStore           string
 	Info                      BuildInfo
 	Stdout                    io.Writer

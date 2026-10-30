@@ -132,6 +132,14 @@ func (a *App) Run(argv []string) int {
 	resolved.APIKeyID = authContext.APIKeyID
 	resolved.MerchantID = authContext.MerchantID
 	resolved.SandboxID = authContext.SandboxID
+	if a.mcpGate != nil {
+		if e := a.mcpGate.afterAuth(authContext); e != nil {
+			return a.fail(e, opts)
+		}
+		// MCP checks the public per-call acknowledgement itself. Keep the
+		// terminal credential guard aligned with the authenticated environment.
+		opts.Live = normalizeEnvironment(authContext.Environment) == "live"
+	}
 	affinity := effective.EnvironmentAffinity
 	if effective.OperationID == "authorizePartnerInstall" {
 		// The browser entry point is public, but a live authorization still
@@ -158,8 +166,10 @@ func (a *App) Run(argv []string) int {
 			return a.fail(e, opts)
 		}
 	}
-	if e := a.confirmCommand(effective, authContext, opts); e != nil {
-		return a.fail(e, opts)
+	if a.mcpGate == nil {
+		if e := a.confirmCommand(effective, authContext, opts); e != nil {
+			return a.fail(e, opts)
+		}
 	}
 	value, runErr := a.executeAPI(ctx, effective, opts, resolved, authContext, key, baseURL)
 	if runErr != nil {
@@ -279,6 +289,24 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 	}
 	environment := normalizeEnvironment(authContext.Environment)
 	needs := cmd.Destructive || (cmd.Sensitive && (environment == "live" || environment == environmentUnverified))
+	addedGate := false
+	if !needs && cmd.Mutation {
+		index, err := a.operationIndex()
+		if err != nil {
+			return cliError(ExitSoftware, errorTypeInternal, "SCHEMA_SNAPSHOT_INVALID", "The operation's confirmation rule could not be read: "+err.Error())
+		}
+		entry, found := index.Lookup(cmd.CanonicalName)
+		if !found && cmd.CanonicalName == "api" && cmd.OperationID != "" {
+			for _, candidate := range index.Entries {
+				if candidate.Type == "operation" && candidate.OperationID == cmd.OperationID {
+					entry, found = candidate, true
+					break
+				}
+			}
+		}
+		addedGate = found && entry.Irreversible
+		needs = addedGate
+	}
 	if !needs || opts.Confirm || opts.Preview {
 		return nil
 	}
@@ -287,10 +315,14 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 	switch environment {
 	case "live":
 		message = "This operation affects live production data and requires confirmation."
-		code = "PRODUCTION_CONFIRMATION_REQUIRED"
+		if !addedGate {
+			code = "PRODUCTION_CONFIRMATION_REQUIRED"
+		}
 	case environmentUnverified:
 		message = "Flint cannot verify whether FLINT_ACCESS_TOKEN is a live credential, so this operation requires confirmation."
-		code = "UNVERIFIED_ENVIRONMENT_CONFIRMATION_REQUIRED"
+		if !addedGate {
+			code = "UNVERIFIED_ENVIRONMENT_CONFIRMATION_REQUIRED"
+		}
 	}
 	if opts.NoInput || !a.IsTTY() {
 		return &CLIError{ExitCode: ExitConfirmation, Type: errorTypeConfirmationRequired, Code: code, Message: message + " Re-run with --confirm."}

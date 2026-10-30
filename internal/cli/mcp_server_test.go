@@ -433,10 +433,10 @@ func TestMCPHistoryClearIsASeparateTool(t *testing.T) {
 		t.Fatal("history tool still accepts clear")
 	}
 	result := mcpCall(t, app, mcpAllToolsOptions(t), "history_clear", map[string]any{})
-	if result["isError"] != true || !strings.Contains(mcpResultText(result), "Only the user can confirm") {
+	if result["isError"] != true || !strings.Contains(mcpResultText(result), "CONFIRMATION_REQUIRED") {
 		t.Fatalf("history.clear without confirmation = %#v", result)
 	}
-	result = mcpCall(t, app, mcpAllToolsOptions(t, "--allow-destructive"), "history_clear", map[string]any{"_flint": map[string]any{"confirm": true}})
+	result = mcpCall(t, app, mcpAllToolsOptions(t), "history_clear", map[string]any{"_flint": map[string]any{"confirm": true}})
 	if result["isError"] == true {
 		t.Fatalf("history.clear with confirmation failed: %s", mcpResultText(result))
 	}
@@ -471,21 +471,16 @@ func TestMCPHelpWithoutTopicIsAShortIndex(t *testing.T) {
 	}
 }
 
-func TestMCPAgentsCannotSelfAuthorizeLiveOrConfirm(t *testing.T) {
+func TestMCPAgentsCannotSelfAuthorizeLive(t *testing.T) {
 	server, api := newMCPTestAPI(t, "sandbox")
 	app, _, _ := testApp(t, server.URL)
 	result := mcpCall(t, app, mcpAllToolsOptions(t), "api-keys_revoke", map[string]any{"api_key_id": "key_123", "_flint": map[string]any{"live": true}})
 	if result["isError"] != true || !strings.Contains(mcpResultText(result), "live is not an available control") {
 		t.Fatal(mcpResultText(result))
 	}
-	// Until the separate gate redesign, server confirmation policy still governs
-	// calls that use the new top-level confirm control.
 	result = mcpCall(t, app, mcpAllToolsOptions(t), "api-keys_revoke", map[string]any{"api_key_id": "key_123", "_flint": map[string]any{"confirm": true}})
-	if result["isError"] != true || !strings.Contains(mcpResultText(result), "--allow-destructive") {
-		t.Fatal(mcpResultText(result))
-	}
-	if len(api.seen()) != 0 {
-		t.Fatal(api.seen())
+	if result["isError"] == true || len(api.seen()) != 1 {
+		t.Fatalf("sandbox agent confirmation: result=%v requests=%v", result, api.seen())
 	}
 }
 
@@ -550,30 +545,16 @@ func TestMCPSandboxResultsReportEnvironment(t *testing.T) {
 	}
 }
 
-func TestMCPConfirmationWithoutElicitationGuidesTheHuman(t *testing.T) {
+func TestMCPSandboxConfirmationWithoutElicitation(t *testing.T) {
 	server, api := newMCPTestAPI(t, "sandbox")
 	app, _, _ := testApp(t, server.URL)
 	result := mcpCall(t, app, mcpAllToolsOptions(t), "api_keys_revoke", map[string]any{"api_key_id": "key_123"})
-	text := mcpResultText(result)
-	firstLine := fmt.Sprint(lookupPathValue(mcpErrorJSON(t, result), "error.message"))
-	if result["isError"] != true || !strings.HasPrefix(firstLine, "This operation requires confirmation.") || !strings.Contains(firstLine, "--allow-destructive") || strings.Contains(text, "Re-run with --confirm") || strings.Contains(text, "Flint command exited") {
-		t.Fatalf("confirmation error = %s", text)
+	if result["isError"] != true || !strings.Contains(mcpResultText(result), "CONFIRMATION_REQUIRED") || len(api.seen()) != 0 {
+		t.Fatalf("unconfirmed call: result=%v requests=%v", result, api.seen())
 	}
-	if seen := api.seen(); len(seen) != 0 {
-		t.Fatalf("unconfirmed operation reached the API: %v", seen)
-	}
-	// With --allow-destructive the agent confirms, as before.
-	opts := mcpAllToolsOptions(t, "--allow-destructive")
-	needsConfirm := mcpCall(t, app, opts, "api_keys_revoke", map[string]any{"api_key_id": "key_123"})
-	if text := mcpResultText(needsConfirm); !strings.Contains(text, "confirm set to true") || strings.Contains(text, "--confirm") {
-		t.Fatalf("agent-confirmable error = %s", text)
-	}
-	confirmed := mcpCall(t, app, opts, "api_keys_revoke", map[string]any{"api_key_id": "key_123", "_flint": map[string]any{"confirm": true}})
-	if confirmed["isError"] == true {
-		t.Fatalf("confirmed revoke failed: %s", mcpResultText(confirmed))
-	}
-	if seen := api.seen(); len(seen) != 1 || seen[0] != "POST /v1/api-keys/key_123/revoke" {
-		t.Fatalf("confirmed requests = %v", seen)
+	confirmed := mcpCall(t, app, mcpAllToolsOptions(t), "api_keys_revoke", map[string]any{"api_key_id": "key_123", "_flint": map[string]any{"confirm": true}})
+	if confirmed["isError"] == true || len(api.seen()) != 1 || api.seen()[0] != "POST /v1/api-keys/key_123/revoke" {
+		t.Fatalf("confirmed call: result=%v requests=%v", confirmed, api.seen())
 	}
 }
 
@@ -736,23 +717,24 @@ func TestMCPElicitsHumanConfirmation(t *testing.T) {
 		reply  string
 		revoke bool
 	}{
-		{"accept", `{"action":"accept","content":{"confirm":true}}`, true},
-		{"accept unchecked", `{"action":"accept","content":{"confirm":false}}`, false},
+		{"accept", `{"action":"accept","content":{"approve":true}}`, true},
+		{"accept unchecked", `{"action":"accept","content":{"approve":false}}`, false},
 		{"decline", `{"action":"decline"}`, false},
 		{"cancel", `{"action":"cancel"}`, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			server, api := newMCPTestAPI(t, "sandbox")
+			server, api := newMCPTestAPI(t, "live")
 			app, _, _ := testApp(t, server.URL)
-			conn := startMCPTestConn(t, app, mcpAllToolsOptions(t))
+			t.Setenv("FLINT_API_KEY", "flint_live_test")
+			conn := startMCPTestConn(t, app, mcpAllToolsOptions(t, "--allow-live"))
 			conn.initialize(`{"elicitation":{}}`)
-			conn.send(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"api_keys_revoke","arguments":{"api_key_id":"key_123"}}}`)
+			conn.send(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"api_keys_revoke","arguments":{"api_key_id":"key_123","confirm":true,"live":true}}}`)
 			request := conn.next()
 			if request["method"] != "elicitation/create" || request["id"] == nil {
 				t.Fatalf("expected elicitation request, got %#v", request)
 			}
 			message := fmt.Sprint(lookupPathValue(request, "params.message"))
-			if !strings.Contains(message, "api_keys_revoke") || !strings.Contains(message, "sandbox") || !strings.Contains(message, "key_123") {
+			if !strings.Contains(message, "api-keys.revoke") || !strings.Contains(message, "live") || !strings.Contains(message, "key_123") {
 				t.Fatalf("elicitation message = %s", message)
 			}
 			if seen := api.seen(); len(seen) != 0 {

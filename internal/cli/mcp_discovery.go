@@ -306,7 +306,7 @@ func (a *App) mcpAdvertisedTools(policy mcpPolicy, version string) ([]map[string
 		}
 		description := strings.ReplaceAll(mcpToolDescription(cmd, schema), "_flint.", "")
 		if entry.ConfirmRequired() {
-			description += " Needs confirm: true. In sandbox the agent confirms; live and unverified environments also require user approval unless --allow-destructive is enabled."
+			description += " Needs confirm: true."
 		}
 		tool := map[string]any{"name": mcpToolName(entry.ID), "description": description, "inputSchema": schema, "_meta": meta}
 		if version >= "2025-06-18" {

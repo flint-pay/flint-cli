@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strings"
 	"unicode"
+
+	"github.com/flint-pay/flint-cli/internal/opindex"
 )
 
 // The API uses ISO 4217 minor units. Currencies not listed use two decimals.
@@ -111,40 +113,7 @@ func (a *App) mcpDryRunResult(cmd *Command, args map[string]any, value any) any 
 	delete(data, "persistent_side_effects")
 	delete(data, "preview")
 	body, _ := data["body"].(map[string]any)
-	resources := []string{}
-	seen := map[string]bool{}
-	add := func(id string) {
-		if id != "" && !seen[id] {
-			seen[id] = true
-			resources = append(resources, id)
-		}
-	}
-	path, _ := data["path"].(string)
-	concrete, _ := url.Parse(path)
-	templateParts := strings.Split(entry.Path, "/")
-	concreteParts := []string{}
-	if concrete != nil {
-		concreteParts = strings.Split(concrete.EscapedPath(), "/")
-	}
-	for i, part := range templateParts {
-		if strings.HasPrefix(part, "{") && strings.HasSuffix(part, "_id}") && i < len(concreteParts) {
-			id, _ := url.PathUnescape(concreteParts[i])
-			add(id)
-		}
-	}
-	keys := make([]string, 0, len(body))
-	for key := range body {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	for _, key := range keys {
-		if strings.HasSuffix(key, "_id") {
-			if id, ok := body[key].(string); ok {
-				add(id)
-			}
-		}
-	}
-	data["effect"] = mcpEffect(entry.Title, entry.ConfirmRequired(), entry.Irreversible, entry.Sensitive, body, resources)
+	data["effect"] = mcpPreparedEffect(entry, preparedRequest{Path: fmt.Sprint(data["path"]), BodyValue: body})
 	permission := map[string]any{"status": "unknown", "reason": "Credential permissions were not checked for this dry run."}
 	if entry.ScopeRequirement != nil {
 		permission["scope_requirement"] = entry.ScopeRequirement
@@ -168,6 +137,44 @@ func (a *App) mcpDryRunResult(cmd *Command, args map[string]any, value any) any 
 	out := maps.Clone(envelope)
 	out["data"] = data
 	return out
+}
+
+// The dry run and approval prompt describe the same prepared path and body.
+func mcpPreparedEffect(entry opindex.Entry, req preparedRequest) map[string]any {
+	resources := []string{}
+	seen := map[string]bool{}
+	add := func(id string) {
+		if id != "" && !seen[id] {
+			seen[id] = true
+			resources = append(resources, id)
+		}
+	}
+	path := req.Path
+	concrete, _ := url.Parse(path)
+	templateParts := strings.Split(entry.Path, "/")
+	concreteParts := []string{}
+	if concrete != nil {
+		concreteParts = strings.Split(concrete.EscapedPath(), "/")
+	}
+	for i, part := range templateParts {
+		if strings.HasPrefix(part, "{") && strings.HasSuffix(part, "_id}") && i < len(concreteParts) {
+			id, _ := url.PathUnescape(concreteParts[i])
+			add(id)
+		}
+	}
+	keys := make([]string, 0, len(req.BodyValue))
+	for key := range req.BodyValue {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		if strings.HasSuffix(key, "_id") {
+			if id, ok := req.BodyValue[key].(string); ok {
+				add(id)
+			}
+		}
+	}
+	return mcpEffect(entry.Title, entry.ConfirmRequired(), entry.Irreversible, entry.Sensitive, req.BodyValue, resources)
 }
 
 func mcpValidateSelect(cmd *Command, controls map[string]any) *CLIError {

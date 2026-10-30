@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"strings"
 	"sync"
@@ -19,25 +20,7 @@ func (a *App) runMCPTool(ctx context.Context, cmd *Command, args map[string]any,
 		extra = append(extra, "--clear=true")
 	}
 	outcome := a.runMCPCommand(ctx, cmd, args, opts, policy, extra)
-	if outcome.exit != ExitOK && !outcome.liveBlocked && !policy.allowDestructive && mcpConfirmationRequired(outcome.value) {
-		session := mcpSessionFrom(ctx)
-		if !session.canElicit() {
-			return a.mcpCommandError(cmd, args, opts, outcome, policy, mcpConfirmationUnavailable(cmd, mcpErrorText(outcome.value)))
-		}
-		approved, message := a.mcpAskConfirmation(ctx, session, cmd, args, outcome)
-		if !approved {
-			e := cliError(ExitConfirmation, errorTypeConfirmationRequired, "CONFIRMATION_DECLINED", message)
-			reason := "declined"
-			if strings.Contains(message, "did not answer") {
-				reason = "no_answer"
-			} else if strings.Contains(message, "Could not ask") || strings.Contains(message, "could not ask") {
-				reason = "elicitation_failed"
-			}
-			e.Details = map[string]any{"reason": reason}
-			return a.mcpLocalError(cmd, args, opts, policy, e, outcome.environment)
-		}
-		outcome = a.runMCPCommand(ctx, cmd, args, opts, policy, append(extra, "--confirm=true"))
-	}
+
 	if outcome.exit != ExitOK {
 		return a.mcpCommandError(cmd, args, opts, outcome, policy, "")
 	}
@@ -249,6 +232,15 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 			return mcpCallResult{cliError: e, value: mcpCLIErrorEnvelope(e), exit: e.ExitCode}
 		}
 	}
+	gate, gateErr := a.newMCPCallGate(ctx, cmd, args, policy)
+	if gateErr != nil {
+		return mcpCallResult{cliError: gateErr, value: mcpCLIErrorEnvelope(gateErr), exit: gateErr.ExitCode}
+	}
+	if gate.input.Local {
+		if e := gate.prepared(ctx, a, cmd, preparedRequest{}, ResolvedConfig{}); e != nil {
+			return mcpCallResult{cliError: e, value: mcpCLIErrorEnvelope(e), exit: e.ExitCode, environment: "sandbox"}
+		}
+	}
 	if cmd.Stream {
 		bound := mcpMaxStreamDuration
 		if controls, ok := args["_flint"].(map[string]any); ok {
@@ -265,14 +257,19 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 		defer cancel()
 	}
 	argv := append([]string(nil), cmd.Path[1:]...)
-	argv = appendInheritedMCPOptions(argv, parent)
+	// Server flags are not a per-call live acknowledgement.
+	inherited := parent
+	inherited.Raw = maps.Clone(parent.Raw)
+	delete(inherited.Raw, "live")
+	inherited.Live = false
+	argv = appendInheritedMCPOptions(argv, inherited)
 	transformOptions, transformed, transformErr := mcpOutputTransformOptions(cmd, args)
 	if transformErr != nil {
 		return mcpCallResult{cliError: transformErr, value: mcpCLIErrorEnvelope(transformErr), exit: transformErr.ExitCode}
 	}
 	transformOptions.outputLimit = mcpMaxOutputBytes
 	controls, _ := args["_flint"].(map[string]any)
-	if controls["dry_run"] == "client" {
+	if gate.input.DryRun {
 		transformOptions.DryRun = "client"
 	}
 	defaultPageSize := cmd.Supports.Pagination && !mcpResultIsWrite(cmd, args) && args["page_size"] == nil && controls["page_size"] == nil
@@ -362,6 +359,12 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 			if key == "field" || key == "select" || key == "jq" {
 				continue
 			}
+			if key == "dry_run" {
+				if !gate.input.DryRun {
+					continue
+				}
+				value = "client"
+			}
 			flag := "--" + strings.ReplaceAll(key, "_", "-")
 			argv = appendMCPFlag(argv, flag, value)
 		}
@@ -434,6 +437,7 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	stdout := &mcpCappedBuffer{}
 	stderr := &mcpStderr{kept: mcpCappedBuffer{limit: mcpMaxStderrBytes}, progress: progress, debug: a.Stderr}
 	child := *a
+	child.mcpGate = gate
 	var capturedError *CLIError
 	child.mcpErrorObserver = func(e *CLIError) { capturedError = e }
 	child.mcpSkipScopeCheck = true
@@ -448,6 +452,9 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	child.HTTPClient = a.mcpObservedHTTPClient(observer)
 	exit := child.Run(argv)
 	environment, blocked, mutationObserved := observer.state()
+	if gate.environment != "" {
+		environment = gate.environment
+	}
 	if capturedError != nil && mcpResultIsWrite(cmd, args) && !mutationObserved {
 		copy := *capturedError
 		copy.requestSent = false
