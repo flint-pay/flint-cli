@@ -1291,7 +1291,8 @@ func TestPayOrderMCPActionBranchesAcceptCLIArguments(t *testing.T) {
 			t.Fatal(err)
 		}
 		arguments["order_id"] = "ord_test"
-		arguments["_flint"] = map[string]any{"dry_run": "client", "idempotency_key": "saved-test-action-1"}
+		arguments["dry_run"] = true
+		arguments["idempotency_key"] = "saved-test-action-1"
 		if err := validateMCPArguments(command, arguments); err != nil {
 			t.Fatalf("valid %s: %v", body, err)
 		}

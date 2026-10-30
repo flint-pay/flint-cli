@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/flint-pay/flint-cli/internal/opindex"
 	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
+	"maps"
 	"os"
 	"sort"
 	"strings"
@@ -487,8 +488,28 @@ func validateMCPToolArguments(cmd *Command, arguments map[string]any, policy mcp
 	if err := compiled.Validate(mcpQueryArguments(cmd, arguments)); err != nil {
 		return err
 	}
-	if err := validateMCPStreamBounds(cmd, arguments); err != nil {
-		return err
+	// Advertised schemas are deliberately shallow. Execution also validates
+	// against the original request schema, including nested and union rules.
+	entry := opindex.Entry{ID: cmd.CanonicalName, Kind: "read", Idempotency: commandIdempotencyClass(cmd), Paginated: cmd.Supports.Pagination, Get: cmd.Get}
+	if cmd.Mutation || cmd.Destructive || cmd.CanonicalName == "listen" || cmd.CanonicalName == "signup" || cmd.CanonicalName == "trigger" {
+		entry.Kind = "write"
+	}
+	args, controls := maps.Clone(arguments), map[string]any{}
+	names := mcpReadControls
+	if entry.Kind == "write" {
+		names = mcpWriteControls
+	}
+	for _, name := range names {
+		if value, ok := args[name]; ok {
+			controls[name] = value
+			delete(args, name)
+		}
+	}
+	if e := validateMCPControls(entry, controls, policy); e != nil {
+		return e
+	}
+	if _, e := validateMCPOperation(cmd, entry, args); e != nil {
+		return e
 	}
 	return nil
 }
@@ -766,6 +787,12 @@ func mcpToolTitle(cmd *Command) string {
 // schema combinators, pagination, and money units.
 func mcpToolDescription(cmd *Command, schema map[string]any) string {
 	parts := []string{mcpBaseDescription(cmd)}
+	// Flattening removes conditional requirements from the advertised schema.
+	// Keep those requirements visible in the description using the full body.
+	full, e := requestBodySchema(cmd)
+	if e == nil {
+		schema = full
+	}
 	if summary := mcpRequirementSummary(schema); summary != "" {
 		parts = append(parts, summary)
 	}

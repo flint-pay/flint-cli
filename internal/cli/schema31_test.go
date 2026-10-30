@@ -9,39 +9,50 @@ import (
 )
 
 func TestPaymentIntentMCPInputPreservesStandaloneConditions(t *testing.T) {
-	command, _ := NewRegistry().ByName("payment-intents.create")
-	for _, moneyInput := range []map[string]any{
-		{"amount_money": map[string]any{"amount": float64(1000), "currency": "USD"}},
-		{"amount": float64(1000), "currency": "USD"},
+	registry := NewRegistry()
+	standalone, _ := registry.ByName("payment-intents.create")
+	for _, fixture := range []struct {
+		fields map[string]any
+		valid  bool
+	}{
+		{map[string]any{}, false},
+		{map[string]any{"payment_options": []any{}}, false},
+		{map[string]any{"payment_options": []any{"card"}}, true},
+		{map[string]any{"payment_options": []any{"ach_debit"}}, false},
+		{map[string]any{"payment_options": []any{"ach_debit"}, "transaction_purpose": "goods"}, true},
+		{map[string]any{"payment_options": []any{"card"}, "transaction_purpose": "goods"}, false},
+		{map[string]any{"payment_options": []any{"affirm"}}, false},
+		{map[string]any{"payment_options": []any{"affirm"}, "payment_return_url": "https://example.com/return"}, true},
+		{map[string]any{"payment_options": []any{"ach_debit", "affirm"}, "transaction_purpose": "services", "payment_return_url": "https://example.com/return"}, true},
 	} {
-		for _, fixture := range []struct {
-			fields map[string]any
-			valid  bool
-		}{
-			{map[string]any{}, false},
-			{map[string]any{"payment_options": []any{}}, false},
-			{map[string]any{"payment_options": []any{"card"}}, true},
-			{map[string]any{"payment_options": []any{"ach_debit"}}, false},
-			{map[string]any{"payment_options": []any{"ach_debit"}, "transaction_purpose": "goods"}, true},
-			{map[string]any{"payment_options": []any{"card"}, "transaction_purpose": "goods"}, false},
-			{map[string]any{"payment_options": []any{"affirm"}}, false},
-			{map[string]any{"payment_options": []any{"affirm"}, "payment_return_url": "https://example.com/return"}, true},
-			{map[string]any{"payment_options": []any{"ach_debit", "affirm"}, "transaction_purpose": "services", "payment_return_url": "https://example.com/return"}, true},
-		} {
-			body := deepCopyMap(moneyInput)
-			body["_flint"] = map[string]any{"idempotency_key": "saved-test-action-1"}
-			for key, value := range fixture.fields {
-				body[key] = value
-			}
-			if err := validateMCPArguments(command, body); (err == nil) != fixture.valid {
-				t.Errorf("arguments %#v: %v (valid=%v)", body, err, fixture.valid)
-			}
+		body := deepCopyMap(fixture.fields)
+		body["amount_money"] = map[string]any{"amount": float64(1000), "currency": "USD"}
+		body["idempotency_key"] = "saved-test-action-1"
+		if err := validateMCPArguments(standalone, body); (err == nil) != fixture.valid {
+			t.Errorf("standalone arguments %#v: %v (valid=%v)", body, err, fixture.valid)
 		}
 	}
-	for _, body := range []map[string]any{{"order": "ord_123"}, {"order": "ord_123", "payment_options": []any{}}, {"order": "ord_123", "payment_options": []any{"ach_debit"}}} {
-		body["_flint"] = map[string]any{"idempotency_key": "saved-test-action-1"}
-		if err := validateMCPArguments(command, body); err != nil {
-			t.Fatalf("standalone conditions leaked into order input: %v", err)
+	for _, body := range []map[string]any{
+		{"amount": float64(1000), "currency": "USD", "payment_options": []any{"card"}},
+		{"order": "ord_123"},
+		{"amount_money": map[string]any{"amount": float64(1000), "currency": "USD"}, "payment_options": []any{"card"}, "order": "ord_123"},
+	} {
+		body["idempotency_key"] = "saved-test-action-1"
+		if err := validateMCPArguments(standalone, body); err == nil {
+			t.Errorf("accepted CLI convenience arguments: %#v", body)
+		}
+	}
+	// The order-specific API accepts omitted or empty payment_options and does
+	// not apply the standalone payment intent's ACH condition.
+	orderLinked, _ := registry.ByName("orders.payment-intents.create")
+	for _, body := range []map[string]any{
+		{"order_id": "ord_123"},
+		{"order_id": "ord_123", "payment_options": []any{}},
+		{"order_id": "ord_123", "payment_options": []any{"ach_debit"}},
+	} {
+		body["idempotency_key"] = "saved-test-action-1"
+		if err := validateMCPArguments(orderLinked, body); err != nil {
+			t.Errorf("standalone conditions leaked into order arguments %#v: %v", body, err)
 		}
 	}
 }

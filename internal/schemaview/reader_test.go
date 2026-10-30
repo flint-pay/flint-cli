@@ -147,3 +147,18 @@ func TestResolveArrayUnionAndBounds(t *testing.T) {
 		t.Fatal("array enum lost")
 	}
 }
+
+func TestConditionalExclusionKeepsIndependentFields(t *testing.T) {
+	schema := map[string]any{"type": "object", "properties": map[string]any{"status": map[string]any{"type": "string"}, "signing_methods": map[string]any{"type": "array", "items": map[string]any{"type": "string"}}},
+		"not": map[string]any{"required": []string{"status"}, "anyOf": []any{map[string]any{"required": []string{"signing_methods"}}}},
+	}
+	reader := New(nil)
+	flat, err := reader.Flatten(schema, 2, 600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	props := flat["properties"].(map[string]any)
+	if props["signing_methods"] == nil || props["status"] == nil {
+		t.Fatalf("conditional exclusion removed independently valid fields: %v", props)
+	}
+}

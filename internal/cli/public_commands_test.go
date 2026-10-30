@@ -516,16 +516,16 @@ func TestOperationSpecificSchemasPreserveAPIAlternatives(t *testing.T) {
 		{map[string]any{"type": "order", "order_id": "ord_test"}, true},
 		{map[string]any{"type": "order", "order_id": "ord_test", "quick_pay": map[string]any{}}, false},
 	} {
-		test.body["_flint"] = map[string]any{"idempotency_key": "saved-test-action-1"}
+		test.body["idempotency_key"] = "saved-test-action-1"
 		if err := validateMCPArguments(invoice, test.body); (err == nil) != test.valid {
 			t.Errorf("invoice schema validity=%t: %v", test.valid, err)
 		}
 	}
 	retry, _ := NewRegistry().ByName("subscriptions.payment-retries.create")
-	if err := validateMCPArguments(retry, map[string]any{"subscription_id": "sub_test", "_flint": map[string]any{"dry_run": "client", "idempotency_key": "saved-test-action-1"}}); err != nil {
-		t.Fatalf("empty request body rejected CLI arguments: %v", err)
+	if err := validateMCPArguments(retry, map[string]any{"subscription_id": "sub_test", "dry_run": true, "idempotency_key": "saved-test-action-1"}); err != nil {
+		t.Fatalf("empty request body rejected path arguments and execution controls: %v", err)
 	}
-	if err := validateMCPArguments(retry, map[string]any{"subscription_id": "sub_test", "unexpected": true, "_flint": map[string]any{"idempotency_key": "saved-test-action-1"}}); err == nil {
+	if err := validateMCPArguments(retry, map[string]any{"subscription_id": "sub_test", "unexpected": true, "idempotency_key": "saved-test-action-1"}); err == nil {
 		t.Fatal("empty request schema admitted unknown body field")
 	}
 }

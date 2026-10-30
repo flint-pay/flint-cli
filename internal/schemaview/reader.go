@@ -347,14 +347,21 @@ func (r *Reader) discriminatorName(base map[string]any, branches []map[string]an
 }
 func forbiddenFields(schema map[string]any) []string {
 	not := schemaMap(schema["not"])
+	// Only unconditional exclusions remove fields from a discovery view.
+	// not:{required:[status],anyOf:[{required:[name]}]} forbids the
+	// combination, while both fields remain valid on their own.
+	if len(not) != 1 {
+		return nil
+	}
 	sets := arrayOf(not["anyOf"])
 	if len(sets) == 0 {
 		sets = []any{not}
 	}
 	out := []string{}
 	for _, raw := range sets {
-		required := stringsOf(schemaMap(raw)["required"])
-		if len(required) == 1 {
+		branch := schemaMap(raw)
+		required := stringsOf(branch["required"])
+		if len(branch) == 1 && len(required) == 1 {
 			out = append(out, required[0])
 		}
 	}
