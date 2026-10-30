@@ -146,7 +146,11 @@ func TestContextReviewReauthProjectPinPreservesProfile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if after.Profiles["default"] != before.Profiles["default"] {
+	beforeProfile, afterProfile := before.Profiles["default"], after.Profiles["default"]
+	// Credential migration records its store and presence without changing the selection.
+	beforeProfile.CredentialStore = afterProfile.CredentialStore
+	beforeProfile.CredentialPresent = afterProfile.CredentialPresent
+	if afterProfile != beforeProfile {
 		t.Fatal("reauthorizing a project changed the profile default")
 	}
 	c, e := decodeOAuthCredential(stored())

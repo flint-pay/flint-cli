@@ -17,6 +17,9 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 			return a.fail(configError("ENVIRONMENT_CREDENTIAL_ACTIVE", "Unset "+name+" before browser login; it would override the saved credential.", nil), opts)
 		}
 	}
+	if a.commandContext().Err() != nil {
+		return a.fail(loginRequestError(a.commandContext(), nil), opts)
+	}
 	resolved, _, err := a.resolveConfig(opts)
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)

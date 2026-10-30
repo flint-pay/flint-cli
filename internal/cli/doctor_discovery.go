@@ -33,7 +33,7 @@ func (a *App) finishDoctorChecks(checks []map[string]any, opts Options, baseURL 
 		}
 		if !hasConnectivity {
 			connectivity := map[string]any{"name": "connectivity", "status": "pass"}
-			if discoveryError != nil && discoveryError.ExitCode == ExitNetwork {
+			if discoveryError != nil && (discoveryError.ExitCode == ExitNetwork || discoveryError.Code == "INVALID_BASE_URL") {
 				connectivity["status"] = "fail"
 				connectivity["fix"] = discoveryError.Message
 			}
