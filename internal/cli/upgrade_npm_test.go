@@ -196,9 +196,6 @@ func TestNPMUpgradeWithOfflinePackages(t *testing.T) {
 						}
 					}
 					output, err := isolatedNPM(ctx, args...)
-					if err != nil {
-						t.Logf("offline npm install failed: %v\n%s", err, output)
-					}
 					if args[0] == "install" {
 						npmCompleted = err == nil
 						if err == nil && tc.newerUpgrade {
