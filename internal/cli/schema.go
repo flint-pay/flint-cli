@@ -15,6 +15,7 @@ type openAPIDocument struct {
 	OpenAPI           string                                 `json:"openapi"`
 	JSONSchemaDialect string                                 `json:"jsonSchemaDialect"`
 	FlintAPIVersion   string                                 `json:"x-flint-api-version"`
+	FlintScopes       []openAPIScope                         `json:"x-flint-scopes"`
 	FlintCLIScopes    []string                               `json:"x-flint-cli-bootstrap-scopes"`
 	FlintCLIAllowed   []string                               `json:"x-flint-cli-allowed-scopes"`
 	Info              map[string]any                         `json:"info"`
@@ -24,6 +25,41 @@ type openAPIDocument struct {
 	} `json:"components"`
 	Webhooks        map[string]any `json:"webhooks"`
 	WebhookMetadata map[string]any `json:"x-flint-webhooks"`
+}
+
+type openAPIScope struct {
+	Name     string   `json:"name"`
+	KeyModes []string `json:"key_modes"`
+}
+
+// Only explicit live-only metadata rules out obtaining a missing scope in a
+// sandbox. Missing or unfamiliar metadata keeps the existing guidance.
+func (doc openAPIDocument) scopeNeedsLiveKey(scope, environment string) bool {
+	if environment == "sandbox" {
+		environment = "test"
+	}
+	if environment != "test" {
+		return false
+	}
+	for _, metadata := range doc.FlintScopes {
+		if metadata.Name == scope {
+			return len(metadata.KeyModes) == 1 && metadata.KeyModes[0] == "live"
+		}
+	}
+	return false
+}
+
+func missingScopeGuidance(scopes []string, environment string) (eligible, liveOnly []string) {
+	doc, _ := loadOpenAPI()
+	eligible, liveOnly = []string{}, []string{}
+	for _, scope := range scopes {
+		if doc.scopeNeedsLiveKey(scope, environment) {
+			liveOnly = append(liveOnly, scope)
+		} else {
+			eligible = append(eligible, scope)
+		}
+	}
+	return eligible, liveOnly
 }
 
 func embeddedInitialCLIScopes() []string {
