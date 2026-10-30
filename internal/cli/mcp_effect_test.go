@@ -80,3 +80,30 @@ func TestMCPWriteSelectionKeepsDeclaredIdentity(t *testing.T) {
 		t.Fatalf("error=%v", e)
 	}
 }
+
+func TestMCPDryRunWorkloadKeepsVerifiedPermissions(t *testing.T) {
+	app, _, _ := testApp(t, "http://127.0.0.1:1")
+	t.Setenv("FLINT_API_KEY", "")
+	t.Setenv("FLINT_ACCESS_TOKEN", "")
+	t.Setenv("FLINT_WORKLOAD_IDENTITY_ID", "wid_synthetic")
+	t.Setenv("FLINT_OIDC_SOURCE", "github_actions")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "http://127.0.0.1:1/subject-token")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "synthetic")
+	index, err := app.operationIndex()
+	if err != nil {
+		t.Fatal(err)
+	}
+	app.mcpAuth = &mcpAuthState{index: index, auth: AuthContext{AuthType: "workload_identity", Environment: "live", Scopes: allTestScopes()}, known: true}
+	result := mcpCall(t, app, defaultOptions(), "flint_write", map[string]any{"operation": "refunds.create", "arguments": map[string]any{"payment_intent_id": "pi_synthetic", "refund_type": "full"}, "idempotency_key": "offline-workload", "dry_run": true})
+	if result["isError"] == true {
+		t.Fatal(mcpResultText(result))
+	}
+	data := mcpResultJSON(t, result).(map[string]any)
+	if lookupPathValue(data, "data.permission_check.status") != "pass" {
+		t.Fatalf("permissions=%v", data)
+	}
+	auth, known := app.mcpAuth.snapshot()
+	if !known || auth.Environment != "live" || len(auth.Scopes) == 0 {
+		t.Fatalf("dry run replaced verified context: %+v", auth)
+	}
+}

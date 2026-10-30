@@ -119,7 +119,7 @@ func (a *App) Run(argv []string) int {
 	}
 	authContext := authEnvelope.Data
 	a.observeCachedAuthContext(authContext)
-	if a.mcpAuth != nil && authContext.AuthType != "" && authContext.AuthType != "none" && authContext.AuthType != "session" {
+	if a.mcpAuth != nil && !opts.DryRunClient() && authContext.AuthType != "" && authContext.AuthType != "none" && authContext.AuthType != "session" {
 		a.mcpAuth.store(authContext)
 	}
 	if authContext.OAuthGrantID != "" && strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) == "" && credentialFromEnvironment() == "" && workloadIdentityID() == "" {
