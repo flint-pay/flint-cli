@@ -305,7 +305,7 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 		return nil
 	}
 	for _, arg := range cmd.Arguments {
-		if arg.Query == "" || len(arg.Enum) == 0 {
+		if arg.Query == "" || len(arg.Enum) == 0 || cmd.CanonicalName == "listen" {
 			continue
 		}
 		for _, value := range o.Raw[strings.TrimPrefix(arg.Flag, "--")] {

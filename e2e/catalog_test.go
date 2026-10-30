@@ -359,6 +359,13 @@ func builtRemoteInvocation(command *cli.Command) []string {
 }
 
 func builtArgumentValues(argument cli.Arg) []string {
+	if len(argument.Enum) > 0 {
+		count := 1
+		if argument.Repeat {
+			count = min(2, len(argument.Enum))
+		}
+		return append([]string(nil), argument.Enum[:count]...)
+	}
 	if argument.Type == "boolean" {
 		return []string{"true"}
 	}

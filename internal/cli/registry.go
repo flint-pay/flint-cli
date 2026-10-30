@@ -94,18 +94,7 @@ func newRegistry(includeAPI bool) *Registry {
 		for i := range c.Arguments {
 			arg := &c.Arguments[i]
 			if schema := parameters["query:"+arg.Query]; arg.Query != "" && schema != nil {
-				arg.Repeat = publicSchemaType(schema) == "array"
-				arg.Type = openAPIArgumentType(publicSchemaType(schema), schema)
-				if arg.Repeat {
-					schema, _ = schema["items"].(map[string]any)
-				}
-				if enum, ok := schema["enum"].([]any); ok {
-					for _, value := range enum {
-						if text, ok := value.(string); ok {
-							arg.Enum = append(arg.Enum, text)
-						}
-					}
-				}
+				applyQueryArgumentContract(arg, schema)
 			}
 			if c.Arguments[i].Type == "time" {
 				c.Arguments[i].Description += "; also accepts today, this_week, yesterday, a date, or a duration such as 7d (calendar values use the reporting timezone)"
