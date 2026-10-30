@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -105,5 +106,31 @@ func TestMCPDryRunWorkloadKeepsVerifiedPermissions(t *testing.T) {
 	auth, known := app.mcpAuth.snapshot()
 	if !known || auth.Environment != "live" || len(auth.Scopes) == 0 {
 		t.Fatalf("dry run replaced verified context: %+v", auth)
+	}
+}
+
+func TestMCPSelectedWriteIdentityThroughResponseVariants(t *testing.T) {
+	app, _, _ := testApp(t, "")
+	for _, tc := range []struct{ operation, id, selection string }{
+		{"customers.create", "customer_id", "name"},
+		{"refunds.create", "refund_id", "reason"},
+		{"checkout-sessions.create", "checkout_session_id", "url"},
+		{"api-keys.create", "api_key_id", "name"},
+		{"payment-intents.create", "payment_intent_id", "capture_method"},
+	} {
+		t.Run(tc.operation, func(t *testing.T) {
+			cmd := mustMCPTool(t, app, tc.operation)
+			if got := mcpOwnIDField(cmd); got != tc.id {
+				t.Fatalf("identity=%q want %s", got, tc.id)
+			}
+			value := map[string]any{"data": map[string]any{tc.id: "own_id", tc.selection: "selected", "status": "succeeded", "unselected": "hidden"}}
+			got, warning, e := mcpProjectResult(context.Background(), cmd, value, Options{Select: []string{tc.selection}})
+			if e != nil || warning != "" {
+				t.Fatalf("error=%v warning=%s", e, warning)
+			}
+			if lookupPathValue(got, "data."+tc.id) != "own_id" || lookupPathValue(got, "data.status") != "succeeded" || lookupPathValue(got, "data.unselected") != nil {
+				t.Fatalf("projection=%v", got)
+			}
+		})
 	}
 }

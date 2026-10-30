@@ -188,15 +188,53 @@ func mcpValidateSelect(cmd *Command, controls map[string]any) *CLIError {
 }
 
 func mcpOwnIDField(cmd *Command) string {
-	schema, defs := resourceOutputSchema(cmd)
-	if schema == nil {
+	if runtimeOutputSchema(cmd) {
 		return ""
 	}
-	ref, _ := schema["$ref"].(string)
-	name := strings.TrimPrefix(ref, "#/$defs/")
-	if name == "" {
-		name = strings.TrimSuffix(cmd.OutputSchema, "Response")
+	schema, e := schemaForCommand(cmd, false)
+	if e != nil {
+		return ""
 	}
+	defs, _ := schema["$defs"].(map[string]any)
+	var identity func(map[string]any, string, int) string
+	identity = func(node map[string]any, name string, depth int) string {
+		if node == nil || depth > 64 {
+			return ""
+		}
+		if ref, ok := node["$ref"].(string); ok {
+			name = strings.TrimPrefix(ref, "#/$defs/")
+			target, _ := defs[name].(map[string]any)
+			return identity(target, name, depth+1)
+		}
+		properties, _ := node["properties"].(map[string]any)
+		if data, ok := properties["data"].(map[string]any); ok {
+			return identity(data, "", depth+1)
+		}
+		if items, ok := node["items"].(map[string]any); ok {
+			return identity(items, "", depth+1)
+		}
+		if name != "" {
+			field := mcpSchemaIDField(name)
+			if _, ok, _ := outputSchemaPath(node, defs, []string{field}, 0); ok {
+				return field
+			}
+		}
+		// Response variants such as APIKeyWithSecret compose the canonical resource.
+		for _, keyword := range []string{"allOf", "anyOf", "oneOf"} {
+			branches, _ := node[keyword].([]any)
+			for _, branch := range branches {
+				child, _ := branch.(map[string]any)
+				if field := identity(child, "", depth+1); field != "" {
+					return field
+				}
+			}
+		}
+		return ""
+	}
+	return identity(schema, cmd.OutputSchema, 0)
+}
+
+func mcpSchemaIDField(name string) string {
 	chars := []rune(name)
 	var out strings.Builder
 	for i, ch := range chars {
@@ -205,11 +243,7 @@ func mcpOwnIDField(cmd *Command) string {
 		}
 		out.WriteRune(unicode.ToLower(ch))
 	}
-	field := strings.ReplaceAll(out.String(), "o_auth", "oauth") + "_id"
-	if _, ok, _ := outputSchemaPath(schema, defs, []string{field}, 0); ok {
-		return field
-	}
-	return ""
+	return strings.ReplaceAll(out.String(), "o_auth", "oauth") + "_id"
 }
 
 // A committed write retains its identity and reports absent optional fields as warnings.
