@@ -277,16 +277,6 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 			a.invalidateAuthContext(baseURL, key)
 		}
-		if resp.StatusCode == http.StatusUnauthorized && credential == workloadCredential && !federationRetried && replaySafe && attempt < 3 {
-			resp.Body.Close()
-			cancelAttempt()
-			federationRetried = true
-			if _, e := a.workloadToken(ctx, baseURL, key); e != nil {
-				return nil, e
-			}
-			continue
-		}
-
 		raw, readErr := io.ReadAll(io.LimitReader(resp.Body, (16<<20)+1))
 		resp.Body.Close()
 		cancelAttempt()
@@ -376,6 +366,18 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 			history.failure(fact, e, false)
 			if federated {
 				e = redactFederationError(e, key)
+			}
+			if resp.StatusCode == http.StatusUnauthorized && credential == workloadCredential {
+				// A credential refresh must obey the server's retry policy too.
+				// Refresh once, only after reading the complete error response.
+				if federationRetried || !replaySafe || !errorRetryable(e) || !retryRequest(ctx, attempt, resp.Header.Get("Retry-After")) {
+					return nil, e
+				}
+				federationRetried = true
+				if _, tokenErr := a.workloadToken(ctx, baseURL, key); tokenErr != nil {
+					return nil, tokenErr
+				}
+				continue
 			}
 			if replaySafe && errorRetryable(e) && retryRequest(ctx, attempt, resp.Header.Get("Retry-After")) {
 				continue

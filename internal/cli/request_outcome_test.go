@@ -284,3 +284,41 @@ func TestRequestOutcomeRetainsAmbiguityBeforeRefusedAttempt(t *testing.T) {
 		})
 	}
 }
+
+func TestRequestBudgetFederationObeysServerRetry(t *testing.T) {
+	for _, method := range []string{"GET", "POST"} {
+		for _, retry := range []string{"none", "after_refresh", "same_request", ""} {
+			t.Run(method+"/"+retry, func(t *testing.T) {
+				var exchanges, requests atomic.Int32
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path == "/v1/oauth/token" {
+						writeExchange(w, int(exchanges.Add(1)))
+						return
+					}
+					requests.Add(1)
+					if method == "POST" && r.Header.Get("Idempotency-Key") != "saved-action" {
+						t.Error("key changed on credential refresh")
+					}
+					w.WriteHeader(401)
+					if retry != "" {
+						fmt.Fprintf(w, `{"error":{"code":"TEST","remediation":{"retry":%q}}}`, retry)
+					}
+				}))
+				defer server.Close()
+				app := federationApp(t, server.URL)
+				key := ""
+				if method == "POST" {
+					key = "saved-action"
+				}
+				_, e := app.doRequestWithin(t.Context(), 10*time.Second, server.URL, workloadCredential, method, "/v1/customers", nil, key, false)
+				want := int32(1)
+				if retry == "same_request" {
+					want = 2
+				}
+				if e == nil || e.HTTPStatus != 401 || requests.Load() != want || exchanges.Load() != want {
+					t.Fatalf("requests=%d exchanges=%d e=%+v", requests.Load(), exchanges.Load(), e)
+				}
+			})
+		}
+	}
+}

@@ -327,6 +327,7 @@ func TestFederationGuardsAnd401(t *testing.T) {
 		apiRequests.Add(1)
 		if r.Header.Get("Authorization") == "Bearer fwat_synthetic_1" {
 			w.WriteHeader(401)
+			fmt.Fprint(w, `{"error":{"code":"TEST","remediation":{"retry":"same_request"}}}`)
 			return
 		}
 		_, _ = io.WriteString(w, `{"data":[]}`)
@@ -367,6 +368,7 @@ func TestFederationGuardsAnd401(t *testing.T) {
 		}
 		apiRequests.Add(1)
 		w.WriteHeader(401)
+		fmt.Fprint(w, `{"error":{"code":"TEST","remediation":{"retry":"same_request"}}}`)
 	}))
 	defer always401.Close()
 	t.Setenv("FLINT_OIDC_TOKEN", subjectJWT(always401.URL, time.Now().Add(time.Hour), "second-server"))
