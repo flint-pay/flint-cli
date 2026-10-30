@@ -150,7 +150,7 @@ func normalizeOutput(value any) (any, *CLIError) {
 		err = decodeJSONNumbers(raw, &value)
 	}
 	if err != nil {
-		outputErr := cliError(ExitSoftware, "internal_error", "OUTPUT_ENCODING_FAILED", "Could not encode command output.")
+		outputErr := cliError(ExitSoftware, errorTypeInternal, "OUTPUT_ENCODING_FAILED", "Could not encode command output.")
 		outputErr.Cause = err
 		return nil, outputErr
 	}

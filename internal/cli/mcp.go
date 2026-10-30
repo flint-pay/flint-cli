@@ -1934,7 +1934,7 @@ func mcpEventList() (map[string]any, *CLIError) {
 	summaries, err := eventTypeSummaries()
 	doc, docErr := loadOpenAPI()
 	if err != nil || docErr != nil {
-		return nil, cliError(ExitUsage, "internal_error", "SCHEMA_SNAPSHOT_INVALID", "The embedded webhook catalog could not be read.")
+		return nil, cliError(ExitUsage, errorTypeInternal, "SCHEMA_SNAPSHOT_INVALID", "The embedded webhook catalog could not be read.")
 	}
 	data := map[string]any{
 		"event_types": summaries,
@@ -1955,7 +1955,7 @@ func mcpEventSchemas(filter string) (any, *CLIError) {
 	match := func(eventType string) bool { return eventType == filter || strings.HasPrefix(eventType, filter+".") }
 	catalog, err := eventCatalogFor(match)
 	if err != nil {
-		return nil, cliError(ExitUsage, "internal_error", "SCHEMA_SNAPSHOT_INVALID", err.Error())
+		return nil, cliError(ExitUsage, errorTypeInternal, "SCHEMA_SNAPSHOT_INVALID", err.Error())
 	}
 	if webhooks, _ := catalog["webhooks"].(map[string]any); len(webhooks) > 0 {
 		return catalog, nil
@@ -2122,7 +2122,7 @@ func mcpResultTooLarge(cmd *Command, args map[string]any, value any) map[string]
 		return nil
 	}
 	message := fmt.Sprintf("The result is %d bytes, over this server's %d byte limit for one tool result, so it was not returned. Narrow it and call again: keep only the fields you need with _flint.select or _flint.jq, use page_size and page_token instead of _flint.all, or add filter arguments (schema_events takes event_type).", len(raw), mcpMaxResultBytes)
-	return mcpToolError(message, map[string]any{"error": map[string]any{"type": "usage_error", "code": "RESULT_TOO_LARGE", "message": message, "details": map[string]any{"bytes": len(raw), "limit": mcpMaxResultBytes}}})
+	return mcpToolError(message, map[string]any{"error": map[string]any{"type": errorTypeUsage, "code": "RESULT_TOO_LARGE", "message": message, "details": map[string]any{"bytes": len(raw), "limit": mcpMaxResultBytes}}})
 }
 
 // mcpWithWarnings adds CLI warnings to a successful result as their own text
@@ -2150,7 +2150,7 @@ func (a *App) runMCPTool(ctx context.Context, cmd *Command, args map[string]any,
 		}
 		approved, message := a.mcpAskConfirmation(ctx, session, cmd, args, outcome)
 		if !approved {
-			return mcpToolError(message, map[string]any{"error": map[string]any{"type": "confirmation_required", "code": "CONFIRMATION_DECLINED", "message": message}})
+			return mcpToolError(message, map[string]any{"error": map[string]any{"type": errorTypeConfirmationRequired, "code": "CONFIRMATION_DECLINED", "message": message}})
 		}
 		outcome = a.runMCPCommand(ctx, cmd, args, opts, policy, append(extra, "--confirm=true"))
 	}
@@ -2587,7 +2587,7 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 		if blocked || mcpErrorField(probe, "code") == "LIVE_ACKNOWLEDGEMENT_REQUIRED" {
 			outcome.liveBlocked = true
 			outcome.environment = "live"
-			outcome.value = map[string]any{"error": map[string]any{"type": "configuration_error", "code": "LIVE_ACCESS_DISABLED", "message": mcpLiveDisabledMessage}}
+			outcome.value = map[string]any{"error": map[string]any{"type": errorTypeConfiguration, "code": "LIVE_ACCESS_DISABLED", "message": mcpLiveDisabledMessage}}
 			outcome.exit = ExitAuth
 			return outcome
 		}

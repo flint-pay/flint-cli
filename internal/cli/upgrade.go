@@ -140,7 +140,7 @@ func (a *App) localUpgrade(cmd *Command, opts Options) int {
 	if !ok {
 		return a.fail(&CLIError{
 			ExitCode: ExitSoftware,
-			Type:     "upgrade_error",
+			Type:     errorTypeUpgrade,
 			Code:     "UNRELEASED_BUILD",
 			Message:  "This Flint CLI build does not have a release version. Install a published release before using flint upgrade.",
 		}, opts)
@@ -193,7 +193,7 @@ func (a *App) localUpgrade(cmd *Command, opts Options) int {
 		if a.runtimeGOOS == "windows" {
 			return a.fail(&CLIError{
 				ExitCode: ExitUsage,
-				Type:     "upgrade_error",
+				Type:     errorTypeUpgrade,
 				Code:     "RESTART_REQUIRED",
 				Message:  "Close Flint CLI, then run npm install -g @flintpay/cli@" + latest.raw + ". Windows cannot replace the running platform binary.",
 			}, opts)
@@ -218,7 +218,7 @@ func (a *App) localUpgrade(cmd *Command, opts Options) int {
 		}
 		return a.fail(&CLIError{
 			ExitCode: ExitUsage,
-			Type:     "upgrade_error",
+			Type:     errorTypeUpgrade,
 			Code:     "UNSUPPORTED_PLATFORM",
 			Message:  message,
 		}, opts)
@@ -227,7 +227,7 @@ func (a *App) localUpgrade(cmd *Command, opts Options) int {
 	if arch != "amd64" && arch != "arm64" {
 		return a.fail(&CLIError{
 			ExitCode: ExitUsage,
-			Type:     "upgrade_error",
+			Type:     errorTypeUpgrade,
 			Code:     "UNSUPPORTED_PLATFORM",
 			Message:  "Flint CLI does not publish an upgrade archive for this processor architecture.",
 		}, opts)
@@ -779,7 +779,7 @@ func githubReleaseAPIError(response *http.Response) *CLIError {
 		failure.Message = fmt.Sprintf("GitHub refused the latest Flint CLI release lookup (HTTP %d). Check GITHUB_TOKEN permissions or retry later.", status)
 		return failure
 	}
-	failure.Type = "rate_limit_error"
+	failure.Type = errorTypeRateLimit
 	failure.Code = "GITHUB_RATE_LIMITED"
 	failure.Message = "GitHub API rate limit reached while looking up the latest Flint CLI release."
 	details := map[string]any{}
@@ -806,5 +806,5 @@ func githubReleaseAPIError(response *http.Response) *CLIError {
 }
 
 func upgradeFailure(code, message string, cause error) *CLIError {
-	return &CLIError{ExitCode: ExitSoftware, Type: "upgrade_error", Code: code, Message: message, Cause: cause}
+	return &CLIError{ExitCode: ExitSoftware, Type: errorTypeUpgrade, Code: code, Message: message, Cause: cause}
 }

@@ -263,7 +263,7 @@ func (a *App) finishListen(ctx context.Context, opts Options, state *listenStrea
 		if state.cursor != "" {
 			message += " Resume after the last one with --cursor " + state.cursor + "."
 		}
-		e := cliError(ExitWait, "wait_condition_unmet", "EXPECTED_EVENTS_NOT_RECEIVED", message)
+		e := cliError(ExitWait, errorTypeWaitConditionUnmet, "EXPECTED_EVENTS_NOT_RECEIVED", message)
 		e.Details = map[string]any{"expected": opts.MaxEvents, "received": state.processed, "cursor": state.cursor}
 		return nil, e
 	}
@@ -292,7 +292,7 @@ func listenForwardFailedError(opts Options, state *listenStreamState) *CLIError 
 		noun = "event"
 	}
 	message := fmt.Sprintf("%d of %d webhook %s could not be delivered to %s. %s", state.failed, state.events, noun, lastRawOption(opts, "forward-to"), listenReplayHint(state))
-	e := cliError(ExitAPI, "api_error", "WEBHOOK_FORWARD_FAILED", message)
+	e := cliError(ExitAPI, errorTypeAPI, "WEBHOOK_FORWARD_FAILED", message)
 	e.Param = "forward_to"
 	e.Details = map[string]any{"forwarded": state.forwarded, "failed": state.failed, "first_failed_event_id": state.firstFailed, "replay_cursor": state.replayCursor}
 	return e

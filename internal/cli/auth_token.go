@@ -68,7 +68,7 @@ func (a *App) localAuthToken(_ *Command, opts Options) int {
 		result["expires_at"] = expires.UTC().Format(time.RFC3339)
 	}
 	if err := writeJSON(a.Stdout, result); err != nil {
-		return a.fail(cliError(ExitSoftware, "internal_error", "OUTPUT_FAILED", "Could not write the access token."), opts)
+		return a.fail(cliError(ExitSoftware, errorTypeInternal, "OUTPUT_FAILED", "Could not write the access token."), opts)
 	}
 	return ExitOK
 }

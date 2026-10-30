@@ -542,7 +542,7 @@ func apiErrorFromResponse(resp *apiResponse) *CLIError {
 		message = fmt.Sprintf("Flint returned HTTP %d.", resp.Status)
 	}
 	retryable := responseRetryable(resp)
-	e := &CLIError{requestSent: true, retryable: &retryable, HTTPStatus: resp.Status, ExitCode: exit, Type: "api_error", Code: "HTTP_" + strconv.Itoa(resp.Status), Message: message}
+	e := &CLIError{requestSent: true, retryable: &retryable, HTTPStatus: resp.Status, ExitCode: exit, Type: errorTypeAPI, Code: "HTTP_" + strconv.Itoa(resp.Status), Message: message}
 	if m, ok := resp.Value.(map[string]any); ok {
 		if raw, ok := m["error"].(map[string]any); ok {
 			if v, ok := raw["type"].(string); ok {
@@ -591,7 +591,7 @@ func transportErrorReason(err error) string {
 }
 
 func networkError(code, message string, cause error) *CLIError {
-	return &CLIError{ExitCode: ExitNetwork, Type: "network_error", Code: code, Message: message, Cause: cause}
+	return &CLIError{ExitCode: ExitNetwork, Type: errorTypeNetwork, Code: code, Message: message, Cause: cause}
 }
 
 func withIdempotencyRetryContext(err *CLIError, idempotencyKey string) *CLIError {
@@ -698,7 +698,7 @@ func idempotencyRetryAdvice(retry, key string) string {
 }
 
 func invalidResponseError(code, message string, cause error) *CLIError {
-	return &CLIError{ExitCode: ExitAPI, Type: "api_error", Code: code, Message: message, Cause: cause}
+	return &CLIError{ExitCode: ExitAPI, Type: errorTypeAPI, Code: code, Message: message, Cause: cause}
 }
 
 func newIdempotencyKey() (string, error) {

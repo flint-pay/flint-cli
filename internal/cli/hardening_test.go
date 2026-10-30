@@ -178,7 +178,7 @@ func TestLocalConfigAndSchemaCommands(t *testing.T) {
 		{argv: []string{"schema", "input", "customers.list"}, want: `"$schema": "https://json-schema.org/draft/2020-12/schema"`},
 		{argv: []string{"schema", "output", "customers.list"}, want: `"$schema": "https://json-schema.org/draft/2020-12/schema"`},
 		{argv: []string{"schema", "errors"}, want: `"wait_condition_unmet"`},
-		{argv: []string{"schema", "events"}, want: `"webhooks"`},
+		{argv: []string{"schema", "events"}, want: `"event_types"`},
 	} {
 		stdout.Reset()
 		stderr.Reset()

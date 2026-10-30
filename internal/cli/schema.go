@@ -133,7 +133,7 @@ func validateExpansions(operationID string, values []string) *CLIError {
 	}
 	valid, err := expansionValues(operationID)
 	if err != nil {
-		return cliError(ExitUsage, "internal_error", "SCHEMA_SNAPSHOT_INVALID", err.Error())
+		return cliError(ExitUsage, errorTypeInternal, "SCHEMA_SNAPSHOT_INVALID", err.Error())
 	}
 	allowed := map[string]bool{}
 	for _, value := range valid {
@@ -238,7 +238,7 @@ func requestBodySchema(c *Command) (map[string]any, *CLIError) {
 func commandSchema(c *Command, input, alternatives bool) (map[string]any, *CLIError) {
 	doc, err := loadOpenAPI()
 	if err != nil {
-		return nil, cliError(ExitUsage, "internal_error", "SCHEMA_SNAPSHOT_INVALID", err.Error())
+		return nil, cliError(ExitUsage, errorTypeInternal, "SCHEMA_SNAPSHOT_INVALID", err.Error())
 	}
 	name := c.OutputSchema
 	if input {
@@ -697,10 +697,35 @@ func commandNameSuggestions(r *Registry, input string, groups bool) []string {
 	return out[:min(3, len(out))]
 }
 
+func errorCatalogTypes() []string {
+	doc, err := loadOpenAPI()
+	if err != nil {
+		panic("load embedded OpenAPI error types: " + err.Error())
+	}
+	types := map[string]bool{}
+	for _, typ := range localErrorTypes {
+		types[typ] = true
+	}
+	properties, _ := doc.Components.Schemas["ErrorObject"]["properties"].(map[string]any)
+	typeSchema, _ := properties["type"].(map[string]any)
+	apiTypes, _ := typeSchema["enum"].([]any)
+	for _, raw := range apiTypes {
+		if typ, ok := raw.(string); ok {
+			types[typ] = true
+		}
+	}
+	result := make([]string, 0, len(types))
+	for typ := range types {
+		result = append(result, typ)
+	}
+	sort.Strings(result)
+	return result
+}
+
 func errorCatalog() map[string]any {
 	return map[string]any{
 		"exit_codes": []map[string]any{{"code": 0, "meaning": "success"}, {"code": 1, "meaning": "api_error"}, {"code": 2, "meaning": "usage_error"}, {"code": 3, "meaning": "auth_or_config_error"}, {"code": 4, "meaning": "confirmation_required"}, {"code": 5, "meaning": "network_or_timeout_error"}, {"code": 6, "meaning": "wait_condition_unmet"}, {"code": 70, "meaning": "internal_error"}},
-		"types":      []string{"usage_error", "validation_error", "authentication_error", "authorization_error", "confirmation_required", "network_error", "timeout_error", "rate_limit_error", "conflict_error", "not_found_error", "unavailable_error"},
+		"types":      errorCatalogTypes(),
 		"listen_codes": []map[string]any{
 			{"code": "STREAM_BOUND_REQUIRED", "exit_code": ExitUsage},
 			{"code": "INVALID_FORWARD_URL", "exit_code": ExitUsage},

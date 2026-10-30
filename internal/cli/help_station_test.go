@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -368,6 +369,43 @@ func TestSupportOpenDerivesTheEnvironmentFromTheCredential(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSupportProductAreasMatchHelpComposer(t *testing.T) {
+	want := []string{
+		"checkout", "payments", "payouts", "disputes", "invoices", "subscriptions",
+		"payment_links", "api", "webhooks", "dashboard", "documentation", "flint_billing", "account", "sales",
+	}
+	if !slices.Equal(supportProductAreas, want) {
+		t.Fatalf("support product areas = %v, want %v", supportProductAreas, want)
+	}
+	app, stdout, stderr := testApp(t, "http://127.0.0.1:1")
+	t.Setenv("FLINT_HELP_URL", "https://help.example.com")
+	if exit := app.Run([]string{"support", "open", "--area", "disputes", "--no-open", "--output", "json"}); exit != ExitOK {
+		t.Fatalf("exit=%d stderr=%s", exit, stderr)
+	}
+	var envelope struct {
+		Data struct {
+			URL string `json:"url"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	link, err := url.Parse(envelope.Data.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if link.Query().Get("area") != "disputes" {
+		t.Fatalf("composer URL lost disputes area: %s", envelope.Data.URL)
+	}
+	command, _ := app.Registry.ByName("support.open")
+	for _, arg := range command.Arguments {
+		if arg.Name == "area" && strings.Contains(arg.Description, "disputes") {
+			return
+		}
+	}
+	t.Fatal("support help does not list disputes")
 }
 
 func TestSupportOpenRejectsAnUndocumentedProductArea(t *testing.T) {
