@@ -16,6 +16,7 @@ const signupNextCommand = `flint payment-links create --name "Test payment" --it
 // output. Bind the token to its API origin so a resumed run cannot disclose it
 // to a different server.
 type SignupChallenge struct {
+	CredentialStore   string              `json:"credential_store,omitempty"`
 	VerificationToken string              `json:"verification_token"`
 	Email             string              `json:"email"`
 	FirstName         string              `json:"first_name"`
@@ -128,6 +129,9 @@ func (a *App) startSignupChallenge(profile string, details, expected *SignupChal
 		return nil, invalidResponseError("INVALID_SIGNUP_RESPONSE", "Flint did not return an email verification token.", nil)
 	}
 	pending := *details
+	if a.credentialStore != "" {
+		pending.CredentialStore = a.credentialStore
+	}
 	pending.VerificationToken, pending.Attempts, pending.ExpiresAt = token, 0, time.Time{}
 	pending.VerificationKey, pending.VerificationCode = "", ""
 	pending.SessionToken, pending.SessionExpiresAt = "", time.Time{}
@@ -251,6 +255,9 @@ func (a *App) signupCommand(command, profile, baseURL string) string {
 	unflagged, _, err := a.resolveConfig(Options{})
 	if profile != "default" || err != nil || profile != unflagged.ProfileName {
 		command += " --profile '" + strings.ReplaceAll(profile, "'", "'\"'\"'") + "'"
+	}
+	if a.credentialStore == "file" {
+		command += " --credential-store file"
 	}
 	// Raw API keys do not carry an origin in the credential store. Include the
 	// origin in continuation instructions so they survive environment changes.

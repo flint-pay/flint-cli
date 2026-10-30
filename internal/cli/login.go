@@ -20,14 +20,12 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	if a.commandContext().Err() != nil {
 		return a.fail(loginRequestError(a.commandContext(), nil), opts)
 	}
-	resolved, _, err := a.resolveConfig(opts)
+	resolved, cfg, err := a.resolveConfig(opts)
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
 	}
-	previousRaw, err := a.loadSavedCredential(resolved.ProfileName)
-	if err != nil {
-		return a.fail(credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the existing profile credential before login.", err), opts)
-	}
+	previousStore := a.credentialStore
+	defer func() { a.credentialStore = previousStore }()
 	baseURL := a.BaseURL
 	if baseURL == "" {
 		baseURL = strings.TrimSpace(os.Getenv("FLINT_BASE_URL"))
@@ -67,6 +65,9 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 				return a.fail(configError("PENDING_LOGIN_READ_FAILED", err.Error(), err), opts)
 			}
 			if saved != nil {
+				if a.credentialStore == "" {
+					a.credentialStore = saved.CredentialStore
+				}
 				if opts.Live != saved.Live || resolved.MerchantGuard != saved.MerchantGuard || resolved.SandboxGuard != saved.SandboxGuard || resolved.ContextID != saved.ContextID {
 					return a.fail(usageError("PENDING_LOGIN_OPTIONS_MISMATCH", "Pending login has different environment or context guards. Resume with "+saved.nextCommand()+", keeping the original FLINT_BASE_URL and context/guard configuration, or use --new-session.", "login"), opts)
 				}
@@ -76,6 +77,11 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 				requestedScopes = saved.AdditionalScopes
 			}
 		}
+	}
+	a.credentialStore = a.selectedCredentialStore(resolved.ProfileName, cfg.Profiles[resolved.ProfileName])
+	previousRaw, err := a.loadSavedCredential(resolved.ProfileName)
+	if err != nil {
+		return a.fail(credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the existing profile credential before login.", err), opts)
 	}
 	var previous oauthCredential
 	if isOAuthCredential(previousRaw) {
@@ -227,7 +233,7 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 				return a.fail(networkError("OUTPUT_WRITE_FAILED", "Could not display browser login instructions.", err), opts)
 			}
 		}
-		pending := pendingLogin{Device: device, ExpiresAt: expiresAt, BaseURL: baseURL, RequestedScopes: scopes, AdditionalScopes: requestedScopes, Profile: resolved.ProfileName, Live: opts.Live, MerchantGuard: resolved.MerchantGuard, SandboxGuard: resolved.SandboxGuard, ContextID: resolved.ContextID}
+		pending := pendingLogin{CredentialStore: a.credentialStore, Device: device, ExpiresAt: expiresAt, BaseURL: baseURL, RequestedScopes: scopes, AdditionalScopes: requestedScopes, Profile: resolved.ProfileName, Live: opts.Live, MerchantGuard: resolved.MerchantGuard, SandboxGuard: resolved.SandboxGuard, ContextID: resolved.ContextID}
 		pendingPath, err := a.pendingLoginPath(resolved.ProfileName)
 		if err == nil {
 			err = writePrivateJSON(pendingPath, pending)

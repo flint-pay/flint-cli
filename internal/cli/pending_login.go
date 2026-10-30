@@ -20,6 +20,7 @@ type loginDevice struct {
 }
 
 type pendingLogin struct {
+	CredentialStore  string      `json:"credential_store,omitempty"`
 	Device           loginDevice `json:"device"`
 	ExpiresAt        time.Time   `json:"expires_at"`
 	BaseURL          string      `json:"base_url"`
@@ -38,6 +39,9 @@ func (pending pendingLogin) nextCommand() string {
 		command += " --live"
 	}
 	command += " --profile " + quoteRemediationArgument(pending.Profile)
+	if pending.CredentialStore != "" {
+		command += " --credential-store " + pending.CredentialStore
+	}
 	if pending.MerchantGuard != "" {
 		command += " --merchant " + quoteRemediationArgument(pending.MerchantGuard)
 	}
@@ -71,6 +75,9 @@ func (a *App) loadPendingLogin(profile, baseURL string) (*pendingLogin, error) {
 	var pending pendingLogin
 	if err := json.Unmarshal(raw, &pending); err != nil {
 		return nil, errors.New("saved pending login is invalid; remove " + path + " and retry")
+	}
+	if pending.CredentialStore != "" && pending.CredentialStore != "keyring" && pending.CredentialStore != "file" {
+		return nil, errors.New("saved pending login credential_store must be keyring or file")
 	}
 	if !a.Now().Before(pending.ExpiresAt) {
 		return nil, os.Remove(path)

@@ -29,6 +29,17 @@ func (a *App) runSignup(opts Options) int {
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
 	}
+	previousStore := a.credentialStore
+	defer func() { a.credentialStore = previousStore }()
+	if pending := cfg.Profiles[resolved.ProfileName].PendingSignup; lastSignupOption(opts, "verification-code") != "" && pending != nil {
+		if pending.CredentialStore != "" && pending.CredentialStore != "keyring" && pending.CredentialStore != "file" {
+			return a.fail(configError("CONFIG_INVALID", "The pending signup credential_store must be keyring or file.", nil), opts)
+		}
+		if a.credentialStore == "" {
+			a.credentialStore = pending.CredentialStore
+		}
+	}
+	a.credentialStore = a.selectedCredentialStore(resolved.ProfileName, cfg.Profiles[resolved.ProfileName])
 	project, _, err := a.findProjectConfig()
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
