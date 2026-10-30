@@ -42,20 +42,9 @@ type searchDocument struct {
 func (ix *Index) Search(query string, filter Filter) ([]Hit, int) {
 	q := strings.ToLower(strings.TrimSpace(query))
 	tokens := searchTokens(q)
-	docs := make([]searchDocument, 0, len(ix.Entries))
-	df := make(map[string]int)
-	for _, entry := range ix.Entries {
-		doc := newSearchDocument(entry)
-		seen := make(map[string]bool)
-		for _, field := range doc.fields {
-			for word := range field.words {
-				seen[word] = true
-			}
-		}
-		for word := range seen {
-			df[word]++
-		}
-		docs = append(docs, doc)
+	docs, df := ix.documents, ix.frequencies
+	if docs == nil {
+		docs, df = buildSearchDocuments(ix.Entries)
 	}
 	idf := func(word string) float64 { return math.Log1p(float64(len(docs)) / float64(1+df[word])) }
 	type rankedHit struct {
@@ -317,4 +306,23 @@ func searchVerbRank(e Entry) int {
 	default:
 		return 4
 	}
+}
+
+func buildSearchDocuments(entries []Entry) ([]searchDocument, map[string]int) {
+	docs := make([]searchDocument, 0, len(entries))
+	df := make(map[string]int)
+	for _, entry := range entries {
+		doc := newSearchDocument(entry)
+		seen := make(map[string]bool)
+		for _, field := range doc.fields {
+			for word := range field.words {
+				seen[word] = true
+			}
+		}
+		for word := range seen {
+			df[word]++
+		}
+		docs = append(docs, doc)
+	}
+	return docs, df
 }

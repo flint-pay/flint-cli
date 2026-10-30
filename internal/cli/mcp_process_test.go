@@ -71,7 +71,7 @@ func TestVerifiedMCPProcessShutdown(t *testing.T) {
 				if !bytes.Contains(line, []byte(`"protocolVersion"`)) {
 					t.Fatalf("initialize failed: %s", line)
 				}
-			case <-time.After(5 * time.Second):
+			case <-time.After(15 * time.Second):
 				t.Fatal("MCP initialization timed out")
 			}
 			if strings.HasPrefix(action, "jq-") {

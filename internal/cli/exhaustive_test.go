@@ -1794,7 +1794,7 @@ func exhaustiveArgumentValues(argument Arg) []string {
 		return []string{"true"}
 	}
 	if argument.Type == "time" {
-		return []string{"2h"}
+		return []string{"2026-01-02T03:04:05Z"}
 	}
 	var value string
 	switch argument.Name {
@@ -1859,7 +1859,7 @@ func exhaustiveArgumentValues(argument Arg) []string {
 	case "page_token":
 		value = "page_test"
 	case "created_after":
-		value = "2h"
+		value = "2026-01-02T03:04:05Z"
 	case "created_before":
 		value = "2026-07-23T11:00:00Z"
 	case "payment_source_token":

@@ -38,8 +38,12 @@ func TestOperationIndexClassification(t *testing.T) {
 			}
 		}
 	}
+	trigger, ok := ix.Lookup("trigger")
+	if !ok || !trigger.MCP || trigger.Kind != "write" || trigger.Audience != "local" {
+		t.Fatalf("trigger: %+v", trigger)
+	}
 	t.Logf("audiences=%v merchant-exposed=%d events=%d bridge=%d/%d", counts, exposed, events, ix.PublishedDestructive, ix.DerivedDestructive)
-	if events != 251 || counts["buyer"] != 70 || counts["merchant"] != 531 || counts["local"] != 32 || counts["keyless"] != 15 || exposed != 540 {
+	if events != 251 || counts["buyer"] != 70 || counts["merchant"] != 531 || counts["local"] != 32 || counts["keyless"] != 15 || exposed != 541 {
 		t.Errorf("classification changed: %v events=%d", counts, events)
 	}
 	if ix.DerivedDestructive == 0 || ix.PublishedDestructive == ix.DerivedDestructive {

@@ -175,6 +175,7 @@ func New(commands []Command, document []byte) (*Index, error) {
 		typed[name] = entry.ID
 		ix.names[name] = entry.ID
 	}
+	ix.documents, ix.frequencies = buildSearchDocuments(ix.Entries)
 	return ix, nil
 }
 
