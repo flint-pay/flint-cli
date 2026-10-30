@@ -2599,11 +2599,18 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	if err := decodeJSONNumbers(trimmed, &result); err == nil {
 		if exit == ExitOK && transformed {
 			transformOptions.outputLimit = mcpMaxOutputBytes
-			result, transformErr = applyCommandOutputTransforms(childCtx, result, cmd, transformOptions)
+			projected, transformErr := applyCommandOutputTransforms(childCtx, result, cmd, transformOptions)
 			if transformErr != nil {
+				if cmd.Mutation && (transformErr.Code == "INVALID_SELECT" || transformErr.Code == "FIELD_NOT_FOUND") {
+					// Presentation must not hide a committed mutation or invite a duplicate write.
+					outcome.value = result
+					outcome.warnings += "\nThe mutation succeeded, but output selection failed: " + transformErr.Message + " Returning the complete successful result."
+					return outcome
+				}
 				outcome.value, outcome.exit = mcpCLIErrorEnvelope(transformErr), transformErr.ExitCode
 				return outcome
 			}
+			result = projected
 		}
 		outcome.value, outcome.transformed = result, transformed
 		return outcome
