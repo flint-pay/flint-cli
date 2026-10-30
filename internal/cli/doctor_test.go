@@ -76,7 +76,7 @@ func TestDoctorHumanSuccess(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Path == "/v1/openapi.json" {
-			fmt.Fprint(w, `{"x-flint-api-releases":{"current_version":"2026-02-01"}}`)
+			w.Header().Set("Flint-Version", "2026-02-01")
 			return
 		}
 		fmt.Fprint(w, limitedAuthContextJSON("sandbox"))
@@ -100,7 +100,7 @@ func TestDoctorExplainsBrowserLoginScopeBaseline(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Path == "/v1/openapi.json" {
-			fmt.Fprint(w, `{"x-flint-api-releases":{"current_version":"2026-02-01"}}`)
+			w.Header().Set("Flint-Version", "2026-02-01")
 			return
 		}
 		body, err := json.Marshal(map[string]any{"data": map[string]any{

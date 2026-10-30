@@ -197,6 +197,10 @@ The CLI sends `--title` and `--body` as URL parameters, preserving multiline tex
 
 Add `--ai-agent` to identify the reporter as an AI agent. It defaults to false and accepts `--ai-agent=false`. The CLI emits `ai_agent=true` in the link when enabled and a boolean `ai_agent` in JSON output. Flint Help records the thread as reported by an AI agent; this is self-reported metadata, not verified identity.
 
+`flint api METHOD /v1/PATH` also accepts canonical relative public paths absent from the embedded snapshot. It warns with the CLI version and snapshot hash, skips unavailable body and scope validation, and keeps credential, environment, redirect, and write-confirmation checks. Unknown writes forward `--idempotency-key` when supplied, generate no key, and run once without automatic retries. Absolute URLs, fragments, traversal, and ambiguous path separators are rejected. MCP raw tools remain limited to the snapshot.
+
+`flint openapi get` and `flint api get /v1/openapi.json` accept up to 64 MiB after decompression; other API responses retain the 16 MiB limit. Doctor discovers the server's current API version through an unauthenticated, unpinned GET of the configured base URL's OpenAPI endpoint, reads its version header, and closes the body. Discovery warnings do not stop the later CLI-version check.
+
 Live partner OAuth installs require `--mode live --live` and confirmation (`--confirm` for scripts), including when using `flint api get /v1/oauth/authorize`. Raw API pagination (`--all` or `--paginate`) accepts only read-only GET operations.
 
 ### Scripts and agents
@@ -293,7 +297,7 @@ Layout:
 
 Sandbox and live requests both use `https://api.withflintpay.com`. Browser login binds the OAuth session to the approved environment; imported API keys retain their own environment. Imported API keys and legacy sessions require `--live` to acknowledge production access; multi-context sessions use the selected context. Set `FLINT_BASE_URL` before signing in to a development server, using a separate profile. Saved OAuth sessions stay bound to that server and reject a conflicting URL override. A trailing `/v1` in `FLINT_BASE_URL` is stripped with a warning on stderr unless `--quiet`.
 
-`internal/spec/openapi.json` is the public API snapshot used to build the command catalog. When updating it, replace it with a reviewed public OpenAPI export, run `make coverage`, and run `make contract`. The coverage report checks that every public operation has a dedicated command or an explicit exclusion with a reason. Feedback commands are retired; use `flint support open` to start a thread on Flint Help.
+`internal/spec/openapi.json` is the public API snapshot used to build the command catalog. The reviewed source commit, export path, SHA-256, operation count, and operation-set SHA-256 are pinned in `internal/spec/provenance.json` and checked offline by `TestSnapshot`. Intentional lag is recorded there; startup and tests never fetch a newer export. When updating it, use `git show <reviewed-commit>:web/apps/developers/src/generated/openapi.json` from a local Flint repository, update the provenance pin and coverage classifications, run `make coverage`, and run `make contract`. Set `FLINT_SPEC_REPO` to that local repository when running `go test ./internal/spec` to also compare the pinned source bytes and operation set. The coverage report checks that every public operation has a dedicated command or an explicit exclusion with a reason. Feedback commands are retired; use `flint support open` to start a thread on Flint Help.
 
 Tests use local HTTP servers and synthetic credentials. They do not require an API key or write to a Flint account.
 

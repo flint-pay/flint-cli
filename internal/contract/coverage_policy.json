@@ -3691,5 +3691,41 @@
     "path": "/v1/tax-connection/disconnect",
     "operation_id": "disconnectTaxConnection",
     "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/test-clocks/{test_clock_id}",
+    "operation_id": "deleteTestClock",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/test-clocks",
+    "operation_id": "listTestClocks",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/test-clocks/{test_clock_id}",
+    "operation_id": "getTestClock",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/disputes/{dispute_id}/simulate",
+    "operation_id": "simulateDispute",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/test-clocks",
+    "operation_id": "createTestClock",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/test-clocks/{test_clock_id}/advance",
+    "operation_id": "advanceTestClock",
+    "classification": "resource"
   }
 ]

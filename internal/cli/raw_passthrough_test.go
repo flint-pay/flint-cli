@@ -78,11 +78,12 @@ func TestUnknownRawWriteRequiresConfirmation(t *testing.T) {
 		if r.URL.Path != "/v1/auth-context" {
 			t.Error("unconfirmed write sent")
 		}
-		fmt.Fprint(w, authContextJSON("sandbox"))
+		fmt.Fprint(w, authContextJSON("live"))
 	}))
 	defer server.Close()
 	app, out, _ := testApp(t, server.URL)
-	if exit := app.Run([]string{"api", "post", "/v1/future-resources", "--output", "json"}); exit != ExitConfirmation {
+	t.Setenv("FLINT_API_KEY", "flint_live_test")
+	if exit := app.Run([]string{"api", "post", "/v1/future-resources", "--live", "--output", "json"}); exit != ExitConfirmation {
 		t.Fatalf("exit=%d out=%s", exit, out)
 	}
 }
