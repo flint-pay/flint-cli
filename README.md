@@ -229,7 +229,10 @@ forwarding; subscription and test-clock recipes need background workers.
 
 Every write uses a separate idempotency key under one run prefix. If a run fails, use the printed
 `flint trigger EVENT --idempotency-key PREFIX` command to replay completed writes and continue.
-`--dry-run=client` authenticates and prints the recipe without writing. `--output json` returns one
+`--dry-run=client` authenticates and prints the recipe without writing.
+Resuming accepts wait states that have already progressed. The monthly clock recipe advances to
+one calendar month after the clock's original frozen time (clamped to the month's last day), plus
+one minute to include due work. That target stays the same when the run is resumed. `--output json` returns one
 result; `--output ndjson` streams finished steps and bounded wait observations. Trigger creates new
 test resources and does not delete them. Reset the sandbox when finished.
 

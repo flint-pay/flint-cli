@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -10,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func triggerFixtures() map[string]any {
@@ -25,7 +28,7 @@ func triggerFixtures() map[string]any {
 		"intent":         map[string]any{"payment_intent_id": "pi_01KEZF7C003ACYXT6Q5EQZ78EE"},
 		"confirm":        map[string]any{"status": "succeeded"},
 		"payment_method": []any{map[string]any{"payment_method_id": "pm_01KEZF7C003ACYXT6Q5EQZ78EE", "status": "active"}},
-		"clock":          map[string]any{"test_clock_id": "clock_01KEZF7C003ACYXT6Q5EQZ78EE"},
+		"clock":          map[string]any{"test_clock_id": "clock_01KEZF7C003ACYXT6Q5EQZ78EE", "frozen_at": "2026-10-30T12:00:00Z"},
 		"plan":           map[string]any{"subscription_plan_id": "plan_01KEZF7C003ACYXT6Q5EQZ78EE"},
 		"subscription":   map[string]any{"subscription_id": "sub_01KEZF7C003ACYXT6Q5EQZ78EE"},
 		"active":         map[string]any{"status": "active", "next_billing_at": "2026-12-01T00:00:00Z"},
@@ -106,6 +109,11 @@ func TestTriggerRecipesMatchEmbeddedSpec(t *testing.T) {
 						}
 					}
 					values, _ := schema["enum"].([]any)
+					for _, accepted := range step.Accepted {
+						if !slices.Contains(values, any(accepted)) {
+							t.Errorf("%s accepted state %s not in enum", step.Name, accepted)
+						}
+					}
 					if !slices.Contains(values, any(value)) {
 						t.Errorf("%s condition value %s not in enum %v", step.Name, value, values)
 					}
@@ -340,4 +348,117 @@ func TestTriggerResumeReplaysKeysAndWaitBound(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTriggerAsyncResumeStable(t *testing.T) {
+	for _, name := range []string{"dispute", "subscription"} {
+		t.Run(name, func(t *testing.T) {
+			recipe := triggerRecipes()[name]
+			fixtures := triggerFixtures()
+			count := 0
+			bodies := map[string]string{}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/v1/auth-context" {
+					fmt.Fprint(w, authContextJSON("sandbox"))
+					return
+				}
+				step := recipe.Steps[count%len(recipe.Steps)]
+				run := count / len(recipe.Steps)
+				count++
+				if r.Method != "GET" {
+					raw, _ := io.ReadAll(r.Body)
+					key := r.Header.Get("Idempotency-Key")
+					if previous, ok := bodies[key]; ok && previous != string(raw) {
+						t.Errorf("replayed %s with changed body: %s != %s", key, previous, raw)
+					}
+					bodies[key] = string(raw)
+				}
+				value := fixtures[step.Name]
+				if run > 0 && step.Name == "dispute" {
+					value = map[string]any{"data": []any{map[string]any{"status": "won", "dispute_id": "disp_01KEZF7C003ACYXT6Q5EQZ78EE"}}}
+				}
+				if step.Name == "active" {
+					next := "2026-11-30T12:00:00Z"
+					if run > 0 {
+						next = "2026-12-30T12:00:00Z"
+					}
+					value = map[string]any{"data": map[string]any{"status": "active", "next_billing_at": next}}
+				}
+				if run == 0 && step.Name == "simulate" {
+					w.WriteHeader(400)
+					fmt.Fprint(w, `{"error":{"code":"INVALID_REQUEST","type":"invalid_request_error","message":"response lost fixture"}}`)
+					return
+				}
+				if run == 0 && step.Name == "ready" {
+					value = map[string]any{"data": map[string]any{"status": "failed"}}
+				}
+				json.NewEncoder(w).Encode(value)
+			}))
+			defer server.Close()
+			app, out, stderr := testApp(t, server.URL)
+			event := "dispute.won"
+			expected := ExitAPI
+			if name == "subscription" {
+				event = "test_clock.ready"
+				expected = ExitWait
+			}
+			args := []string{"trigger", event, "--idempotency-key", "stable-run", "--output", "json"}
+			if code := app.Run(args); code != expected {
+				t.Fatalf("first code %d: %s %s", code, out, stderr)
+			}
+			out.Reset()
+			stderr.Reset()
+			if code := app.Run(args); code != ExitOK {
+				t.Fatalf("resume code %d: %s %s", code, out, stderr)
+			}
+			if name == "subscription" && !strings.Contains(bodies["stable-run-advance"], "2026-11-30T12:01:00Z") {
+				t.Errorf("unexpected stable target: %s", bodies["stable-run-advance"])
+			}
+		})
+	}
+}
+
+func TestTriggerHumanRecoveryAndSlowWait(t *testing.T) {
+	t.Run("human_resume", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/v1/auth-context" {
+				fmt.Fprint(w, authContextJSON("sandbox"))
+				return
+			}
+			if r.URL.Path == "/v1/orders" {
+				json.NewEncoder(w).Encode(triggerFixtures()["order"])
+				return
+			}
+			w.WriteHeader(400)
+			fmt.Fprint(w, `{"error":{"code":"INVALID_REQUEST","type":"invalid_request_error","message":"fixture failure"}}`)
+		}))
+		defer server.Close()
+		app, out, stderr := testApp(t, server.URL)
+		if code := app.Run([]string{"trigger", "order.paid", "--output", "human"}); code != ExitAPI {
+			t.Fatalf("code %d", code)
+		}
+		if !strings.Contains(out.String()+stderr.String(), "flint trigger order.paid --idempotency-key flint-trigger-") {
+			t.Fatalf("missing human recovery: %s %s", out, stderr)
+		}
+	})
+	t.Run("slow_wait", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			select {
+			case <-r.Context().Done():
+			case <-time.After(200 * time.Millisecond):
+				fmt.Fprint(w, `{"data":{"status":"advancing"}}`)
+			}
+		}))
+		defer server.Close()
+		app, _, _ := testApp(t, server.URL)
+		recipe := triggerRecipe{Name: "clock", Steps: []triggerStep{{Name: "ready", OperationID: "getTestClock", Path: map[string]string{"test_clock_id": "clock_fixture"}, Until: []string{"status=ready"}, Accepted: []string{"ready"}}}}
+		start := time.Now()
+		_, e := app.runTrigger(context.Background(), recipe, triggerEntry{Event: "test_clock.ready"}, Options{For: 10 * time.Millisecond, Timeout: time.Second}, AuthContext{}, "flint_test_fixture", server.URL, "slow-run")
+		if e == nil || e.ExitCode != ExitWait || e.Code != "WAIT_CONDITION_UNMET" {
+			t.Fatalf("wait error = %v", e)
+		}
+		if time.Since(start) > time.Second {
+			t.Fatalf("wait exceeded bound: %s", time.Since(start))
+		}
+	})
 }

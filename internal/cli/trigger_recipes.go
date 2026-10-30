@@ -2,10 +2,11 @@ package cli
 
 // Recipes bind to operation IDs so route and command renames stay in the spec.
 type triggerRecipe struct {
-	Name    string        `json:"name"`
-	Async   string        `json:"async,omitempty"`
-	Pending []string      `json:"pending,omitempty"`
-	Steps   []triggerStep `json:"steps"`
+	Resumable bool          `json:"resumable"`
+	Name      string        `json:"name"`
+	Async     string        `json:"async,omitempty"`
+	Pending   []string      `json:"pending,omitempty"`
+	Steps     []triggerStep `json:"steps"`
 }
 type triggerStep struct {
 	Name, OperationID string
@@ -14,6 +15,7 @@ type triggerStep struct {
 	Outputs, Secrets  map[string]string
 	Credential        string
 	Until             []string
+	Accepted          []string
 }
 type triggerEntry struct {
 	Event   string         `json:"event_type"`
@@ -41,6 +43,7 @@ func triggerRecipes() map[string]triggerRecipe {
 	dispute := step("dispute", "listDisputes", nil, map[string]string{"dispute_id": "data.0.dispute_id"})
 	dispute.Query = map[string]string{"order_id": "{order.order_id}"}
 	dispute.Until = []string{"data.0.status=needs_response"}
+	dispute.Accepted = []string{"needs_response", "under_review", "won", "lost"}
 	disputePay := pay
 	disputePay.Body = map[string]any{"action": "pay", "payment_source": map[string]any{"credential_type": "token", "token": "pm_card_createDispute"}, "expected_outstanding_money": "{order.settlement_amounts.outstanding_money}"}
 	simulate := step("simulate", "simulateDispute", obj("outcome", "won"), nil)
@@ -51,6 +54,7 @@ func triggerRecipes() map[string]triggerRecipe {
 	method := step("payment_method", "listPaymentMethods", nil, map[string]string{"payment_method_id": "data.0.payment_method_id"})
 	method.Query = map[string]string{"customer_id": "{customer.customer_id}", "status": "active"}
 	method.Until = []string{"data.0.status=active"}
+	method.Accepted = []string{"active"}
 	clock := step("clock", "createTestClock", obj("name", "flint trigger"), map[string]string{"test_clock_id": "data.test_clock_id"})
 	clockCustomer := customer
 	clockCustomer.Body = map[string]any{"name": "Flint trigger customer", "test_clock_id": "{clock.test_clock_id}"}
@@ -59,23 +63,25 @@ func triggerRecipes() map[string]triggerRecipe {
 	active := step("active", "getSubscription", nil, nil)
 	active.Path = map[string]string{"subscription_id": "{subscription.subscription_id}"}
 	active.Until = []string{"status=active"}
-	advance := step("advance", "advanceTestClock", obj("frozen_at", "{active.next_billing_at}"), nil)
+	active.Accepted = []string{"active", "paused", "past_due", "canceled"}
+	advance := step("advance", "advanceTestClock", obj("frozen_at", triggerClockAdvance{From: "{clock.frozen_at}", Months: plan.Body["billing_interval_count"].(int), MarginSeconds: 60}), nil)
 	advance.Path = map[string]string{"test_clock_id": "{clock.test_clock_id}"}
 	ready := step("ready", "getTestClock", nil, nil)
 	ready.Path = advance.Path
 	ready.Until = []string{"status=ready"}
+	ready.Accepted = []string{"ready"}
 	invoice := step("invoice", "createInvoice", map[string]any{"type": "quick_pay", "quick_pay": order.Body, "collection": obj("mode", "external"), "issue": obj("delivery_mode", "caller_managed")}, map[string]string{"invoice_id": "data.invoice_id"})
 	payment := step("payment", "createInvoiceManualPayment", obj("amount_money", "{invoice.outstanding_money}"), map[string]string{"invoice_manual_payment_id": "data.invoice_manual_payment.invoice_manual_payment_id"})
 	payment.Path = map[string]string{"invoice_id": "{invoice.invoice_id}"}
 	return map[string]triggerRecipe{
-		"customer":         {Name: "customer", Steps: []triggerStep{customer}},
-		"order_payment":    {Name: "order_payment", Steps: []triggerStep{order, pay}},
-		"refund":           {Name: "refund", Steps: []triggerStep{order, pay, refund}},
-		"checkout_payment": {Name: "checkout_payment", Steps: []triggerStep{order, session, checkoutPay}},
-		"dispute":          {Name: "dispute", Async: "stripe_webhook", Steps: []triggerStep{order, disputePay, dispute, simulate}},
-		"saved_card":       {Name: "saved_card", Async: "background_job", Steps: []triggerStep{customer, intent, confirm, method}},
-		"subscription":     {Name: "subscription", Async: "temporal", Steps: []triggerStep{clock, clockCustomer, intent, confirm, method, plan, subscription, active, advance, ready}},
-		"invoice":          {Name: "invoice", Steps: []triggerStep{invoice, payment}},
+		"customer":         {Resumable: true, Name: "customer", Steps: []triggerStep{customer}},
+		"order_payment":    {Resumable: true, Name: "order_payment", Steps: []triggerStep{order, pay}},
+		"refund":           {Resumable: true, Name: "refund", Steps: []triggerStep{order, pay, refund}},
+		"checkout_payment": {Resumable: true, Name: "checkout_payment", Steps: []triggerStep{order, session, checkoutPay}},
+		"dispute":          {Resumable: true, Name: "dispute", Async: "stripe_webhook", Steps: []triggerStep{order, disputePay, dispute, simulate}},
+		"saved_card":       {Resumable: true, Name: "saved_card", Async: "background_job", Steps: []triggerStep{customer, intent, confirm, method}},
+		"subscription":     {Resumable: true, Name: "subscription", Async: "temporal", Steps: []triggerStep{clock, clockCustomer, intent, confirm, method, plan, subscription, active, advance, ready}},
+		"invoice":          {Resumable: true, Name: "invoice", Steps: []triggerStep{invoice, payment}},
 	}
 }
 

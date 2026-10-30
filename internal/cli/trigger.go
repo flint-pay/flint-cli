@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 )
@@ -51,6 +52,9 @@ func (a *App) localTrigger(cmd *Command, opts Options) int {
 		return a.fail(e, opts)
 	}
 	recipe := triggerRecipes()[entry.Recipe]
+	if opts.IdempotencyKey != "" && !recipe.Resumable {
+		return a.fail(usageError("TRIGGER_NOT_RESUMABLE", "This recipe can't resume; start a new run.", "idempotency-key"), opts)
+	}
 	for i := range recipe.Steps {
 		step := &recipe.Steps[i]
 		for path, value := range entry.Set {
@@ -113,6 +117,9 @@ func (a *App) localTrigger(cmd *Command, opts Options) int {
 	}
 	value, e := a.runTrigger(ctx, recipe, entry, opts, auth, key, baseURL, prefix)
 	if e != nil {
+		if opts.Output == "human" {
+			fmt.Fprintln(a.Stderr, "Resume: flint trigger "+entry.Event+" --idempotency-key "+quoteRemediationArgument(prefix))
+		}
 		return a.fail(e, opts)
 	}
 	if opts.Output == "human" {
@@ -152,9 +159,28 @@ func triggerOperation(id string) (*Command, bool) {
 	return nil, false
 }
 
+// The plan interval and margin are run inputs; the source is a replayed keyed create.
+type triggerClockAdvance struct {
+	From          string `json:"from"`
+	Months        int    `json:"months"`
+	MarginSeconds int    `json:"margin_seconds"`
+}
+
 // Resolve only whole-value references, retaining objects such as outstanding_money.
 func triggerResolve(value any, results map[string]any) (any, *CLIError) {
 	switch v := value.(type) {
+	case triggerClockAdvance:
+		raw, e := triggerResolve(v.From, results)
+		if e != nil {
+			return nil, e
+		}
+		frozen, err := time.Parse(time.RFC3339, fmt.Sprint(raw))
+		if err != nil {
+			return nil, invalidResponseError("INVALID_RESPONSE", "Invalid test clock frozen_at.", err)
+		}
+		start := time.Date(frozen.Year(), frozen.Month()+time.Month(v.Months), 1, frozen.Hour(), frozen.Minute(), frozen.Second(), 0, frozen.Location())
+		lastDay := start.AddDate(0, 1, -1).Day()
+		return start.AddDate(0, 0, min(frozen.Day(), lastDay)-1).Add(time.Duration(v.MarginSeconds) * time.Second).UTC().Format(time.RFC3339), nil
 	case string:
 		if strings.HasPrefix(v, "{") && strings.HasSuffix(v, "}") {
 			step, path, ok := strings.Cut(v[1:len(v)-1], ".")
@@ -300,23 +326,48 @@ func (a *App) runTrigger(ctx context.Context, recipe triggerRecipe, entry trigge
 			stepCtx = withoutOAuthSession(ctx)
 		}
 		conditions, _ := parseWaitConditions(step.Until)
+		waitCtx := stepCtx
+		if len(conditions) > 0 {
+			var cancel context.CancelFunc
+			waitCtx, cancel = context.WithTimeout(stepCtx, waitFor)
+			defer cancel()
+		}
+		waitError := func() *CLIError {
+			e := cliError(ExitWait, errorTypeWaitConditionUnmet, "WAIT_CONDITION_UNMET", "Trigger wait did not reach its condition.")
+			if recipe.Async == "stripe_webhook" {
+				e.Message += " This waits for Stripe's webhook to reach Flint. A local server without Stripe webhook forwarding never receives it; use staging or --for longer."
+			}
+			return e
+		}
 		deadline := a.Now().Add(waitFor)
 		backoff := time.Second
 		var response *apiResponse
 		for {
-			requestCtx := context.WithValue(stepCtx, responseContractKey{}, operation)
+			if len(conditions) > 0 && (waitCtx.Err() != nil || !a.Now().Before(deadline)) {
+				if ctx.Err() != nil {
+					return fail(networkError("CLIENT_CANCELED", "Trigger was canceled.", ctx.Err()), step.Name)
+				}
+				return fail(waitError(), step.Name)
+			}
+			requestCtx := context.WithValue(waitCtx, responseContractKey{}, operation)
 			requestTimeout := opts.Timeout
 			if len(conditions) > 0 {
 				requestTimeout = min(requestTimeout, max(time.Millisecond, deadline.Sub(a.Now())))
 			}
 			response, e = a.doRequestWithin(requestCtx, requestTimeout, baseURL, stepCredential, operation.Method, path, body, stepKey, opts.Debug)
 			if e != nil {
+				if len(conditions) > 0 && ctx.Err() == nil && (waitCtx.Err() != nil || !a.Now().Before(deadline)) {
+					return fail(waitError(), step.Name)
+				}
 				return fail(e, step.Name)
 			}
 			if len(conditions) == 0 {
 				break
 			}
 			matched, observed := conditionsMatch(response.Value, conditions)
+			if len(conditions) == 1 && slices.Contains(step.Accepted, observed[conditions[0].Path]) {
+				matched = true
+			}
 			if matched {
 				break
 			}
@@ -331,13 +382,12 @@ func (a *App) runTrigger(ctx context.Context, recipe triggerRecipe, entry trigge
 			status, _ := lookupResourcePath(response.Value, "status")
 			remaining := deadline.Sub(a.Now())
 			if remaining <= 0 || (step.OperationID == "getTestClock" && status == "failed") {
-				e := cliError(ExitWait, errorTypeWaitConditionUnmet, "WAIT_CONDITION_UNMET", "Trigger wait did not reach its condition.")
-				if recipe.Async == "stripe_webhook" {
-					e.Message += " This waits for Stripe's webhook to reach Flint. A local server without Stripe webhook forwarding never receives it; use staging or --for longer."
-				}
-				return fail(e, step.Name)
+				return fail(waitError(), step.Name)
 			}
-			if !sleepContext(ctx, min(backoff, remaining)) {
+			if !sleepContext(waitCtx, min(backoff, remaining)) {
+				if ctx.Err() == nil {
+					return fail(waitError(), step.Name)
+				}
 				return fail(networkError("CLIENT_CANCELED", "Trigger was canceled.", ctx.Err()), step.Name)
 			}
 			backoff = min(backoff*2, 10*time.Second)
