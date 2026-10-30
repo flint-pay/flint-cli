@@ -46,7 +46,7 @@ func TestJSONInputCancellation(t *testing.T) {
 func TestResultOutputFailuresReturnNonzero(t *testing.T) {
 	for _, args := range [][]string{
 		{"version"},
-		{"version", "--field", "data.cli_version"},
+		{"version", "--field", "cli_version"},
 		{"version", "--output", "json"},
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {

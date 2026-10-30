@@ -1958,7 +1958,7 @@ var mcpControlHelp = []map[string]string{
 	{"name": "_flint.for", "applies_to": "waits and streams", "description": "Maximum duration of a wait or stream as a Go duration; streams allow at most 2m."},
 	{"name": "_flint.max_events", "applies_to": "streams", "description": "Stops a stream after this many records (at most 100)."},
 	{"name": "_flint.expand", "applies_to": "tools with documented expansions", "description": "Includes related resources inline; the schema lists the allowed values."},
-	{"name": "_flint.field", "applies_to": "most tools", "description": "Returns only the value at a dot path such as data.id, as {\"value\": ...}."},
+	{"name": "_flint.field", "applies_to": "most tools", "description": "Returns only the value at a resource path such as customer_id, as {\"value\": ...}."},
 	{"name": "_flint.select", "applies_to": "most tools", "description": "Keeps only the listed fields of each resource, keeping the response envelope."},
 	{"name": "_flint.jq", "applies_to": "most tools", "description": "Applies a jq expression to the result, returned as {\"value\": ...}. Cannot be combined with _flint.field."},
 }
@@ -2641,7 +2641,11 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	if err := decodeJSONNumbers(trimmed, &result); err == nil {
 		if exit == ExitOK && transformed {
 			transformOptions.outputLimit = mcpMaxOutputBytes
-			projected, transformErr := applyCommandOutputTransforms(childCtx, result, cmd, transformOptions)
+			selectionCommand := cmd
+			if controls, _ := args["_flint"].(map[string]any); controls["dry_run"] == "client" || controls["preview"] == true {
+				selectionCommand = nil
+			}
+			projected, transformErr := applyCommandOutputTransforms(childCtx, result, selectionCommand, transformOptions)
 			if transformErr != nil {
 				if cmd.Mutation && (transformErr.Code == "INVALID_SELECT" || transformErr.Code == "FIELD_NOT_FOUND") {
 					// Presentation must not hide a committed mutation or invite a duplicate write.

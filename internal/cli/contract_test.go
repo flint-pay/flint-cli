@@ -691,7 +691,7 @@ func TestOutputProjectionPreservesListEnvelopeAndFieldIsRaw(t *testing.T) {
 		t.Fatalf("projection discarded envelope metadata: %#v", envelope)
 	}
 	app, stdout, _ := testApp(t, "")
-	if outputErr := app.writeResult(map[string]any{"data": map[string]any{"url": "https://example.com/checkout"}}, nil, Options{Field: "data.url"}); outputErr != nil {
+	if outputErr := app.writeResult(map[string]any{"data": map[string]any{"url": "https://example.com/checkout"}}, nil, Options{Field: "url"}); outputErr != nil {
 		t.Fatal(outputErr)
 	}
 	if stdout.String() != "https://example.com/checkout\n" {

@@ -89,6 +89,15 @@ func (a *App) Run(argv []string) int {
 	}
 	ctx = withOAuthContext(ctx, resolved.ContextID)
 	effective := resolveAPICommand(cmd, opts)
+	paths, pathErr := outputPaths(opts)
+	if pathErr != nil {
+		return a.fail(pathErr, opts)
+	}
+	if !opts.DryRunClient() && !opts.Preview {
+		if pathErr = validateOutputPaths(effective, paths); pathErr != nil {
+			return a.fail(pathErr, opts)
+		}
+	}
 	idempotencyKey, errKey := requestIdempotencyKey(effective, opts)
 	if errKey != nil {
 		return a.fail(errKey, opts)
@@ -399,7 +408,7 @@ func (a *App) printCommandHelp(cmd *Command) {
 		capabilities = append(capabilities, "--expand "+strings.Join(expansions, ","))
 	}
 	if cmd.Supports.WaitFor {
-		capabilities = append(capabilities, "--wait-for FIELD=VALUE", "--for DURATION")
+		capabilities = append(capabilities, "--wait-for FIELD=VALUE (inside the resource)", "--for DURATION")
 	}
 	if cmd.Stream {
 		capabilities = append(capabilities, "--max-events N", "--for DURATION")
@@ -408,10 +417,10 @@ func (a *App) printCommandHelp(cmd *Command) {
 		capabilities = append(capabilities, "--open")
 	}
 	if cmd.Supports.Field {
-		capabilities = append(capabilities, "--field PATH")
+		capabilities = append(capabilities, "--field PATH (inside the resource; strings raw, other values JSON)")
 	}
 	if cmd.Supports.Select {
-		capabilities = append(capabilities, "--select FIELDS")
+		capabilities = append(capabilities, "--select FIELDS (inside each resource)")
 	}
 	if cmd.Supports.JQ {
 		capabilities = append(capabilities, "--jq EXPR")

@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"os/exec"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -363,17 +362,13 @@ func (a *App) executeWait(ctx context.Context, cmd *Command, opts Options, req p
 			}
 			return last, requestErr
 		}
-		last = resp.Value
+		last, requestErr = prepareOptionalFields(resp.Value, cmd, opts)
+		if requestErr != nil {
+			return last, requestErr
+		}
 		matched, observed := conditionsMatch(last, conditions)
 		if matched {
 			return last, nil
-		}
-		for _, c := range conditions {
-			if _, found := lookupResourcePath(last, c.Path); !found && !outputSchemaDeclaresPath(cmd, c.Path) {
-				err := usageError("WAIT_FIELD_UNKNOWN", fmt.Sprintf("--wait-for field %q is not part of this command's response, so the condition can never be met. Run flint schema output %s to list fields.", c.Path, cmd.CanonicalName), "wait-for")
-				err.Details = map[string]any{"conditions": opts.WaitFor, "observed": observedConditions(last, conditions), "last": last}
-				return last, err
-			}
 		}
 		if terminallyImpossible(cmd, conditions, observed) {
 			err := cliError(ExitWait, errorTypeWaitConditionUnmet, "WAIT_CONDITION_IMPOSSIBLE", "The resource reached a terminal state that cannot satisfy the requested condition.")
@@ -414,77 +409,6 @@ func (a *App) writeProgress(opts Options, record map[string]any, plain string) *
 	return nil
 }
 
-// outputSchemaDeclaresPath checks envelope, resource, and nested resource paths.
-// Free-form schemas remain permissive because their fields are not enumerable.
-func outputSchemaDeclaresPath(cmd *Command, path string) bool {
-	if cmd == nil {
-		return false
-	}
-	schema, err := schemaForCommand(cmd, false)
-	if err != nil {
-		return true
-	}
-	defs, _ := schema["$defs"].(map[string]any)
-	var declares func(map[string]any, []string, int) bool
-	declares = func(node map[string]any, parts []string, depth int) bool {
-		if depth > 64 || node == nil {
-			return false
-		}
-		if len(parts) == 0 {
-			return true
-		}
-		if ref, ok := node["$ref"].(string); ok {
-			target, _ := defs[strings.TrimPrefix(ref, "#/$defs/")].(map[string]any)
-			return declares(target, parts, depth+1)
-		}
-		for _, keyword := range []string{"allOf", "anyOf", "oneOf"} {
-			branches, _ := node[keyword].([]any)
-			for _, raw := range branches {
-				branch, _ := raw.(map[string]any)
-				if declares(branch, parts, depth+1) {
-					return true
-				}
-			}
-		}
-		if items, ok := node["items"].(map[string]any); ok {
-			next := parts
-			if _, err := strconv.Atoi(parts[0]); err == nil {
-				next = parts[1:]
-			}
-			return declares(items, next, depth+1)
-		}
-		if properties, ok := node["properties"].(map[string]any); ok {
-			child, _ := properties[parts[0]].(map[string]any)
-			return declares(child, parts[1:], depth+1)
-		}
-		if extra, ok := node["additionalProperties"].(map[string]any); ok {
-			return declares(extra, parts[1:], depth+1)
-		}
-		return len(node) == 0 || node["additionalProperties"] == true || node["type"] == "object"
-	}
-	parts := strings.Split(path, ".")
-	if declares(schema, parts, 0) {
-		return true
-	}
-	root, _ := schema["properties"].(map[string]any)
-	data, _ := root["data"].(map[string]any)
-	if declares(data, parts, 0) {
-		return true
-	}
-	properties, _ := bodyProperties(data, defs, map[string]bool{})
-	for _, raw := range properties {
-		child, _ := raw.(map[string]any)
-		childProperties, _ := bodyProperties(child, defs, map[string]bool{})
-		if len(childProperties) == 0 {
-			continue
-		}
-		if declares(child, parts, 0) {
-			return true
-		}
-	}
-	return false
-}
-
 type waitCondition struct{ Path, Expected string }
 
 func parseWaitConditions(values []string) ([]waitCondition, *CLIError) {
@@ -512,9 +436,12 @@ func observedConditions(value any, conditions []waitCondition) map[string]string
 }
 
 func conditionsMatch(value any, conditions []waitCondition) (bool, map[string]string) {
+	return matchConditions(value, conditions, lookupResourcePath)
+}
+func matchConditions(value any, conditions []waitCondition, lookup func(any, string) (any, bool)) (bool, map[string]string) {
 	observed := map[string]string{}
 	for _, c := range conditions {
-		v, ok := lookupResourcePath(value, c.Path)
+		v, ok := lookup(value, c.Path)
 		if !ok {
 			return false, observed
 		}
@@ -530,28 +457,7 @@ func conditionsMatch(value any, conditions []waitCondition) (bool, map[string]st
 	return true, observed
 }
 func lookupResourcePath(value any, path string) (any, bool) {
-	if v, ok := lookupPath(value, path); ok {
-		return v, true
-	}
-	if v, ok := lookupPath(value, "data."+path); ok {
-		return v, true
-	}
-	m, ok := value.(map[string]any)
-	if !ok {
-		return nil, false
-	}
-	data, ok := m["data"].(map[string]any)
-	if !ok {
-		return nil, false
-	}
-	for _, v := range data {
-		if nested, ok := v.(map[string]any); ok {
-			if found, ok := lookupPath(nested, path); ok {
-				return found, true
-			}
-		}
-	}
-	return nil, false
+	return lookupPath(resourceRoot(value), path)
 }
 
 var terminalStates = map[string]map[string]bool{

@@ -174,20 +174,24 @@ func applyOutputTransforms(ctx context.Context, value any, opts Options) (any, *
 	if len(opts.Select) > 0 {
 		projected, err := selectFields(value, opts.Select)
 		if err != nil {
-			return nil, usageError("INVALID_SELECT", err.Error(), "select")
+			return nil, usageError("UNKNOWN_OUTPUT_FIELD", err.Error(), "select")
 		}
 		value = projected
 	}
 	if opts.Field != "" {
-		v, ok := lookupPath(value, opts.Field)
-		if !ok {
-			return nil, usageError("FIELD_NOT_FOUND", "Field path does not exist: "+opts.Field, "field")
+		resources := outputResources(value)
+		values := fieldResults{}
+		for _, resource := range resources {
+			v, ok := lookupPath(resource, opts.Field)
+			if !ok {
+				return nil, outputPathError(nil, outputPath{opts.Field, "field"}, false, nil)
+			}
+			values = append(values, v)
 		}
-		switch v.(type) {
-		case string, float32, float64, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, bool, json.Number, nil:
-			value = v
-		default:
-			return nil, usageError("FIELD_NOT_SCALAR", "--field requires a scalar value.", "field")
+		if _, list := resourceRoot(value).([]any); list {
+			value = values
+		} else {
+			value = values[0]
 		}
 	}
 	if opts.JQ != "" {
@@ -234,6 +238,9 @@ func applyOutputTransforms(ctx context.Context, value any, opts Options) (any, *
 // CLI writes one value per line like jq; embedded callers still see an array.
 type jqResults []any
 
+// fieldResults is a list projection printed once per resource.
+type fieldResults []any
+
 func (a *App) writeJQResults(values jqResults, opts Options) *CLIError {
 	for _, v := range values {
 		var err error
@@ -250,6 +257,9 @@ func (a *App) writeJQResults(values jqResults, opts Options) *CLIError {
 }
 
 func applyCommandOutputTransforms(ctx context.Context, value any, cmd *Command, opts Options) (any, *CLIError) {
+	if opts.DryRunClient() || opts.Preview {
+		cmd = nil
+	}
 	if len(opts.Select) > 0 || opts.Field != "" {
 		var e *CLIError
 		value, e = prepareOptionalFields(value, cmd, opts)
@@ -266,11 +276,18 @@ func (a *App) writeResult(value any, cmd *Command, opts Options) *CLIError {
 		return err
 	}
 	if opts.Field != "" {
-		if value == nil {
-			value = "null"
+		values, ok := value.(fieldResults)
+		if !ok {
+			values = fieldResults{value}
 		}
-		if _, err := fmt.Fprintln(a.Stdout, value); err != nil {
-			return networkError("OUTPUT_WRITE_FAILED", "Could not write command output.", err)
+		for _, v := range values {
+			if text, ok := v.(string); ok {
+				if _, err := fmt.Fprintln(a.Stdout, text); err != nil {
+					return networkError("OUTPUT_WRITE_FAILED", "Could not write command output.", err)
+				}
+			} else if err := writeJSON(a.Stdout, v); err != nil {
+				return networkError("OUTPUT_WRITE_FAILED", "Could not write command output.", err)
+			}
 		}
 		return nil
 	}
@@ -679,18 +696,7 @@ func selectFields(value any, fields []string) (any, error) {
 			out["data"] = projected
 			return out, nil
 		}
-		for key, nested := range dataMap {
-			if nestedMap, ok := nested.(map[string]any); ok {
-				projected, err := projectObject(nestedMap, fields)
-				if err == nil {
-					out := copyMap(m)
-					newData := copyMap(dataMap)
-					newData[key] = projected
-					out["data"] = newData
-					return out, nil
-				}
-			}
-		}
+
 	}
 	if !hasData {
 		return projectObject(m, fields)
@@ -705,7 +711,9 @@ func projectObject(m map[string]any, fields []string) (map[string]any, error) {
 		if !ok {
 			return nil, fmt.Errorf("selected field does not exist: %s", field)
 		}
-		setNested(out, strings.Split(field, "."), v)
+		if err := setBodyPath(out, field, v); err != nil {
+			return nil, err
+		}
 	}
 	return out, nil
 }

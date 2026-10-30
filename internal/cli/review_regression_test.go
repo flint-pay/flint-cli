@@ -117,16 +117,16 @@ func TestReviewHumanOutputEmptyMetadataKeys(t *testing.T) {
 }
 
 func TestReviewLargeIntegersSurviveOutput(t *testing.T) {
-	const amount = "9007199254740991"
+	const amount = "9007199254740993"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/auth-context" {
 			io.WriteString(w, authContextJSON("sandbox"))
 			return
 		}
-		io.WriteString(w, `{"data":{"amount":`+amount+`}}`)
+		io.WriteString(w, `{"data":{"version":`+amount+`}}`)
 	}))
 	defer server.Close()
-	for _, extra := range [][]string{nil, {"--field", "data.amount"}, {"--select", "amount"}, {"--jq", ".data.amount"}} {
+	for _, extra := range [][]string{nil, {"--field", "version"}, {"--select", "version"}, {"--jq", ".data.version"}} {
 		t.Run(strings.Join(extra, " "), func(t *testing.T) {
 			app, stdout, stderr := testApp(t, server.URL)
 			argv := append([]string{"customers", "get", "cus_review", "--output", "json"}, extra...)

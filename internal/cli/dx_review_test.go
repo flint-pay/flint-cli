@@ -145,7 +145,7 @@ func TestWaitForUndocumentedFieldFailsFast(t *testing.T) {
 	app, stdout, _ := testApp(t, server.URL)
 	started := time.Now()
 	exit := app.Run([]string{"customers", "get", "cus_1", "--wait-for", "stauts=active", "--for", "30s", "--output", "json"})
-	if exit != ExitUsage || !strings.Contains(stdout.String(), "WAIT_FIELD_UNKNOWN") {
+	if exit != ExitUsage || !strings.Contains(stdout.String(), "UNKNOWN_OUTPUT_FIELD") {
 		t.Fatalf("exit=%d stdout=%s", exit, stdout)
 	}
 	if time.Since(started) > 5*time.Second {

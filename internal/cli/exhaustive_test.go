@@ -395,7 +395,7 @@ func TestEveryParserFlagHasPositiveCase(t *testing.T) {
 		"debug":            {"version", "--debug"},
 		"dry-run":          {"customers", "create", "--dry-run", "client"},
 		"expand":           {"customers", "get", "cus_test", "--expand", "default_payment_method"},
-		"field":            {"version", "--field", "data.cli_version"},
+		"field":            {"version", "--field", "cli_version"},
 		"fix":              {"doctor", "--fix"},
 		"for":              {"listen", "--forward-to", "http://127.0.0.1:8080/webhooks", "--for", "1s"},
 		"help":             {"version", "--help"},
@@ -673,7 +673,7 @@ func TestOutputTransformFlagsExecuteEndToEnd(t *testing.T) {
 	}{
 		{
 			name: "field",
-			argv: []string{"version", "--field", "data.cli_version"},
+			argv: []string{"version", "--field", "cli_version"},
 			want: "test\n",
 		},
 		{
@@ -1166,6 +1166,20 @@ func TestEveryWaitCapableCommandExecutesMatchingWait(t *testing.T) {
 			continue
 		}
 		t.Run(command.CanonicalName, func(t *testing.T) {
+			field := "status"
+			if !outputSchemaDeclaresPath(command, field) {
+				root, defs := resourceOutputSchema(command)
+				props, _ := bodyProperties(root, defs, map[string]bool{})
+				names := []string{}
+				for name := range props {
+					names = append(names, name)
+				}
+				sort.Strings(names)
+				if len(names) == 0 {
+					t.Skip("No structured resource fields for wait conditions")
+				}
+				field = names[0]
+			}
 			resourceCalls := 0
 			environment := "sandbox"
 			if strings.HasPrefix(command.CanonicalName, "sandboxes.") {
@@ -1178,12 +1192,12 @@ func TestEveryWaitCapableCommandExecutesMatchingWait(t *testing.T) {
 					return
 				}
 				resourceCalls++
-				fmt.Fprint(w, `{"data":{"resource_id":"res_test","status":"succeeded"}}`)
+				_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{field: "succeeded"}})
 			}))
 			defer server.Close()
 			app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
 			argv := append(minimalInvocation(t, command),
-				"--wait-for", "status=succeeded",
+				"--wait-for", field+"=succeeded",
 				"--for", "100ms",
 				"--progress", "quiet",
 				"--output", "json",
