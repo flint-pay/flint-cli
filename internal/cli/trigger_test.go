@@ -462,3 +462,69 @@ func TestTriggerHumanRecoveryAndSlowWait(t *testing.T) {
 		}
 	})
 }
+
+func TestTriggerErrorDetailsAndHumanDiscovery(t *testing.T) {
+	for _, array := range []bool{false, true} {
+		t.Run(fmt.Sprint(array), func(t *testing.T) {
+			facts := any(map[string]any{"reason": "fixture", "current_version": 7})
+			if array {
+				facts = []any{map[string]any{"reason": "fixture", "current_version": 7}}
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/v1/auth-context" {
+					fmt.Fprint(w, authContextJSON("sandbox"))
+					return
+				}
+				w.WriteHeader(400)
+				json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{"type": "invalid_request_error", "code": "INVALID_REQUEST", "message": "fixture error", "details": facts, "remediation": map[string]any{"retry": "none"}}})
+			}))
+			defer server.Close()
+			app, out, _ := testApp(t, server.URL)
+			if code := app.Run([]string{"trigger", "customer.created", "--output", "json"}); code != ExitAPI {
+				t.Fatalf("code %d: %s", code, out)
+			}
+			var value any
+			json.Unmarshal(out.Bytes(), &value)
+			path := "error.details.reason"
+			if array {
+				path = "error.details.problems.0.reason"
+			}
+			if got, _ := lookupPath(value, path); got != "fixture" {
+				t.Errorf("facts moved: %s", out)
+			}
+			if got, _ := lookupPath(value, "error.remediation.retry"); got != "none" {
+				t.Errorf("remediation moved: %s", out)
+			}
+			if _, ok := lookupPath(value, "error.details.trigger.resume"); !ok {
+				t.Errorf("missing trigger recovery: %s", out)
+			}
+		})
+	}
+	t.Run("human_id", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/v1/auth-context" {
+				fmt.Fprint(w, authContextJSON("sandbox"))
+				return
+			}
+			json.NewEncoder(w).Encode(triggerFixtures()["customer"])
+		}))
+		defer server.Close()
+		app, out, errOut := testApp(t, server.URL)
+		if code := app.Run([]string{"trigger", "customer.created", "--output", "human"}); code != 0 {
+			t.Fatalf("%d: %s", code, errOut)
+		}
+		if !strings.Contains(out.String(), "customer_id: cus_") {
+			t.Fatalf("missing ID: %s", out)
+		}
+	})
+	t.Run("discovery", func(t *testing.T) {
+		app, out, errOut := testApp(t, "")
+		t.Setenv("FLINT_API_KEY", "")
+		if code := app.Run([]string{"trigger", "--output", "json"}); code != ExitUsage {
+			t.Fatalf("code %d", code)
+		}
+		if !strings.Contains(out.String(), "EVENT_TYPE_REQUIRED") || !strings.Contains(out.String(), "stripe_webhook") || !strings.Contains(out.String(), `"calls"`) {
+			t.Fatalf("incomplete discovery: %s %s", out, errOut)
+		}
+	})
+}

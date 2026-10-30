@@ -18,6 +18,8 @@ type triggerStep struct {
 	Accepted          []string
 }
 type triggerEntry struct {
+	Calls   int            `json:"calls"`
+	WaitsOn string         `json:"waits_on,omitempty"`
 	Event   string         `json:"event_type"`
 	Recipe  string         `json:"recipe"`
 	Through string         `json:"through,omitempty"`
@@ -113,6 +115,19 @@ func triggerEntries() []triggerEntry {
 	// Related events are advisory; the requested event remains the primary expectation.
 	for i := range entries {
 		entry := &entries[i]
+		recipe := triggerRecipes()[entry.Recipe]
+		for _, step := range recipe.Steps {
+			entry.Calls++
+			if len(step.Until) > 0 {
+				entry.WaitsOn = recipe.Async
+			}
+			if step.Name == entry.Through {
+				break
+			}
+		}
+		if entry.Event == "refund.failed" {
+			entry.WaitsOn = "stripe_webhook"
+		}
 		payment := []string{"order.created", "payment_intent.created", "payment_intent.succeeded", "order.paid", "order.closed"}
 		switch entry.Recipe {
 		case "order_payment":

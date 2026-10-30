@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 )
@@ -25,14 +26,21 @@ func (a *App) localTrigger(cmd *Command, opts Options) int {
 	if len(opts.Raw["list"]) > 0 && opts.Raw["list"][0] != "false" {
 		if opts.Output == "human" {
 			for _, entry := range entries {
-				fmt.Fprintf(a.Stdout, "%-40s %s\n", entry.Event, entry.Recipe)
+				fmt.Fprintf(a.Stdout, "%-40s %-20s %2d calls  %s\n", entry.Event, entry.Recipe, entry.Calls, entry.WaitsOn)
 			}
 			return ExitOK
 		}
 		return a.outputLocal(map[string]any{"data": entries}, cmd, opts)
 	}
 	if len(opts.Positionals) == 0 {
-		return a.fail(usageError("MISSING_ARGUMENT", "Choose an event type, or run flint trigger --list.", "event_type"), opts)
+		if opts.Output == "human" {
+			for _, entry := range entries {
+				fmt.Fprintf(a.Stdout, "%-40s %-20s %2d calls  %s\n", entry.Event, entry.Recipe, entry.Calls, entry.WaitsOn)
+			}
+		}
+		e := usageError("EVENT_TYPE_REQUIRED", "Choose an event type, or run flint trigger --list.", "event_type")
+		e.Details = map[string]any{"supported": entries}
+		return a.fail(e, opts)
 	}
 	event := opts.Positionals[0]
 	if e := validateListenEventType([]string{event}); e != nil {
@@ -130,6 +138,14 @@ func (a *App) localTrigger(cmd *Command, opts Options) int {
 		fmt.Fprintf(a.Stdout, "Triggered %s in sandbox %s (run %s)\n", event, terminalSafe(auth.SandboxID), terminalSafe(prefix))
 		for _, record := range data["steps"].([]map[string]any) {
 			fmt.Fprintf(a.Stdout, "  %s  %s  %s %s  %v  %v\n", record["step"], record["operation_id"], record["method"], record["path"], record["status_code"], record["request_id"])
+		}
+		names := make([]string, 0, len(data["ids"].(map[string]any)))
+		for name := range data["ids"].(map[string]any) {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			fmt.Fprintf(a.Stdout, "  %s: %s\n", name, terminalSafe(fmt.Sprint(data["ids"].(map[string]any)[name])))
 		}
 		fmt.Fprintf(a.Stdout, "Expected event: %s\n", event)
 		if also := data["also_arrive"].([]string); len(also) > 0 {
@@ -231,26 +247,23 @@ func (a *App) runTrigger(ctx context.Context, recipe triggerRecipe, entry trigge
 	}
 	data := map[string]any{"event_type": entry.Event, "recipe": recipe.Name, "sandbox_id": auth.SandboxID, "idempotency_key_prefix": prefix, "expected_events": []string{entry.Event}, "also_arrive": also, "ids": ids}
 	fail := func(e *CLIError, step string) (map[string]any, *CLIError) {
-		details, ok := e.Details.(map[string]any)
-		if !ok {
-			details = map[string]any{}
-			if e.Details != nil {
-				details["api_details"] = e.Details
+		trigger := map[string]any{"event_type": entry.Event, "completed_steps": records, "failed_step": step, "resume": "flint trigger " + entry.Event + " --idempotency-key " + quoteRemediationArgument(prefix)}
+		addDetails := func(original any) map[string]any {
+			details := map[string]any{}
+			if existing, ok := original.(map[string]any); ok {
+				details = copyMap(existing)
+			} else if original != nil {
+				details["problems"] = original
 			}
+			details["trigger"] = trigger
+			return details
 		}
-		details["trigger"] = map[string]any{"event_type": entry.Event, "completed_steps": records, "failed_step": step, "resume": "flint trigger " + entry.Event + " --idempotency-key " + quoteRemediationArgument(prefix)}
 		if raw, ok := e.Details.(map[string]any); ok && raw["code"] != nil {
 			raw = copyMap(raw)
-			original := raw["details"]
-			details = map[string]any{"trigger": details["trigger"]}
-			if original != nil {
-				details["api_details"] = original
-			}
-			raw["details"] = details
-			delete(raw, "trigger")
+			raw["details"] = addDetails(raw["details"])
 			e.Details = raw
 		} else {
-			e.Details = details
+			e.Details = addDetails(e.Details)
 		}
 		return nil, e
 	}
