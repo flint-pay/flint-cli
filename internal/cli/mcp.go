@@ -1917,7 +1917,7 @@ var mcpControlHelp = []map[string]string{
 	{"name": "_flint.live", "applies_to": "API tools, only when the server was started with --allow-live", "description": "Acknowledges a live (production) credential or context. Without --allow-live the server refuses live credentials."},
 	{"name": "_flint.merchant", "applies_to": "API tools", "description": "Fails the call unless the credential belongs to this mer_ merchant. An agent may add a guard but cannot replace one the server already uses."},
 	{"name": "_flint.profile", "applies_to": "API tools", "description": "Selects a saved Flint CLI profile, unless the server pins one with --profile, FLINT_PROFILE, or project configuration, or the profile would change the server's merchant guard or context."},
-	{"name": "_flint.timeout", "applies_to": "tools that call Flint", "description": "Total request budget including retries, as a Go duration. Default: 80s."},
+	{"name": "_flint.timeout", "applies_to": "tools that call Flint", "description": "Total request budget including retries, as a Go duration. Default: 150s."},
 	{"name": "_flint.all", "applies_to": "paginated lists", "description": "Fetches every page and returns them merged as one list with an empty next_page_token. Large lists can exceed the result limit; combine with _flint.select."},
 	{"name": "_flint.wait_for", "applies_to": "get tools", "description": "Polls until every FIELD=VALUE condition holds, for example status=succeeded, bounded by _flint.for (default 2m)."},
 	{"name": "_flint.for", "applies_to": "waits and streams", "description": "Maximum duration of a wait or stream as a Go duration; streams allow at most 2m."},

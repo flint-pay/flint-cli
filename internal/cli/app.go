@@ -408,7 +408,7 @@ func (a *App) printCommandHelp(cmd *Command) {
 		fmt.Fprintln(a.Stdout, "Capability flags:")
 		fmt.Fprintln(a.Stdout, "  "+strings.Join(capabilities, "  "))
 		if !cmd.Local {
-			fmt.Fprintln(a.Stdout, "  --timeout is the total request budget including retries (default 80s).")
+			fmt.Fprintln(a.Stdout, "  --timeout is the total request budget including retries (default 150s).")
 		}
 	}
 	if len(cmd.Examples) > 0 {
