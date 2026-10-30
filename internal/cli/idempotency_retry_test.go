@@ -198,13 +198,17 @@ func TestRetrySignalsAndReplaySafety(t *testing.T) {
 					if wantRetry {
 						wantAttempts = 3
 					}
-					if err == nil || attempts != wantAttempts || errorRetryable(err) != wantRetry {
+					wantRetryable := wantRetry
+					if methodKey.method == "POST" && methodKey.key != "" && (tc.status >= 500 || tc.name == "in_progress") {
+						wantRetryable = false // Exhausted writes require recovery first.
+					}
+					if err == nil || attempts != wantAttempts || errorRetryable(err) != wantRetryable {
 						t.Fatalf("attempts=%d want=%d error=%+v", attempts, wantAttempts, err)
 					}
 					opts := defaultOptions()
 					opts.Output = "json"
 					app.writeError(err, opts)
-					if !strings.Contains(out.String(), fmt.Sprintf(`"retryable":%t`, wantRetry)) {
+					if !strings.Contains(out.String(), fmt.Sprintf(`"retryable":%t`, wantRetryable)) {
 						t.Fatal(out.String())
 					}
 					if methodKey.key != "" && !strings.Contains(out.String(), `"idempotency_key":"saved-action-1"`) {

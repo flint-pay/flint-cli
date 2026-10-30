@@ -378,7 +378,7 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 			e := apiErrorFromResponse(result)
 			e.Cause = decodeErr
 			history.requestID(fact, e.RequestID)
-			history.failure(fact, e, false)
+			history.failure(fact, e, method != http.MethodGet && method != http.MethodHead && idempotencyKey != "" && apiOutcomeUnknown(e))
 			if federated {
 				e = redactFederationError(e, key)
 			}

@@ -1058,7 +1058,7 @@ func TestSignupDefaultsToCustomerAPI(t *testing.T) {
 			t.Errorf("signup destination = %s", req.URL)
 		}
 		return &http.Response{
-			StatusCode: http.StatusServiceUnavailable,
+			StatusCode: http.StatusBadRequest,
 			Header:     http.Header{"Content-Type": []string{"application/json"}},
 			Body:       io.NopCloser(strings.NewReader(`{"error":{"code":"TEST_STOP","message":"synthetic response"}}`)),
 		}, nil
