@@ -162,6 +162,8 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		return req, e
 	}
 	query := url.Values{}
+	var reportingLocation *time.Location
+	var timezoneNote string
 	for _, arg := range cmd.Arguments {
 		if arg.Query == "" {
 			continue
@@ -182,12 +184,22 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 				value = resolvedID
 			}
 			if arg.Type == "time" {
-				instant, e := resolveTime(value, a.Now())
+				location := time.UTC
+				if calendarTime(value) {
+					if reportingLocation == nil {
+						reportingLocation, timezoneNote = a.reportingTimezone(ctx, opts, resolved, key, baseURL)
+					}
+					location = reportingLocation
+				}
+				instant, e := resolveTime(value, a.Now(), location)
 				if e != nil {
 					return req, usageError("INVALID_TIME", e.Error(), arg.Name)
 				}
-				if opts.Debug {
-					fmt.Fprintf(a.Stderr, "debug: resolved %s to %s\n", value, instant)
+				if !opts.Quiet {
+					fmt.Fprintf(a.Stderr, "Note: %s %q is %s in %s.\n", arg.Query, value, instant, location)
+					if calendarTime(value) && timezoneNote != "" {
+						fmt.Fprintln(a.Stderr, "Note: "+timezoneNote)
+					}
 				}
 				value = instant
 			}
@@ -587,33 +599,6 @@ func validateIDPrefix(value string, arg Arg) *CLIError {
 		}
 	}
 	return nil
-}
-
-func resolveTime(value string, now time.Time) (string, error) {
-	if value == "yesterday" {
-		return now.Add(-24 * time.Hour).UTC().Format(time.RFC3339), nil
-	}
-	if d, err := time.ParseDuration(value); err == nil && d > 0 {
-		return now.Add(-d).UTC().Format(time.RFC3339), nil
-	}
-	if len(value) > 1 && (strings.HasSuffix(value, "d") || strings.HasSuffix(value, "w")) {
-		n, err := strconv.ParseInt(value[:len(value)-1], 10, 64)
-		hours := int64(24)
-		if strings.HasSuffix(value, "w") {
-			hours *= 7
-		}
-		if err == nil && n > 0 && n <= int64((1<<63-1)/time.Hour)/hours {
-			return now.Add(-time.Duration(n*hours) * time.Hour).UTC().Format(time.RFC3339), nil
-		}
-	}
-	if date, err := time.Parse("2006-01-02", value); err == nil {
-		return date.UTC().Format(time.RFC3339), nil
-	}
-	instant, err := time.Parse(time.RFC3339, value)
-	if err != nil {
-		return "", fmt.Errorf("time must be RFC3339, YYYY-MM-DD (UTC midnight), a relative duration such as 2h, 7d, or 2w, or yesterday")
-	}
-	return instant.UTC().Format(time.RFC3339), nil
 }
 
 func (a *App) prepareOrderPayment(ctx context.Context, body map[string]any, cmd *Command, opts Options, resolved ResolvedConfig, key, baseURL, path string) *CLIError {

@@ -1762,6 +1762,13 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 }
 
 func exhaustiveArgumentValues(argument Arg) []string {
+	if len(argument.Enum) > 0 {
+		count := 1
+		if argument.Repeat {
+			count = min(2, len(argument.Enum))
+		}
+		return append([]string(nil), argument.Enum[:count]...)
+	}
 	if argument.Type == "boolean" {
 		return []string{"true"}
 	}

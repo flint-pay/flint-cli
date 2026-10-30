@@ -732,6 +732,7 @@ func (a *App) handleMCPVersionContext(ctx context.Context, req jsonRPCRequest, o
 		if message := mcpGateViolation(arguments, policy); message != "" {
 			return rpcResult(req.ID, mcpToolError(message, nil))
 		}
+		arguments = mcpQueryArguments(cmd, arguments)
 		if err := validateMCPToolArguments(cmd, arguments, policy); err != nil {
 			return rpcResult(req.ID, mcpToolError("Tool arguments do not match the advertised input schema: "+err.Error(), nil))
 		}
@@ -1066,6 +1067,19 @@ func (a *App) mcpSelectionViolation(arguments map[string]any, parent Options) st
 	return ""
 }
 
+// A scalar query value is shorthand for a one-element array.
+func mcpQueryArguments(cmd *Command, arguments map[string]any) map[string]any {
+	out := copyMap(arguments)
+	for _, arg := range cmd.Arguments {
+		if arg.Query != "" && arg.Repeat {
+			if value, ok := out[arg.Name].(string); ok {
+				out[arg.Name] = []any{value}
+			}
+		}
+	}
+	return out
+}
+
 func validateMCPArguments(cmd *Command, arguments map[string]any) error {
 	return validateMCPToolArguments(cmd, arguments, mcpPolicy{allowLive: true, allowDestructive: true})
 }
@@ -1092,7 +1106,7 @@ func validateMCPToolArguments(cmd *Command, arguments map[string]any, policy mcp
 	if err != nil {
 		return fmt.Errorf("compile input schema: %w", err)
 	}
-	if err := compiled.Validate(arguments); err != nil {
+	if err := compiled.Validate(mcpQueryArguments(cmd, arguments)); err != nil {
 		return err
 	}
 	if err := validateMCPStreamBounds(cmd, arguments); err != nil {

@@ -90,9 +90,25 @@ func newRegistry(includeAPI bool) *Registry {
 		if c.Get && c.CanonicalName != "auth.status" {
 			c.Supports.WaitFor = true
 		}
+		parameters := operationParameterSchemas(c.OperationID)
 		for i := range c.Arguments {
+			arg := &c.Arguments[i]
+			if schema := parameters["query:"+arg.Query]; arg.Query != "" && schema != nil {
+				arg.Repeat = publicSchemaType(schema) == "array"
+				arg.Type = openAPIArgumentType(publicSchemaType(schema), schema)
+				if arg.Repeat {
+					schema, _ = schema["items"].(map[string]any)
+				}
+				if enum, ok := schema["enum"].([]any); ok {
+					for _, value := range enum {
+						if text, ok := value.(string); ok {
+							arg.Enum = append(arg.Enum, text)
+						}
+					}
+				}
+			}
 			if c.Arguments[i].Type == "time" {
-				c.Arguments[i].Description += "; RFC3339, YYYY-MM-DD (UTC), 2h, Nd, Nw, or yesterday"
+				c.Arguments[i].Description += "; also accepts today, this_week, yesterday, a date, or a duration such as 7d (calendar values use the reporting timezone)"
 			}
 		}
 		for _, argument := range c.Arguments {

@@ -302,7 +302,7 @@ func TestMCPQueryParametersKeepTheirContract(t *testing.T) {
 	if got := fmt.Sprint(lookupPathValue(schema, "properties.page_size.default")); got != "20" {
 		t.Fatalf("page_size default = %s", got)
 	}
-	if got := fmt.Sprint(lookupPathValue(schema, "properties.created_after.format")); got != "date-time" {
+	if got := fmt.Sprint(lookupPathValue(schema, "properties.created_after.format")); got != "<nil>" {
 		t.Fatalf("created_after format = %s", got)
 	}
 	if err := validateMCPArguments(mustMCPTool(t, app, "customers.list"), map[string]any{"sort_by": "nonsense"}); err == nil {
@@ -317,7 +317,7 @@ func TestMCPQueryParametersKeepTheirContract(t *testing.T) {
 	}{
 		{[]any{"active", "deleted"}, true},
 		{[]any{"nonsense"}, false},
-		{"active", false},
+		{"active", true},
 	} {
 		err := validateMCPArguments(mustMCPTool(t, app, "customers.list"), map[string]any{"status": fixture.status})
 		if (err == nil) != fixture.valid {
