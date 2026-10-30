@@ -90,7 +90,10 @@ func newRegistry(includeAPI bool) *Registry {
 		if c.Get && c.CanonicalName != "auth.status" {
 			c.Supports.WaitFor = true
 		}
-		parameters := operationParameterSchemas(c.OperationID)
+		var parameters map[string]map[string]any
+		if c.OperationID != "" {
+			parameters = operationParameterSchemas(c.OperationID)
+		}
 		for i := range c.Arguments {
 			arg := &c.Arguments[i]
 			if schema := parameters["query:"+arg.Query]; arg.Query != "" && schema != nil {
