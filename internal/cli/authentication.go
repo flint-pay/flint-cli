@@ -264,7 +264,11 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 		authCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
 		defer cancel()
 		var authErr *CLIError
-		envelope, authErr = a.fetchAuthContextResponse(authCtx, baseURL, key, opts.Debug)
+		if command.CanonicalName == "auth.status" {
+			envelope, authErr = a.fetchFreshAuthContextResponse(authCtx, baseURL, key, opts.Debug)
+		} else {
+			envelope, authErr = a.fetchAuthContextResponse(authCtx, baseURL, key, opts.Debug)
+		}
 		if authErr != nil {
 			return "", "", envelope, authErr
 		}

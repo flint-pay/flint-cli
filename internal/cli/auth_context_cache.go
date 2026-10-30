@@ -63,7 +63,7 @@ func (a *App) cachedAuthContext(baseURL, key string) (authContextEnvelope, bool)
 	}
 	if value, ok := authContextCache.Load(path); ok {
 		if entry := value.(cachedAuthContext); valid(entry) {
-			return authContextEnvelope{Data: entry.Data}, true
+			return authContextEnvelope{Data: entry.Data, fromCache: true}, true
 		}
 		authContextCache.Delete(path)
 	}
@@ -76,7 +76,7 @@ func (a *App) cachedAuthContext(baseURL, key string) (authContextEnvelope, bool)
 		return authContextEnvelope{}, false
 	}
 	authContextCache.Store(path, entry)
-	return authContextEnvelope{Data: entry.Data}, true
+	return authContextEnvelope{Data: entry.Data, fromCache: true}, true
 }
 
 func (a *App) cacheAuthContext(baseURL, key string, envelope authContextEnvelope) {
