@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -203,6 +204,7 @@ func TestRetryAdviceCanonicalWireKeys(t *testing.T) {
 		t.Fatal("blank required key accepted")
 	}
 
+	var mu sync.Mutex
 	writes, commits := 0, 0
 	firstKey := ""
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -211,6 +213,7 @@ func TestRetryAdviceCanonicalWireKeys(t *testing.T) {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
+		mu.Lock()
 		writes++
 		key := r.Header.Get("Idempotency-Key")
 		if writes == 1 {
@@ -219,6 +222,7 @@ func TestRetryAdviceCanonicalWireKeys(t *testing.T) {
 		} else if key == "" || key != firstKey {
 			commits++
 		}
+		mu.Unlock()
 		// The write commits but its response is lost. Only a stable nonempty wire
 		// key can prevent the retry from committing it again.
 		connection, _, e := w.(http.Hijacker).Hijack()
@@ -233,10 +237,15 @@ func TestRetryAdviceCanonicalWireKeys(t *testing.T) {
 	app.HTTPClient = &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
 	// Blank explicit keys are rejected before dispatch by the flag parser.
 	exit, env := runJSON(t, app, out, "customers", "create", "--email", "fixture@example.com", "--idempotency-key", " \t ")
-	if exit != ExitUsage || writes != 0 || lookupPathValue(env, "error.code") != "INVALID_FLAG_VALUE" || lookupPathValue(env, "error.details.idempotency_key") != nil {
-		t.Fatalf("writes=%d exit=%d out=%s", writes, exit, out)
+	mu.Lock()
+	blankWrites := writes
+	mu.Unlock()
+	if exit != ExitUsage || blankWrites != 0 || lookupPathValue(env, "error.code") != "INVALID_FLAG_VALUE" || lookupPathValue(env, "error.details.idempotency_key") != nil {
+		t.Fatalf("writes=%d exit=%d out=%s", blankWrites, exit, out)
 	}
 	exit, env = runJSON(t, app, out, "customers", "create", "--email", "fixture@example.com", "--idempotency-key", " \tsaved-action \t")
+	mu.Lock()
+	defer mu.Unlock()
 	if exit != ExitNetwork || writes != 3 || commits != 1 || firstKey != "saved-action" || lookupPathValue(env, "error.details.idempotency_key") != firstKey {
 		t.Fatalf("writes=%d commits=%d key=%q exit=%d out=%s", writes, commits, firstKey, exit, out)
 	}

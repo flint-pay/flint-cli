@@ -432,9 +432,10 @@ func TestMCPMissingCredentialAdviceFitsAClientConfig(t *testing.T) {
 }
 
 func TestMCPRetryGuidanceNamesTheIdempotencyControl(t *testing.T) {
-	cmd := &Command{CanonicalName: "customers.create", Mutation: true}
+	cmd, _ := NewRegistry().ByName("customers.create")
 	value := map[string]any{"error": map[string]any{
 		"type": "unavailable_error", "code": "SERVICE_UNAVAILABLE", "message": "Flint is unavailable.",
+		"remediation": map[string]any{"retry": "same_request"},
 		"details": map[string]any{
 			"idempotency_key": "flint-cli-abc",
 			"remediation":     map[string]any{"next_actions": []any{map[string]any{"reason_message": "Retry the same command with --idempotency-key flint-cli-abc.", "command": "flint customers create --idempotency-key flint-cli-abc"}}},
@@ -443,7 +444,7 @@ func TestMCPRetryGuidanceNamesTheIdempotencyControl(t *testing.T) {
 	result := mcpCommandError(cmd, mcpCallResult{value: value, exit: ExitAPI}, mcpPolicy{}, "")
 	text := mcpResultText(result)
 	firstLine, _, _ := strings.Cut(text, "\n")
-	if !strings.Contains(firstLine, `_flint.idempotency_key set to "flint-cli-abc"`) {
+	if !strings.Contains(firstLine, `_flint.idempotency_key flint-cli-abc`) || !strings.Contains(firstLine, "identical request") || !strings.Contains(firstLine, "backoff") {
 		t.Fatalf("message = %s", firstLine)
 	}
 	if !strings.Contains(text, "Retry the same command with _flint.idempotency_key flint-cli-abc.") || !strings.Contains(text, "flint customers create --idempotency-key flint-cli-abc") {
