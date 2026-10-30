@@ -116,3 +116,34 @@ func TestReportingTimeQueryAndLocalEnums(t *testing.T) {
 		t.Fatalf("request %+v err %v notes %s", req, e, stderr)
 	}
 }
+
+func TestReportingTimeRequestUsesMerchantZone(t *testing.T) {
+	merchantCalls := 0
+	var filters []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v1/auth-context":
+			fmt.Fprint(w, authContextJSON("sandbox"))
+		case "/v1/merchant":
+			merchantCalls++
+			fmt.Fprint(w, `{"data":{"reporting_timezone":"America/New_York"}}`)
+		case "/v1/customers":
+			filters = append(filters, r.URL.Query().Get("created_after"))
+			fmt.Fprint(w, `{"data":[],"next_page_token":""}`)
+		default:
+			t.Errorf("unexpected request %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+	app, out, stderr := testApp(t, server.URL)
+	app.Now = func() time.Time { return time.Date(2026, 3, 9, 16, 0, 0, 0, time.UTC) }
+	for range 2 {
+		if exit := app.Run([]string{"customers", "list", "--created-after", "yesterday", "--output", "json"}); exit != ExitOK {
+			t.Fatalf("exit %d out %s err %s", exit, out, stderr)
+		}
+	}
+	if merchantCalls != 1 || len(filters) != 2 || filters[0] != "2026-03-08T05:00:00Z" || filters[1] != filters[0] || !strings.Contains(stderr.String(), "America/New_York") {
+		t.Fatalf("merchant calls %d filters %v notes %s", merchantCalls, filters, stderr)
+	}
+}
