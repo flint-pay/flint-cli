@@ -300,7 +300,7 @@ func TestDXProjectionOptionalFields(t *testing.T) {
 	}
 	command, _ = app.Registry.ByName("customers.get")
 	options.Select = nil
-	options.Field = "data.email"
+	options.Field = "email"
 	out.Reset()
 	if e := app.writeResult(map[string]any{"data": map[string]any{"customer_id": "cus_1"}}, command, options); e != nil || strings.TrimSpace(out.String()) != "null" {
 		t.Fatalf("error=%v output=%s", e, out)
@@ -744,7 +744,7 @@ func TestDXSingleResourceUnknownProjection(t *testing.T) {
 	options.Select = []string{"nmae"}
 	value := map[string]any{"data": map[string]any{"customer_id": "cus_1", "name": "Ada", "metadata": map[string]any{}}}
 	e := app.writeResult(value, command, options)
-	if e == nil || e.Code != "INVALID_SELECT" || !strings.Contains(e.Message, "Did you mean name?") {
+	if e == nil || e.Code != "UNKNOWN_OUTPUT_FIELD" || !strings.Contains(e.Message, "Did you mean name?") {
 		t.Fatalf("error=%v output=%s", e, out)
 	}
 }
@@ -771,7 +771,7 @@ func TestDXProjectionThroughNullParent(t *testing.T) {
 	}
 	command, _ = app.Registry.ByName("customers.get")
 	opts.Select = nil
-	opts.Field = "data.metadata.label"
+	opts.Field = "metadata.label"
 	out.Reset()
 	if e := app.writeResult(map[string]any{"data": map[string]any{"metadata": nil}}, command, opts); e != nil || strings.TrimSpace(out.String()) != "null" {
 		t.Fatalf("error=%v output=%s", e, out)

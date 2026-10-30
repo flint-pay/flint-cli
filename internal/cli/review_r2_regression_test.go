@@ -162,10 +162,10 @@ func TestHumanSchemaOutputTransforms(t *testing.T) {
 				flags      []string
 			}{
 				{"jq", "selected-marker", []string{"--jq", `"selected-marker"`}},
-				{"field", scalar, []string{"--field", field}},
+				{"field", scalar, []string{"--field", strings.TrimPrefix(field, "data.")}},
 				{"select human", label + " " + scalar, []string{"--select", strings.TrimPrefix(field, "data.")}},
 				{"select", scalar, []string{"--select", strings.TrimPrefix(field, "data."), "--jq", "." + field}},
-				{"invalid field", "Field path does not exist", []string{"--field", "missing_field"}},
+				{"invalid field", "isn't a field", []string{"--field", "missing_field"}},
 			} {
 				t.Run(test.name, func(t *testing.T) {
 					app, out, stderr := testApp(t, "")

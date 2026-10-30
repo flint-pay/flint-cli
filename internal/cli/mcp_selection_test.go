@@ -13,7 +13,7 @@ import (
 func TestMCPSelectionAfterMutation(t *testing.T) {
 	for _, controls := range []map[string]any{
 		{"select": []any{"customer_id", "definitely_missing"}},
-		{"field": "data.definitely_missing"},
+		{"field": "definitely_missing"},
 		{"select": []any{"customer_id"}},
 		{"select": []any{true}},
 	} {

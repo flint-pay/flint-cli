@@ -132,7 +132,7 @@ func TestListNDJSONFailures(t *testing.T) {
 		{"bad collection", `{"data":{}}`, "INVALID_PAGINATION_RESPONSE", 200, ExitAPI, 1},
 		{"bad envelope", `[]`, "INVALID_PAGINATION_RESPONSE", 200, ExitAPI, 1},
 		{"bad token", `{"data":[],"next_page_token":42}`, "INVALID_PAGINATION_RESPONSE", 200, ExitAPI, 1},
-		{"bad select", `{"data":[]}`, "INVALID_SELECT", 200, ExitUsage, 0},
+		{"bad select", `{"data":[]}`, "UNKNOWN_OUTPUT_FIELD", 200, ExitUsage, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			calls := 0
@@ -167,7 +167,7 @@ func TestListNDJSONFailures(t *testing.T) {
 }
 
 func TestListNDJSONFlagsAndWriteFailure(t *testing.T) {
-	for _, flags := range [][]string{{"--jq", ".data[]"}, {"--field", "data.0.customer_id"}, {"--preview"}, {"--dry-run=client"}} {
+	for _, flags := range [][]string{{"--jq", ".data[]"}, {"--field", "0.customer_id"}, {"--preview"}, {"--dry-run=client"}} {
 		app, out, stderr := ndjsonListApp(t, func(*http.Request) (int, string) {
 			t.Fatal("invalid flags sent a request")
 			return 0, ""

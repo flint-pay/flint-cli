@@ -61,7 +61,7 @@ func TestMCPPreviewResultsMatchAdvertisedSchemas(t *testing.T) {
 	}{
 		{"dry run", "organizations.create", map[string]any{"name": "Audit", "parent_organization_id": "org_parent", "_flint": map[string]any{"dry_run": "client"}}, "data.method", "POST"},
 		{"destructive preview", "payment-intents.cancel", map[string]any{"payment_intent_id": "pi_test", "_flint": map[string]any{"preview": true}}, "data.preview.reversibility.reversible", false},
-		{"transformed dry run", "organizations.create", map[string]any{"name": "Audit", "parent_organization_id": "org_parent", "_flint": map[string]any{"dry_run": "client", "field": "data.method"}}, "value", "POST"},
+		{"transformed dry run", "organizations.create", map[string]any{"name": "Audit", "parent_organization_id": "org_parent", "_flint": map[string]any{"dry_run": "client", "field": "method"}}, "value", "POST"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 2, Method: "tools/call", Params: map[string]any{"name": test.tool, "arguments": test.arguments}}, mcpAllToolsOptions(t))

@@ -85,14 +85,14 @@ func TestTriggerRecipesMatchEmbeddedSpec(t *testing.T) {
 				}
 				for _, outputs := range []map[string]string{step.Outputs, step.Secrets} {
 					for _, path := range outputs {
-						if !outputSchemaDeclaresPath(command, path) {
+						if !outputSchemaDeclaresPath(command, strings.TrimPrefix(strings.TrimPrefix(path, "data."), "0.")) {
 							t.Errorf("%s output %s not in schema", step.Name, path)
 						}
 					}
 				}
 				for _, condition := range step.Until {
 					path, value, _ := strings.Cut(condition, "=")
-					if !outputSchemaDeclaresPath(command, path) {
+					if !outputSchemaDeclaresPath(command, strings.TrimPrefix(strings.TrimPrefix(path, "data."), "0.")) {
 						t.Errorf("%s condition %s not in schema", step.Name, path)
 					}
 					schema, _ := schemaForCommand(command, false)
@@ -245,7 +245,7 @@ func TestTriggerRecipeCallSequence(t *testing.T) {
 			}
 			for _, step := range recipe.Steps[:through] {
 				for name, path := range step.Outputs {
-					want, _ := lookupResourcePath(fixtures[step.Name], path)
+					want, _ := triggerLookupPath(fixtures[step.Name], path)
 					if output.Data.IDs[name] != want {
 						t.Errorf("missing %s", name)
 					}

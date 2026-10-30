@@ -795,7 +795,7 @@ func TestMCPOutputTransformsRemainStructuredAndSchemaCompatible(t *testing.T) {
 	response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{
 		"name": "version",
 		"arguments": map[string]any{
-			"_flint": map[string]any{"field": "data.cli_version"},
+			"_flint": map[string]any{"field": "cli_version"},
 		},
 	}}, mcpAllToolsOptions(t))
 	result := response["result"].(map[string]any)

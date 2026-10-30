@@ -260,7 +260,7 @@ tar -xzf "${temp_dir}/${archive}" -C "$temp_dir"
 mkdir -p "$install_dir"
 staging_dir="$(mktemp -d "${install_dir}/.flint-install.XXXXXX")"
 install -m 0755 "${temp_dir}/flint" "${staging_dir}/flint"
-if ! installed_version="$("${staging_dir}/flint" version --field data.cli_version --color never)"; then
+if ! installed_version="$("${staging_dir}/flint" version --jq .data.cli_version --output human --color never)"; then
   echo "Downloaded Flint CLI executable failed version verification." >&2
   exit 5
 fi

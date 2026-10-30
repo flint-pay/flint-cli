@@ -421,7 +421,7 @@ func TestSavedLoginOutput(t *testing.T) {
 				t.Fatalf("machine output lost context: %s", out)
 			}
 			out.Reset()
-			if exit := app.Run([]string{"login", "--field", "data.active_context.name"}); exit != ExitOK || out.String() != "cedar-stone\n" {
+			if exit := app.Run([]string{"login", "--field", "active_context.name"}); exit != ExitOK || out.String() != "cedar-stone\n" {
 				t.Fatalf("field output changed: %d %s", exit, out)
 			}
 		})

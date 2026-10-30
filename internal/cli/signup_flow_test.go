@@ -452,11 +452,11 @@ func TestSignupFlowNoOpenLoginLink(t *testing.T) {
 
 func TestSignupFlowHumanOutputTransforms(t *testing.T) {
 	app, out, _ := signupFlowApp(t, func(w http.ResponseWriter, r *http.Request) { signupFlowSuccess(t, w, r) })
-	if exit := app.Run(append(append([]string{}, signupFlowStartArgs...), "--no-input", "--field", "data.status")); exit != ExitOK || strings.TrimSpace(out.String()) != "verification_required" {
+	if exit := app.Run(append(append([]string{}, signupFlowStartArgs...), "--no-input", "--field", "status")); exit != ExitOK || strings.TrimSpace(out.String()) != "verification_required" {
 		t.Fatalf("start field exit=%d out=%s", exit, out)
 	}
 	out.Reset()
-	if exit := app.Run([]string{"signup", "--verification-code", "123456", "--no-input", "--field", "data.next_command"}); exit != ExitOK || strings.TrimSpace(out.String()) != "FLINT_BASE_URL='https://api.example.test' "+signupNextCommand+" --credential-store keyring" {
+	if exit := app.Run([]string{"signup", "--verification-code", "123456", "--no-input", "--field", "next_command"}); exit != ExitOK || strings.TrimSpace(out.String()) != "FLINT_BASE_URL='https://api.example.test' "+signupNextCommand+" --credential-store keyring" {
 		t.Fatalf("finish field exit=%d out=%s", exit, out)
 	}
 }

@@ -46,7 +46,7 @@ func TestJSONInputCancellation(t *testing.T) {
 func TestResultOutputFailuresReturnNonzero(t *testing.T) {
 	for _, args := range [][]string{
 		{"version"},
-		{"version", "--field", "data.cli_version"},
+		{"version", "--field", "cli_version"},
 		{"version", "--output", "json"},
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
@@ -97,8 +97,8 @@ func TestNullFieldOutputFailure(t *testing.T) {
 	app, _, _ := testApp(t, "")
 	app.Stdout = failingWriter{}
 	opts := defaultOptions()
-	opts.Field = "data"
-	err := app.writeResult(map[string]any{"data": nil}, nil, opts)
+	opts.Field = "value"
+	err := app.writeResult(map[string]any{"data": map[string]any{"value": nil}}, nil, opts)
 	if err == nil || err.Code != "OUTPUT_WRITE_FAILED" {
 		t.Fatalf("expected output failure for null field, got %v", err)
 	}

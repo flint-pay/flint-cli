@@ -181,7 +181,7 @@ func TestRetryAdviceKeepsKeyAfterSentOutputFailure(t *testing.T) {
 	}))
 	defer server.Close()
 	app, out, _ := testApp(t, server.URL)
-	exit, env := runJSON(t, app, out, "customers", "create", "--email", "fixture@example.com", "--field", "definitely_missing", "--idempotency-key", "saved-action")
+	exit, env := runJSON(t, app, out, "customers", "create", "--email", "fixture@example.com", "--jq", "[", "--idempotency-key", "saved-action")
 	if exit == ExitOK || writes != 1 || lookupPathValue(env, "error.details.idempotency_key") != "saved-action" || strings.Contains(out.String(), "resend") {
 		t.Fatalf("writes=%d exit=%d out=%s", writes, exit, out)
 	}

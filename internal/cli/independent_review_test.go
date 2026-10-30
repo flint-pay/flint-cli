@@ -153,12 +153,12 @@ func TestMCPOptionalFieldProjectionsMatchCLI(t *testing.T) {
 		controls map[string]any
 		want     string
 	}{
-		{"field", []string{"--field", "data.email"}, map[string]any{"field": "data.email"}, "null"},
+		{"field", []string{"--field", "email"}, map[string]any{"field": "email"}, "null"},
 		{"select", []string{"--select", "email"}, map[string]any{"select": []any{"email"}}, `{"data":{"email":null}}`},
 		{"jq", []string{"--jq", ".data.email"}, map[string]any{"jq": ".data.email"}, "null"},
 		{"select and jq", []string{"--select", "email", "--jq", ".data | has(\"email\")"}, map[string]any{"select": []any{"email"}, "jq": `.data | has("email")`}, "true"},
-		{"unknown field", []string{"--field", "data.emial"}, map[string]any{"field": "data.emial"}, "FIELD_NOT_FOUND"},
-		{"unknown select", []string{"--select", "emial"}, map[string]any{"select": []any{"emial"}}, "INVALID_SELECT"},
+		{"unknown field", []string{"--field", "emial"}, map[string]any{"field": "emial"}, "UNKNOWN_OUTPUT_FIELD"},
+		{"unknown select", []string{"--select", "emial"}, map[string]any{"select": []any{"emial"}}, "UNKNOWN_OUTPUT_FIELD"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			app, out, _ := testApp(t, server.URL)

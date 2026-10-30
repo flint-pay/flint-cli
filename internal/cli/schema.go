@@ -616,8 +616,8 @@ func mcpControlSchemas(c *Command) map[string]any {
 		controls["expand"] = control(map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"type": "string", "enum": expansions}}, "Include related resources.")
 	}
 	if c.Supports.Field {
-		controls["field"] = control(map[string]any{"type": "string"}, "Return only this dot path.")
-		controls["select"] = control(map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"type": "string"}}, "Keep only these fields.")
+		controls["field"] = control(map[string]any{"type": "string"}, "Path inside the resource.")
+		controls["select"] = control(map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"type": "string"}}, "Paths inside each resource.")
 		controls["jq"] = control(map[string]any{"type": "string"}, "jq expression for the result.")
 	}
 	return controls

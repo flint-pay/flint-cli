@@ -210,6 +210,14 @@ type triggerClockAdvance struct {
 }
 
 // Resolve only whole-value references, retaining objects such as outstanding_money.
+// Recipes declare envelope paths explicitly; CLI output paths are resource-relative.
+func triggerLookupPath(value any, path string) (any, bool) {
+	if strings.HasPrefix(path, "data.") || path == "request_id" {
+		return lookupPath(value, path)
+	}
+	return lookupResourcePath(value, path)
+}
+
 func triggerResolve(value any, results map[string]any) (any, *CLIError) {
 	switch v := value.(type) {
 	case triggerClockAdvance:
@@ -228,10 +236,10 @@ func triggerResolve(value any, results map[string]any) (any, *CLIError) {
 		if strings.HasPrefix(v, "{") && strings.HasSuffix(v, "}") {
 			step, path, ok := strings.Cut(v[1:len(v)-1], ".")
 			if ok {
-				if found, exists := lookupResourcePath(results[step], path); exists {
+				if found, exists := triggerLookupPath(results[step], path); exists {
 					return found, nil
 				}
-				if found, exists := lookupResourcePath(results[step], "data.0."+path); exists {
+				if found, exists := triggerLookupPath(results[step], "data.0."+path); exists {
 					return found, nil
 				}
 			}
@@ -409,7 +417,7 @@ func (a *App) runTrigger(ctx context.Context, recipe triggerRecipe, entry trigge
 			if len(conditions) == 0 {
 				break
 			}
-			matched, observed := conditionsMatch(response.Value, conditions)
+			matched, observed := matchConditions(response.Value, conditions, triggerLookupPath)
 			if len(conditions) == 1 && slices.Contains(step.Accepted, observed[conditions[0].Path]) {
 				matched = true
 			}
@@ -424,7 +432,7 @@ func (a *App) runTrigger(ctx context.Context, recipe triggerRecipe, entry trigge
 			} else if e := a.writeProgress(opts, progress, "Waiting for "+step.Name); e != nil {
 				return fail(e, step.Name)
 			}
-			status, _ := lookupResourcePath(response.Value, "status")
+			status, _ := triggerLookupPath(response.Value, "status")
 			remaining := deadline.Sub(a.Now())
 			if remaining <= 0 || (step.OperationID == "getTestClock" && status == "failed") {
 				return fail(waitError(), step.Name)
@@ -440,27 +448,27 @@ func (a *App) runTrigger(ctx context.Context, recipe triggerRecipe, entry trigge
 		results[step.Name] = response.Value
 		// Missing declared outputs fail closed; secrets remain only in the in-memory response.
 		for name, path := range step.Outputs {
-			value, ok := lookupResourcePath(response.Value, path)
+			value, ok := triggerLookupPath(response.Value, path)
 			if !ok {
 				return fail(invalidResponseError("INVALID_RESPONSE", "Trigger response is missing "+path, nil), step.Name)
 			}
 			ids[name] = value
 		}
 		for _, path := range step.Secrets {
-			if value, ok := lookupResourcePath(response.Value, path); !ok || value == "" {
+			if value, ok := triggerLookupPath(response.Value, path); !ok || value == "" {
 				return fail(invalidResponseError("INVALID_RESPONSE", "Trigger response is missing a checkout credential.", nil), step.Name)
 			}
 		}
 		for _, name := range []string{"order_id", "customer_id", "refund_id", "checkout_session_id", "dispute_id", "payment_intent_id", "payment_method_id", "test_clock_id", "subscription_plan_id", "subscription_id", "invoice_id", "invoice_manual_payment_id"} {
 			if path, ok := step.Outputs[name]; ok {
-				value, _ := lookupResourcePath(response.Value, path)
+				value, _ := triggerLookupPath(response.Value, path)
 				record["resource_type"] = strings.TrimSuffix(name, "_id")
 				record["resource_id"] = value
 				break
 			}
 		}
 		record["status_code"] = response.Status
-		record["request_id"], _ = lookupResourcePath(response.Value, "request_id")
+		record["request_id"], _ = triggerLookupPath(response.Value, "request_id")
 		records = append(records, record)
 		if opts.Output == "ndjson" {
 			if code := a.outputTriggerRecord(map[string]any{"type": "step", "data": record}, opts); code != ExitOK {
