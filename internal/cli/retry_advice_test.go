@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -34,12 +35,18 @@ func TestRetryAdviceFollowsRemediation(t *testing.T) {
 			}
 			opts.Output = "json"
 			app.writeError(e, opts)
-			env := mcpCLIErrorEnvelope(e)
+			env := terminalErrorEnvelope(t, e)
 			if lookupPathValue(env, "error.remediation.retry") != tc.retry || lookupPathValue(env, "error.details.idempotency_key") != "saved-action" || lookupPathValue(env, "error.details.problems.0.reason") != "fixture" {
 				t.Fatal(out.String())
 			}
-			mcp := mcpResultText(mcpCommandError(cmd, mcpCallResult{value: env, exit: e.ExitCode}, mcpPolicy{}, ""))
-			for _, text := range []string{human, mcp} {
+			mcpResult := mcpCommandError(cmd, mcpCallResult{value: mcpCLIErrorEnvelope(e), cliError: e, exit: e.ExitCode}, mcpPolicy{}, "")
+			mcpValue := mcpErrorJSON(t, mcpResult)
+			raw, _ := json.Marshal(mcpValue["error"])
+			wantRaw, _ := json.Marshal(serverError)
+			if string(raw) != string(wantRaw) || lookupPathValue(mcpValue, "cli.idempotency_key") != "saved-action" {
+				t.Fatal(mcpValue)
+			}
+			for _, text := range []string{human} {
 				switch tc.retry {
 				case "same_request":
 					if !strings.Contains(text, "identical request") || !strings.Contains(text, "backoff") || !strings.Contains(text, "saved-action") || strings.Contains(text, "use a new") {
@@ -130,8 +137,7 @@ func TestRetryAdviceNoKeyRoutes(t *testing.T) {
 			app.writeError(e, opts)
 			opts.Output = "json"
 			app.writeError(e, opts)
-			env := mcpCLIErrorEnvelope(e)
-			text := stderr.String() + out.String() + mcpResultText(mcpCommandError(cmd, mcpCallResult{value: env, exit: e.ExitCode}, mcpPolicy{}, ""))
+			text := stderr.String() + out.String() + mcpResultText(mcpCommandError(cmd, mcpCallResult{value: mcpCLIErrorEnvelope(e), cliError: e, exit: e.ExitCode}, mcpPolicy{}, ""))
 			if strings.Contains(text, "idempotency") || strings.Contains(text, "ignored-key") || !strings.Contains(text, "Wait before") {
 				t.Fatal(text)
 			}
@@ -158,7 +164,7 @@ func TestRetryAdviceBeforeTransportDispatch(t *testing.T) {
 				key += "\ninvalid"
 			}
 			_, e := app.doRequest(ctx, "http://127.0.0.1:1", "", "POST", "/v1/customers", nil, key, false)
-			if e == nil || e.requestSent || lookupPathValue(mcpCLIErrorEnvelope(e), "error.details.idempotency_key") != nil {
+			if e == nil || e.requestSent || lookupPathValue(terminalErrorEnvelope(t, e), "error.details.idempotency_key") != nil {
 				t.Fatal(e)
 			}
 			if failure != "dial" && calls != 0 {

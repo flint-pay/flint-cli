@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -312,29 +313,29 @@ func TestMCPMissingCredentialAdviceFitsAClientConfig(t *testing.T) {
 	t.Setenv("FLINT_API_KEY", "")
 	result := mcpCall(t, app, defaultOptions(), "customers_list", map[string]any{})
 	text := mcpResultText(result)
-	if result["isError"] != true || !strings.HasPrefix(text, "No Flint credential is configured for this MCP server.") || !strings.Contains(text, "FLINT_API_KEY") || !strings.Contains(text, "restart") || strings.Contains(text, "flint auth login") {
+	if result["isError"] != true || lookupPathValue(mcpErrorJSON(t, result), "error.code") != "API_KEY_REQUIRED" || !strings.Contains(text, "FLINT_API_KEY") || !strings.Contains(text, "restart") || strings.Contains(text, "flint auth login") {
 		t.Fatalf("missing credential = %s", text)
 	}
 }
 
 func TestMCPRetryGuidanceNamesTheIdempotencyControl(t *testing.T) {
-	cmd, _ := NewRegistry().ByName("customers.create")
-	value := map[string]any{"error": map[string]any{
-		"type": "unavailable_error", "code": "SERVICE_UNAVAILABLE", "message": "Flint is unavailable.",
-		"remediation": map[string]any{"retry": "same_request"},
-		"details": map[string]any{
-			"idempotency_key": "flint-cli-abc",
-			"remediation":     map[string]any{"next_actions": []any{map[string]any{"reason_message": "Retry the same command with --idempotency-key flint-cli-abc.", "command": "flint customers create --idempotency-key flint-cli-abc"}}},
-		},
-	}}
-	result := mcpCommandError(cmd, mcpCallResult{value: value, exit: ExitAPI}, mcpPolicy{}, "")
-	text := mcpResultText(result)
-	firstLine, _, _ := strings.Cut(text, "\n")
-	if !strings.Contains(firstLine, `idempotency_key flint-cli-abc`) || !strings.Contains(firstLine, "identical request") || !strings.Contains(firstLine, "backoff") {
-		t.Fatalf("message = %s", firstLine)
+	app, _, _ := testApp(t, "http://127.0.0.1:1")
+	cmd, _ := app.Registry.ByName("refunds.create")
+	apiError := map[string]any{"type": "unavailable_error", "code": "SERVICE_UNAVAILABLE", "message": "Flint is unavailable.", "details": []any{map[string]any{"reason": "fixture"}}, "remediation": map[string]any{"retry": "same_request", "next_steps": "Wait before retrying."}}
+	e := apiErrorFromResponse(&apiResponse{Status: http.StatusServiceUnavailable, Value: map[string]any{"error": apiError}})
+	e.requestSent = true
+	withIdempotencyRetryContext(e, "flint-cli-abc")
+	result := app.mcpCommandError(cmd, map[string]any{"order_id": "ord_fixture", "_flint": map[string]any{"idempotency_key": "flint-cli-abc"}}, defaultOptions(), mcpCallResult{value: mcpCLIErrorEnvelope(e), cliError: e, exit: e.ExitCode}, app.mcpPolicy(defaultOptions()), "")
+	value := mcpErrorJSON(t, result)
+	if !reflect.DeepEqual(value["error"], apiError) {
+		t.Fatalf("API error changed: %#v", value)
 	}
-	if !strings.Contains(text, "Retry the same command with idempotency_key flint-cli-abc.") || !strings.Contains(text, "flint customers create --idempotency-key flint-cli-abc") {
-		t.Fatalf("details = %s", text)
+	if lookupPathValue(value, "cli.idempotency_key") != "flint-cli-abc" {
+		t.Fatalf("retry key lost: %#v", value)
+	}
+	actions, _ := json.Marshal(lookupPathValue(value, "cli.next_actions"))
+	if !strings.Contains(string(actions), "idempotency_key") || !strings.Contains(string(actions), "flint-cli-abc") {
+		t.Fatalf("retry advice lacks reusable key: %s", actions)
 	}
 }
 
@@ -476,54 +477,38 @@ func TestMCPEmptyToolsIsRejectedWithLazyRegistry(t *testing.T) {
 
 func TestMCPErrorEnvelopePreservesCoreDetailsAndRemediation(t *testing.T) {
 	cmd, _ := NewRegistry().ByName("customers.create")
-	err := &CLIError{
-		requestSent: true,
-		ExitCode:    ExitAPI, Type: "unavailable_error", Code: "SERVICE_UNAVAILABLE", Message: "Unavailable.", HTTPStatus: http.StatusServiceUnavailable,
-		Details: map[string]any{
-			"type": "unavailable_error", "code": "SERVICE_UNAVAILABLE", "message": "Unavailable.",
-			"details":     map[string]any{"existing": "preserved"},
-			"remediation": map[string]any{"retry": "same_request", "next_actions": []any{map[string]any{"reason_message": "Retry with --timeout 1m."}}},
-		},
+	apiError := map[string]any{"type": "unavailable_error", "code": "SERVICE_UNAVAILABLE", "message": "Unavailable.", "details": []any{map[string]any{"existing": "preserved"}}, "remediation": map[string]any{"retry": "same_request", "next_actions": []any{map[string]any{"reason_message": "Retry with --timeout 1m."}}}}
+	e := apiErrorFromResponse(&apiResponse{Status: http.StatusServiceUnavailable, Value: map[string]any{"error": apiError}})
+	e.requestSent = true
+	withIdempotencyRetryContext(e, "flint-cli-retry-test")
+	result := mcpCommandError(cmd, mcpCallResult{value: mcpCLIErrorEnvelope(e), cliError: e, exit: e.ExitCode}, mcpPolicy{}, "")
+	value := mcpErrorJSON(t, result)
+	if !reflect.DeepEqual(value["error"], apiError) {
+		t.Fatalf("API error or remediation changed: %#v", value)
 	}
-	envelope := mcpCLIErrorEnvelope(withIdempotencyRetryContext(err, "flint-cli-retry-test"))
-	result := mcpCommandError(cmd, mcpCallResult{value: envelope, exit: ExitAPI}, mcpPolicy{}, "")
-	text := mcpResultText(result)
-	_, raw, _ := strings.Cut(text, "\n\n")
-	var details map[string]any
-	if err := json.Unmarshal([]byte(raw), &details); err != nil {
-		t.Fatal(err)
-	}
-	for path, want := range map[string]any{
-		"result.error.http_status":             float64(http.StatusServiceUnavailable),
-		"result.error.retryable":               true,
-		"result.error.details.existing":        "preserved",
-		"result.error.details.idempotency_key": "flint-cli-retry-test",
-	} {
-		if got, _ := lookupPath(details, path); got != want {
-			t.Errorf("%s = %v, want %v", path, got, want)
+	for path, want := range map[string]any{"cli.origin": "api", "cli.idempotency_key": "flint-cli-retry-test", "error.details.0.existing": "preserved"} {
+		if got := lookupPathValue(value, path); got != want {
+			t.Errorf("%s=%#v want=%#v", path, got, want)
 		}
 	}
-	if !strings.Contains(text, "timeout 1m") || strings.Contains(text, "--timeout") || strings.Contains(text, "--idempotency-key") {
-		t.Fatalf("untranslated remediation: %s", text)
-	}
-	if !strings.Contains(text, `idempotency_key flint-cli-retry-test`) {
-		t.Fatalf("missing retry key advice: %s", text)
+	for _, field := range []string{"http_status", "retryable"} {
+		if _, ok := value["error"].(map[string]any)[field]; ok {
+			t.Errorf("CLI field added to API error: %s", field)
+		}
 	}
 	for _, test := range []struct {
 		code    string
-		details map[string]any
+		details any
 	}{
-		{"UNKNOWN_COMMAND", suggestionDetails("customer", []string{"customers"})},
-		{"INVALID_REQUEST_BODY", map[string]any{"problems": []any{map[string]any{"path": "$.email", "message": "Invalid email."}}}},
+		{"UNKNOWN_OPERATION", suggestionDetails("customer", []string{"customers"})},
+		{"INVALID_REQUEST", []any{map[string]any{"code": "INVALID_VALUE", "param": "email", "message": "Invalid email."}}},
 	} {
 		t.Run(test.code, func(t *testing.T) {
-			envelope := mcpCLIErrorEnvelope(&CLIError{ExitCode: ExitUsage, Type: "usage_error", Code: test.code, Message: "Invalid input.", Details: test.details})
-			if _, ok := lookupPathValue(envelope, "error.details").(map[string]any); !ok {
-				t.Fatalf("details must be an object: %#v", envelope)
-			}
-			result := mcpCommandError(cmd, mcpCallResult{value: envelope, exit: ExitUsage}, mcpPolicy{}, "")
-			if !strings.Contains(mcpResultText(result), `"`+test.code+`"`) {
-				t.Fatalf("error code lost: %#v", result)
+			local := &CLIError{ExitCode: ExitUsage, Type: "usage_error", Code: test.code, Message: "Invalid input.", Details: test.details}
+			result := mcpCommandError(cmd, mcpCallResult{value: mcpCLIErrorEnvelope(local), cliError: local, exit: ExitUsage}, mcpPolicy{}, "")
+			value := mcpErrorJSON(t, result)
+			if lookupPathValue(value, "error.code") != test.code || lookupPathValue(value, "cli.origin") != "cli" {
+				t.Fatalf("local code lost: %#v", value)
 			}
 		})
 	}

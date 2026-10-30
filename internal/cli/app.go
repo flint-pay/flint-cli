@@ -49,8 +49,7 @@ func (a *App) Run(argv []string) int {
 	cmd, opts, help, parseErr := parseInvocation(a.Registry, argv)
 	applyEnvironmentOptions(&opts)
 	if parseErr != nil {
-		a.writeError(parseErr, opts)
-		return parseErr.ExitCode
+		return a.fail(parseErr, opts)
 	}
 	if envErr := validateOptions(cmd, &opts, help); envErr != nil {
 		return a.fail(envErr, opts)
@@ -317,7 +316,13 @@ func configError(code, message string, cause error) *CLIError {
 	}
 	return &CLIError{ExitCode: ExitAuth, Type: errorTypeConfiguration, Code: code, Message: message, Cause: cause}
 }
-func (a *App) fail(err *CLIError, opts Options) int { a.writeError(err, opts); return err.ExitCode }
+func (a *App) fail(err *CLIError, opts Options) int {
+	if a.mcpErrorObserver != nil {
+		a.mcpErrorObserver(err)
+	}
+	a.writeError(err, opts)
+	return err.ExitCode
+}
 
 func (a *App) printCommandHelp(cmd *Command) {
 	if cmd.Group {

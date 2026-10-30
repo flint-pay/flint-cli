@@ -448,7 +448,7 @@ func TestAPIKeyAccessFlagsOnUpdateAndSandboxCommands(t *testing.T) {
 func TestMCPAPIKeyCreateRequiresAccess(t *testing.T) {
 	app, _, _ := testApp(t, "http://127.0.0.1:1")
 	refused := mcpCall(t, app, mcpAllToolsOptions(t), "api-keys_create", map[string]any{"name": "ci", "scopes": []any{"customers.read"}, "_flint": map[string]any{"dry_run": "client"}})
-	if refused["isError"] != true || !strings.Contains(mcpResultText(refused), "$.access: required field is missing") {
+	if refused["isError"] != true || lookupPathValue(mcpErrorJSON(t, refused), "error.code") != "INVALID_REQUEST" || lookupPathValue(mcpErrorJSON(t, refused), "error.details.0.param") != "access" {
 		t.Fatalf("scopes without access = %s", mcpResultText(refused))
 	}
 	accepted := mcpCall(t, app, mcpAllToolsOptions(t), "api-keys_create", map[string]any{"name": "ci", "access": "restricted", "scopes": []any{"customers.read"}, "_flint": map[string]any{"dry_run": "client"}})

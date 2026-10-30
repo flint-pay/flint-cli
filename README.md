@@ -279,6 +279,8 @@ Successful results contain one compact JSON text block and, when needed, one not
 
 `select` paths are checked before sending. Selected writes retain the resource's ID and status. If a declared optional field is absent from a completed write, the result remains successful and includes a warning.
 
+Failed calls return one JSON text block with `error` and `cli`. API errors pass through unchanged, including their detail arrays and `error_source`. Local failures use `error_source: "caller"`; invalid inputs use `INVALID_REQUEST` with public field paths in `details[].param`. The `cli` block identifies the origin, operation, exit code, environment, and who must act next. Follow agent actions directly; tell the user about actions marked `user`. Unknown write outcomes include the sent idempotency key and a recovery read when available.
+
 `flint_describe` supports `kind: "result"`, nested `path`, `depth` from 1 to 3, and request `variant`. Pass `event` instead of `operation` to inspect a webhook payload. `flint_help` lists resource groups or explains `safety`, `errors`, `events`, and `test-cards`.
 
 Add the server to Claude Code:

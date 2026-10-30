@@ -140,6 +140,10 @@ func (h *requestHistory) finalError(ctx context.Context, e *CLIError, method, pa
 		cause = h.uncertain.Cause
 	}
 	result := networkError(code, message, cause)
+	result.apiError = e.apiError
+	if result.apiError == nil && h.uncertain != nil {
+		result.apiError = h.uncertain.apiError
+	}
 	result.Details, result.HTTPStatus, result.RequestID, result.RetryAfterMs = details, e.HTTPStatus, e.RequestID, e.RetryAfterMs
 	if result.RequestID == "" && len(h.requestIDs) > 0 {
 		result.RequestID = h.requestIDs[len(h.requestIDs)-1]

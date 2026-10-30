@@ -67,7 +67,7 @@ func TestMCPMixedAuthAccessTokenSafety(t *testing.T) {
 		write      bool
 	}{
 		{"live disabled", "LIVE_ACCESS_DISABLED", nil, false},
-		{"confirmation required", "PRODUCTION_CONFIRMATION_REQUIRED", []string{"--allow-live"}, false},
+		{"confirmation required", "CONFIRMATION_NEEDS_USER", []string{"--allow-live"}, false},
 		{"live confirmed", "", []string{"--allow-live", "--allow-destructive"}, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {

@@ -178,6 +178,78 @@ func mcpResultJSON(t *testing.T, result map[string]any) any {
 	return value
 }
 
+func mcpErrorJSON(t *testing.T, result map[string]any) map[string]any {
+	t.Helper()
+	if result["isError"] != true {
+		t.Fatalf("expected tool error: %#v", result)
+	}
+	value, ok := mcpResultJSON(t, result).(map[string]any)
+	if !ok {
+		t.Fatalf("error is not an object: %#v", result)
+	}
+	raw, _ := json.Marshal(result["content"])
+	var content []map[string]any
+	_ = json.Unmarshal(raw, &content)
+	if len(content) != 1 || len(value) != 2 {
+		t.Fatalf("expected one {error,cli} JSON block: %#v", result)
+	}
+	errorObject, ok := value["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing error object: %#v", value)
+	}
+	metadata, ok := value["cli"].(map[string]any)
+	if !ok || (metadata["origin"] != "api" && metadata["origin"] != "cli") {
+		t.Fatalf("missing CLI origin: %#v", value)
+	}
+	if metadata["exit_code"] == nil {
+		t.Fatalf("missing CLI exit code: %#v", value)
+	}
+	actions, ok := metadata["next_actions"].([]any)
+	if !ok || len(actions) == 0 {
+		t.Fatalf("missing next actions: %#v", value)
+	}
+	for _, rawAction := range actions {
+		action, ok := rawAction.(map[string]any)
+		if !ok {
+			t.Fatalf("invalid next action: %#v", rawAction)
+		}
+		switch action["actor"] {
+		case "agent":
+			call, ok := action["call"].(map[string]any)
+			if !ok || call["tool"] == nil || call["arguments"] == nil {
+				t.Fatalf("incomplete agent call: %#v", action)
+			}
+		case "user":
+			if text, _ := action["text"].(string); !strings.HasPrefix(text, "Ask the user to") {
+				t.Fatalf("user action does not identify who acts: %#v", action)
+			}
+		default:
+			t.Fatalf("missing next action actor: %#v", action)
+		}
+	}
+	if metadata["origin"] == "cli" {
+		if errorObject["error_source"] != "caller" {
+			t.Fatalf("local error source: %#v", errorObject)
+		}
+		if _, ok := errorObject["details"].([]any); !ok {
+			t.Fatalf("local details must be an array: %#v", errorObject)
+		}
+	}
+	return value
+}
+
+// Terminal output retains its own envelope while MCP errors use {error,cli}.
+func terminalErrorEnvelope(t *testing.T, e *CLIError) map[string]any {
+	t.Helper()
+	var out bytes.Buffer
+	(&App{Stdout: &out}).writeError(e, Options{Output: "json"})
+	var value map[string]any
+	if err := json.Unmarshal(out.Bytes(), &value); err != nil {
+		t.Fatal(err)
+	}
+	return value
+}
+
 func mcpListedTools(t *testing.T, app *App, opts Options, version string) ([]map[string]any, int) {
 	t.Helper()
 	response := app.handleMCPVersion(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/list"}, opts, version)
@@ -424,7 +496,7 @@ func TestMCPLiveCredentialRequiresAllowLive(t *testing.T) {
 	for _, arguments := range []map[string]any{{}} {
 		result := mcpCall(t, app, defaultOptions(), "customers.list", arguments)
 		text := mcpResultText(result)
-		if result["isError"] != true || !strings.HasPrefix(text, "The selected Flint credential or context is LIVE") || !strings.Contains(text, "flint mcp serve --allow-live") || strings.Contains(text, "Re-run with --live") {
+		if result["isError"] != true || !strings.HasPrefix(fmt.Sprint(lookupPathValue(mcpErrorJSON(t, result), "error.message")), "The selected Flint credential or context is LIVE") || !strings.Contains(text, "flint mcp serve --allow-live") || strings.Contains(text, "Re-run with --live") {
 			t.Fatalf("live call without --allow-live = %s", text)
 		}
 	}
@@ -483,7 +555,7 @@ func TestMCPConfirmationWithoutElicitationGuidesTheHuman(t *testing.T) {
 	app, _, _ := testApp(t, server.URL)
 	result := mcpCall(t, app, mcpAllToolsOptions(t), "api_keys_revoke", map[string]any{"api_key_id": "key_123"})
 	text := mcpResultText(result)
-	firstLine, _, _ := strings.Cut(text, "\n")
+	firstLine := fmt.Sprint(lookupPathValue(mcpErrorJSON(t, result), "error.message"))
 	if result["isError"] != true || !strings.HasPrefix(firstLine, "This operation requires confirmation.") || !strings.Contains(firstLine, "--allow-destructive") || strings.Contains(text, "Re-run with --confirm") || strings.Contains(text, "Flint command exited") {
 		t.Fatalf("confirmation error = %s", text)
 	}
@@ -505,7 +577,7 @@ func TestMCPConfirmationWithoutElicitationGuidesTheHuman(t *testing.T) {
 	}
 }
 
-func TestMCPErrorsLeadWithTheMessageAndUseToolTerms(t *testing.T) {
+func TestMCPErrorsUseOneJSONEnvelopeAndToolTerms(t *testing.T) {
 	cmd := &Command{Arguments: []Arg{{Name: "forward_to", Flag: "--forward-to"}}}
 	for input, want := range map[string]string{
 		"Retry the same command with --idempotency-key abc.":  "Retry the same command with idempotency_key abc.",
@@ -521,9 +593,11 @@ func TestMCPErrorsLeadWithTheMessageAndUseToolTerms(t *testing.T) {
 		t.Errorf("allowed live translation = %q", got)
 	}
 	app, _, _ := testApp(t, "")
+	t.Setenv("FLINT_API_KEY", "")
 	result := mcpCall(t, app, defaultOptions(), "customers.get", map[string]any{"customer_id": "cus_123"})
 	text := mcpResultText(result)
-	if result["isError"] != true || strings.HasPrefix(text, "{") || strings.HasPrefix(text, "Flint command exited") || !strings.Contains(text, `"exit_code"`) {
+	value := mcpErrorJSON(t, result)
+	if lookupPathValue(value, "cli.origin") != "cli" || lookupPathValue(value, "error.code") != "API_KEY_REQUIRED" || lookupPathValue(value, "cli.exit_code") == nil || !strings.HasPrefix(text, "{") {
 		t.Fatalf("error text = %s", text)
 	}
 }

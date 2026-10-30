@@ -551,6 +551,7 @@ func apiErrorFromResponse(resp *apiResponse) *CLIError {
 	e := &CLIError{requestSent: true, retryable: &retryable, HTTPStatus: resp.Status, ExitCode: exit, Type: errorTypeAPI, Code: "HTTP_" + strconv.Itoa(resp.Status), Message: message}
 	if m, ok := resp.Value.(map[string]any); ok {
 		if raw, ok := m["error"].(map[string]any); ok {
+			e.apiError = cloneErrorJSON(raw).(map[string]any)
 			if v, ok := raw["type"].(string); ok {
 				e.Type = v
 			}
