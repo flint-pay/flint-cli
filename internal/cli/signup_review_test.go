@@ -145,7 +145,7 @@ func TestSignupReviewResumedOriginInstructions(t *testing.T) {
 	}
 	command, _ := valueAt(result, "data.next_command").(string)
 	prefix := "FLINT_BASE_URL='https://api.example.test' "
-	if command != prefix+signupNextCommand {
+	if command != prefix+signupNextCommand+" --credential-store keyring" {
 		t.Fatalf("missing required origin: %s", command)
 	}
 	// Apply the environment assignment in the generated command, then use its key.

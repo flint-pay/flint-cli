@@ -148,3 +148,40 @@ func TestLoginCredentialStoreContinuation(t *testing.T) {
 		})
 	}
 }
+
+func TestSignupKeyringContinuationOverridesFileEnvironment(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { signupFlowSuccess(t, w, r) }))
+	defer server.Close()
+	t.Setenv("FLINT_BASE_URL", server.URL)
+	t.Setenv("FLINT_API_KEY", "")
+	t.Setenv("FLINT_ACCESS_TOKEN", "")
+	t.Setenv("FLINT_WORKLOAD_IDENTITY_ID", "")
+	t.Setenv("FLINT_CREDENTIAL_STORE", "file")
+	dir, workdir, stored := t.TempDir(), t.TempDir(), ""
+	makeApp := func() (*App, *bytes.Buffer, *bytes.Buffer) {
+		a, out, stderr := continuationTestApp(t, dir, workdir)
+		a.LoadCredential = func(string) (string, error) { return stored, nil }
+		a.StoreCredential = func(_ string, value string) error { stored = value; return nil }
+		return a, out, stderr
+	}
+	a, out, stderr := makeApp()
+	argv := append(append([]string{}, signupFlowStartArgs...), "--credential-store", "keyring", "--no-input")
+	exit, result := runJSON(t, a, out, argv...)
+	command, _ := valueAt(result, "data.next_command").(string)
+	if exit != ExitOK || !strings.Contains(command, " --credential-store keyring") {
+		t.Fatalf("start=%d command=%s stderr=%s", exit, command, stderr)
+	}
+	command = strings.TrimPrefix(command, "FLINT_BASE_URL='"+server.URL+"' ")
+	args := strings.Fields(strings.ReplaceAll(command, "<code>", "123456"))[1:]
+	next, out, stderr := makeApp()
+	if exit := next.Run(append(args, "--no-input", "--output", "json")); exit != ExitOK {
+		t.Fatalf("resume=%d %s %s", exit, out, stderr)
+	}
+	cfg, err := next.loadConfig()
+	if err != nil || cfg.Profiles["default"].CredentialStore != "keyring" || stored != "flint_test_synthetic_new" {
+		t.Fatal("explicit keyring choice lost", err)
+	}
+	if strings.Contains(stderr.String(), "not encrypted") {
+		t.Fatal("continuation silently selected the file backend")
+	}
+}

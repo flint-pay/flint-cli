@@ -133,7 +133,7 @@ func TestSignupFlowTwoPhase(t *testing.T) {
 				t.Fatal("signup output exposed a token or credential")
 			}
 			if output == "human" {
-				want := "You're signed up. Your sandbox is ready for test payments.\n\nMake a test payment:\n  " + "FLINT_BASE_URL='https://api.example.test' " + signupNextCommand + "\n\nPay with card 4242 4242 4242 4242, any future expiry date, and any CVC.\n"
+				want := "You're signed up. Your sandbox is ready for test payments.\n\nMake a test payment:\n  " + "FLINT_BASE_URL='https://api.example.test' " + signupNextCommand + " --credential-store keyring\n\nPay with card 4242 4242 4242 4242, any future expiry date, and any CVC.\n"
 				if out.String() != want {
 					t.Fatalf("human output = %s", out)
 				}
@@ -142,7 +142,7 @@ func TestSignupFlowTwoPhase(t *testing.T) {
 				if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 					t.Fatal(err)
 				}
-				if valueAt(result, "data.next_command") != "FLINT_BASE_URL='https://api.example.test' "+signupNextCommand || valueAt(result, "data.credential_saved") != true || valueAt(result, "data.api_key.api_key_id") != "key_new" || valueAt(result, "data.onboarding.default_sandbox_id") != "test_new" {
+				if valueAt(result, "data.next_command") != "FLINT_BASE_URL='https://api.example.test' "+signupNextCommand+" --credential-store keyring" || valueAt(result, "data.credential_saved") != true || valueAt(result, "data.api_key.api_key_id") != "key_new" || valueAt(result, "data.onboarding.default_sandbox_id") != "test_new" {
 					t.Fatalf("JSON output = %s", out)
 				}
 			}
@@ -456,7 +456,7 @@ func TestSignupFlowHumanOutputTransforms(t *testing.T) {
 		t.Fatalf("start field exit=%d out=%s", exit, out)
 	}
 	out.Reset()
-	if exit := app.Run([]string{"signup", "--verification-code", "123456", "--no-input", "--field", "data.next_command"}); exit != ExitOK || strings.TrimSpace(out.String()) != "FLINT_BASE_URL='https://api.example.test' "+signupNextCommand {
+	if exit := app.Run([]string{"signup", "--verification-code", "123456", "--no-input", "--field", "data.next_command"}); exit != ExitOK || strings.TrimSpace(out.String()) != "FLINT_BASE_URL='https://api.example.test' "+signupNextCommand+" --credential-store keyring" {
 		t.Fatalf("finish field exit=%d out=%s", exit, out)
 	}
 }

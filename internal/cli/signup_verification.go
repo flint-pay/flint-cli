@@ -256,8 +256,8 @@ func (a *App) signupCommand(command, profile, baseURL string) string {
 	if profile != "default" || err != nil || profile != unflagged.ProfileName {
 		command += " --profile '" + strings.ReplaceAll(profile, "'", "'\"'\"'") + "'"
 	}
-	if a.credentialStore == "file" {
-		command += " --credential-store file"
+	if a.credentialStore != "" {
+		command += " --credential-store " + a.credentialStore
 	}
 	// Raw API keys do not carry an origin in the credential store. Include the
 	// origin in continuation instructions so they survive environment changes.
