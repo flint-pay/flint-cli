@@ -258,3 +258,40 @@ func TestCredentialStoreConfiguredFileFailure(t *testing.T) {
 		t.Fatal("configured file failure hidden or file content exposed", err)
 	}
 }
+
+func TestCredentialStoreLogoutRejectsDifferentBackend(t *testing.T) {
+	for _, selection := range []string{"flag", "environment"} {
+		t.Run(selection, func(t *testing.T) {
+			app, out, _ := testApp(t, "http://127.0.0.1:1")
+			t.Setenv("FLINT_API_KEY", "")
+			app.credentialStore = "file"
+			if e := app.saveAuthenticatedCredential("default", "flint_test_retained", AuthContext{Environment: "sandbox"}); e != nil {
+				t.Fatal(e)
+			}
+			app.credentialStore = ""
+			path, _ := app.configPath()
+			before, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			app.LoadCredential = func(string) (string, error) { t.Fatal("mismatched logout read keyring"); return "", nil }
+			app.DeleteCredential = func(string) error { t.Fatal("mismatched logout deleted keyring"); return nil }
+			argv := []string{"auth", "logout", "--confirm", "--output", "json"}
+			if selection == "flag" {
+				argv = append(argv, "--credential-store", "keyring")
+			} else {
+				t.Setenv("FLINT_CREDENTIAL_STORE", "keyring")
+			}
+			if exit := app.Run(argv); exit != ExitUsage || !strings.Contains(out.String(), "CONFLICTING_ARGUMENTS") {
+				t.Fatalf("exit=%d out=%s", exit, out)
+			}
+			after, err := os.ReadFile(path)
+			if err != nil || string(before) != string(after) {
+				t.Fatal("mismatched logout changed profile", err)
+			}
+			if value, err := app.fileCredential("default", nil); err != nil || value != "flint_test_retained" {
+				t.Fatal("mismatched logout changed saved file", err)
+			}
+		})
+	}
+}

@@ -405,6 +405,21 @@ func (a *App) localLogout(cmd *Command, opts Options) int {
 	}
 	var persistenceErr *CLIError
 	lockErr := a.withConfigLock(func() error {
+		currentConfig, readErr := a.loadConfig()
+		if readErr != nil {
+			persistenceErr = configError("CONFIG_INVALID", readErr.Error(), readErr)
+			return persistenceErr
+		}
+		if p, exists := currentConfig.Profiles[resolved.ProfileName]; exists && a.credentialStore != "" {
+			savedStore := p.CredentialStore
+			if savedStore == "" {
+				savedStore = "keyring"
+			}
+			if a.credentialStore != savedStore && (savedStore == "keyring" || savedStore == "file") {
+				persistenceErr = usageError("CONFLICTING_ARGUMENTS", "This profile uses the "+savedStore+" credential store. Omit the override or use --credential-store "+savedStore+" to log out.", "credential-store")
+				return persistenceErr
+			}
+		}
 		raw, credentialErr := a.loadSavedCredentialUnlocked(resolved.ProfileName)
 		if credentialErr != nil {
 			persistenceErr = credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the credential before logout.", credentialErr)
