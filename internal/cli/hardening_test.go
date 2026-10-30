@@ -311,6 +311,9 @@ func TestAuthImportRollsBackCredentialWhenConfigWriteFails(t *testing.T) {
 			if err != nil {
 				return err
 			}
+			if err := os.Remove(path); err != nil {
+				return err
+			}
 			return os.Mkdir(path, 0700)
 		}
 		return nil

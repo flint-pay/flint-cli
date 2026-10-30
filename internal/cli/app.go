@@ -55,6 +55,9 @@ func (a *App) Run(argv []string) int {
 	if envErr := validateOptions(cmd, &opts, help); envErr != nil {
 		return a.fail(envErr, opts)
 	}
+	previousStore := a.credentialStore
+	a.credentialStore = opts.CredentialStore
+	defer func() { a.credentialStore = previousStore }()
 	if value := strings.TrimSpace(os.Getenv("FLINT_BASE_URL")); value != "" {
 		if _, err := validateBaseURL(value); err != nil {
 			return a.fail(configError("INVALID_BASE_URL", err.Error(), err), opts)
@@ -160,6 +163,9 @@ func (a *App) Run(argv []string) int {
 func (o Options) DryRunClient() bool { return o.DryRun == "client" || o.Preview }
 
 func applyEnvironmentOptions(o *Options) {
+	if len(o.Raw["credential-store"]) == 0 {
+		o.CredentialStore = strings.TrimSpace(os.Getenv("FLINT_CREDENTIAL_STORE"))
+	}
 	if len(o.Raw["output"]) == 0 {
 		if v := strings.TrimSpace(os.Getenv("FLINT_OUTPUT")); v != "" {
 			o.Output = strings.ToLower(v)
@@ -353,6 +359,7 @@ func (a *App) printCommandHelp(cmd *Command) {
 		fmt.Fprintln(a.Stdout, "  --context ID  Select an authorized context for this command")
 	}
 	fmt.Fprintln(a.Stdout, "  --output human|json|ndjson  --quiet  --debug  --no-input  --live  --merchant ID  --profile NAME ")
+	fmt.Fprintln(a.Stdout, "  --credential-store keyring|file  Credential backend (or FLINT_CREDENTIAL_STORE; defaults to the profile store or keyring)")
 	var capabilities []string
 	if cmd.Mutation {
 		capabilities = append(capabilities, "--idempotency-key KEY", "--dry-run=client", "--confirm")

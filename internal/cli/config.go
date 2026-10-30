@@ -22,13 +22,15 @@ type Config struct {
 }
 
 type Profile struct {
-	PendingSignup *SignupChallenge `json:"pending_signup,omitempty"`
-	ContextID     string           `json:"context,omitempty"`
-	MerchantGuard string           `json:"merchant_guard,omitempty"`
-	Environment   string           `json:"environment,omitempty"`
-	APIKeyID      string           `json:"api_key_id,omitempty"`
-	MerchantID    string           `json:"merchant_id,omitempty"`
-	SandboxID     string           `json:"sandbox_id,omitempty"`
+	CredentialStore   string           `json:"credential_store,omitempty"`
+	CredentialPresent *bool            `json:"credential_present,omitempty"`
+	PendingSignup     *SignupChallenge `json:"pending_signup,omitempty"`
+	ContextID         string           `json:"context,omitempty"`
+	MerchantGuard     string           `json:"merchant_guard,omitempty"`
+	Environment       string           `json:"environment,omitempty"`
+	APIKeyID          string           `json:"api_key_id,omitempty"`
+	MerchantID        string           `json:"merchant_id,omitempty"`
+	SandboxID         string           `json:"sandbox_id,omitempty"`
 }
 
 // UnmarshalJSON accepts the retired feedback setting so existing profiles keep
@@ -374,10 +376,10 @@ func credentialStoreError(code, message string, err error) *CLIError {
 	if err != nil && !errors.Is(err, context.Canceled) {
 		message = strings.TrimSuffix(message, ".") + ": " + terminalSafe(err.Error()) + "."
 	}
-	e := configError(code, message+" Without a usable OS keyring (for example over SSH, in containers, or in CI), set FLINT_API_KEY instead.", err)
+	e := configError(code, message+" To save credentials without an OS keyring, use --credential-store file, or set FLINT_API_KEY.", err)
 	e.Details = map[string]any{"remediation": map[string]any{"next_actions": []any{
 		map[string]any{"reason_message": "Set FLINT_API_KEY to a Flint API key; it overrides saved credentials and needs no keyring."},
-		map[string]any{"command": "flint auth import", "url": dashboardAPIKeysURL},
+		map[string]any{"command": "flint login --credential-store file"},
 	}}}
 	return e
 }
@@ -389,11 +391,15 @@ func (a *App) resolveCredential(profile string) (string, string, error) {
 	if workloadIdentityID() != "" {
 		return workloadCredential, "workload_identity", nil
 	}
-	key, err := a.LoadCredential(profile)
+	key, err := a.loadSavedCredential(profile)
 	if err != nil {
 		return "", "", err
 	}
 	if key != "" {
+		cfg, _ := a.loadConfig()
+		if a.selectedCredentialStore(profile, cfg.Profiles[profile]) == "file" {
+			return key, "file", nil
+		}
 		return key, "keychain", nil
 	}
 	return "", "", nil
@@ -407,7 +413,7 @@ func invalidCredentialError(key string, err error) *CLIError {
 	if key != "" && key == credentialFromEnvironment() {
 		message = "The key from FLINT_API_KEY is invalid: " + message
 	}
-	return configError("INVALID_CREDENTIAL", message, err)
+	return configError("CREDENTIAL_FORMAT_INVALID", message, err)
 }
 
 func credentialEnvironment(key string) (string, error) {

@@ -94,7 +94,7 @@ func (a *App) localConfigSet(cmd *Command, opts Options) int {
 				cfg.Profiles = map[string]Profile{}
 			}
 			if _, ok := cfg.Profiles[value]; !ok {
-				cfg.Profiles[value] = Profile{}
+				cfg.Profiles[value] = profileWithoutCredential()
 			}
 			return nil
 		}); err != nil {
@@ -112,7 +112,10 @@ func (a *App) localConfigSet(cmd *Command, opts Options) int {
 			if cfg.Profiles == nil {
 				cfg.Profiles = map[string]Profile{}
 			}
-			p := cfg.Profiles[resolved.ProfileName]
+			p, exists := cfg.Profiles[resolved.ProfileName]
+			if !exists {
+				p = profileWithoutCredential()
+			}
 			p.MerchantGuard = value
 			cfg.Profiles[resolved.ProfileName] = p
 			return nil
@@ -197,7 +200,7 @@ func (a *App) localHistory(cmd *Command, opts Options) int {
 	if key := credentialFromEnvironment(); key != "" {
 		environment, err := credentialEnvironment(key)
 		if err != nil {
-			return a.fail(configError("INVALID_CREDENTIAL", err.Error(), err), opts)
+			return a.fail(configError("CREDENTIAL_FORMAT_INVALID", err.Error(), err), opts)
 		}
 		// History is an offline view. An environment key supersedes the saved
 		// key's context, whose merchant and sandbox may belong to another key.
@@ -276,7 +279,7 @@ func (a *App) localAuthImport(cmd *Command, opts Options) int {
 		}
 	}
 	if _, err := credentialEnvironment(key); err != nil {
-		return a.fail(configError("INVALID_CREDENTIAL", err.Error(), err), opts)
+		return a.fail(configError("CREDENTIAL_FORMAT_INVALID", err.Error(), err), opts)
 	}
 	baseURL, err := a.baseURLForCredential(key)
 	if err != nil {
@@ -349,14 +352,16 @@ func (a *App) saveCredentialProfileUnlocked(profile, key string, updateProfile f
 			persistenceErr = configError("CONFIG_INVALID", loadErr.Error(), loadErr)
 			return loadErr
 		}
-		previousCredential, previousErr := a.LoadCredential(profile)
+		persistence := *a
+		persistence.credentialStore = a.selectedCredentialStore(profile, cfg.Profiles[profile])
+		previousCredential, previousErr := a.loadSavedCredentialUnlocked(profile)
 		if previousErr != nil {
 			persistenceErr = credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before authentication.", previousErr)
 			return previousErr
 		}
-		if storeErr := a.StoreCredential(profile, key); storeErr != nil {
-			persistenceErr = credentialStoreError("KEYCHAIN_WRITE_FAILED", "The validated credential could not be stored in the OS keyring.", storeErr)
-			if restoreErr := a.restoreCredential(profile, previousCredential); restoreErr != nil {
+		if storeErr := persistence.storeSavedCredential(profile, key); storeErr != nil {
+			persistenceErr = credentialStoreError("KEYCHAIN_WRITE_FAILED", "The validated credential could not be stored in the selected credential store.", storeErr)
+			if restoreErr := persistence.restoreCredential(profile, previousCredential); restoreErr != nil {
 				persistenceErr.Message += "; credential rollback also failed: " + restoreErr.Error()
 			}
 			return storeErr
@@ -364,9 +369,9 @@ func (a *App) saveCredentialProfileUnlocked(profile, key string, updateProfile f
 		if cfg.Profiles == nil {
 			cfg.Profiles = map[string]Profile{}
 		}
-		cfg.Profiles[profile] = updateProfile(cfg.Profiles[profile])
+		cfg.Profiles[profile] = a.profileWithCredential(profile, updateProfile(cfg.Profiles[profile]), true)
 		if saveErr := a.saveConfigUnlocked(cfg); saveErr != nil {
-			if restoreErr := a.restoreCredential(profile, previousCredential); restoreErr != nil {
+			if restoreErr := persistence.restoreCredential(profile, previousCredential); restoreErr != nil {
 				persistenceErr = configError("CONFIG_WRITE_FAILED", saveErr.Error()+"; credential rollback also failed: "+restoreErr.Error(), saveErr)
 				return saveErr
 			}
@@ -381,6 +386,7 @@ func (a *App) saveCredentialProfileUnlocked(profile, key string, updateProfile f
 		}
 		return persistenceErr
 	}
+	a.credentialSavedNotice(profile)
 	return nil
 }
 
@@ -399,9 +405,9 @@ func (a *App) localLogout(cmd *Command, opts Options) int {
 	}
 	var persistenceErr *CLIError
 	lockErr := a.withConfigLock(func() error {
-		raw, credentialErr := a.LoadCredential(resolved.ProfileName)
+		raw, credentialErr := a.loadSavedCredentialUnlocked(resolved.ProfileName)
 		if credentialErr != nil {
-			persistenceErr = configError("CREDENTIAL_LOOKUP_FAILED", "Could not read the credential before logout.", nil)
+			persistenceErr = credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the credential before logout.", credentialErr)
 			return persistenceErr
 		}
 		if isOAuthCredential(raw) {
@@ -435,18 +441,18 @@ func (a *App) localLogout(cmd *Command, opts Options) int {
 		p.APIKeyID = ""
 		p.MerchantID = ""
 		p.SandboxID = ""
-		cfg.Profiles[resolved.ProfileName] = p
+		cfg.Profiles[resolved.ProfileName] = a.profileWithCredential(resolved.ProfileName, p, false)
 		if saveErr := a.saveConfigUnlocked(cfg); saveErr != nil {
 			persistenceErr = configError("CONFIG_WRITE_FAILED", saveErr.Error(), saveErr)
 			return saveErr
 		}
-		if deleteErr := a.DeleteCredential(resolved.ProfileName); deleteErr != nil {
+		if deleteErr := a.deleteSavedCredential(resolved.ProfileName); deleteErr != nil {
 			cfg.Profiles[resolved.ProfileName] = previousProfile
 			if restoreErr := a.saveConfigUnlocked(cfg); restoreErr != nil {
-				persistenceErr = configError("KEYCHAIN_DELETE_FAILED", deleteErr.Error()+"; profile metadata rollback also failed: "+restoreErr.Error(), deleteErr)
+				persistenceErr = credentialStoreError("KEYCHAIN_DELETE_FAILED", "Could not remove the credential; profile metadata rollback also failed: "+restoreErr.Error(), deleteErr)
 				return deleteErr
 			}
-			persistenceErr = configError("KEYCHAIN_DELETE_FAILED", deleteErr.Error(), deleteErr)
+			persistenceErr = credentialStoreError("KEYCHAIN_DELETE_FAILED", "Could not remove the credential.", deleteErr)
 			return deleteErr
 		}
 		return nil
@@ -462,9 +468,9 @@ func (a *App) localLogout(cmd *Command, opts Options) int {
 
 func (a *App) restoreCredential(profile, previous string) error {
 	if previous == "" {
-		return a.DeleteCredential(profile)
+		return a.deleteSavedCredential(profile)
 	}
-	return a.StoreCredential(profile, previous)
+	return a.storeSavedCredential(profile, previous)
 }
 
 func (a *App) confirmLocal(message string, opts Options) *CLIError {
@@ -652,8 +658,12 @@ func (a *App) localDoctor(cmd *Command, opts Options) int {
 	return exit
 }
 
-func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
-	checks := []map[string]any{}
+func (a *App) doctorChecks(opts Options) (checks []map[string]any, exit int) {
+	checks = []map[string]any{}
+	discoveryBaseURL := ""
+	defer func() {
+		checks = a.finishDoctorChecks(checks, opts, discoveryBaseURL)
+	}()
 	if opts.Fix {
 		changes, err := a.applyDoctorFixes()
 		if err != nil {
@@ -676,15 +686,16 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 		return checks, ExitAuth
 	}
 	if key == "" {
-		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": "Run flint login (recommended), flint auth import, or set FLINT_API_KEY for headless use."})
+		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": missingCredentialMessage(resolved.ProfileName)})
 		return checks, ExitAuth
 	}
 	checks = append(checks, map[string]any{"name": "credential", "status": "pass", "source": source, "note": "Credential found; API validation follows."})
 	ctx := withOAuthContext(a.commandContext(), resolved.ContextID)
 	_, baseURL, authResponse, e := a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, key, opts.Debug)
+	discoveryBaseURL = baseURL
 	if e != nil {
 		switch e.Code {
-		case "INVALID_CREDENTIAL", "INVALID_OAUTH_CREDENTIAL", "OAUTH_SERVER_MISMATCH", "CREDENTIAL_LOOKUP_FAILED", "KEYCHAIN_WRITE_FAILED", "OAUTH_REFRESH_FAILED", "OAUTH_SESSION_CHANGED":
+		case "CREDENTIAL_FORMAT_INVALID", "INVALID_CREDENTIAL", "INVALID_OAUTH_CREDENTIAL", "OAUTH_SERVER_MISMATCH", "CREDENTIAL_LOOKUP_FAILED", "KEYCHAIN_WRITE_FAILED", "OAUTH_REFRESH_FAILED", "OAUTH_SESSION_CHANGED":
 			checks = append(checks, map[string]any{"name": "authentication", "status": "fail", "fix": e.Message})
 			return checks, e.ExitCode
 		}
@@ -694,7 +705,7 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 				fix = "Replace or unset FLINT_ACCESS_TOKEN. To save an OAuth session, unset the override and run flint login --profile " + resolved.ProfileName + "."
 			} else if source == "workload_identity" {
 				fix = "Check FLINT_WORKLOAD_IDENTITY_ID, the OIDC source, and the workload identity trust conditions."
-			} else if source != "keychain" {
+			} else if source != "keychain" && source != "file" {
 				fix = "Replace or unset FLINT_API_KEY. To save a valid API key, run flint auth import --profile " + resolved.ProfileName + "."
 			}
 			message := e.Message
@@ -754,23 +765,6 @@ func (a *App) doctorChecks(opts Options) ([]map[string]any, int) {
 		scopeCheck["note"] = "Browser login grants the CLI baseline scopes. Use flint reauth --scope for commands that need additional access."
 	}
 	checks = append(checks, scopeCheck)
-	discoveryCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
-	defer cancel()
-	observedVersion, discoveryError := a.fetchCurrentAPIVersion(discoveryCtx, baseURL, opts.Debug)
-	versionCheck := map[string]any{"name": "api_version", "expected": a.Info.APIVersion, "observed": observedVersion, "status": "pass"}
-	if discoveryError != nil {
-		versionCheck["status"] = "warning"
-		versionCheck["fix"] = discoveryError.Message
-		if discoveryError.RequestID != "" {
-			versionCheck["request_id"] = discoveryError.RequestID
-		}
-	}
-	if discoveryError == nil && observedVersion != a.Info.APIVersion {
-		versionCheck["status"] = "info"
-		versionCheck["note"] = "The server's current API version is " + observedVersion + ". This CLI requests " + a.Info.APIVersion + "."
-		versionCheck["changelog_url"] = "https://developers.withflintpay.com/changelog"
-	}
-	checks = append(checks, versionCheck, map[string]any{"name": "cli_version", "status": "pass", "installed": a.Info.Version, "note": "Run flint upgrade to check for a newer stable CLI release."})
 	return checks, ExitOK
 }
 

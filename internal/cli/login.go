@@ -21,7 +21,7 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
 	}
-	previousRaw, err := a.LoadCredential(resolved.ProfileName)
+	previousRaw, err := a.loadSavedCredential(resolved.ProfileName)
 	if err != nil {
 		return a.fail(credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the existing profile credential before login.", err), opts)
 	}
@@ -176,7 +176,7 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 			locked := *a
 			locked.Context = ctx
 			err := locked.withConfigLock(func() error {
-				raw, err := a.LoadCredential(resolved.ProfileName)
+				raw, err := a.loadSavedCredentialUnlocked(resolved.ProfileName)
 				if err != nil {
 					return err
 				}
@@ -265,7 +265,7 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 		result := ExitOK
 		attempt := func() error {
 			if reauthorize && previous.Version == 2 {
-				raw, err := a.LoadCredential(resolved.ProfileName)
+				raw, err := a.loadSavedCredentialUnlocked(resolved.ProfileName)
 				if err != nil {
 					return err
 				}
@@ -356,9 +356,10 @@ func (a *App) finishBrowserLogin(ctx context.Context, cmd *Command, opts Options
 		credential.Auth = previous.Auth
 		credential.PendingValidation = true
 		encoded, _ := json.Marshal(credential)
-		if err := a.StoreCredential(resolved.ProfileName, string(encoded)); err != nil {
-			return a.fail(a.cleanupOAuth(credential, configError("KEYCHAIN_WRITE_FAILED", "Could not save the reauthorized session.", err)), opts)
+		if err := a.storeSavedCredential(resolved.ProfileName, string(encoded)); err != nil {
+			return a.fail(a.cleanupOAuth(credential, credentialStoreError("KEYCHAIN_WRITE_FAILED", "Could not save the reauthorized session.", err)), opts)
 		}
+		a.credentialSavedNotice(resolved.ProfileName)
 	}
 	auth, e := a.fetchAuthContext(ctx, baseURL, credential.AccessToken, false)
 	if e != nil {

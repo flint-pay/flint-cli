@@ -61,7 +61,7 @@ func TestDXKeyringTimeoutAndRemediation(t *testing.T) {
 	for _, args := range [][]string{{"doctor", "--output", "json"}, {"init", "--output", "json"}} {
 		out.Reset()
 		app.Run(args)
-		for _, want := range []string{"FLINT_API_KEY", "flint login", "flint auth import"} {
+		for _, want := range []string{"FLINT_API_KEY", "flint login", "flint signup"} {
 			if !strings.Contains(out.String(), want) {
 				t.Fatalf("missing %s: %s", want, out)
 			}

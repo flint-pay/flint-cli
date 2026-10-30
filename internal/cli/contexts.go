@@ -92,7 +92,7 @@ func (a *App) savedContextSession(opts Options) (ResolvedConfig, oauthCredential
 	if err != nil {
 		return resolved, oauthCredential{}, configError("CONFIG_INVALID", err.Error(), err)
 	}
-	raw, err := a.LoadCredential(resolved.ProfileName)
+	raw, err := a.loadSavedCredential(resolved.ProfileName)
 	if err != nil {
 		return resolved, oauthCredential{}, credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the saved session.", err)
 	}
@@ -115,7 +115,7 @@ func (a *App) listOAuthContexts(ctx context.Context, profile string) (contextLis
 	locked := *a
 	locked.Context = ctx
 	err := locked.withConfigLock(func() error {
-		raw, err := a.LoadCredential(profile)
+		raw, err := a.loadSavedCredentialUnlocked(profile)
 		if err != nil {
 			result = credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the saved session.", err)
 			return result
@@ -254,7 +254,7 @@ func (a *App) localContext(cmd *Command, opts Options) int {
 	locked := *a
 	locked.Context = ctx
 	err := locked.withConfigLock(func() error {
-		raw, err := a.LoadCredential(resolved.ProfileName)
+		raw, err := a.loadSavedCredentialUnlocked(resolved.ProfileName)
 		if err != nil {
 			return err
 		}

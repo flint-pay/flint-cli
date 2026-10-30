@@ -232,9 +232,9 @@ func (a *App) oauthAccess(ctx context.Context, profile string) (oauthCredential,
 	err := locked.withConfigLock(func() error {
 		ctx, cancel := context.WithTimeout(ctx, oauthRefreshTimeout)
 		defer cancel()
-		raw, err := a.LoadCredential(profile)
+		raw, err := a.loadSavedCredentialUnlocked(profile)
 		if err != nil {
-			result = credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the OAuth session from the OS keyring.", err)
+			result = credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the OAuth session from the selected credential store.", err)
 			return result
 		}
 		if !isOAuthCredential(raw) {
@@ -300,10 +300,11 @@ func (a *App) oauthAccess(ctx context.Context, profile string) (oauthCredential,
 			next.Auth = c.Auth
 			next.PendingValidation = true
 			encoded, _ := json.Marshal(next)
-			if err := a.StoreCredential(profile, string(encoded)); err != nil {
-				result = a.cleanupOAuth(next, configError("KEYCHAIN_WRITE_FAILED", "Could not save the refreshed OAuth session. Run flint auth login again.", nil))
+			if err := a.storeSavedCredential(profile, string(encoded)); err != nil {
+				result = a.cleanupOAuth(next, credentialStoreError("KEYCHAIN_WRITE_FAILED", "Could not save the refreshed OAuth session.", err))
 				return result
 			}
+			a.credentialSavedNotice(profile)
 			c = next
 		}
 		if !c.PendingValidation {
@@ -330,10 +331,11 @@ func (a *App) oauthAccess(ctx context.Context, profile string) (oauthCredential,
 		c.Auth = auth
 		c.PendingValidation = false
 		encoded, _ := json.Marshal(c)
-		if err := a.StoreCredential(profile, string(encoded)); err != nil {
-			result = configError("KEYCHAIN_WRITE_FAILED", "The refreshed session is saved but its verification state could not be updated. Retry the command.", nil)
+		if err := a.storeSavedCredential(profile, string(encoded)); err != nil {
+			result = credentialStoreError("KEYCHAIN_WRITE_FAILED", "The refreshed session is saved but its verification state could not be updated. Retry the command.", err)
 			return result
 		}
+		a.credentialSavedNotice(profile)
 		return nil
 	})
 	if err != nil && result == nil {
@@ -386,7 +388,7 @@ func (a *App) fetchCredentialContext(ctx context.Context, timeout time.Duration,
 	}
 	if token := strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")); token != "" && token == raw {
 		if !validOAuthToken(token) || strings.HasPrefix(token, "flint_test_") || strings.HasPrefix(token, "flint_live_") {
-			return "", "", authContextEnvelope{}, configError("INVALID_CREDENTIAL", "FLINT_ACCESS_TOKEN must contain an access token. Use FLINT_API_KEY for an API key.", nil)
+			return "", "", authContextEnvelope{}, configError("CREDENTIAL_FORMAT_INVALID", "FLINT_ACCESS_TOKEN must contain an access token. Use FLINT_API_KEY for an API key.", nil)
 		}
 		base, err := a.baseURLForCredential("flint_test_")
 		if err != nil {

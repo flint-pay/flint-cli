@@ -46,7 +46,10 @@ func (a *App) replaceSignupChallenge(profile string, expected, pending *SignupCh
 		return networkError("CLIENT_CANCELED", "Signup was canceled before progress was stored.", err)
 	}
 	if err := a.updateConfig(func(cfg *Config) error {
-		p := cfg.Profiles[profile]
+		p, exists := cfg.Profiles[profile]
+		if !exists {
+			p = profileWithoutCredential()
+		}
 		if !sameSignupChallenge(p.PendingSignup, expected) {
 			return signupChallengeChanged()
 		}
@@ -276,7 +279,10 @@ func (a *App) verifySignupAttempt(profile string, pending *SignupChallenge, code
 		if err != nil {
 			return err
 		}
-		p := cfg.Profiles[profile]
+		p, exists := cfg.Profiles[profile]
+		if !exists {
+			p = profileWithoutCredential()
+		}
 		if !sameSignupChallenge(p.PendingSignup, pending) {
 			return signupChallengeChanged()
 		}

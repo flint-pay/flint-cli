@@ -95,40 +95,41 @@ type Supports struct {
 }
 
 type Options struct {
-	Output         string
-	Quiet          bool
-	Debug          bool
-	NoInput        bool
-	Live           bool
-	Merchant       string
-	ContextID      string
-	Profile        string
-	Color          string
-	Confirm        bool
-	DryRun         string
-	IdempotencyKey string
-	JQ             string
-	Select         []string
-	Field          string
-	Expand         []string
-	Open           bool
-	Limit          int
-	PageSize       int
-	PageToken      string
-	All            bool
-	Timeout        time.Duration
-	MaxEvents      int
-	For            time.Duration
-	WaitFor        []string
-	Progress       string
-	Input          string
-	Paginate       bool
-	Preview        bool
-	Clear          bool
-	Stdin          bool
-	Fix            bool
-	Raw            map[string][]string
-	Positionals    []string
+	Output          string
+	Quiet           bool
+	Debug           bool
+	NoInput         bool
+	Live            bool
+	Merchant        string
+	ContextID       string
+	CredentialStore string
+	Profile         string
+	Color           string
+	Confirm         bool
+	DryRun          string
+	IdempotencyKey  string
+	JQ              string
+	Select          []string
+	Field           string
+	Expand          []string
+	Open            bool
+	Limit           int
+	PageSize        int
+	PageToken       string
+	All             bool
+	Timeout         time.Duration
+	MaxEvents       int
+	For             time.Duration
+	WaitFor         []string
+	Progress        string
+	Input           string
+	Paginate        bool
+	Preview         bool
+	Clear           bool
+	Stdin           bool
+	Fix             bool
+	Raw             map[string][]string
+	Positionals     []string
 
 	allowMissingProfile   bool
 	outputFromEnvironment bool
@@ -136,6 +137,7 @@ type Options struct {
 }
 
 type App struct {
+	credentialStore           string
 	Info                      BuildInfo
 	Stdout                    io.Writer
 	Stderr                    io.Writer

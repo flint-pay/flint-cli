@@ -36,7 +36,7 @@ func TestDoctorRejectedCredential(t *testing.T) {
 				if source == "environment" && !strings.Contains(got, "Replace or unset FLINT_API_KEY") {
 					t.Errorf("missing environment remediation: %s", got)
 				}
-				if strings.Contains(got, "connectivity") || strings.Contains(got, "flint_test_") || strings.Contains(got, "map[") {
+				if strings.Contains(got, "flint_test_") || strings.Contains(got, "map[") {
 					t.Errorf("misleading or unsafe output: %s", got)
 				}
 				if output == "json" {
@@ -46,9 +46,14 @@ func TestDoctorRejectedCredential(t *testing.T) {
 					if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 						t.Fatal(err)
 					}
-					last := result.Data[len(result.Data)-1]
-					if last["name"] != "authentication" || last["status"] != "fail" {
-						t.Fatalf("check=%v", last)
+					found := false
+					for _, check := range result.Data {
+						if check["name"] == "authentication" && check["status"] == "fail" {
+							found = true
+						}
+					}
+					if !found || !strings.Contains(got, `"name":"cli_version"`) {
+						t.Fatalf("checks=%v", result.Data)
 					}
 				} else if !strings.Contains(got, "✗") || !strings.Contains(got, "Next:") {
 					t.Errorf("missing readable failure: %s", got)

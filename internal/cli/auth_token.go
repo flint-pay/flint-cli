@@ -21,10 +21,10 @@ func (a *App) localAuthToken(_ *Command, opts Options) int {
 	defer cancel()
 	raw, _, err := a.resolveCheckCredential(resolved.ProfileName)
 	if err != nil {
-		return a.fail(credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The credential could not be read from the OS keyring.", err), opts)
+		return a.fail(credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The credential could not be read from the selected credential store.", err), opts)
 	}
 	if raw == "" {
-		return a.fail(configError("API_KEY_REQUIRED", "No Flint credential is configured. Run flint auth login, or configure FLINT_WORKLOAD_IDENTITY_ID and an OIDC source.", nil), opts)
+		return a.fail(configError("API_KEY_REQUIRED", missingCredentialMessage(resolved.ProfileName), nil), opts)
 	}
 	if strings.HasPrefix(raw, "flint_test_") || strings.HasPrefix(raw, "flint_live_") || (!isOAuthCredential(raw) && raw != workloadCredential && strings.TrimSpace(raw) != strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN"))) {
 		return a.fail(configError("API_KEY_NOT_EXPORTABLE", "API keys cannot be exported. Run flint auth login, or configure workload identity for a short-lived access token.", nil), opts)
@@ -55,7 +55,7 @@ func (a *App) localAuthToken(_ *Command, opts Options) int {
 	} else if isOAuthCredential(raw) {
 		// Refresh may have rotated the saved credential during validation. Use
 		// its expiry only when it still names the token being exported.
-		if saved, err := a.LoadCredential(resolved.ProfileName); err == nil {
+		if saved, err := a.loadSavedCredential(resolved.ProfileName); err == nil {
 			if c, e := decodeOAuthCredential(saved); e == nil && c.AccessToken == token {
 				expires = c.ExpiresAt
 			}
