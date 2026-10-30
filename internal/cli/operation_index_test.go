@@ -99,3 +99,30 @@ func TestSearchGolden(t *testing.T) {
 		}
 	}
 }
+
+func TestOperationIndexCacheRespectsRegistryMetadata(t *testing.T) {
+	first := &App{Registry: NewRegistry()}
+	second := &App{Registry: NewRegistry()}
+	original, err := first.operationIndex()
+	if err != nil {
+		t.Fatal(err)
+	}
+	shared, err := second.operationIndex()
+	if err != nil || original != shared {
+		t.Fatalf("identical registries did not reuse the contract: %v", err)
+	}
+	command, ok := second.Registry.ByName("customers.list")
+	if !ok {
+		t.Fatal("missing customers.list")
+	}
+	command.Mutation = true
+	changed, err := second.operationIndex()
+	if err != nil || changed == original {
+		t.Fatalf("changed registry reused stale metadata: %v", err)
+	}
+	before, _ := original.Lookup("customers.list")
+	after, _ := changed.Lookup("customers.list")
+	if before.Kind != "read" || after.Kind != "write" {
+		t.Fatalf("classification before=%s after=%s", before.Kind, after.Kind)
+	}
+}

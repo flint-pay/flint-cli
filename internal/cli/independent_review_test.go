@@ -169,7 +169,7 @@ func TestMCPOptionalFieldProjectionsMatchCLI(t *testing.T) {
 			result := app.runMCPTool(context.Background(), cmd, map[string]any{"customer_id": "cus_review", "_flint": test.controls}, defaultOptions(), mcpPolicy{}, true)
 			text := mcpResultText(result)
 			if exit == ExitOK {
-				value, _ := json.Marshal(lookupPathValue(result, "structuredContent.value"))
+				value, _ := json.Marshal(mcpResultJSON(t, result))
 				if result["isError"] == true || strings.TrimSpace(out.String()) != test.want || string(value) != test.want {
 					t.Fatalf("CLI=%s MCP=%v", out, result)
 				}

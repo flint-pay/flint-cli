@@ -22,7 +22,7 @@ func (a *App) runMCPTool(ctx context.Context, cmd *Command, args map[string]any,
 	if outcome.exit != ExitOK && !outcome.liveBlocked && !policy.allowDestructive && mcpConfirmationRequired(outcome.value) {
 		session := mcpSessionFrom(ctx)
 		if !session.canElicit() {
-			return mcpCommandError(cmd, outcome, policy, mcpConfirmationUnavailable(cmd, mcpErrorText(outcome.value)))
+			return mcpWithEnvironment(mcpCommandError(cmd, outcome, policy, mcpConfirmationUnavailable(cmd, mcpErrorText(outcome.value))), outcome.environment)
 		}
 		approved, message := a.mcpAskConfirmation(ctx, session, cmd, args, outcome)
 		if !approved {
@@ -31,10 +31,15 @@ func (a *App) runMCPTool(ctx context.Context, cmd *Command, args map[string]any,
 		outcome = a.runMCPCommand(ctx, cmd, args, opts, policy, append(extra, "--confirm=true"))
 	}
 	if outcome.exit != ExitOK {
-		return mcpCommandError(cmd, outcome, policy, "")
+		return mcpWithEnvironment(mcpCommandError(cmd, outcome, policy, ""), outcome.environment)
 	}
 	if refused := mcpResultTooLarge(cmd, args, outcome.value); refused != nil {
-		return refused
+		return mcpWithWarnings(mcpWithEnvironment(refused, outcome.environment), outcome.warnings)
+	}
+	if mcpResultIsWrite(cmd, args) {
+		if raw, err := mcpCompactJSON(outcome.value); err == nil && len(raw) > mcpMaxResultBytes {
+			outcome.warnings += fmt.Sprintf("\nWarning: this result is %d bytes, over the 49,152-byte read limit; it is returned in full because the write completed.", len(raw))
+		}
 	}
 	return mcpWithWarnings(mcpToolResult(outcome.value, structured, outcome.transformed, outcome.environment), outcome.warnings)
 }
@@ -244,6 +249,15 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	if transformErr != nil {
 		return mcpCallResult{value: mcpCLIErrorEnvelope(transformErr), exit: transformErr.ExitCode}
 	}
+	transformOptions.outputLimit = mcpMaxOutputBytes
+	controls, _ := args["_flint"].(map[string]any)
+	if controls["dry_run"] == "client" {
+		transformOptions.DryRun = "client"
+	}
+	defaultPageSize := cmd.Supports.Pagination && !mcpResultIsWrite(cmd, args) && args["page_size"] == nil && controls["page_size"] == nil
+	if defaultPageSize {
+		argv = append(argv, "--page-size=10")
+	}
 	body := map[string]any{}
 	positionals := []string{}
 	if mcpLocalOperation(cmd) {
@@ -364,8 +378,31 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	}
 	childCtx, cancelChild := context.WithCancel(ctx)
 	defer cancelChild()
+	if mcpResultIsWrite(cmd, args) {
+		childCtx = context.WithValue(childCtx, mcpFullWriteResponseKey{}, true)
+	}
+	if !mcpResultIsWrite(cmd, args) {
+		childCtx = context.WithValue(childCtx, paginationResultCheckKey{}, paginationResultCheck(func(value any, pages int) *CLIError {
+			projected, _, e := mcpProjectResult(childCtx, cmd, value, transformOptions)
+			if e != nil {
+				return e
+			}
+			raw, err := mcpCompactJSON(projected)
+			if err == nil && len(raw) > mcpMaxResultBytes {
+				return mcpResultSizeError(len(raw), pages)
+			}
+			return nil
+		}))
+	}
 	observer := &mcpEnvironmentObserver{allowLive: policy.allowLive, cancel: cancelChild}
-	stdout := &mcpCappedBuffer{limit: mcpMaxOutputBytes}
+	if a.mcpAuth != nil {
+		if auth, known := a.mcpAuth.snapshot(); known {
+			observer.environment = normalizeEnvironment(auth.Environment)
+		}
+	}
+	// Apply the read cap to the projected result, not the raw command output.
+	// A completed write must always retain its full response.
+	stdout := &mcpCappedBuffer{}
 	stderr := &mcpStderr{kept: mcpCappedBuffer{limit: mcpMaxStderrBytes}, progress: progress, debug: a.Stderr}
 	child := *a
 	child.mcpSkipScopeCheck = true
@@ -383,6 +420,9 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	outcome := mcpCallResult{exit: exit, environment: environment}
 	if exit == ExitOK {
 		outcome.warnings = stderr.String()
+		if defaultPageSize {
+			outcome.warnings = "Note: page_size is 10, the default here.\n" + outcome.warnings
+		}
 	}
 	if !policy.allowLive && (blocked || exit != ExitOK) {
 		var probe any
@@ -407,22 +447,17 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	}
 	var result any
 	if err := decodeJSONNumbers(trimmed, &result); err == nil {
-		if exit == ExitOK && transformed {
-			transformOptions.outputLimit = mcpMaxOutputBytes
-			selectionCommand := cmd
-			if controls, _ := args["_flint"].(map[string]any); controls["dry_run"] == "client" || controls["preview"] == true {
-				selectionCommand = nil
+		if exit == ExitOK {
+			if transformOptions.DryRunClient() {
+				result = a.mcpDryRunResult(cmd, args, result)
 			}
-			projected, transformErr := applyCommandOutputTransforms(childCtx, result, selectionCommand, transformOptions)
+			projected, warning, transformErr := mcpProjectResult(childCtx, cmd, result, transformOptions)
 			if transformErr != nil {
-				if cmd.Mutation && (transformErr.Code == "UNKNOWN_OUTPUT_FIELD" || transformErr.Code == "OUTPUT_FIELD_ROOT") {
-					// Presentation must not hide a committed mutation or invite a duplicate write.
-					outcome.value = result
-					outcome.warnings += "\nThe mutation succeeded, but output selection failed: " + transformErr.Message + " Returning the complete successful result."
-					return outcome
-				}
 				outcome.value, outcome.exit = mcpCLIErrorEnvelope(transformErr), transformErr.ExitCode
 				return outcome
+			}
+			if warning != "" {
+				outcome.warnings += "\n" + warning
 			}
 			result = projected
 		}
@@ -553,7 +588,3 @@ func appendInheritedMCPOptions(argv []string, opts Options) []string {
 
 // mcpControlFlags maps CLI flags in error remediation to MCP tool controls.
 const mcpEnvironmentMetaKey = "com.withflintpay/environment"
-
-// mcpToolResult keeps structuredContent identical to the command's JSON output
-// so it still matches the public output schema. The credential environment is
-// reported beside it, in a second text block and in _meta.

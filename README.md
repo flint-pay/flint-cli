@@ -275,6 +275,10 @@ Find an operation, inspect its public arguments, then call it:
 
 Operation IDs follow CLI commands, such as `orders.list` and `checkout-sessions.delivery-quotes.create`. Read and write calls also accept space-separated command names and typed tool names. Use public JSON argument names from `flint_describe`; CLI convenience flags are unavailable over MCP. Pass execution controls such as `select`, `idempotency_key`, and `dry_run` alongside `operation`, outside `arguments`. The former `_flint` object is removed.
 
+Successful results contain one compact JSON text block and, when needed, one notes block with the environment, notes, and warnings. No result is duplicated in `structuredContent`. Reads have a 49,152-byte cap; narrow larger results with `select`, filters, or a smaller `page_size`. MCP lists default to 10 items per page. `all: true` stops fetching as soon as the projected result exceeds the limit. Completed writes return their full result with a warning if oversized.
+
+`select` paths are checked before sending. Selected writes retain the resource's ID and status. If a declared optional field is absent from a completed write, the result remains successful and includes a warning.
+
 `flint_describe` supports `kind: "result"`, nested `path`, `depth` from 1 to 3, and request `variant`. Pass `event` instead of `operation` to inspect a webhook payload. `flint_help` lists resource groups or explains `safety`, `errors`, `events`, and `test-cards`.
 
 Add the server to Claude Code:
@@ -303,7 +307,7 @@ Cursor and other clients that use `mcpServers`:
 - Credential class restricts discovery and calls. A merchant API key cannot reach buyer-session operations; a partner access token reaches only install-scoped operations. Raw `api`, `help_search`, and `schema_*` tools are removed.
 - `--allow-live` permits live credentials; each live call must also carry `live: true`. The server's profile, merchant guard, context, and timeout are fixed at startup.
 
-Use `dry_run: true` to validate a write without sending it. Required idempotency keys are checked on dry runs too. Reuse the same key when retrying an uncertain write. Operations requiring human confirmation use MCP elicitation when available; otherwise the tool explains how the user can proceed. `--allow-destructive` allows agent confirmation with `confirm: true`.
+Use `dry_run: true` to validate a write without sending it. The prepared request includes an `effect` with its confirmation rule, resource IDs, and amounts formatted in the currency's minor units. Dry runs need neither `confirm` nor live acknowledgement. Required idempotency keys are checked on dry runs too. Reuse the same key when retrying an uncertain write. Operations requiring human confirmation use MCP elicitation when available; otherwise the tool explains how the user can proceed. `--allow-destructive` allows agent confirmation with `confirm: true`.
 
 Local commands are operations reached through read or write, including `version`, read-only `doctor`, `history`, `history.clear`, and sandbox-only `trigger`. Trigger waits are capped at 60 seconds. Agents cannot change credential stores, update config, or log out through MCP.
 

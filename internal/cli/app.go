@@ -119,7 +119,7 @@ func (a *App) Run(argv []string) int {
 	}
 	authContext := authEnvelope.Data
 	a.observeCachedAuthContext(authContext)
-	if a.mcpAuth != nil && authContext.AuthType != "none" {
+	if a.mcpAuth != nil && !opts.DryRunClient() && authContext.AuthType != "" && authContext.AuthType != "none" && authContext.AuthType != "session" {
 		a.mcpAuth.store(authContext)
 	}
 	if authContext.OAuthGrantID != "" && strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) == "" && credentialFromEnvironment() == "" && workloadIdentityID() == "" {
@@ -138,6 +138,10 @@ func (a *App) Run(argv []string) int {
 		// The browser entry point is public, but a live authorization still
 		// requires the same explicit acknowledgement as before.
 		affinity = EnvironmentAffinityAccount
+	}
+	// MCP dry runs never send requests and need no live acknowledgement.
+	if a.mcpSkipScopeCheck && opts.DryRunClient() {
+		opts.Live = normalizeEnvironment(authContext.Environment) == "live"
 	}
 	if !(opts.DryRun == "client" && authContext.AuthType == "none") {
 		if e := validateResolvedCredentialIntent(authContext, opts, resolved, affinity); (effective.AuthRequired || effective.OperationID == "authorizePartnerInstall") && e != nil {

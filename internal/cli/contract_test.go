@@ -625,7 +625,7 @@ func TestMCPCallUsesJSONEnvelope(t *testing.T) {
 	if result["isError"] == true {
 		t.Fatalf("MCP call failed: %#v", result)
 	}
-	structured := result["structuredContent"].(map[string]any)
+	structured := mcpResultJSON(t, result).(map[string]any)
 	if _, ok := structured["data"]; !ok {
 		t.Fatalf("MCP result is not a Flint JSON envelope: %#v", structured)
 	}
@@ -673,7 +673,7 @@ func TestMCPOrderLinkedPaymentIntentUsesTypedAlternateInput(t *testing.T) {
 	if result["isError"] == true {
 		t.Fatal(mcpResultText(result))
 	}
-	if got := lookupPathValue(result, "structuredContent.data.path"); got != "/v1/orders/ord_123/payment-intents" {
+	if got := lookupPathValue(mcpResultJSON(t, result), "data.path"); got != "/v1/orders/ord_123/payment-intents" {
 		t.Fatal(result)
 	}
 }

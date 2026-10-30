@@ -14,16 +14,18 @@ type mcpCappedBuffer struct {
 	exceeded bool
 }
 
+// A successful MCP write must retain the server's complete response.
+type mcpFullWriteResponseKey struct{}
+
 func (b *mcpCappedBuffer) Write(value []byte) (int, error) {
-	if b.Len()+len(value) > b.limit {
+	if b.limit > 0 && b.Len()+len(value) > b.limit {
 		b.exceeded = true
 		return 0, fmt.Errorf("MCP command output exceeds %d bytes", b.limit)
 	}
 	return b.Buffer.Write(value)
 }
 
-// mcpPolicy holds the safety choices the human made when starting the server.
-// Agents can narrow, but never widen, what these flags allow.
+// mcpCallResult retains command data separately from its presentation notes.
 type mcpCallResult struct {
 	value       any
 	transformed bool
@@ -36,30 +38,87 @@ type mcpCallResult struct {
 // mcpResultTooLarge refuses an oversized read result with advice to narrow
 // it. Writes are never refused here: their result reports a completed change.
 func mcpResultTooLarge(cmd *Command, args map[string]any, value any) map[string]any {
-	method, _ := args["method"].(string)
-	if cmd.Mutation || (cmd.CanonicalName == "api" && !strings.EqualFold(method, http.MethodGet)) {
+	if mcpResultIsWrite(cmd, args) {
 		return nil
 	}
-	raw, err := json.Marshal(value)
+	raw, err := mcpCompactJSON(value)
 	if err != nil || len(raw) <= mcpMaxResultBytes {
 		return nil
 	}
-	message := fmt.Sprintf("The result is %d bytes, over this server's %d byte limit for one tool result, so it was not returned. Narrow it and call again: keep only the fields you need with select, use page_size and page_token instead of all, or add filter arguments.", len(raw), mcpMaxResultBytes)
-	return mcpToolError(message, map[string]any{"error": map[string]any{"type": errorTypeUsage, "code": "RESULT_TOO_LARGE", "message": message, "details": map[string]any{"bytes": len(raw), "limit": mcpMaxResultBytes}}})
+	e := mcpResultSizeError(len(raw), 0)
+	return mcpToolError(e.Message, mcpCLIErrorEnvelope(e))
 }
 
-// mcpWithWarnings adds CLI warnings to a successful result as their own text
-// block, after the result and the environment line.
+func mcpResultIsWrite(cmd *Command, args map[string]any) bool {
+	if cmd == nil {
+		return false
+	}
+	method, _ := args["method"].(string)
+	return cmd.Mutation || cmd.Destructive || cmd.Stream || cmd.CanonicalName == "signup" || cmd.CanonicalName == "trigger" || (cmd.CanonicalName == "api" && !strings.EqualFold(method, http.MethodGet))
+}
+
+func mcpResultSizeError(size, pages int) *CLIError {
+	message := fmt.Sprintf("The result is %d bytes, over this server's %d byte limit for one tool result, so it was not returned. Narrow it with select, a smaller page_size, or filters; use page_token instead of all.", size, mcpMaxResultBytes)
+	e := usageError("RESULT_TOO_LARGE", message, "")
+	details := map[string]any{"bytes": size, "limit": mcpMaxResultBytes, "remediation": map[string]any{"retry": "none", "next_actions": []any{
+		map[string]any{"reason_message": "Use select to return only the fields you need."},
+		map[string]any{"reason_message": "Use a smaller page_size and page_token instead of all, or add filters."},
+	}}}
+	if pages > 0 {
+		details["pages_fetched"] = pages
+	}
+	e.Details = details
+	return e
+}
+
+// mcpWithWarnings folds CLI notes and warnings into the single notes block.
 func mcpWithWarnings(result map[string]any, warnings string) map[string]any {
-	if warnings = strings.TrimSpace(warnings); warnings != "" {
-		content, _ := result["content"].([]map[string]any)
-		result["content"] = append(content, map[string]any{"type": "text", "text": "Warnings:\n" + warnings})
+	content, _ := result["content"].([]map[string]any)
+	var lines []string
+	if len(content) > 1 {
+		text, _ := content[1]["text"].(string)
+		lines = append(lines, strings.TrimSpace(text))
+	}
+	for _, line := range strings.Split(warnings, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		switch {
+		case strings.HasPrefix(strings.ToLower(line), "note:"):
+			line = "Note: " + strings.TrimSpace(line[len("note:"):])
+		case strings.HasPrefix(strings.ToLower(line), "warning:"):
+			line = "Warning: " + strings.TrimSpace(line[len("warning:"):])
+		default:
+			line = "Warning: " + line
+		}
+		lines = append(lines, line)
+	}
+	if len(lines) > 0 {
+		result["content"] = append(content[:1], map[string]any{"type": "text", "text": strings.Join(lines, "\n")})
 	}
 	return result
 }
 
-// runMCPTool runs a tool, applies the live and confirmation gates, and turns
-// the outcome into an MCP tool result.
+func mcpWithEnvironment(result map[string]any, environment string) map[string]any {
+	if environment != "" {
+		content, _ := result["content"].([]map[string]any)
+		result["content"] = append(content[:1], map[string]any{"type": "text", "text": "Flint environment: " + environment})
+		result["_meta"] = map[string]any{mcpEnvironmentMetaKey: environment}
+	}
+	return result
+}
+
+func mcpCompactJSON(value any) ([]byte, error) {
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(value); err != nil {
+		return nil, err
+	}
+	return bytes.TrimSuffix(buffer.Bytes(), []byte("\n")), nil
+}
+
 func (w *mcpStderr) Write(p []byte) (int, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -86,28 +145,15 @@ func (w *mcpLineNotifier) Write(p []byte) (int, error) {
 	return n, err
 }
 
-func mcpToolResult(value any, structured, transformed bool, environment string) map[string]any {
-	structuredValue := value
-	if transformed {
-		structuredValue = map[string]any{"value": value}
-	}
-	raw, _ := json.Marshal(structuredValue)
+func mcpToolResult(value any, _, _ bool, environment string) map[string]any {
+	raw, _ := mcpCompactJSON(value)
 	content := []map[string]any{{"type": "text", "text": string(raw)}}
 	result := map[string]any{"content": content}
-	if environment != "" {
-		result["content"] = append(content, map[string]any{"type": "text", "text": "Flint environment: " + environment})
-		result["_meta"] = map[string]any{mcpEnvironmentMetaKey: environment}
-	}
-	if structured {
-		result["structuredContent"] = structuredValue
-	}
-	return result
+	return mcpWithEnvironment(result, environment)
 }
 
-// mcpOutputSchema is the public output contract of a tool's structured result.
-// tools/list does not advertise it (every tool would embed its full component
-// closure); agents fetch it on demand with the schema.output tool, and tests
-// check results against it.
+// mcpOutputSchema describes legacy command envelopes for contract fixtures.
+// Tools do not advertise an output schema or return structuredContent.
 func mcpOutputSchema(cmd *Command) (map[string]any, *CLIError) {
 	outputSchema, outputErr := schemaForCommand(cmd, false)
 	if outputErr != nil {

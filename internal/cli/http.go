@@ -339,7 +339,13 @@ func (a *App) doAPIRequest(ctx context.Context, baseURL, key, method, path strin
 			}
 			return nil, e
 		}
-		raw, readErr := io.ReadAll(io.LimitReader(resp.Body, int64(responseLimit)+1))
+		fullWriteResponse, _ := ctx.Value(mcpFullWriteResponseKey{}).(bool)
+		fullWriteResponse = fullWriteResponse && method != http.MethodGet && method != http.MethodHead && resp.StatusCode >= 200 && resp.StatusCode < 300
+		var responseBody io.Reader = io.LimitReader(resp.Body, int64(responseLimit)+1)
+		if fullWriteResponse {
+			responseBody = resp.Body
+		}
+		raw, readErr := io.ReadAll(responseBody)
 		resp.Body.Close()
 		cancelAttempt()
 		if readErr != nil {
@@ -363,7 +369,7 @@ func (a *App) doAPIRequest(ctx context.Context, baseURL, key, method, path strin
 			}
 			return nil, e
 		}
-		if len(raw) > responseLimit {
+		if !fullWriteResponse && len(raw) > responseLimit {
 			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 				e := apiErrorFromResponse(&apiResponse{Status: resp.StatusCode, Headers: resp.Header.Clone()})
 				e.Code = "RESPONSE_TOO_LARGE"

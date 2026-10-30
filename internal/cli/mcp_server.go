@@ -27,7 +27,7 @@ const (
 	// Read results larger than this are refused with advice to narrow them:
 	// clients truncate far smaller results, and the agent pays for every byte.
 	// Writes always return their result so a completed write is never hidden.
-	mcpMaxResultBytes       = 1 << 20
+	mcpMaxResultBytes       = 49_152
 	mcpMaxStderrBytes       = 1 << 20
 	mcpMaxLineBytes         = 8 << 20
 	mcpConfirmationDeadline = 10 * time.Minute
