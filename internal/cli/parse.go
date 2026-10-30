@@ -321,6 +321,11 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 		rawMethod = strings.ToUpper(o.Positionals[0])
 	}
 	effective := resolveAPICommand(cmd, *o)
+	if cmd.CanonicalName == "api" && len(o.Positionals) >= 2 {
+		if e := validateRawPublicRoute(effective.Method, effective.APIPath); e != nil {
+			return e
+		}
+	}
 	rawMutation := cmd.CanonicalName == "api" && effective.Mutation
 	used := func(name string) bool { return len(o.Raw[name]) > 0 }
 	for _, item := range []struct {

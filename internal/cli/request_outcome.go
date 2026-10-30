@@ -112,7 +112,7 @@ func (h *requestHistory) finalError(ctx context.Context, e *CLIError, method, pa
 	} else {
 		message += " Read the affected resources and request logs before retrying."
 	}
-	if write && key != "" {
+	if write && key != "" && !unknownRawOperation(responseContract(ctx)) {
 		message += " A retry with the same idempotency key is safe and returns the original result."
 	}
 	for _, read := range reads {
