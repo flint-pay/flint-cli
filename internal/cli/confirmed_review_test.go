@@ -39,47 +39,38 @@ func assertMCPOutputMatchesSchema(t *testing.T, schema map[string]any, value any
 	}
 }
 
-func TestMCPPreviewResultsMatchAdvertisedSchemas(t *testing.T) {
+func TestMCPDryRunsReturnJSONEnvelopeWithoutNetwork(t *testing.T) {
+	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/auth-context" {
-			t.Errorf("preview sent unexpected request: %s %s", r.Method, r.URL.Path)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, authContextJSON("sandbox"))
+		requests++
+		t.Errorf("dry run sent %s %s", r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer server.Close()
 	app, _, _ := testApp(t, server.URL)
-	// tools/list no longer advertises output schemas; results must still
-	// match each tool's public output contract.
 	for _, test := range []struct {
-		name, tool string
-		arguments  map[string]any
-		path       string
-		want       any
+		name, operation, path string
+		arguments             map[string]any
+		irreversible          bool
 	}{
-		{"dry run", "organizations.create", map[string]any{"name": "Audit", "parent_organization_id": "org_parent", "_flint": map[string]any{"dry_run": "client"}}, "data.method", "POST"},
-		{"destructive preview", "payment-intents.cancel", map[string]any{"payment_intent_id": "pi_test", "_flint": map[string]any{"preview": true}}, "data.preview.reversibility.reversible", false},
-		{"transformed dry run", "organizations.create", map[string]any{"name": "Audit", "parent_organization_id": "org_parent", "_flint": map[string]any{"dry_run": "client", "field": "method"}}, "value", "POST"},
+		{"create dry run", "organizations.create", "/v1/organizations", map[string]any{"name": "Audit", "parent_organization_id": "org_parent"}, false},
+		{"destructive dry run", "payment-intents.cancel", "/v1/payment-intents/pi_test/cancel", map[string]any{"payment_intent_id": "pi_test"}, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			cmdForCall := mustMCPTool(t, app, test.tool)
-			response := rpcResult(2, app.runMCPTool(context.Background(), cmdForCall, test.arguments, mcpAllToolsOptions(t), mcpPolicy{allTools: true}, true))
-			value, ok := lookupPath(response, "result.structuredContent")
-			if !ok {
-				t.Fatalf("tool failed: %#v", response)
+			result := mcpCall(t, app, defaultOptions(), "flint_write", map[string]any{"operation": test.operation, "arguments": test.arguments, "dry_run": true, "idempotency_key": "preview-fixture"})
+			if result["isError"] == true {
+				t.Fatal(mcpResultText(result))
 			}
-			if got, ok := lookupPath(value, test.path); !ok || got != test.want {
-				t.Fatalf("%s = %#v, want %#v", test.path, got, test.want)
+			value := mcpResultJSON(t, result)
+			for path, want := range map[string]any{"data.dry_run": true, "data.operation": test.operation, "data.method": "POST", "data.path": test.path, "data.effect.irreversible": test.irreversible} {
+				if got := lookupPathValue(value, path); got != want {
+					t.Errorf("%s=%#v want=%#v", path, got, want)
+				}
 			}
-			cmd, _ := app.Registry.ByName(test.tool)
-			schema, schemaErr := mcpOutputSchema(cmd)
-			if schemaErr != nil {
-				t.Fatal(schemaErr)
-			}
-			assertMCPOutputMatchesSchema(t, schema, value)
 		})
+	}
+	if requests != 0 {
+		t.Fatalf("dry runs sent %d requests", requests)
 	}
 }
 
@@ -110,12 +101,7 @@ func TestTimelineAllPreservesEnvelopeAndCollectsEntries(t *testing.T) {
 			app, out, _ := testApp(t, server.URL)
 			var result any
 			if viaMCP {
-				response := rpcResult(1, mcpCall(t, app, defaultOptions(), "flint_read", map[string]any{"operation": "timeline", "arguments": map[string]any{"resource_id": "pi_test", "page_size": 1}, "all": true}))
-				var ok bool
-				result, ok = lookupPath(response, "result.structuredContent")
-				if !ok {
-					t.Fatalf("timeline tool failed: %#v", response)
-				}
+				result = mcpResultJSON(t, mcpCall(t, app, defaultOptions(), "flint_read", map[string]any{"operation": "timeline", "arguments": map[string]any{"resource_id": "pi_test", "page_size": 1}, "all": true}))
 			} else {
 				argv := []string{"timeline", "pi_test"}
 				if raw {

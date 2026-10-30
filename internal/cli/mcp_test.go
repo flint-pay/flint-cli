@@ -300,7 +300,7 @@ func TestMCPListenPrintSecretMatchesOutputSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertMCPOutputMatchesSchema(t, schema, result["structuredContent"])
+	assertMCPOutputMatchesSchema(t, schema, mcpResultJSON(t, result))
 	if len(api.seen()) != 0 {
 		t.Fatalf("print_secret opened a stream: %v", api.seen())
 	}
@@ -337,7 +337,7 @@ func TestMCPListenDurationAndExplicitEventCounts(t *testing.T) {
 			if result["isError"] == true {
 				t.Fatalf("duration-only listen failed: %s", mcpResultText(result))
 			}
-			records := result["structuredContent"].(map[string]any)["records"].([]any)
+			records := mcpResultJSON(t, result).(map[string]any)["records"].([]any)
 			events := 0
 			for _, record := range records {
 				if record.(map[string]any)["type"] == "event" {

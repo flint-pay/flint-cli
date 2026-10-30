@@ -453,7 +453,7 @@ func TestMCPAPIKeyCreateRequiresAccess(t *testing.T) {
 	}
 	accepted := mcpCall(t, app, mcpAllToolsOptions(t), "api-keys_create", map[string]any{"name": "ci", "access": "restricted", "scopes": []any{"customers.read"}, "_flint": map[string]any{"dry_run": "client"}})
 	want := map[string]any{"name": "ci", "access": "restricted", "scopes": []any{"customers.read"}}
-	if body := lookupPathValue(accepted["structuredContent"].(map[string]any), "data.body"); accepted["isError"] == true || !reflect.DeepEqual(body, want) {
+	if body := lookupPathValue(mcpResultJSON(t, accepted), "data.body"); accepted["isError"] == true || !reflect.DeepEqual(body, want) {
 		t.Fatalf("restricted create = %v (%s)", body, mcpResultText(accepted))
 	}
 }

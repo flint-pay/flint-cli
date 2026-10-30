@@ -12,6 +12,11 @@ import (
 
 type outputHandled struct{}
 
+// Embedded callers may bound a projected collection before another page is read.
+// Terminal pagination has no check and keeps its existing behavior.
+type paginationResultCheckKey struct{}
+type paginationResultCheck func(any, int) *CLIError
+
 func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolved ResolvedConfig, authContext AuthContext, key, baseURL string) (any, *CLIError) {
 	ctx = context.WithValue(ctx, responseContractKey{}, cmd)
 	req, e := a.prepareRequest(ctx, cmd, opts, resolved, key, baseURL)
@@ -311,6 +316,22 @@ func (a *App) executeAllPages(ctx context.Context, cmd *Command, opts Options, r
 		token, tokenErr := nextPageToken(m)
 		if tokenErr != nil {
 			return nil, tokenErr
+		}
+		if check, ok := ctx.Value(paginationResultCheckKey{}).(paginationResultCheck); ok && !stream {
+			candidate := copyMap(m)
+			if collectionField == "data" {
+				candidate[collectionField] = combined
+			} else {
+				candidateCollection := copyMap(collection)
+				candidateCollection[collectionField] = combined
+				candidate["data"] = candidateCollection
+			}
+			if opts.Limit == 0 {
+				candidate["next_page_token"] = ""
+			}
+			if e := check(candidate, pages); e != nil {
+				return nil, e
+			}
 		}
 		if token == "" || (opts.Limit > 0 && count >= opts.Limit) || (stream && !opts.All && opts.Limit == 0) {
 			break

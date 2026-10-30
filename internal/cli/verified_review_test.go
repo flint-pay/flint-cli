@@ -135,7 +135,7 @@ func TestVerifiedMCPPreservesFlagLikeValues(t *testing.T) {
 	a, _, _ := testApp(t, "")
 	for _, name := range []string{"--help", "--live", "--", "--name=value"} {
 		result := mcpCall(t, a, defaultOptions(), "flint_write", map[string]any{"operation": "organizations.create", "arguments": map[string]any{"name": name, "parent_organization_id": "org_parent"}, "dry_run": true, "idempotency_key": "flag-like-fixture"})
-		if got := lookupPathValue(result, "structuredContent.data.body.name"); got != name {
+		if got := lookupPathValue(mcpResultJSON(t, result), "data.body.name"); got != name {
 			t.Fatalf("%q: %#v", name, result)
 		}
 	}
@@ -146,7 +146,7 @@ func TestVerifiedMCPCommandHelpIsStructured(t *testing.T) {
 	response := a.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{
 		"name": "flint_help", "arguments": map[string]any{"topic": "customers.create"},
 	}}, defaultOptions())
-	if got, _ := lookupPath(response, "result.structuredContent.data.operation"); got != "customers.create" {
+	if got, _ := lookupPath(mcpResultJSON(t, response["result"].(map[string]any)), "data.operation"); got != "customers.create" {
 		t.Fatalf("response=%v", response)
 	}
 	if exit := a.Run([]string{"help", "customers.create"}); exit != ExitOK || json.Valid(out.Bytes()) || !strings.Contains(out.String(), "Usage:") {

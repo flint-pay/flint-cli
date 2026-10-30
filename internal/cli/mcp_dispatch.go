@@ -24,6 +24,9 @@ func (a *App) mcpDispatch(ctx context.Context, id any, tool string, input map[st
 		if e != nil {
 			return fail(e)
 		}
+		if refused := mcpResultTooLarge(nil, input, map[string]any{"data": value}); refused != nil {
+			return rpcResult(id, refused)
+		}
 		return rpcResult(id, mcpToolResult(map[string]any{"data": value}, structured, false, ""))
 	}
 	var name string
@@ -102,6 +105,9 @@ func (a *App) mcpDispatch(ctx context.Context, id any, tool string, input map[st
 	if e != nil {
 		return fail(e)
 	}
+	if e := mcpValidateSelect(cmd, controls); e != nil {
+		return fail(e)
+	}
 	internal := maps.Clone(arguments)
 	for key, value := range controls {
 		if key == "wait_seconds" {
@@ -121,7 +127,7 @@ func (a *App) mcpDispatch(ctx context.Context, id any, tool string, input map[st
 		delete(controls, "idempotency_key")
 	}
 	internal["_flint"] = controls
-	if message := mcpGateViolation(internal, policy); message != "" {
+	if message := mcpGateViolation(internal, policy); message != "" && controls["dry_run"] != "client" {
 		return rpcResult(id, mcpToolError(message, nil))
 	}
 	return rpcResult(id, a.runMCPTool(ctx, cmd, internal, opts, policy, structured))

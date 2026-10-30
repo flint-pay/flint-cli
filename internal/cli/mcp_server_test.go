@@ -137,6 +137,47 @@ func mcpResultText(result map[string]any) string {
 	return strings.Join(texts, "\n")
 }
 
+// mcpResultJSON reads the single compact JSON block used by every MCP protocol.
+// Notes share one optional second block and never change the command value.
+func mcpResultJSON(t *testing.T, result map[string]any) any {
+	t.Helper()
+	if _, exists := result["structuredContent"]; exists {
+		t.Fatalf("duplicate structured content: %#v", result)
+	}
+	content, ok := result["content"].([]map[string]any)
+	if !ok {
+		raw, err := json.Marshal(result["content"])
+		ok = err == nil && json.Unmarshal(raw, &content) == nil
+	}
+	if !ok || len(content) < 1 || len(content) > 2 {
+		t.Fatalf("expected JSON and optional notes blocks: %#v", result)
+	}
+	raw, ok := content[0]["text"].(string)
+	if !ok || content[0]["type"] != "text" {
+		t.Fatalf("missing JSON text block: %#v", result)
+	}
+	var value any
+	if err := json.Unmarshal([]byte(raw), &value); err != nil {
+		t.Fatalf("invalid JSON result %q: %v", raw, err)
+	}
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, []byte(raw)); err != nil || compact.String() != raw {
+		t.Fatalf("result is not compact JSON: %q", raw)
+	}
+	if len(content) == 2 {
+		notes, ok := content[1]["text"].(string)
+		if !ok || content[1]["type"] != "text" || notes == "" {
+			t.Fatalf("invalid notes block: %#v", content[1])
+		}
+		for _, line := range strings.Split(notes, "\n") {
+			if !strings.HasPrefix(line, "Flint environment: ") && !strings.HasPrefix(line, "Note: ") && !strings.HasPrefix(line, "Warning: ") {
+				t.Fatalf("invalid notes line: %q", line)
+			}
+		}
+	}
+	return value
+}
+
 func mcpListedTools(t *testing.T, app *App, opts Options, version string) ([]map[string]any, int) {
 	t.Helper()
 	response := app.handleMCPVersion(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/list"}, opts, version)
@@ -387,9 +428,9 @@ func TestMCPLiveCredentialRequiresAllowLive(t *testing.T) {
 			t.Fatalf("live call without --allow-live = %s", text)
 		}
 	}
-	// Dry runs resolve a live API key offline and must not leak CLI advice.
+	// A dry run validates offline without requiring live access or confirmation.
 	dryRun := mcpCall(t, app, defaultOptions(), "customers.create", map[string]any{"email": "a@example.com", "_flint": map[string]any{"dry_run": "client"}})
-	if dryRun["isError"] != true || !strings.Contains(mcpResultText(dryRun), "LIVE_ACCESS_DISABLED") {
+	if dryRun["isError"] == true || lookupPathValue(mcpResultJSON(t, dryRun), "data.dry_run") != true {
 		t.Fatalf("live dry run without --allow-live = %s", mcpResultText(dryRun))
 	}
 	if seen := api.seen(); len(seen) != 0 {
@@ -431,8 +472,9 @@ func TestMCPSandboxResultsReportEnvironment(t *testing.T) {
 	if result["isError"] == true || !strings.Contains(mcpResultText(result), "Flint environment: sandbox") {
 		t.Fatalf("sandbox result = %#v", result)
 	}
-	if _, ok := result["structuredContent"].(map[string]any)["data"]; !ok {
-		t.Fatalf("structuredContent must stay the command envelope: %#v", result["structuredContent"])
+	value := mcpResultJSON(t, result)
+	if _, ok := value.(map[string]any)["data"]; !ok {
+		t.Fatalf("result lost command envelope: %#v", value)
 	}
 }
 

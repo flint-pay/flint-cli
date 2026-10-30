@@ -348,11 +348,11 @@ func TestMCPSuccessfulResultsCarryWarnings(t *testing.T) {
 	result := mcpCall(t, app, defaultOptions(), "customers_create", map[string]any{"email": "warnings@example.com"})
 	content := result["content"].([]map[string]any)
 	last := content[len(content)-1]["text"].(string)
-	if result["isError"] == true || !strings.HasPrefix(last, "Warnings:\n") || !strings.Contains(last, "could not record resource history") {
+	if result["isError"] == true || !strings.Contains(last, "Warning: ") || !strings.Contains(last, "could not record resource history") {
 		t.Fatalf("result = %#v", result)
 	}
-	if _, ok := result["structuredContent"].(map[string]any)["data"]; !ok {
-		t.Fatal("warnings must not change structuredContent")
+	if _, ok := mcpResultJSON(t, result).(map[string]any)["data"]; !ok {
+		t.Fatal("warnings must not change command envelope")
 	}
 }
 

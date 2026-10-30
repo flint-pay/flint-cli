@@ -790,30 +790,24 @@ func TestMCPFlagsSerializeBooleansAndInheritServerContext(t *testing.T) {
 	}
 }
 
-func TestMCPOutputTransformsRemainStructuredAndSchemaCompatible(t *testing.T) {
+func TestMCPOutputTransformsReturnRawJSONValues(t *testing.T) {
 	app, _, _ := testApp(t, "")
 	cmd := mustMCPTool(t, app, "version")
-	response := rpcResult(1, app.runMCPTool(context.Background(), cmd, map[string]any{"_flint": map[string]any{"field": "cli_version"}}, mcpAllToolsOptions(t), mcpPolicy{allTools: true}, true))
-	result := response["result"].(map[string]any)
+	result := app.runMCPTool(context.Background(), cmd, map[string]any{"_flint": map[string]any{"field": "cli_version"}}, mcpAllToolsOptions(t), mcpPolicy{allTools: true}, true)
 	if result["isError"] == true {
-		t.Fatalf("MCP transform failed: %#v", result)
+		t.Fatalf("transform failed: %#v", result)
 	}
-	structured, ok := result["structuredContent"].(map[string]any)
-	if !ok || structured["value"] != "test" {
-		t.Fatalf("structured transform result = %#v", result)
+	if value := mcpResultJSON(t, result); value != "test" {
+		t.Fatalf("transformed value wrapped: %#v", value)
 	}
 	content := result["content"].([]map[string]any)
-	if len(content) != 1 || content[0]["text"] != `{"value":"test"}` {
-		t.Fatalf("text transform result = %#v", content)
+	if len(content) != 1 || content[0]["text"] != `"test"` {
+		t.Fatalf("scalar JSON result: %#v", content)
 	}
-
-	malformed := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 2, Method: "tools/call", Params: map[string]any{
-		"name":      "version",
-		"arguments": map[string]any{"select": []any{true}},
-	}}, mcpAllToolsOptions(t))
+	malformed := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 2, Method: "tools/call", Params: map[string]any{"name": "version", "arguments": map[string]any{"select": []any{true}}}}, mcpAllToolsOptions(t))
 	malformedResult := malformed["result"].(map[string]any)
 	if malformedResult["isError"] != true || strings.Contains(fmt.Sprint(malformedResult), "structuredContent") {
-		t.Fatalf("malformed transform result = %#v", malformedResult)
+		t.Fatalf("malformed transform accepted: %#v", malformedResult)
 	}
 }
 
