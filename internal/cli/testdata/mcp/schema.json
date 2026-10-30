@@ -2107,16 +2107,16 @@
         "NumberSchema": {
             "properties": {
                 "default": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "description": {
                     "type": "string"
                 },
                 "maximum": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "minimum": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "title": {
                     "type": "string"
@@ -3348,10 +3348,7 @@
                 },
                 "ttl": {
                     "description": "Actual retention duration from creation in milliseconds, null for unlimited.",
-                    "type": [
-                        "integer",
-                        "null"
-                    ]
+                    "type": "integer"
                 }
             },
             "required": [
@@ -4055,4 +4052,3 @@
         }
     }
 }
-
