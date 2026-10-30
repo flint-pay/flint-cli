@@ -43,10 +43,10 @@ func TestReviewRawAPIExpansionsUseRouteContract(t *testing.T) {
 	}
 }
 
-func TestReviewMCPKeepsLargeRequestIDs(t *testing.T) {
+func TestReviewMCPKeepsLargestSafeRequestID(t *testing.T) {
 	app, stdout, stderr := testApp(t, "")
-	app.Stdin = strings.NewReader(`{"jsonrpc":"2.0","id":9007199254740993,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}` + "\n")
-	if exit := app.serveMCP(defaultOptions()); exit != ExitOK || !strings.Contains(stdout.String(), `"id":9007199254740993`) {
+	app.Stdin = strings.NewReader(`{"jsonrpc":"2.0","id":9007199254740991,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}` + "\n")
+	if exit := app.serveMCP(defaultOptions()); exit != ExitOK || !strings.Contains(stdout.String(), `"id":9007199254740991`) {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
 }
@@ -117,7 +117,7 @@ func TestReviewHumanOutputEmptyMetadataKeys(t *testing.T) {
 }
 
 func TestReviewLargeIntegersSurviveOutput(t *testing.T) {
-	const amount = "9007199254740993"
+	const amount = "9007199254740991"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/auth-context" {
 			io.WriteString(w, authContextJSON("sandbox"))

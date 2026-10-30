@@ -68,6 +68,7 @@ func mcpAllToolsOptions(t *testing.T, flags ...string) Options {
 func mcpCall(t *testing.T, app *App, opts Options, name string, arguments map[string]any) map[string]any {
 	t.Helper()
 	response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{"name": name, "arguments": arguments}}, opts)
+	assertMCPWireMessage(t, response)
 	result, ok := response["result"].(map[string]any)
 	if !ok {
 		t.Fatalf("tools/call %s: %#v", name, response)
@@ -86,6 +87,7 @@ func mcpResultText(result map[string]any) string {
 func mcpListedTools(t *testing.T, app *App, opts Options, version string) ([]map[string]any, int) {
 	t.Helper()
 	response := app.handleMCPVersion(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/list"}, opts, version)
+	assertMCPWireMessage(t, response)
 	var raw bytes.Buffer
 	encoder := json.NewEncoder(&raw)
 	encoder.SetEscapeHTML(false)
@@ -505,6 +507,7 @@ func startMCPTestConn(t *testing.T, app *App, opts Options) *mcpTestConn {
 				t.Errorf("server wrote invalid JSON: %s", scanner.Text())
 				continue
 			}
+			assertMCPWireMessage(t, message)
 			conn.messages <- message
 		}
 	}()
