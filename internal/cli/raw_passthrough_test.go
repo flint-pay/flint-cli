@@ -96,3 +96,19 @@ func TestMCPUnknownRawRouteRemainsUnavailable(t *testing.T) {
 		t.Fatalf("result=%+v", result)
 	}
 }
+
+func TestUnknownRawTransportFailureIsNotReplayed(t *testing.T) {
+	app, out, _ := testApp(t, "http://127.0.0.1:1")
+	calls := 0
+	app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Path == "/v1/auth-context" {
+			return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(authContextJSON("sandbox")))}, nil
+		}
+		calls++
+		return nil, io.ErrUnexpectedEOF
+	})}
+	exit := app.Run([]string{"api", "post", "/v1/future-resources", "--idempotency-key", "caller-saved-key", "--confirm", "--output", "json"})
+	if exit != ExitNetwork || calls != 1 || !strings.Contains(out.String(), `"idempotency_key":"caller-saved-key"`) || strings.Contains(out.String(), "is safe") {
+		t.Fatalf("exit=%d calls=%d out=%s", exit, calls, out)
+	}
+}

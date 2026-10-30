@@ -1126,6 +1126,15 @@
   },
   {
     "method": "POST",
+    "path": "/v1/disputes/{dispute_id}/simulate",
+    "operation_id": "simulateDispute",
+    "classification": "resource",
+    "commands": [
+      "disputes.simulate"
+    ]
+  },
+  {
+    "method": "POST",
     "path": "/v1/email-preference-links/lookup",
     "operation_id": "lookupEmailPreferenceLink",
     "classification": "resource",
@@ -5337,6 +5346,51 @@
     "classification": "resource",
     "commands": [
       "tax-connection.registrations.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/test-clocks",
+    "operation_id": "listTestClocks",
+    "classification": "resource",
+    "commands": [
+      "test-clocks.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/test-clocks",
+    "operation_id": "createTestClock",
+    "classification": "resource",
+    "commands": [
+      "test-clocks.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/test-clocks/{test_clock_id}",
+    "operation_id": "deleteTestClock",
+    "classification": "resource",
+    "commands": [
+      "test-clocks.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/test-clocks/{test_clock_id}",
+    "operation_id": "getTestClock",
+    "classification": "resource",
+    "commands": [
+      "test-clocks.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/test-clocks/{test_clock_id}/advance",
+    "operation_id": "advanceTestClock",
+    "classification": "resource",
+    "commands": [
+      "test-clocks.advance"
     ]
   },
   {
