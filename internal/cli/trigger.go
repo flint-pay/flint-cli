@@ -117,10 +117,10 @@ func (a *App) localTrigger(cmd *Command, opts Options) int {
 	}
 	if opts.Output == "human" {
 		data := value["data"].(map[string]any)
-		fmt.Fprintf(a.Stdout, "Triggered %s in sandbox %s (run %s)\n", event, terminalSafe(auth.SandboxID), terminalSafe(prefix))
 		if opts.DryRunClient() {
 			return a.outputLocal(value, cmd, Options{Output: "json"})
 		}
+		fmt.Fprintf(a.Stdout, "Triggered %s in sandbox %s (run %s)\n", event, terminalSafe(auth.SandboxID), terminalSafe(prefix))
 		for _, record := range data["steps"].([]map[string]any) {
 			fmt.Fprintf(a.Stdout, "  %s  %s  %s %s  %v  %v\n", record["step"], record["operation_id"], record["method"], record["path"], record["status_code"], record["request_id"])
 		}

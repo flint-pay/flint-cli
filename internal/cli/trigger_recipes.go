@@ -104,5 +104,59 @@ func triggerEntries() []triggerEntry {
 	add("subscription", "", "test_clock.ready", "subscription.renewal_upcoming")
 	add("invoice", "invoice", "invoice.created", "invoice.issued")
 	add("invoice", "", "invoice.paid", "invoice_manual_payment.created")
+	// Related events are advisory; the requested event remains the primary expectation.
+	for i := range entries {
+		entry := &entries[i]
+		payment := []string{"order.created", "payment_intent.created", "payment_intent.succeeded", "order.paid", "order.closed"}
+		switch entry.Recipe {
+		case "order_payment":
+			if entry.Through == "" {
+				entry.Also = payment
+			}
+			if entry.Event == "payment_intent.payment_failed" {
+				entry.Also = []string{"order.created", "payment_intent.created"}
+			}
+		case "refund":
+			entry.Also = append(payment, "refund.created", "refund.succeeded", "order.refunded")
+		case "checkout_payment":
+			entry.Also = []string{"order.created", "checkout_session.created"}
+			if entry.Through == "" {
+				entry.Also = append(entry.Also, payment[1:]...)
+			}
+		case "dispute":
+			entry.Also = append(payment, "dispute.created", "dispute.needs_response")
+			if entry.Through == "" {
+				entry.Also = append(entry.Also, "dispute.updated")
+				if entry.Event != "dispute.lost" {
+					entry.Also = append(entry.Also, "dispute.won")
+				}
+			}
+		case "saved_card":
+			entry.Also = []string{"customer.created", "payment_intent.created", "payment_intent.succeeded", "payment_method.activated", "payment_intent.updated"}
+		case "subscription":
+			entry.Also = []string{"test_clock.created"}
+			if entry.Through != "clock" {
+				entry.Also = append(entry.Also, "customer.created", "payment_intent.created", "payment_intent.succeeded", "payment_method.activated", "subscription.created", "subscription.activated", "subscription.payment_succeeded")
+			}
+			if entry.Through == "advance" || entry.Through == "" {
+				entry.Also = append(entry.Also, "test_clock.advancing")
+			}
+			if entry.Through == "" {
+				entry.Also = append(entry.Also, "test_clock.ready", "subscription.renewal_upcoming")
+			}
+		case "invoice":
+			entry.Also = []string{"order.created", "invoice.created", "invoice.issued"}
+			if entry.Through == "" {
+				entry.Also = append(entry.Also, "invoice_manual_payment.created", "invoice.paid", "order.paid")
+			}
+		}
+		also := []string{}
+		for _, event := range entry.Also {
+			if event != entry.Event {
+				also = append(also, event)
+			}
+		}
+		entry.Also = also
+	}
 	return entries
 }
