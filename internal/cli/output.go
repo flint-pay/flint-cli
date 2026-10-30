@@ -257,6 +257,7 @@ func (a *App) writeJQResults(values jqResults, opts Options) *CLIError {
 }
 
 func applyCommandOutputTransforms(ctx context.Context, value any, cmd *Command, opts Options) (any, *CLIError) {
+	cmd = outputCommand(cmd, opts)
 	if opts.DryRunClient() || opts.Preview {
 		cmd = nil
 	}

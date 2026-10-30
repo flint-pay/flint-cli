@@ -9,6 +9,17 @@ import (
 
 type outputPath struct{ Path, Param string }
 
+// Timeline NDJSON emits entries as resources, while JSON returns the timeline.
+func outputCommand(cmd *Command, opts Options) *Command {
+	if cmd != nil && opts.Output == "ndjson" && cmd.OperationID == "getResourceTimeline" {
+		entry := *cmd
+		entry.OperationID = ""
+		entry.OutputSchema = "ResourceTimelineEntry"
+		return &entry
+	}
+	return cmd
+}
+
 func outputPaths(opts Options) ([]outputPath, *CLIError) {
 	paths := []outputPath{}
 	if opts.Field != "" {

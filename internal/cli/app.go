@@ -94,7 +94,7 @@ func (a *App) Run(argv []string) int {
 		return a.fail(pathErr, opts)
 	}
 	if !opts.DryRunClient() && !opts.Preview {
-		if pathErr = validateOutputPaths(effective, paths); pathErr != nil {
+		if pathErr = validateOutputPaths(outputCommand(effective, opts), paths); pathErr != nil {
 			return a.fail(pathErr, opts)
 		}
 	}
