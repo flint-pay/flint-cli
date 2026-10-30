@@ -121,7 +121,7 @@ func TestVerifiedListenErrorBodyTimeout(t *testing.T) {
 			defer cancel()
 			started := time.Now()
 			_, retryable, e := a.openListenStream(ctx, server.URL, "flint_test_synthetic", "/v1/webhook-events/stream", "", 200*time.Millisecond, false)
-			if e == nil || e.Code != "REQUEST_TIMEOUT" || retryable != (status == http.StatusServiceUnavailable) {
+			if e == nil || e.Code != "CLIENT_TIMEOUT" || retryable != (status == http.StatusServiceUnavailable) {
 				t.Fatalf("retryable=%v error=%v", retryable, e)
 			}
 			if time.Since(started) > 2*time.Second || ctx.Err() != nil {

@@ -126,7 +126,7 @@ func helpRequested(opts Options) bool {
 	return len(values) > 0 && values[len(values)-1] == "true"
 }
 
-var defaultRequestTimeout = 30 * time.Second
+var defaultRequestTimeout = 80 * time.Second
 
 func defaultOptions() Options {
 	return Options{Output: "human", Color: "auto", Progress: "auto", Timeout: defaultRequestTimeout, Input: "", Raw: map[string][]string{}}

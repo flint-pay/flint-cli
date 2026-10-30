@@ -369,7 +369,7 @@ func TestOpenListenStreamTimeoutDoesNotWaitForTransportCancellation(t *testing.T
 	started := time.Now()
 	_, retryable, streamErr := app.openListenStream(context.Background(), "https://api.example.test", "flint_test_test", "/v1/webhook-events/stream", "", 25*time.Millisecond, false)
 	close(release)
-	if streamErr == nil || streamErr.Code != "REQUEST_TIMEOUT" || retryable {
+	if streamErr == nil || streamErr.Code != "CLIENT_TIMEOUT" || retryable {
 		t.Fatalf("open error = %#v, retryable = %t", streamErr, retryable)
 	}
 	if elapsed := time.Since(started); elapsed > 500*time.Millisecond {

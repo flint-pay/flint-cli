@@ -247,7 +247,7 @@ func TestTransportRetriesTimeoutsAndCancellation(t *testing.T) {
 					})}
 					_, err := app.doRequest(ctx, "https://api.example.com", "", methodKey.method, "/v1/test", []byte(`{}`), methodKey.key, false)
 					want := 1
-					if !strings.Contains(failure, "cancel") && (methodKey.method == "GET" || methodKey.key != "") {
+					if !strings.Contains(failure, "cancel") && failure != "timeout" && (methodKey.method == "GET" || methodKey.key != "") {
 						want = 3
 					}
 					if err == nil || attempts != want {
@@ -308,7 +308,7 @@ func TestResponseReadFailurePreservesRetryAfterBeyondDeadline(t *testing.T) {
 		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 		defer cancel()
 		_, err := app.doRequest(ctx, "https://api.example.com", "", http.MethodGet, "/v1/test", nil, "", false)
-		if err == nil || err.Code != "RESPONSE_READ_FAILED" || err.HTTPStatus != 429 || !errors.Is(err.Cause, io.ErrUnexpectedEOF) || err.RetryAfterMs == nil || *err.RetryAfterMs != 120000 || attempts != 1 || time.Since(started) != 0 {
+		if err == nil || err.Code != "CLIENT_TIMEOUT" || err.HTTPStatus != 429 || !errors.Is(err.Cause, io.ErrUnexpectedEOF) || err.RetryAfterMs == nil || *err.RetryAfterMs != 120000 || attempts != 1 || time.Since(started) != 0 {
 			t.Fatalf("attempts=%d elapsed=%s error=%+v", attempts, time.Since(started), err)
 		}
 		opts := defaultOptions()

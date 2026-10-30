@@ -33,7 +33,7 @@ func TestJSONInputCancellation(t *testing.T) {
 			cancel()
 			select {
 			case exit := <-done:
-				if exit != ExitNetwork || !strings.Contains(out.String(), "REQUEST_CANCELED") {
+				if exit != ExitNetwork || !strings.Contains(out.String(), "CLIENT_CANCELED") {
 					t.Fatalf("exit=%d stdout=%s stderr=%s", exit, out, stderr)
 				}
 			case <-time.After(time.Second):

@@ -544,7 +544,7 @@ func mcpControlSchemas(c *Command) map[string]any {
 		controls["profile"] = control(map[string]any{"type": "string"}, "CLI profile.")
 	}
 	if credentialed || c.CanonicalName == "help.search" || c.CanonicalName == "signup" {
-		controls["timeout"] = control(map[string]any{"type": "string"}, "Request timeout, e.g. 30s.")
+		controls["timeout"] = control(map[string]any{"type": "string"}, "Total request budget including retries, e.g. 80s (default).")
 	}
 	if c.Mutation || api {
 		controls["idempotency_key"] = control(map[string]any{"type": "string", "minLength": 1}, "Reuse the same key when retrying, or the write may run twice.")
@@ -675,7 +675,8 @@ func errorCatalog() map[string]any {
 			{"code": "LISTEN_SECRET_INVALID", "exit_code": ExitAuth},
 			{"code": "LISTEN_SECRET_SAVE_FAILED", "exit_code": ExitAuth},
 			{"code": "WEBHOOK_SECRET_GENERATION_FAILED", "exit_code": ExitNetwork},
-			{"code": "REQUEST_TIMEOUT", "exit_code": ExitNetwork},
+			{"code": "CLIENT_TIMEOUT", "exit_code": ExitNetwork},
+			{"code": "CLIENT_CANCELED", "exit_code": ExitNetwork},
 			{"code": "NETWORK_ERROR", "exit_code": ExitNetwork},
 			{"code": "RESPONSE_READ_FAILED", "exit_code": ExitNetwork},
 			{"code": "STREAM_READ_FAILED", "exit_code": ExitNetwork},

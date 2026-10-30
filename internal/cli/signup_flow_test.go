@@ -505,7 +505,7 @@ func TestSignupFlowCancellationAndPersistence(t *testing.T) {
 			args := append(append([]string{}, signupFlowStartArgs...), "--verification-code", "123456", "--no-input", "--output", "json")
 			exit := app.Run(args)
 			if scenario == "canceled start" {
-				if exit != ExitNetwork || revoked || !strings.Contains(out.String(), "REQUEST_CANCELED") {
+				if exit != ExitNetwork || revoked || !strings.Contains(out.String(), "CLIENT_CANCELED") {
 					t.Fatalf("cancellation exit=%d revoked=%t out=%s", exit, revoked, out)
 				}
 			} else if exit != ExitAuth || !revoked || stored != "flint_test_previous" {

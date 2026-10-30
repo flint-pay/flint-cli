@@ -102,7 +102,7 @@ func TestUpgradeDownloadCancellationWhileReadingBody(t *testing.T) {
 	cancel()
 	select {
 	case err := <-result:
-		if err == nil || err.Code != "REQUEST_CANCELED" || !errors.Is(err.Cause, context.Canceled) {
+		if err == nil || err.Code != "CLIENT_CANCELED" || !errors.Is(err.Cause, context.Canceled) {
 			t.Fatalf("error=%v", err)
 		}
 	case <-time.After(5 * time.Second):

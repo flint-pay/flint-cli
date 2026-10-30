@@ -643,17 +643,17 @@ func (a *App) openListenStreamAttempt(ctx context.Context, baseURL, key, path, c
 	case <-timer.C:
 		cancelRequest()
 		close(abandoned)
-		return nil, false, networkError("REQUEST_TIMEOUT", "Timed out waiting for the webhook event stream to open.", context.DeadlineExceeded)
+		return nil, false, networkError("CLIENT_TIMEOUT", "Timed out waiting for the webhook event stream to open.", context.DeadlineExceeded)
 	case <-ctx.Done():
 		cancelRequest()
 		close(abandoned)
-		return nil, true, networkError("REQUEST_TIMEOUT", "The webhook event stream closed.", ctx.Err())
+		return nil, true, networkError("CLIENT_TIMEOUT", "The webhook event stream closed.", ctx.Err())
 	}
 	resp, err := open.resp, open.err
 	if err != nil {
 		cancelRequest()
 		if ctx.Err() != nil {
-			return nil, true, networkError("REQUEST_TIMEOUT", "The webhook event stream closed.", ctx.Err())
+			return nil, true, networkError("CLIENT_TIMEOUT", "The webhook event stream closed.", ctx.Err())
 		}
 		return nil, true, networkError("NETWORK_ERROR", "Could not connect to the webhook event stream.", err)
 	}
@@ -668,7 +668,7 @@ func (a *App) openListenStreamAttempt(ctx context.Context, baseURL, key, path, c
 		cancelRequest()
 		if readErr != nil {
 			if requestErr != nil {
-				return nil, retryableStatus(resp.StatusCode), networkError("REQUEST_TIMEOUT", "Timed out reading the webhook stream error response.", requestErr)
+				return nil, retryableStatus(resp.StatusCode), networkError("CLIENT_TIMEOUT", "Timed out reading the webhook stream error response.", requestErr)
 			}
 			return nil, retryableStatus(resp.StatusCode), networkError("RESPONSE_READ_FAILED", "The Flint response could not be read.", readErr)
 		}

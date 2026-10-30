@@ -414,7 +414,7 @@ func (a *App) readInput(path string) (map[string]any, *CLIError) {
 	raw, err := io.ReadAll(io.LimitReader(input, (8<<20)+1))
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return nil, networkError("REQUEST_CANCELED", "JSON input reading was canceled.", err)
+			return nil, networkError("CLIENT_CANCELED", "JSON input reading was canceled.", err)
 		}
 		return nil, usageError("INPUT_READ_FAILED", err.Error(), "input")
 	}

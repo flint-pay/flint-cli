@@ -43,7 +43,7 @@ func signupChallengeChanged() *CLIError {
 
 func (a *App) replaceSignupChallenge(profile string, expected, pending *SignupChallenge) *CLIError {
 	if err := a.commandContext().Err(); err != nil {
-		return networkError("REQUEST_CANCELED", "Signup was canceled before progress was stored.", err)
+		return networkError("CLIENT_CANCELED", "Signup was canceled before progress was stored.", err)
 	}
 	if err := a.updateConfig(func(cfg *Config) error {
 		p := cfg.Profiles[profile]
