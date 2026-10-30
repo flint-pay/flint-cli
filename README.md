@@ -335,6 +335,7 @@ Layout:
 | `cmd/flint-coverage` | Emits `coverage.json`: every public route and whether a first-class command covers it. |
 | `internal/cli` | Command registry, parsing, transport, output, and the local commands. |
 | `internal/opindex` | Offline operation, event, and topic metadata with shared credential classification and search ranking. |
+| `internal/schemaview` | Reference resolution, variant-aware schema views, and bounded schemas for discovery tools. |
 | `internal/spec` | The embedded public OpenAPI snapshot every command is built against. |
 | `internal/contract` | Coverage report generation. |
 | `e2e` | Tests that run the built binary against a local server. |
