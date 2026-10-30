@@ -16,6 +16,7 @@ const signupNextCommand = `flint payment-links create --name "Test payment" --it
 // output. Bind the token to its API origin so a resumed run cannot disclose it
 // to a different server.
 type SignupChallenge struct {
+	CredentialStore   string              `json:"credential_store,omitempty"`
 	VerificationToken string              `json:"verification_token"`
 	Email             string              `json:"email"`
 	FirstName         string              `json:"first_name"`
@@ -46,7 +47,10 @@ func (a *App) replaceSignupChallenge(profile string, expected, pending *SignupCh
 		return networkError("CLIENT_CANCELED", "Signup was canceled before progress was stored.", err)
 	}
 	if err := a.updateConfig(func(cfg *Config) error {
-		p := cfg.Profiles[profile]
+		p, exists := cfg.Profiles[profile]
+		if !exists {
+			p = profileWithoutCredential()
+		}
 		if !sameSignupChallenge(p.PendingSignup, expected) {
 			return signupChallengeChanged()
 		}
@@ -125,6 +129,9 @@ func (a *App) startSignupChallenge(profile string, details, expected *SignupChal
 		return nil, invalidResponseError("INVALID_SIGNUP_RESPONSE", "Flint did not return an email verification token.", nil)
 	}
 	pending := *details
+	if a.credentialStore != "" {
+		pending.CredentialStore = a.credentialStore
+	}
 	pending.VerificationToken, pending.Attempts, pending.ExpiresAt = token, 0, time.Time{}
 	pending.VerificationKey, pending.VerificationCode = "", ""
 	pending.SessionToken, pending.SessionExpiresAt = "", time.Time{}
@@ -249,6 +256,9 @@ func (a *App) signupCommand(command, profile, baseURL string) string {
 	if profile != "default" || err != nil || profile != unflagged.ProfileName {
 		command += " --profile '" + strings.ReplaceAll(profile, "'", "'\"'\"'") + "'"
 	}
+	if a.credentialStore != "" {
+		command += " --credential-store " + a.credentialStore
+	}
 	// Raw API keys do not carry an origin in the credential store. Include the
 	// origin in continuation instructions so they survive environment changes.
 	if baseURL != defaultAPIBaseURL {
@@ -276,7 +286,10 @@ func (a *App) verifySignupAttempt(profile string, pending *SignupChallenge, code
 		if err != nil {
 			return err
 		}
-		p := cfg.Profiles[profile]
+		p, exists := cfg.Profiles[profile]
+		if !exists {
+			p = profileWithoutCredential()
+		}
 		if !sameSignupChallenge(p.PendingSignup, pending) {
 			return signupChallengeChanged()
 		}

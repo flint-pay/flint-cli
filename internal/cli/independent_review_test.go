@@ -209,7 +209,7 @@ func TestPendingLiveLoginPreservesAcknowledgement(t *testing.T) {
 	}
 	args := []string{"login", "--live", "--profile", "review", "--merchant", "mer_123", "--scope", "commerce.subscriptions.read"}
 	exit, result := runJSON(t, app, out, append(append([]string{}, args...), "--no-wait")...)
-	next := "flint login --live --profile review --merchant mer_123 --scope commerce.subscriptions.read"
+	next := "flint login --live --profile review --credential-store keyring --merchant mer_123 --scope commerce.subscriptions.read"
 	if exit != ExitOK || lookupPathValue(result, "data.next_command") != next || devices != 1 || polls != 0 {
 		t.Fatalf("exit=%d devices=%d polls=%d result=%v", exit, devices, polls, result)
 	}

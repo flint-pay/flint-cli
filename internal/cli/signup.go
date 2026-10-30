@@ -29,6 +29,17 @@ func (a *App) runSignup(opts Options) int {
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
 	}
+	previousStore := a.credentialStore
+	defer func() { a.credentialStore = previousStore }()
+	if pending := cfg.Profiles[resolved.ProfileName].PendingSignup; lastSignupOption(opts, "verification-code") != "" && pending != nil {
+		if pending.CredentialStore != "" && pending.CredentialStore != "keyring" && pending.CredentialStore != "file" {
+			return a.fail(configError("CONFIG_INVALID", "The pending signup credential_store must be keyring or file.", nil), opts)
+		}
+		if a.credentialStore == "" {
+			a.credentialStore = pending.CredentialStore
+		}
+	}
+	a.credentialStore = a.selectedCredentialStore(resolved.ProfileName, cfg.Profiles[resolved.ProfileName])
 	project, _, err := a.findProjectConfig()
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
@@ -36,7 +47,7 @@ func (a *App) runSignup(opts Options) int {
 	if project.ContextID != "" {
 		return a.fail(configError("SIGNUP_PROJECT_CONTEXT", "This project pins an OAuth context in .flint/config.json. Run signup outside the project or remove the pinned context before signing up.", nil), opts)
 	}
-	_, previousErr := a.LoadCredential(resolved.ProfileName)
+	_, previousErr := a.loadSavedCredential(resolved.ProfileName)
 	if previousErr != nil {
 		return a.fail(credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before signup.", previousErr), opts)
 	}
@@ -99,14 +110,16 @@ func (a *App) runSignup(opts Options) int {
 			persistenceErr = configError("CONFIG_INVALID", loadErr.Error(), loadErr)
 			return loadErr
 		}
-		previousCredential, credentialErr := a.LoadCredential(resolved.ProfileName)
+		persistence := *a
+		persistence.credentialStore = a.selectedCredentialStore(resolved.ProfileName, cfg.Profiles[resolved.ProfileName])
+		previousCredential, credentialErr := a.loadSavedCredentialUnlocked(resolved.ProfileName)
 		if credentialErr != nil {
 			persistenceErr = credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before signup.", credentialErr)
 			return credentialErr
 		}
-		if storeErr := a.StoreCredential(resolved.ProfileName, secret); storeErr != nil {
-			persistenceErr = credentialStoreError("KEYCHAIN_WRITE_FAILED", "The new credential could not be stored in the OS keyring.", storeErr)
-			if restoreErr := a.restoreCredential(resolved.ProfileName, previousCredential); restoreErr != nil {
+		if storeErr := persistence.storeSavedCredential(resolved.ProfileName, secret); storeErr != nil {
+			persistenceErr = credentialStoreError("KEYCHAIN_WRITE_FAILED", "The new credential could not be stored in the selected credential store.", storeErr)
+			if restoreErr := persistence.restoreCredential(resolved.ProfileName, previousCredential); restoreErr != nil {
 				persistenceErr.Message += "; credential rollback also failed: " + restoreErr.Error()
 			}
 			return storeErr
@@ -127,10 +140,10 @@ func (a *App) runSignup(opts Options) int {
 		if merchant, ok := firstStringAt(created.Value, "data.merchant_id"); ok {
 			p.MerchantID = merchant
 		}
-		cfg.Profiles[resolved.ProfileName] = p
+		cfg.Profiles[resolved.ProfileName] = a.profileWithCredential(resolved.ProfileName, p, true)
 		if saveErr := a.saveConfigUnlocked(cfg); saveErr != nil {
 			persistenceErr = configError("CONFIG_WRITE_FAILED", saveErr.Error(), saveErr)
-			if restoreErr := a.restoreCredential(resolved.ProfileName, previousCredential); restoreErr != nil {
+			if restoreErr := persistence.restoreCredential(resolved.ProfileName, previousCredential); restoreErr != nil {
 				persistenceErr.Message += "; credential rollback also failed: " + restoreErr.Error()
 			}
 			return saveErr
@@ -144,6 +157,7 @@ func (a *App) runSignup(opts Options) int {
 		cleanupErr := a.revokeIssuedSignupKey(baseURL, secret, apiKeyID, opts)
 		return a.fail(withSignupKeyCleanupResult(persistenceErr, cleanupErr, apiKeyID), opts)
 	}
+	a.credentialSavedNotice(resolved.ProfileName)
 	if m, ok := created.Value.(map[string]any); ok {
 		if data, ok := m["data"].(map[string]any); ok {
 			delete(data, "secret_key")

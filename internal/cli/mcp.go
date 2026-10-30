@@ -75,7 +75,7 @@ const mcpDefaultToolSetSummary = "customers, products, payment intents, refunds,
 // mcpAlwaysEnabled names the tools every server offers, whatever --tools
 // says, so the guidance in help and the instructions always resolves.
 func mcpAlwaysEnabled(name string) bool {
-	return name == "help" || strings.HasPrefix(name, "schema.")
+	return name == "help" || name == "init" || name == "doctor" || strings.HasPrefix(name, "schema.")
 }
 
 type jsonRPCRequest struct {
@@ -2094,7 +2094,7 @@ func (a *App) mcpSignupViolation(opts Options) string {
 	if err != nil {
 		return "" // Signup reports the configuration problem itself.
 	}
-	existing, err := a.LoadCredential(resolved.ProfileName)
+	existing, err := a.loadSavedCredential(resolved.ProfileName)
 	if err != nil || strings.TrimSpace(existing) == "" {
 		return ""
 	}
@@ -2726,6 +2726,7 @@ func appendInheritedMCPOptions(argv []string, opts Options) []string {
 		value string
 	}{
 		{"profile", opts.Profile},
+		{"credential-store", opts.CredentialStore},
 		{"merchant", opts.Merchant},
 		{"color", opts.Color},
 	} {
@@ -2801,10 +2802,10 @@ func mcpTranslateRemediation(message string, cmd *Command, policy mcpPolicy) str
 // configuration cannot follow, for errors about a missing credential.
 var mcpCredentialMessages = map[string]string{
 	"API_KEY_REQUIRED":         "No Flint credential is configured for this MCP server.",
-	"CREDENTIAL_LOOKUP_FAILED": "This MCP server could not read its Flint credential from the OS keychain, which may be locked.",
+	"CREDENTIAL_LOOKUP_FAILED": "This MCP server could not read its configured Flint credential store.",
 }
 
-const mcpCredentialRemedy = " Do not retry. Tell the user to set FLINT_API_KEY (a sandbox flint_test_ key from " + dashboardAPIKeysURL + ") or FLINT_PROFILE (a profile saved with flint login) in this server's env in their MCP client configuration, then restart the server."
+const mcpCredentialRemedy = " Do not retry. Tell the user to set FLINT_API_KEY (a sandbox flint_test_ key from " + dashboardAPIKeysURL + ") or FLINT_PROFILE (a profile saved with flint login, using --credential-store file when the OS keyring is unavailable) in this server's env in their MCP client configuration, then restart the server."
 
 // mcpTranslateDetails rewrites CLI flag advice anywhere in error details,
 // leaving commands meant for the human and identifiers unchanged.

@@ -77,7 +77,7 @@ func configUnknownFieldWarnings(resolved ResolvedConfig) []map[string]any {
 		if item.global {
 			var profiles map[string]map[string]json.RawMessage
 			_ = json.Unmarshal(fields["profiles"], &profiles)
-			allowed := map[string]bool{"pending_signup": true, "context": true, "merchant_guard": true, "environment": true, "api_key_id": true, "merchant_id": true, "sandbox_id": true, "agent_feedback_submission": true}
+			allowed := map[string]bool{"credential_store": true, "credential_present": true, "pending_signup": true, "context": true, "merchant_guard": true, "environment": true, "api_key_id": true, "merchant_id": true, "sandbox_id": true, "agent_feedback_submission": true}
 			for profile, fields := range profiles {
 				for key := range fields {
 					if !allowed[key] {

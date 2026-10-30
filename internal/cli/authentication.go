@@ -200,10 +200,10 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 	}
 	key, _, err := a.resolveCredential(resolved.ProfileName)
 	if err != nil {
-		return "", "", envelope, credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The credential could not be read from the OS keyring.", err)
+		return "", "", envelope, credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The credential could not be read from the selected credential store.", err)
 	}
 	if key == "" {
-		e := configError("API_KEY_REQUIRED", "No Flint credential is configured. Run flint auth login (recommended for local development), or flint auth import to use an API key. For automation, set FLINT_WORKLOAD_IDENTITY_ID and configure an OIDC source, or set FLINT_API_KEY.", nil)
+		e := configError("API_KEY_REQUIRED", missingCredentialMessage(resolved.ProfileName), nil)
 		e.Details = map[string]any{"remediation": map[string]any{"next_actions": []any{map[string]any{"command": "flint auth login"}, map[string]any{"command": "flint auth import", "url": dashboardAPIKeysURL}, map[string]any{"command": "flint signup"}}}}
 		return "", "", envelope, e
 	}

@@ -61,7 +61,7 @@ func TestDXKeyringTimeoutAndRemediation(t *testing.T) {
 	for _, args := range [][]string{{"doctor", "--output", "json"}, {"init", "--output", "json"}} {
 		out.Reset()
 		app.Run(args)
-		for _, want := range []string{"FLINT_API_KEY", "flint login", "flint auth import"} {
+		for _, want := range []string{"FLINT_API_KEY", "flint login", "flint signup"} {
 			if !strings.Contains(out.String(), want) {
 				t.Fatalf("missing %s: %s", want, out)
 			}
@@ -633,7 +633,7 @@ func TestDXURLAndProfileAuthentication(t *testing.T) {
 	t.Setenv("FLINT_BASE_URL", server.URL)
 	t.Setenv("FLINT_API_KEY", "sk_test_not_flint")
 	exit, result = runJSON(t, app, out, "customers", "list")
-	if code, _ := lookupPath(result, "error.code"); exit != ExitAuth || code != "INVALID_CREDENTIAL" || !strings.Contains(fmt.Sprint(result), "FLINT_API_KEY") {
+	if code, _ := lookupPath(result, "error.code"); exit != ExitAuth || code != "CREDENTIAL_FORMAT_INVALID" || !strings.Contains(fmt.Sprint(result), "FLINT_API_KEY") {
 		t.Fatalf("exit=%d result=%v", exit, result)
 	}
 	t.Setenv("FLINT_API_KEY", "")

@@ -19,7 +19,8 @@ var boolFlags = map[string]bool{
 }
 
 var globalFlags = map[string]bool{
-	"output": true, "quiet": true, "debug": true, "no-input": true, "live": true,
+	"credential-store": true,
+	"output":           true, "quiet": true, "debug": true, "no-input": true, "live": true,
 	"context": true, "merchant": true, "profile": true, "color": true, "confirm": true, "dry-run": true,
 	"idempotency-key": true, "jq": true, "select": true, "field": true, "expand": true,
 	"limit": true, "open": true, "page-size": true, "page-token": true, "all": true, "timeout": true,
@@ -217,6 +218,8 @@ func setOption(o *Options, key, value string) *CLIError {
 		o.Live = boolValue
 	case "merchant":
 		o.Merchant = value
+	case "credential-store":
+		o.CredentialStore = value
 	case "profile":
 		o.Profile = value
 	case "color":
@@ -294,6 +297,9 @@ func setOption(o *Options, key, value string) *CLIError {
 }
 
 func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
+	if o.CredentialStore != "" && o.CredentialStore != "keyring" && o.CredentialStore != "file" {
+		return usageError("INVALID_CREDENTIAL_STORE", "--credential-store or FLINT_CREDENTIAL_STORE must be keyring or file.", "credential-store")
+	}
 	if help {
 		return nil
 	}
@@ -334,6 +340,7 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	}{
 		{"context", o.ContextID},
 		{"profile", o.Profile},
+		{"credential-store", o.CredentialStore},
 		{"merchant", o.Merchant},
 		{"dry-run", o.DryRun},
 		{"idempotency-key", o.IdempotencyKey},

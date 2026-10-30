@@ -286,6 +286,7 @@ func TestSignupPaymentCommandUsesResolvedProfile(t *testing.T) {
 				case "dev team's $(touch /tmp/unused)":
 					want += " --profile 'dev team'\"'\"'s $(touch /tmp/unused)'"
 				}
+				want += " --credential-store keyring"
 				if output == "json" {
 					var result map[string]any
 					if err := json.Unmarshal(out.Bytes(), &result); err != nil || valueAt(result, "data.next_command") != want {

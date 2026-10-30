@@ -180,6 +180,10 @@ func TestDoctorRejectedCredentialRecommendsLogin(t *testing.T) {
 	for _, source := range []string{"keychain", "environment_access_token"} {
 		t.Run(source, func(t *testing.T) {
 			app, out, stderr := signupFlowApp(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/v1/openapi.json" {
+					w.Header().Set("Flint-Version", "2026-02-01")
+					return
+				}
 				if r.URL.Path != "/v1/auth-context" {
 					t.Fatalf("unexpected request: %s", r.URL.Path)
 				}

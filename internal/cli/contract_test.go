@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -1155,6 +1156,20 @@ func testAppFromTemplate(t *testing.T, baseURL string, template *App) (*App, *by
 	app.LoadCredential = func(string) (string, error) { return "", nil }
 	app.StoreCredential = func(string, string) error { return nil }
 	app.DeleteCredential = func(string) error { return nil }
+	// Injected store hooks in existing tests describe a legacy saved profile.
+	if err := app.saveConfig(Config{DefaultProfile: "default", Profiles: map[string]Profile{"default": {}}}); err != nil {
+		t.Fatal(err)
+	}
+	if baseURL == "" {
+		// Other service mocks may be configured after this helper returns. Allow
+		// their loopback servers while keeping every external host offline.
+		app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+			if ip := net.ParseIP(request.URL.Hostname()); ip != nil && ip.IsLoopback() {
+				return http.DefaultTransport.RoundTrip(request)
+			}
+			return &http.Response{StatusCode: http.StatusBadRequest, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"error":{"message":"No fake API server configured."}}`))}, nil
+		})}
+	}
 	return &app, stdout, stderr
 }
 func authContextJSON(environment string) string {
