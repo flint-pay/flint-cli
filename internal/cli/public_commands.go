@@ -198,7 +198,7 @@ func publicAPIArguments(
 			}
 			argument.Query = name
 			argument.Required, _ = parameter["required"].(bool)
-			argument.Repeat = typeName == "array"
+			applyQueryArgumentContract(&argument, schema)
 		}
 		arguments = append(arguments, argument)
 	}
@@ -220,6 +220,22 @@ func publicAPIArguments(
 		}
 	}
 	return arguments
+}
+
+func applyQueryArgumentContract(argument *Arg, schema map[string]any) {
+	argument.Repeat = publicSchemaType(schema) == "array"
+	argument.Type = openAPIArgumentType(publicSchemaType(schema), schema)
+	argument.Enum = nil
+	if argument.Repeat {
+		schema, _ = schema["items"].(map[string]any)
+	}
+	if values, ok := schema["enum"].([]any); ok {
+		for _, value := range values {
+			if text, ok := value.(string); ok {
+				argument.Enum = append(argument.Enum, text)
+			}
+		}
+	}
 }
 
 func openAPIArgumentType(typeName string, schema map[string]any) string {
@@ -429,6 +445,8 @@ func publicAPIExample(
 		if argument.Required && argument.Name != "input" {
 			value := "value"
 			switch {
+			case len(argument.Enum) > 0:
+				value = argument.Enum[0]
 			case argument.IDPrefix != "":
 				value = argument.IDPrefix + "123"
 			case argument.Type == "integer", argument.Type == "number":

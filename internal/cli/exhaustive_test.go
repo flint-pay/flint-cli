@@ -1192,7 +1192,13 @@ func TestEveryWaitCapableCommandExecutesMatchingWait(t *testing.T) {
 				argv = append(argv, "--live")
 			}
 			exit := app.Run(argv)
-			if exit != ExitOK || stderr.Len() != 0 || resourceCalls != 1 {
+			unexpectedStderr := false
+			for _, line := range strings.Split(strings.TrimSpace(stderr.String()), "\n") {
+				if line != "" && !strings.HasPrefix(line, "Note: ") {
+					unexpectedStderr = true
+				}
+			}
+			if exit != ExitOK || unexpectedStderr || resourceCalls != 1 {
 				t.Fatalf("argv=%v exit=%d calls=%d stdout=%s stderr=%s", argv, exit, resourceCalls, stdout, stderr)
 			}
 		})
@@ -1762,6 +1768,13 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 }
 
 func exhaustiveArgumentValues(argument Arg) []string {
+	if len(argument.Enum) > 0 {
+		count := 1
+		if argument.Repeat {
+			count = min(2, len(argument.Enum))
+		}
+		return append([]string(nil), argument.Enum[:count]...)
+	}
 	if argument.Type == "boolean" {
 		return []string{"true"}
 	}

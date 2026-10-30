@@ -43,7 +43,23 @@ func TestFeedbackAbsentFromCLIDiscovery(t *testing.T) {
 		if exit := app.Run(argv); exit != ExitOK {
 			t.Fatalf("%v exit=%d: %s", argv, exit, stderr)
 		}
-		if strings.Contains(strings.ToLower(out.String()), "feedback") {
+		if argv[0] == "schema" {
+			// Enum values in an API filter can still name historical resources;
+			// the retired feedback commands themselves must not be advertised.
+			var catalog struct {
+				Data []struct {
+					Name string `json:"name"`
+				} `json:"data"`
+			}
+			if err := json.Unmarshal(out.Bytes(), &catalog); err != nil {
+				t.Fatal(err)
+			}
+			for _, command := range catalog.Data {
+				if strings.Contains(command.Name, "feedback") {
+					t.Errorf("catalog advertises %s", command.Name)
+				}
+			}
+		} else if strings.Contains(strings.ToLower(out.String()), "feedback") {
 			t.Errorf("%v still advertises feedback", argv)
 		}
 	}

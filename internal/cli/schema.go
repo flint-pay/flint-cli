@@ -466,6 +466,9 @@ func addCLIArgumentsToSchema(schema map[string]any, c *Command) map[string]any {
 				property[keyword] = value
 			}
 		}
+		if arg.Query != "" && arg.Type == "time" {
+			delete(property, "format")
+		}
 		if arg.Repeat {
 			property = map[string]any{"type": "array", "items": property}
 			if arg.Required {

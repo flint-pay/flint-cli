@@ -456,7 +456,7 @@ func TestOrderPaymentBareTokenResolvesSingleAwaitingIntent(t *testing.T) {
 func TestRelativeTimesFlagSuggestionsAndDebugMetadata(t *testing.T) {
 	now := time.Date(2026, time.July, 21, 12, 0, 0, 0, time.UTC)
 	for value, want := range map[string]string{
-		"yesterday":                 "2026-07-20T12:00:00Z",
+		"yesterday":                 "2026-07-20T00:00:00Z",
 		"2h":                        "2026-07-21T10:00:00Z",
 		"2026-07-21T08:00:00-04:00": "2026-07-21T12:00:00Z",
 	} {

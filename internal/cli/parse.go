@@ -304,6 +304,16 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	if help {
 		return nil
 	}
+	for _, arg := range cmd.Arguments {
+		if arg.Query == "" || len(arg.Enum) == 0 || cmd.CanonicalName == "listen" {
+			continue
+		}
+		for _, value := range o.Raw[strings.TrimPrefix(arg.Flag, "--")] {
+			if !containsString(arg.Enum, value) {
+				return usageError("INVALID_ARGUMENT", arg.Flag+" must be one of: "+strings.Join(arg.Enum, ", ")+".", arg.Name)
+			}
+		}
+	}
 	if o.Output != "human" && o.Output != "json" && o.Output != "ndjson" {
 		source := "--output"
 		if o.outputFromEnvironment {

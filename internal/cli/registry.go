@@ -90,9 +90,17 @@ func newRegistry(includeAPI bool) *Registry {
 		if c.Get && c.CanonicalName != "auth.status" {
 			c.Supports.WaitFor = true
 		}
+		var parameters map[string]map[string]any
+		if c.OperationID != "" {
+			parameters = operationParameterSchemas(c.OperationID)
+		}
 		for i := range c.Arguments {
+			arg := &c.Arguments[i]
+			if schema := parameters["query:"+arg.Query]; arg.Query != "" && schema != nil {
+				applyQueryArgumentContract(arg, schema)
+			}
 			if c.Arguments[i].Type == "time" {
-				c.Arguments[i].Description += "; RFC3339, YYYY-MM-DD (UTC), 2h, Nd, Nw, or yesterday"
+				c.Arguments[i].Description += "; also accepts today, this_week, yesterday, a date, or a duration such as 7d (calendar values use the reporting timezone)"
 			}
 		}
 		for _, argument := range c.Arguments {

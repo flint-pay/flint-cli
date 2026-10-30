@@ -27,18 +27,19 @@ type BuildInfo struct {
 }
 
 type Arg struct {
-	Name              string `json:"name"`
-	Flag              string `json:"flag,omitempty"`
-	Type              string `json:"type"`
-	Required          bool   `json:"required"`
-	Description       string `json:"description,omitempty"`
-	Positional        int    `json:"positional,omitempty"`
-	BodyPath          string `json:"body_path,omitempty"`
-	Query             string `json:"query,omitempty"`
-	Repeat            bool   `json:"repeatable,omitempty"`
-	Variadic          bool   `json:"variadic,omitempty"`
-	IDPrefix          string `json:"id_prefix,omitempty"`
-	AcceptsHistoryRef bool   `json:"accepts_history_ref,omitempty"`
+	Name              string   `json:"name"`
+	Flag              string   `json:"flag,omitempty"`
+	Type              string   `json:"type"`
+	Enum              []string `json:"enum,omitempty"`
+	Required          bool     `json:"required"`
+	Description       string   `json:"description,omitempty"`
+	Positional        int      `json:"positional,omitempty"`
+	BodyPath          string   `json:"body_path,omitempty"`
+	Query             string   `json:"query,omitempty"`
+	Repeat            bool     `json:"repeatable,omitempty"`
+	Variadic          bool     `json:"variadic,omitempty"`
+	IDPrefix          string   `json:"id_prefix,omitempty"`
+	AcceptsHistoryRef bool     `json:"accepts_history_ref,omitempty"`
 }
 
 type Command struct {
