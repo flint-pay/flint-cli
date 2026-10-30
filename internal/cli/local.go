@@ -745,28 +745,28 @@ func (a *App) doctorChecks(opts Options) (checks []map[string]any, exit int) {
 		map[string]any{"name": "environment", "status": "pass", "value": authContext.Environment},
 		map[string]any{"name": "merchant", "status": "pass", "value": authContext.MerchantID},
 	)
-	if len(authContext.Scopes) == 0 {
-		checks = append(checks, map[string]any{
-			"name":                 "scopes",
-			"status":               "fail",
-			"count":                0,
-			"missing_cli_baseline": initialCLIScopes,
-			"fix":                  "Sign in again or issue an API key with the scopes required by the commands you intend to run.",
-		})
+	scopeCheck := doctorScopeCheck(authContext)
+	checks = append(checks, scopeCheck)
+	if scopeCheck["status"] == "fail" {
 		return checks, ExitAuth
 	}
-	grantedScopes := make(map[string]struct{}, len(authContext.Scopes))
+	return checks, ExitOK
+}
+
+func doctorScopeCheck(authContext AuthContext) map[string]any {
+	grantedScopes := make(map[string]bool, len(authContext.Scopes))
 	for _, scope := range authContext.Scopes {
-		grantedScopes[strings.TrimSpace(scope)] = struct{}{}
+		grantedScopes[strings.TrimSpace(scope)] = true
 	}
-	missingBaselineScopes := []string{}
+	missing := []string{}
 	for _, scope := range initialCLIScopes {
-		if _, ok := grantedScopes[scope]; !ok {
-			missingBaselineScopes = append(missingBaselineScopes, scope)
+		if !grantedScopes[scope] {
+			missing = append(missing, scope)
 		}
 	}
+	missingBaselineScopes, liveOnly := missingScopeGuidance(missing, authContext.Environment)
 	scopeCheck := map[string]any{"name": "scopes", "status": "pass", "count": len(authContext.Scopes)}
-	if len(missingBaselineScopes) > 0 {
+	if len(missingBaselineScopes) > 0 || len(liveOnly) > 0 {
 		scopeCheck["limited"] = true
 		scopeCheck["missing_cli_baseline"] = missingBaselineScopes
 		if authContext.AuthType == "oauth" {
@@ -779,8 +779,26 @@ func (a *App) doctorChecks(opts Options) (checks []map[string]any, exit int) {
 		scopeCheck["browser_login_baseline"] = true
 		scopeCheck["note"] = "Browser login grants the CLI baseline scopes. Use flint reauth --scope for commands that need additional access."
 	}
-	checks = append(checks, scopeCheck)
-	return checks, ExitOK
+	if len(authContext.Scopes) == 0 {
+		scopeCheck["status"] = "fail"
+		scopeCheck["missing_cli_baseline"] = missingBaselineScopes
+		if len(missingBaselineScopes) > 0 {
+			scopeCheck["fix"] = "Sign in again or issue an API key with the scopes required by the commands you intend to run."
+		} else if len(liveOnly) > 0 {
+			scopeCheck["fix"] = "Use a live key with the required scopes."
+		}
+	}
+	if len(liveOnly) > 0 {
+		scopeCheck["live_required_scopes"] = liveOnly
+	}
+	// The current baseline has no live-only scopes, but commands outside the
+	// baseline can require them. Explain that limit alongside additional access.
+	_, unavailable := missingScopeGuidance(embeddedAllowedCLIScopes(), authContext.Environment)
+	if len(liveOnly) > 0 || len(unavailable) > 0 {
+		note, _ := scopeCheck["note"].(string)
+		scopeCheck["note"] = strings.TrimSpace(note + " Scopes limited to live mode need a live key; they cannot be added to a sandbox key or browser context.")
+	}
+	return scopeCheck
 }
 
 func (a *App) applyDoctorFixes() ([]string, error) {

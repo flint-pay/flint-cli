@@ -154,17 +154,26 @@ func commandPermissionError(cmd *Command, authContext AuthContext, profile strin
 	}
 	missing, _ := check["missing_scopes"].([]string)
 	mode, _ := check["scope_mode"].(string)
+	eligible, liveOnly := missingScopeGuidance(missing, authContext.Environment)
+	liveRequired := len(liveOnly) > 0 && (mode != "any" || len(eligible) == 0)
 	requirement := "requires these scopes: "
 	required, _ := check["required_scopes"].([]string)
 	remediation := "Create an API key with all required scopes: " + strings.Join(required, ", ") + "."
 	if mode == "any" {
 		requirement = "requires at least one of these scopes: "
-		remediation = "Create an API key with at least one of the listed scopes."
+		remediation = "Create an API key with at least one of these scopes: " + strings.Join(eligible, ", ") + "."
 	}
-	message := "The active credential " + requirement + strings.Join(missing, ", ") + "."
+	guidanceScopes := missing
+	if mode == "any" && !liveRequired {
+		guidanceScopes = eligible
+	}
+	message := "The active credential " + requirement + strings.Join(guidanceScopes, ", ") + "."
 	actions := []any{map[string]any{"reason_message": remediation}}
-	if authContext.AuthType == "oauth" {
-		requestScopes := missing
+	if liveRequired {
+		message += " The missing scopes require live mode: " + strings.Join(liveOnly, ", ") + "."
+		actions = []any{map[string]any{"reason_message": "Use a live key with the required scopes. These scopes cannot be added to a sandbox key or browser context."}}
+	} else if authContext.AuthType == "oauth" {
+		requestScopes := eligible
 		if mode == "any" && len(requestScopes) > 1 {
 			requestScopes = requestScopes[:1]
 		}
@@ -183,7 +192,7 @@ func commandPermissionError(cmd *Command, authContext AuthContext, profile strin
 		for _, scope := range requestScopes {
 			command += " --scope " + scope
 		}
-		message = "The current browser login " + requirement + strings.Join(missing, ", ") + ". Approve additional access in the browser."
+		message = "The current browser login " + requirement + strings.Join(guidanceScopes, ", ") + ". Approve additional access in the browser."
 		actions = []any{
 			map[string]any{"reason_message": "Approve the additional scope access for this context."},
 			map[string]any{"command": command},
@@ -210,6 +219,9 @@ func commandPermissionError(cmd *Command, authContext AuthContext, profile strin
 		"required_scopes": check["required_scopes"],
 		"missing_scopes":  missing,
 		"remediation":     map[string]any{"next_actions": actions},
+	}
+	if liveRequired {
+		err.Details.(map[string]any)["reason"] = "live_mode_required"
 	}
 	return err
 }

@@ -122,7 +122,7 @@ func TestDoctorExplainsBrowserLoginScopeBaseline(t *testing.T) {
 	if exit := app.Run([]string{"doctor", "--output", "human"}); exit != ExitOK {
 		t.Fatalf("exit=%d output=%s", exit, stdout)
 	}
-	for _, want := range []string{"Browser login baseline: true", "Use flint reauth --scope for commands that need additional access"} {
+	for _, want := range []string{"Browser login baseline: true", "Use flint reauth --scope for commands that need additional access", "Scopes limited to live mode need a live key"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Errorf("missing %q in %s", want, stdout)
 		}
