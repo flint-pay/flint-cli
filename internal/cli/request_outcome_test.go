@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -235,6 +237,48 @@ func TestRequestOutcomeRequestIDsAndRetryStops(t *testing.T) {
 				env := mcpCLIErrorEnvelope(e)
 				if lookupPathValue(env, "error.details.request_ids.0") != "req_partial" || lookupPathValue(env, "error.details.request_ids.1") != "req_final" || lookupPathValue(env, "error.details.last_error.remediation.retry") != retry {
 					t.Fatal(env)
+				}
+			})
+		})
+	}
+}
+
+func TestRequestBudgetFederationNoKeyWriteRunsOnce(t *testing.T) {
+	var exchanges, writes atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/oauth/token" {
+			writeExchange(w, int(exchanges.Add(1)))
+			return
+		}
+		writes.Add(1)
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, `{"error":{"type":"authentication_error","code":"INVALID_CREDENTIAL","message":"expired","remediation":{"retry":"none"}}}`)
+	}))
+	defer server.Close()
+	app := federationApp(t, server.URL)
+	_, e := app.doRequest(t.Context(), server.URL, workloadCredential, "POST", "/v1/customers", []byte(`{}`), "", false)
+	if e == nil || writes.Load() != 1 || exchanges.Load() != 1 {
+		t.Fatalf("writes=%d exchanges=%d error=%+v", writes.Load(), exchanges.Load(), e)
+	}
+}
+
+func TestRequestOutcomeRetainsAmbiguityBeforeRefusedAttempt(t *testing.T) {
+	for _, status := range []int{400, 401, 403, 409, 429, 503} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			app, _, _ := testApp(t, "http://127.0.0.1:1")
+			synctest.Test(t, func(t *testing.T) {
+				attempts := 0
+				app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(r *http.Request) (*http.Response, error) {
+					attempts++
+					if attempts == 1 {
+						return nil, context.DeadlineExceeded
+					}
+					response := outcomeResponse(status, "req_refused", `{"error":{"type":"api_error","code":"TEST","message":"refused","remediation":{"retry":"none"}}}`)
+					return response, nil
+				})}
+				_, e := app.doRequestWithin(t.Context(), 80*time.Second, "http://127.0.0.1:1", "", "POST", "/v1/orders/ord_fixture/pay", []byte(`{}`), "saved-action", false)
+				if e == nil || e.Code != "CLIENT_TIMEOUT" || attempts != 2 || lookupPathValue(mcpCLIErrorEnvelope(e), "error.details.last_error.remediation.retry") != "none" {
+					t.Fatalf("attempts=%d e=%+v", attempts, e)
 				}
 			})
 		})

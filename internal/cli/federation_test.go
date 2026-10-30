@@ -370,7 +370,7 @@ func TestFederationGuardsAnd401(t *testing.T) {
 	}))
 	defer always401.Close()
 	t.Setenv("FLINT_OIDC_TOKEN", subjectJWT(always401.URL, time.Now().Add(time.Hour), "second-server"))
-	if _, e := app.doRequest(context.Background(), always401.URL, workloadCredential, "POST", "/v1/customers", []byte(`{}`), "", false); e == nil || e.HTTPStatus != 401 {
+	if _, e := app.doRequest(context.Background(), always401.URL, workloadCredential, "POST", "/v1/customers", []byte(`{}`), "saved-action", false); e == nil || e.HTTPStatus != 401 {
 		t.Fatal(e)
 	}
 	if exchanges.Load() != 4 || apiRequests.Load() != 4 {

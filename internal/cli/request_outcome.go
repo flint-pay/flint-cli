@@ -58,14 +58,13 @@ func connectionFailedBeforeSend(err error) bool {
 	return errors.As(err, &operation) && operation.Op == "dial" || errors.As(err, &dns)
 }
 
-func unresolvedAPIError(e *CLIError) bool {
-	return e.HTTPStatus >= 500 || e.Code == "IDEMPOTENCY_KEY_IN_PROGRESS" || e.Code == "IDEMPOTENCY_RECOVERY_REQUIRED"
-}
-
 func (h *requestHistory) finalError(ctx context.Context, e *CLIError, method, path, key string) *CLIError {
 	canceled := errors.Is(e.Cause, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) && errorRetryable(e)
 	timedOut := transportTimedOut(e.Cause) || errors.Is(ctx.Err(), context.DeadlineExceeded) && errorRetryable(e)
-	uncertain := h.uncertain != nil && (e.ExitCode == ExitNetwork || unresolvedAPIError(e))
+	// A later refused attempt (including an auth or throttle response before
+	// idempotency replay) cannot settle an earlier write's transport ambiguity.
+	write := method != http.MethodGet && method != http.MethodHead
+	uncertain := h.uncertain != nil && (write || e.ExitCode == ExitNetwork)
 	if len(h.attempts) == 0 || !(canceled || timedOut || uncertain) {
 		return e
 	}
@@ -90,7 +89,6 @@ func (h *requestHistory) finalError(ctx context.Context, e *CLIError, method, pa
 	} else {
 		message += " Read the affected resources and request logs before retrying."
 	}
-	write := method != http.MethodGet && method != http.MethodHead
 	if write && key != "" {
 		message += " If you call this write again, use the same idempotency key."
 	}
