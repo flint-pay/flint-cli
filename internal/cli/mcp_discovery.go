@@ -293,13 +293,22 @@ func (a *App) mcpAdvertisedTools(policy mcpPolicy, version string) ([]map[string
 	if err != nil {
 		return nil, mcpDiscoverySnapshotError(err)
 	}
+	policy.index = index
 	for _, cmd := range a.mcpTools(policy) {
 		schema, e := schemaForMCPTool(cmd, policy)
 		if e != nil {
 			return nil, e
 		}
 		entry, _ := index.Lookup(cmd.CanonicalName)
-		tool := map[string]any{"name": mcpToolName(entry.ID), "description": strings.ReplaceAll(mcpToolDescription(cmd, schema), "_flint.", ""), "inputSchema": schema}
+		meta := map[string]any{"com.withflintpay/operation": entry.ID}
+		if entry.Sensitive {
+			meta["com.withflintpay/sensitive"] = true
+		}
+		description := strings.ReplaceAll(mcpToolDescription(cmd, schema), "_flint.", "")
+		if entry.ConfirmRequired() {
+			description += " Needs confirm: true. In sandbox the agent confirms; live and unverified environments also require user approval unless --allow-destructive is enabled."
+		}
+		tool := map[string]any{"name": mcpToolName(entry.ID), "description": description, "inputSchema": schema, "_meta": meta}
 		if version >= "2025-06-18" {
 			tool["title"] = entry.Title
 		}
@@ -667,7 +676,7 @@ func (a *App) mcpDiscoveryHelp(topic string, opts Options, policy mcpPolicy, ind
 		}
 		return map[string]any{"summary": "Find operations with flint_search, inspect arguments and result fields with flint_describe, then call the operation. Results contain one compact JSON text block and optional notes. Lists default to 10 items; reads have a 49,152-byte limit.", "groups": groups, "topics": []string{"safety", "errors", "events", "test-cards"}}, nil
 	case "safety":
-		return map[string]any{"topic": "safety", "live": "Without --allow-live this server refuses live credentials. With it, every live call needs live: true. Unverified credentials use live confirmation rules.", "confirm": "Sensitive or irreversible operations need confirm: true. In a sandbox the agent confirms after checking the effect. In live mode the user must approve through elicitation; when unavailable the error supplies a terminal command. --allow-destructive permits the agent to confirm live operations. Local operations count as sandbox.", "dry_run": "dry_run: true validates and prepares the request without sending it and needs neither confirmation nor live acknowledgement. Its effect lists resource IDs and amounts formatted for their currency.", "idempotency": "Give every write a unique idempotency_key and reuse it only for the same request after a timeout or network error.", "server": "The agent cannot change the server's profile, merchant guard, context, or startup flags. A read-only server exposes no writes.", "mode": mcpInstructions(policy)}, nil
+		return map[string]any{"topic": "safety", "live": "Without --allow-live this server refuses live credentials. With it, every live call needs live: true. Unverified credentials use live confirmation rules.", "confirm": "Sensitive or irreversible operations need confirm: true. Without confirm the call returns CONFIRMATION_REQUIRED. In a sandbox the agent confirms after checking the effect; elicitation is never used. In live or unverified environments the user must also approve through elicitation; without it CONFIRMATION_NEEDS_USER supplies the exact terminal command, whether confirm is set or not. --allow-destructive permits the agent to confirm live or unverified operations and changes nothing in sandbox. Local operations count as sandbox.", "dry_run": "dry_run: true validates and prepares the request without sending it and needs neither confirmation nor live acknowledgement. Its effect lists resource IDs and amounts formatted for their currency.", "idempotency": "Give every write a unique idempotency_key and reuse it only for the same request after a timeout or network error.", "server": "The agent cannot change the server's profile, merchant guard, context, or startup flags. A read-only server exposes no writes.", "mode": mcpInstructions(policy)}, nil
 	case "errors":
 		return map[string]any{"topic": "errors", "shape": "{error, cli} in one JSON text block: API errors pass through unchanged, including details arrays and error_source; cli contains origin, operation, exit_code, environment, and next_actions. Local errors use error_source caller; validation failures use INVALID_REQUEST and public details[].param paths.", "origin": []string{"api", "cli"}, "retry": []string{"none", "same_request", "after_refresh"}, "actor": "An agent next action can be followed directly. For a user next action, stop and tell the user.", "outcome": "unknown means a write may have committed. Check its recovery read before acting again; if you call that write again, keep the same idempotency_key. Follow API remediation.retry: same_request resends identical arguments; after_refresh reads current state, rebuilds, and uses a new key; none never automatically resends. Operations whose idempotency class is none use no key.", "cli_codes": []string{"UNKNOWN_OPERATION", "OPERATION_NOT_AVAILABLE", "LIVE_ACCESS_DISABLED", "CONFIRMATION_REQUIRED", "CONFIRMATION_NEEDS_USER", "CONFIRMATION_DECLINED", "RESULT_TOO_LARGE", "CLIENT_TIMEOUT", "CLIENT_CANCELED", "CREDENTIAL_FORMAT_INVALID", "MCP_COMMAND_FAILED"}}, nil
 	case "events":
