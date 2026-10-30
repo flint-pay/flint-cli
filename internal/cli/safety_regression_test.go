@@ -325,7 +325,7 @@ func TestSignupCancellationAfterKeyIssuanceStillRevokesKey(t *testing.T) {
 		return response, err
 	})}
 	app.StoreCredential = func(string, string) error { t.Error("canceled signup stored a credential"); return nil }
-	if exit := app.Run(signupRegressionArgs()); exit != ExitNetwork || revocations.Load() != 1 || !strings.Contains(out.String(), "REQUEST_CANCELED") {
+	if exit := app.Run(signupRegressionArgs()); exit != ExitNetwork || revocations.Load() != 1 || !strings.Contains(out.String(), "CLIENT_CANCELED") {
 		t.Fatalf("exit=%d revocations=%d stdout=%s stderr=%s", exit, revocations.Load(), out, stderr)
 	}
 	if strings.Contains(out.String(), "flint_test_synthetic") {

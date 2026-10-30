@@ -175,10 +175,10 @@ func TestJQTransformHonorsCancellation(t *testing.T) {
 				cmd, _ := app.Registry.ByName("version")
 				value, _, exit := app.callMCPCommand(ctx, cmd, map[string]any{"_flint": map[string]any{"jq": "until(false; .)"}}, defaultOptions())
 				code, _ := lookupPath(value, "error.code")
-				if exit != ExitNetwork || code != "REQUEST_CANCELED" {
+				if exit != ExitNetwork || code != "CLIENT_CANCELED" {
 					t.Fatalf("exit=%d result=%#v", exit, value)
 				}
-			} else if exit := app.Run([]string{"version", "--jq", "until(false; .)", "--output", "json"}); exit != ExitNetwork || !strings.Contains(out.String(), "REQUEST_CANCELED") {
+			} else if exit := app.Run([]string{"version", "--jq", "until(false; .)", "--output", "json"}); exit != ExitNetwork || !strings.Contains(out.String(), "CLIENT_CANCELED") {
 				t.Fatalf("exit=%d output=%s", exit, out)
 			}
 		})

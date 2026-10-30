@@ -191,7 +191,7 @@ func TestStandaloneUpgradeCancellationPreservesBinary(t *testing.T) {
 				return []byte("1.1.0\n"), nil
 			}
 			_, upgradeErr := app.replaceExecutableAtomically(ctx, executable, []byte("new flint"), "1.1.0")
-			if upgradeErr == nil || upgradeErr.Code != "REQUEST_CANCELED" || !errors.Is(upgradeErr.Cause, context.Canceled) {
+			if upgradeErr == nil || upgradeErr.Code != "CLIENT_CANCELED" || !errors.Is(upgradeErr.Cause, context.Canceled) {
 				t.Fatalf("error=%v", upgradeErr)
 			}
 			data, err := os.ReadFile(executable)
@@ -738,7 +738,7 @@ func TestPackageManagerVerificationCancellation(t *testing.T) {
 				}
 			}
 			_, e := app.upgradeWithPackageManager(ctx, defaultOptions(), "homebrew", "0.3.1", filepath.Join(root, "bin", "flint"))
-			if e == nil || e.Code != "REQUEST_CANCELED" {
+			if e == nil || e.Code != "CLIENT_CANCELED" {
 				t.Fatalf("cancellation reported as %v", e)
 			}
 		})

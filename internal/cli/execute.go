@@ -350,7 +350,7 @@ func (a *App) executeWait(ctx context.Context, cmd *Command, opts Options, req p
 			delay = remaining
 		}
 		if !sleepContext(ctx, delay) {
-			return last, networkError("REQUEST_TIMEOUT", "The request timed out.", ctx.Err())
+			return last, networkError("CLIENT_TIMEOUT", "The request timed out.", ctx.Err())
 		}
 		delay = min(delay*2, 10*time.Second)
 	}

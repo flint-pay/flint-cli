@@ -38,7 +38,7 @@ func (a *App) upgradeWithNPM(ctx context.Context, opts Options, version, root st
 	// npm installation's config, including scoped registries and credentials.
 	configOutput, err := a.runCommand(ctx, "npm", "config", "get", "globalconfig")
 	if ctx.Err() != nil {
-		return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+		return "", networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 	}
 	globalConfig := strings.TrimSpace(string(configOutput))
 	if err != nil || !filepath.IsAbs(globalConfig) || strings.ContainsAny(globalConfig, "\r\n") {
@@ -50,7 +50,7 @@ func (a *App) upgradeWithNPM(ctx context.Context, opts Options, version, root st
 		_, err = a.runCommand(ctx, "npm", "install", "-g", "--prefix", prefix, "@flintpay/cli@"+version, "--include=optional", "--no-audit", "--no-fund", "--globalconfig", globalConfig)
 	})
 	if ctx.Err() != nil {
-		return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+		return "", networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 	}
 	if err != nil {
 		return "", upgradeFailure("PACKAGE_MANAGER_FAILED", "The npm upgrade failed. The existing installation was preserved.", err)
@@ -116,7 +116,7 @@ func (a *App) upgradeWithNPM(ctx context.Context, opts Options, version, root st
 			return "", failure
 		}
 		if ctx.Err() != nil {
-			return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+			return "", networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 		}
 		return "", writeFailure(err)
 	}
@@ -126,7 +126,7 @@ func (a *App) upgradeWithNPM(ctx context.Context, opts Options, version, root st
 func (a *App) verifyNPMWrapper(ctx context.Context, wrapper, version string) *CLIError {
 	output, err := a.runCommand(ctx, "node", filepath.Join(wrapper, "bin", "flint.js"), "version", "--field", "data.cli_version", "--color", "never")
 	if ctx.Err() != nil {
-		return networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+		return networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 	}
 	if err == nil && strings.TrimSpace(string(output)) == version {
 		return nil
@@ -152,7 +152,7 @@ func (a *App) newerNPMInstallation(ctx context.Context, wrapper, version string)
 	}
 	output, err := a.runCommand(ctx, "node", filepath.Join(wrapper, "bin", "flint.js"), "version", "--field", "data.cli_version", "--color", "never")
 	if ctx.Err() != nil {
-		return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+		return "", networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 	}
 	actual, actualOK := parseReleaseVersion(string(output))
 	if err == nil && actualOK && compareReleaseVersions(actual, expected) >= 0 {

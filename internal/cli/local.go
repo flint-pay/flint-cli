@@ -341,7 +341,7 @@ func (a *App) saveCredentialProfileUnlocked(profile, key string, updateProfile f
 	var persistenceErr *CLIError
 	lockErr := func() error {
 		if err := a.commandContext().Err(); err != nil {
-			persistenceErr = networkError("REQUEST_CANCELED", "Authentication was canceled before the credential was stored.", err)
+			persistenceErr = networkError("CLIENT_CANCELED", "Authentication was canceled before the credential was stored.", err)
 			return persistenceErr
 		}
 		cfg, loadErr := a.loadConfig()

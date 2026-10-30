@@ -279,7 +279,7 @@ func configError(code, message string, cause error) *CLIError {
 		return networkError("CONFIG_LOCK_TIMEOUT", "Another Flint process is updating this profile. Retry the command.", cause)
 	}
 	if errors.Is(cause, context.Canceled) {
-		return networkError("REQUEST_CANCELED", "The command was canceled.", cause)
+		return networkError("CLIENT_CANCELED", "The command was canceled.", cause)
 	}
 	return &CLIError{ExitCode: ExitAuth, Type: "configuration_error", Code: code, Message: message, Cause: cause}
 }
@@ -408,6 +408,9 @@ func (a *App) printCommandHelp(cmd *Command) {
 		fmt.Fprintln(a.Stdout)
 		fmt.Fprintln(a.Stdout, "Capability flags:")
 		fmt.Fprintln(a.Stdout, "  "+strings.Join(capabilities, "  "))
+		if !cmd.Local {
+			fmt.Fprintln(a.Stdout, "  --timeout is the total request budget including retries (default 80s).")
+		}
 	}
 	if len(cmd.Examples) > 0 {
 		fmt.Fprintln(a.Stdout)

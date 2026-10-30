@@ -190,7 +190,7 @@ func applyOutputTransforms(ctx context.Context, value any, opts Options) (any, *
 				break
 			}
 			if err := ctx.Err(); err != nil {
-				return nil, networkError("REQUEST_CANCELED", "Output transformation was canceled.", err)
+				return nil, networkError("CLIENT_CANCELED", "Output transformation was canceled.", err)
 			}
 			if err, ok := v.(error); ok {
 				return nil, usageError("JQ_EVALUATION_FAILED", err.Error(), "jq")

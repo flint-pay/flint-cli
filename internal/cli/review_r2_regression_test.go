@@ -122,7 +122,7 @@ func TestOAuthCommandRetainsAPIRequestTimeout(t *testing.T) {
 		}
 	})}
 	exit := app.Run([]string{"api", "get", "/v1/payment-intents", "--timeout", "50ms", "--output", "json"})
-	if exit != ExitNetwork || !requestCanceled || !strings.Contains(out.String(), "REQUEST_TIMEOUT") {
+	if exit != ExitNetwork || !requestCanceled || !strings.Contains(out.String(), "CLIENT_TIMEOUT") {
 		t.Fatalf("exit=%d requestCanceled=%t output=%s", exit, requestCanceled, out)
 	}
 }

@@ -74,7 +74,7 @@ func TestNPMUpgradePreservesPackageOnFailure(t *testing.T) {
 			}
 			wantCode := "UPGRADE_VERIFICATION_FAILED"
 			if strings.HasSuffix(stage, "canceled") {
-				wantCode = "REQUEST_CANCELED"
+				wantCode = "CLIENT_CANCELED"
 			} else if stage == "download" {
 				wantCode = "PACKAGE_MANAGER_FAILED"
 			}

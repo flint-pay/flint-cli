@@ -91,7 +91,7 @@ func (a *App) runSignup(opts Options) int {
 	var persistenceErr *CLIError
 	lockErr := a.withConfigLock(func() error {
 		if a.Context != nil && a.Context.Err() != nil {
-			persistenceErr = networkError("REQUEST_CANCELED", "Signup was canceled before the credential was stored.", a.Context.Err())
+			persistenceErr = networkError("CLIENT_CANCELED", "Signup was canceled before the credential was stored.", a.Context.Err())
 			return persistenceErr
 		}
 		cfg, loadErr := a.loadConfig()

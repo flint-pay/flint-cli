@@ -353,7 +353,7 @@ func (a *App) upgradeWithPackageManager(ctx context.Context, opts Options, metho
 		root, ownershipErr = a.verifyPackageManagerOwnership(ctx, method, executable)
 	})
 	if ctx.Err() != nil {
-		return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+		return "", networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 	}
 	if ownershipErr != nil {
 		return "", ownershipErr
@@ -383,7 +383,7 @@ func (a *App) upgradeWithPackageManager(ctx context.Context, opts Options, metho
 			continue
 		}
 		if errors.Is(ctx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+			return "", networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 		}
 		return "", upgradeFailure("PACKAGE_MANAGER_FAILED", "The "+method+" upgrade failed. Run the package manager directly for more detail.", err)
 	}
@@ -394,7 +394,7 @@ func (a *App) upgradeWithPackageManager(ctx context.Context, opts Options, metho
 			output, err = a.runCommand(ctx, "brew", "--prefix", "flint-pay/tap/flint")
 		})
 		if ctx.Err() != nil {
-			return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+			return "", networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 		}
 		prefix := strings.TrimSpace(string(output))
 		if err != nil || !filepath.IsAbs(prefix) || strings.ContainsAny(prefix, "\r\n") {
@@ -408,7 +408,7 @@ func (a *App) upgradeWithPackageManager(ctx context.Context, opts Options, metho
 		output, err = a.runCommand(ctx, executable, "version", "--field", "data.cli_version", "--color", "never")
 	})
 	if ctx.Err() != nil {
-		return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+		return "", networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 	}
 	if err == nil && strings.TrimSpace(string(output)) == version {
 		return version, nil
@@ -431,7 +431,7 @@ func (a *App) upgradeWithPackageManager(ctx context.Context, opts Options, metho
 			info, infoErr = a.runCommand(ctx, "brew", "info", "--json=v2", "flint-pay/tap/flint")
 		})
 		if ctx.Err() != nil {
-			return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+			return "", networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 		}
 		var feed struct {
 			Formulae []struct {
@@ -670,7 +670,7 @@ func (a *App) replaceExecutableAtomically(ctx context.Context, executable string
 	}
 	output, verifyErr := a.runCommand(ctx, temporaryPath, "version", "--field", "data.cli_version", "--color", "never")
 	if err := ctx.Err(); err != nil {
-		return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out; the existing installation was left unchanged.", err)
+		return "", networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out; the existing installation was left unchanged.", err)
 	}
 	if verifyErr != nil || strings.TrimSpace(string(output)) != expectedVersion {
 		return "", upgradeFailure("UPGRADE_VERIFICATION_FAILED", "The downloaded Flint CLI binary did not report the expected release version; the existing installation was left unchanged.", verifyErr)
@@ -681,7 +681,7 @@ func (a *App) replaceExecutableAtomically(ctx context.Context, executable string
 		// while the archive downloaded. Never replace a working newer binary.
 		output, currentErr := a.runCommand(ctx, executable, "version", "--field", "data.cli_version", "--color", "never")
 		if ctx.Err() != nil {
-			return networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out; the existing installation was left unchanged.", ctx.Err())
+			return networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out; the existing installation was left unchanged.", ctx.Err())
 		}
 		current, currentOK := parseReleaseVersion(string(output))
 		expected, expectedOK := parseReleaseVersion(expectedVersion)
@@ -700,7 +700,7 @@ func (a *App) replaceExecutableAtomically(ctx context.Context, executable string
 			return "", failure
 		}
 		if ctx.Err() != nil {
-			return "", networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out; the existing installation was left unchanged.", ctx.Err())
+			return "", networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out; the existing installation was left unchanged.", ctx.Err())
 		}
 		return "", writeFailure(err)
 	}
@@ -738,7 +738,7 @@ func (a *App) fetchUpgradeURL(ctx context.Context, target string, limit int64, r
 	response, requestErr := client.Do(request)
 	if requestErr != nil {
 		if errors.Is(ctx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return nil, networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+			return nil, networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 		}
 		// Transport errors can contain invalid header values. The API credential
 		// must never reach an error, including through its cause.
@@ -757,7 +757,7 @@ func (a *App) fetchUpgradeURL(ctx context.Context, target string, limit int64, r
 	raw, readErr := io.ReadAll(io.LimitReader(response.Body, limit+1))
 	if readErr != nil {
 		if ctx.Err() != nil {
-			return nil, networkError("REQUEST_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
+			return nil, networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
 		}
 		return nil, networkError("RELEASE_DOWNLOAD_FAILED", "Could not read Flint CLI release information.", readErr)
 	}

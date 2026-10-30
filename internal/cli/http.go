@@ -150,6 +150,7 @@ func (a *App) fetchCurrentAPIVersion(ctx context.Context, baseURL string, debug 
 
 func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, body []byte, idempotencyKey string, debug bool) (result *apiResponse, requestErr *CLIError) {
 	responseStatus := 0
+	history := requestHistory{started: time.Now()}
 	replaySafe := method == http.MethodGet || idempotencyKey != ""
 	defer func() {
 		if requestErr != nil {
@@ -158,6 +159,7 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 			}
 			retryable := replaySafe && errorRetryable(requestErr) && !errors.Is(ctx.Err(), context.Canceled) && !errors.Is(requestErr.Cause, context.Canceled)
 			requestErr.retryable = &retryable
+			requestErr = history.finalError(ctx, requestErr, method, path, idempotencyKey)
 			requestErr = withIdempotencyRetryContext(requestErr, idempotencyKey)
 		}
 	}()
@@ -184,7 +186,7 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		}
 		key = currentKey
 		federated := credential == workloadCredential || strings.HasPrefix(key, "fwat_")
-		attemptCtx, cancelAttempt := context.WithTimeout(ctx, 10*time.Second)
+		attemptCtx, cancelAttempt := context.WithCancel(ctx)
 		defer cancelAttempt()
 		req, err := http.NewRequestWithContext(attemptCtx, method, baseURL+path, bytes.NewReader(body))
 		if err != nil {
@@ -238,29 +240,44 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 				fmt.Fprintf(a.Stderr, "debug: idempotency key %s\n", debugKey)
 			}
 		}
+		fact := &requestAttempt{}
+		history.attempts = append(history.attempts, fact)
+		attemptStarted := time.Now()
+		cancelContext := cancelAttempt
+		cancelAttempt = func() {
+			fact.DurationMs = time.Since(attemptStarted).Milliseconds()
+			cancelContext()
+		}
 		resp, err := client.Do(req)
 		if err != nil {
 			cancelAttempt()
 			if errors.Is(err, context.Canceled) {
-				return nil, networkError("REQUEST_CANCELED", "The request was canceled.", err)
+				e := networkError("CLIENT_CANCELED", "The request was canceled.", err)
+				history.failure(fact, e, true)
+				return nil, e
 			}
 			if ctx.Err() != nil {
-				return nil, networkError("REQUEST_TIMEOUT", "The request timed out.", ctx.Err())
+				e := networkError("CLIENT_TIMEOUT", "The request timed out.", ctx.Err())
+				history.failure(fact, e, true)
+				return nil, e
 			}
 			e := networkError("NETWORK_ERROR", "The request failed before Flint returned a response: "+transportErrorReason(err)+". Check FLINT_BASE_URL and your network connection.", err)
-			if errors.Is(err, context.DeadlineExceeded) {
-				e = networkError("REQUEST_TIMEOUT", "The request attempt timed out before Flint returned a response.", err)
+			if transportTimedOut(err) {
+				e = networkError("CLIENT_TIMEOUT", "The request attempt timed out before Flint returned a response.", err)
 			}
+			history.failure(fact, e, !connectionFailedBeforeSend(err))
 			if replaySafe && retryRequest(ctx, attempt, "") {
 				continue
 			}
 			return nil, e
 		}
 		responseStatus = resp.StatusCode
+		fact.HTTPStatus = resp.StatusCode
+		history.requestID(fact, resp.Header.Get("X-Request-Id"))
 		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 			a.invalidateAuthContext(baseURL, key)
 		}
-		if resp.StatusCode == http.StatusUnauthorized && credential == workloadCredential && !federationRetried {
+		if resp.StatusCode == http.StatusUnauthorized && credential == workloadCredential && !federationRetried && replaySafe && attempt < 3 {
 			resp.Body.Close()
 			cancelAttempt()
 			federationRetried = true
@@ -275,9 +292,15 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		cancelAttempt()
 		if readErr != nil {
 			if errors.Is(readErr, context.Canceled) {
-				return nil, networkError("REQUEST_CANCELED", "The request was canceled while reading the response.", readErr)
+				e := networkError("CLIENT_CANCELED", "The request was canceled while reading the response.", readErr)
+				history.failure(fact, e, true)
+				return nil, e
 			}
 			e := networkError("RESPONSE_READ_FAILED", "The Flint response could not be read.", readErr)
+			if transportTimedOut(readErr) {
+				e = networkError("CLIENT_TIMEOUT", "The request timed out while reading the response.", readErr)
+			}
+			history.failure(fact, e, true)
 			retryAfter := resp.Header.Get("Retry-After")
 			if delay, ok := parseRetryAfter(retryAfter); ok {
 				milliseconds := delay.Milliseconds()
@@ -334,6 +357,11 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 			}
 		}
 		result := &apiResponse{Status: resp.StatusCode, Headers: resp.Header.Clone(), Raw: raw, Value: value}
+		if requestID, ok := lookupPath(value, "request_id"); ok {
+			if id, ok := requestID.(string); ok {
+				history.requestID(fact, id)
+			}
+		}
 		if debug {
 			if federated {
 				fmt.Fprintf(a.Stderr, "debug: HTTP %d\n", result.Status)
@@ -344,6 +372,8 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			e := apiErrorFromResponse(result)
 			e.Cause = decodeErr
+			history.requestID(fact, e.RequestID)
+			history.failure(fact, e, false)
 			if federated {
 				e = redactFederationError(e, key)
 			}
@@ -503,6 +533,9 @@ func networkError(code, message string, cause error) *CLIError {
 func withIdempotencyRetryContext(err *CLIError, idempotencyKey string) *CLIError {
 	idempotencyKey = strings.TrimSpace(idempotencyKey)
 	if err == nil || idempotencyKey == "" {
+		return err
+	}
+	if details, ok := err.Details.(map[string]any); ok && details["outcome"] == "unknown" {
 		return err
 	}
 	// A response can be lost after Flint commits a mutation. Preserve the logical
