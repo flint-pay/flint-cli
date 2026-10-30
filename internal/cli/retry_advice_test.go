@@ -231,8 +231,13 @@ func TestRetryAdviceCanonicalWireKeys(t *testing.T) {
 	defer server.Close()
 	app, out, _ := testApp(t, server.URL)
 	app.HTTPClient = &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
+	// Blank explicit keys are rejected before dispatch by the flag parser.
 	exit, env := runJSON(t, app, out, "customers", "create", "--email", "fixture@example.com", "--idempotency-key", " \t ")
-	if exit != ExitNetwork || writes != 3 || commits != 1 || firstKey == "" || lookupPathValue(env, "error.details.idempotency_key") != firstKey {
+	if exit != ExitUsage || writes != 0 || lookupPathValue(env, "error.code") != "INVALID_FLAG_VALUE" || lookupPathValue(env, "error.details.idempotency_key") != nil {
+		t.Fatalf("writes=%d exit=%d out=%s", writes, exit, out)
+	}
+	exit, env = runJSON(t, app, out, "customers", "create", "--email", "fixture@example.com", "--idempotency-key", " \tsaved-action \t")
+	if exit != ExitNetwork || writes != 3 || commits != 1 || firstKey != "saved-action" || lookupPathValue(env, "error.details.idempotency_key") != firstKey {
 		t.Fatalf("writes=%d commits=%d key=%q exit=%d out=%s", writes, commits, firstKey, exit, out)
 	}
 }
