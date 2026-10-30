@@ -235,6 +235,15 @@ func mcpOwnIDField(cmd *Command) string {
 }
 
 func mcpSchemaIDField(name string) string {
+	// Buyer views share the merchant resource's identifier. These two resource
+	// names also differ from their published ID names.
+	name = strings.TrimPrefix(name, "Buyer")
+	switch name {
+	case "ProductVariant":
+		name = "Variant"
+	case "FlintWalletStoreSetup":
+		name = "StoreSetup"
+	}
 	chars := []rune(name)
 	var out strings.Builder
 	for i, ch := range chars {

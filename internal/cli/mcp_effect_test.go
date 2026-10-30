@@ -113,6 +113,8 @@ func TestMCPSelectedWriteIdentityThroughResponseVariants(t *testing.T) {
 	app, _, _ := testApp(t, "")
 	for _, tc := range []struct{ operation, id, selection string }{
 		{"customers.create", "customer_id", "name"},
+		{"products.variants.create", "variant_id", "name"},
+		{"me.update", "customer_id", "name"},
 		{"refunds.create", "refund_id", "reason"},
 		{"checkout-sessions.create", "checkout_session_id", "url"},
 		{"api-keys.create", "api_key_id", "name"},
@@ -132,5 +134,17 @@ func TestMCPSelectedWriteIdentityThroughResponseVariants(t *testing.T) {
 				t.Fatalf("projection=%v", got)
 			}
 		})
+	}
+}
+
+func TestMCPSchemaIdentityForBuyerResourceViews(t *testing.T) {
+	for name, want := range map[string]string{
+		"BuyerGiftCard": "gift_card_id", "BuyerOrder": "order_id", "BuyerPaymentMethod": "payment_method_id",
+		"BuyerCheckoutSession": "checkout_session_id", "BuyerReturn": "return_id", "BuyerSubscription": "subscription_id",
+		"BuyerSubscriptionPaymentRetry": "subscription_payment_retry_id", "BuyerFlintWalletStoreSetup": "store_setup_id",
+	} {
+		if got := mcpOwnIDField(&Command{OutputSchema: name, Mutation: true}); got != want {
+			t.Errorf("%s: got %s want %s", name, got, want)
+		}
 	}
 }
