@@ -191,9 +191,30 @@ func TestListNDJSONFlagsAndWriteFailure(t *testing.T) {
 	// Existing streams retain their output/error routing.
 	out := &bytes.Buffer{}
 	app.Stdout, app.Stderr = out, &bytes.Buffer{}
-	app.writeError(usageError("UNSUPPORTED_FLAG", "Synthetic stream failure.", "field"), Options{Output: "ndjson"})
+	app.writeError(usageError("UNSUPPORTED_FLAG", "Synthetic stream failure.", "field"), Options{Output: "ndjson", streamCommand: true})
 	var failure map[string]any
 	if err := json.Unmarshal(out.Bytes(), &failure); err != nil || failure["error"].(map[string]any)["code"] != "UNSUPPORTED_FLAG" {
 		t.Fatalf("stream error routing changed: %s (%v)", out, err)
+	}
+}
+
+func TestListNDJSONRejectsWaitAndRoutesEarlyErrors(t *testing.T) {
+	for _, args := range [][]string{
+		{"timeline", "pi_test", "--output", "ndjson", "--wait-for", "resource_id=pi_test"},
+		{"customers", "list", "--output", "ndjson", "--limit", "bad"},
+		{"customers", "list", "--output", "ndjson", "--unknown-flag"},
+	} {
+		app, out, stderr := ndjsonListApp(t, func(*http.Request) (int, string) {
+			t.Fatal("invalid flags sent a request")
+			return 0, ""
+		})
+		if exit := app.Run(args); exit != ExitUsage || out.Len() != 0 || !json.Valid(stderr.Bytes()) {
+			t.Fatalf("args=%v exit=%d stdout=%s stderr=%s", args, exit, out, stderr)
+		}
+	}
+	// Waiting still works with the existing JSON output mode.
+	_, _, _, e := parseInvocation(NewRegistry(), []string{"timeline", "pi_test", "--output", "json", "--wait-for", "resource_id=pi_test"})
+	if e != nil {
+		t.Fatal(e)
 	}
 }

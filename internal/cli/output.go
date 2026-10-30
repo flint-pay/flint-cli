@@ -79,7 +79,7 @@ func (a *App) writeError(err *CLIError, opts Options) {
 			e["details"] = map[string]any{}
 		}
 		writer := a.Stdout
-		if opts.listCommand && opts.Output == "ndjson" {
+		if !opts.streamCommand && opts.Output == "ndjson" {
 			writer = a.Stderr
 		}
 		_ = writeJSON(writer, body)
