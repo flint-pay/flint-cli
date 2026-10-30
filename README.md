@@ -37,7 +37,7 @@ flint signup --email dev@example.com --first-name Ada --last-name Lovelace --no-
 flint signup --verification-code 482193 --no-input --output json
 ```
 
-The first command succeeds with `data.status` set to `verification_required`. The CLI stores the temporary verification token, email, and name in the private profile config and prints the command to finish. Resume using the same profile and API server; no name or email flags are needed. The pending signup retains the selected credential store, and file-store continuation commands include `--credential-store file`. Successful verification saves the onboarding session and its expiry until signup finishes, so retrying after a later failure does not consume another code attempt. If progress is missing, the code expires, or five attempts are used, start again without `--verification-code`. MCP's `signup` tool (enable it with `--tools signup` or `--tools all`) uses the same two calls: first pass `email`, `first_name`, and `last_name`, then pass only `verification_code`. It uses the server's profile and refuses to run when that profile already has a saved credential.
+The first command succeeds with `data.status` set to `verification_required`. The CLI stores the temporary verification token, email, and name in the private profile config and prints the command to finish. Resume using the same profile and API server; no name or email flags are needed. The pending signup retains the selected credential store, and file-store continuation commands include `--credential-store file`. Successful verification saves the onboarding session and its expiry until signup finishes, so retrying after a later failure does not consume another code attempt. If progress is missing, the code expires, or five attempts are used, start again without `--verification-code`. MCP's `signup` operation, called through `flint_write`, uses the same two calls: first pass `email`, `first_name`, and `last_name`, then pass only `verification_code`. It uses the server's profile and refuses to run when that profile already has a saved credential.
 
 Successful signup saves and activates the new sandbox key, replacing the profile's previous login context. JSON output includes `data.next_command`. For a custom API server, the printed continuation and payment commands include the required `FLINT_BASE_URL`; keep that environment setting when using the saved key. If the project pins an OAuth context in `.flint/config.json`, run signup outside the project or remove that pin first. Make your first test payment with:
 
@@ -171,7 +171,7 @@ JSON
 flint products create --input product.json
 ```
 
-The product example sets a $25.00 USD price; money amounts use the smallest currency unit. Before sending, the CLI checks the final JSON body, after merging convenience flags, against the same schema `flint schema input` prints. A missing required field, wrong type, invalid value, or unknown field fails locally with exit code 2 and `INVALID_REQUEST_BODY`. `error.details.problems` lists each problem and its JSON path, such as `$.default_variant.unit_price_money.currency`; likely misspellings include a "did you mean" suggestion. Problems caused by convenience flags identify the flag and set `error.param` to its name. Currency convenience flags accept lowercase values and send uppercase currency codes. An `_flint` key, which only MCP tool calls use, is rejected; pass those controls as flags. Invalid JSON reports its line and column. Use the raw `flint api` command to send undocumented fields without local schema validation.
+The product example sets a $25.00 USD price; money amounts use the smallest currency unit. Before sending, the CLI checks the final JSON body, after merging convenience flags, against the same schema `flint schema input` prints. A missing required field, wrong type, invalid value, or unknown field fails locally with exit code 2 and `INVALID_REQUEST_BODY`. `error.details.problems` lists each problem and its JSON path, such as `$.default_variant.unit_price_money.currency`; likely misspellings include a "did you mean" suggestion. Problems caused by convenience flags identify the flag and set `error.param` to its name. Currency convenience flags accept lowercase values and send uppercase currency codes. The retired `_flint` control object is rejected; terminal commands use flags and MCP calls use top-level controls. Invalid JSON reports its line and column. Use the raw `flint api` command to send undocumented fields without local schema validation.
 
 Add `--dry-run=client` to validate and inspect the prepared request locally, with or without credentials:
 
@@ -203,7 +203,7 @@ The CLI sends `--title` and `--body` as URL parameters, preserving multiline tex
 
 Add `--ai-agent` to identify the reporter as an AI agent. It defaults to false and accepts `--ai-agent=false`. The CLI emits `ai_agent=true` in the link when enabled and a boolean `ai_agent` in JSON output. Flint Help records the thread as reported by an AI agent; this is self-reported metadata, not verified identity.
 
-`flint api METHOD /v1/PATH` also accepts canonical relative public paths absent from the embedded snapshot. It warns with the CLI version and snapshot hash, skips unavailable body and scope validation, and keeps credential, environment, redirect, and write-confirmation checks. Unknown writes forward `--idempotency-key` when supplied, generate no key, and run once without automatic retries. Absolute URLs, fragments, traversal, and ambiguous path separators are rejected. MCP raw tools remain limited to the snapshot.
+`flint api METHOD /v1/PATH` also accepts canonical relative public paths absent from the embedded snapshot. It warns with the CLI version and snapshot hash, skips unavailable body and scope validation, and keeps credential, environment, redirect, and write-confirmation checks. Unknown writes forward `--idempotency-key` when supplied, generate no key, and run once without automatic retries. Absolute URLs, fragments, traversal, and ambiguous path separators are rejected. MCP operations remain limited to the snapshot.
 
 `flint openapi get` and `flint api get /v1/openapi.json` accept up to 64 MiB after decompression; other API responses retain the 16 MiB limit. Doctor discovers the server's current API version through an unauthenticated, unpinned GET of the configured base URL's OpenAPI endpoint, reads its version header, and closes the body. Discovery warnings do not stop the later CLI-version check.
 
@@ -252,7 +252,7 @@ Use `--expand a,b` for documented relationships; command help lists valid expans
 
 `FLINT_OUTPUT` accepts human, json, or ndjson (streams and paginated lists), case-insensitively. Its ndjson setting falls back to JSON for other commands; explicit `--output ndjson` requires a stream or paginated list. `FLINT_NO_INPUT` accepts `1`, `true`, `yes`, and `on`, case-insensitively. Boolean flags accept `--flag=true` and `--flag true` forms.
 
-JSON errors use `{"error": {...}}` with `type`, `code`, `message`, optional `param`, object-shaped `details`, and `request_id` when available. HTTP responses add `http_status`. `retryable` is true when sending the same request again is safe and may succeed: no usable response arrived, or Flint returned `remediation.retry: "same_request"`. Responses without a Flint error envelope retry on HTTP 429, 500, 502, 503, or 504. `--timeout` (or MCP `_flint.timeout`) is the total request budget, including retries, and defaults to 150 seconds for every API operation. Each attempt gets the remaining budget. Reads and keyed writes make at most 3 attempts within that budget, honoring `Retry-After` and using jittered backoff otherwise. Writes that take no key are sent once. CLI remediation appears at `error.remediation` and also at `error.details.remediation` for compatibility. Unknown-command and unknown-flag details contain `input` and a `suggestions` array, which can be empty. Failed waits return `WAIT_CONDITION_UNMET` or `WAIT_CONDITION_IMPOSSIBLE` with `details.conditions`, `details.observed`, and `details.last`. Exit codes are 0 success, 1 API or webhook delivery error, 2 usage, 3 auth/config (including HTTP 403), 4 confirmation required, 5 network/timeout (including streams that never connect), 6 wait or expected event count unmet, and 70 internal error.
+JSON errors use `{"error": {...}}` with `type`, `code`, `message`, optional `param`, object-shaped `details`, and `request_id` when available. HTTP responses add `http_status`. `retryable` is true when sending the same request again is safe and may succeed: no usable response arrived, or Flint returned `remediation.retry: "same_request"`. Responses without a Flint error envelope retry on HTTP 429, 500, 502, 503, or 504. `--timeout` (fixed at MCP server startup) is the total request budget, including retries, and defaults to 150 seconds for every API operation. Each attempt gets the remaining budget. Reads and keyed writes make at most 3 attempts within that budget, honoring `Retry-After` and using jittered backoff otherwise. Writes that take no key are sent once. CLI remediation appears at `error.remediation` and also at `error.details.remediation` for compatibility. Unknown-command and unknown-flag details contain `input` and a `suggestions` array, which can be empty. Failed waits return `WAIT_CONDITION_UNMET` or `WAIT_CONDITION_IMPOSSIBLE` with `details.conditions`, `details.observed`, and `details.last`. Exit codes are 0 success, 1 API or webhook delivery error, 2 usage, 3 auth/config (including HTTP 403), 4 confirmation required, 5 network/timeout (including streams that never connect), 6 wait or expected event count unmet, and 70 internal error.
 
 CLI-local timeout and cancellation codes are `CLIENT_TIMEOUT` and `CLIENT_CANCELED`. Invalid local API-key formats use `CREDENTIAL_FORMAT_INVALID`; API responses named `INVALID_CREDENTIAL` pass through unchanged. When retries end without a definite result after a timeout or ambiguous transport failure, or a keyed write ends on a 5xx, `IDEMPOTENCY_KEY_IN_PROGRESS`, `IDEMPOTENCY_RECOVERY_REQUIRED`, or reason `outcome_unknown`, the error reports `details.outcome: "unknown"`, `details.retry: "none"`, and `retryable: false`. It retains `details.idempotency_key` for writes, `attempt_count`, per-attempt `duration_ms`, HTTP statuses and error codes, the `request_ids` seen, and `recovery_reads`. A final API error is retained unchanged in `details.last_error`, including its own remediation. Confirm and capture recover by reading the payment intent; order pay reads the order and its payment attempts filtered by the key; refund create lists refunds filtered by the key. An empty recovery list does not prove that the write had no effect. Read before deciding whether to call the write again. For operations in the snapshot that accept idempotency keys, retrying with the same key is safe and returns the original result. Unknown raw routes have no local replay guarantee.
 
@@ -263,40 +263,49 @@ Time filters accept RFC 3339 instants, dates (`YYYY-MM-DD`), `today`, `yesterday
 
 ## MCP server
 
-The stdio transport accepts one UTF-8 JSON-RPC message per line. Request IDs and progress tokens must be strings or integers within ±(2^53 − 1), written without a fraction or exponent. Errors omit the ID when it cannot be determined; malformed messages do not stop the server.
+`flint mcp serve` exposes five Model Context Protocol tools over stdio: `flint_search`, `flint_describe`, `flint_read`, `flint_write`, and `flint_help`. The server uses your CLI credential and profile.
 
-`flint mcp serve` exposes Flint commands as Model Context Protocol tools over stdio, so an AI agent can call the Flint API with your credential. Tools are named `<resource>_<action>`, such as `customers_create`; dotted names such as `customers.create` are still accepted in tool calls and `--tools`. The server uses the same credential as the CLI: a saved `flint login`, the profile named by `FLINT_PROFILE`, or `FLINT_API_KEY`.
+Find an operation, inspect its public arguments, then call it:
 
-Claude Code:
-
-```bash
-claude mcp add --transport stdio flint -- flint mcp serve
-claude mcp add --transport stdio --env FLINT_PROFILE=staging flint-staging -- flint mcp serve
+```json
+{"name":"flint_search","arguments":{"query":"refund an order"}}
+{"name":"flint_describe","arguments":{"operation":"refunds.create"}}
+{"name":"flint_write","arguments":{"operation":"refunds.create","arguments":{"order_id":"ord_123","refund_type":"full"},"idempotency_key":"refund-ord-123-1","dry_run":true}}
 ```
 
-Cursor (`.cursor/mcp.json`) and other clients that read an `mcpServers` JSON file:
+Operation IDs follow CLI commands, such as `orders.list` and `checkout-sessions.delivery-quotes.create`. Read and write calls also accept space-separated command names and typed tool names. Use public JSON argument names from `flint_describe`; CLI convenience flags are unavailable over MCP. Pass execution controls such as `select`, `idempotency_key`, and `dry_run` alongside `operation`, outside `arguments`. The former `_flint` object is removed.
+
+`flint_describe` supports `kind: "result"`, nested `path`, `depth` from 1 to 3, and request `variant`. Pass `event` instead of `operation` to inspect a webhook payload. `flint_help` lists resource groups or explains `safety`, `errors`, `events`, and `test-cards`.
+
+Add the server to Claude Code:
+
+```sh
+claude mcp add --transport stdio flint -- flint mcp serve
+claude mcp add --transport stdio flint-read -- flint mcp serve --read-only
+```
+
+Cursor and other clients that use `mcpServers`:
 
 ```json
 {
   "mcpServers": {
     "flint": {
       "command": "npx",
-      "args": ["-y", "@flintpay/cli", "mcp", "serve", "--tools", "customers,payment-intents,payment-links,help"],
-      "env": { "FLINT_API_KEY": "flint_test_..." }
+      "args": ["-y", "@flintpay/cli", "mcp", "serve"],
+      "env": {"FLINT_PROFILE": "development"}
     }
   }
 }
 ```
 
-Use a sandbox key (`flint_test_...`) or `FLINT_PROFILE` rather than a live key in shared config files.
+- `--read-only` removes the write tool and refuses writes, including direct calls.
+- `--tools orders,refunds` opts into one typed tool per operation in those groups, plus search, describe, and help restricted to that scope. `--tools all` selects every available operation. `--tools default` is removed. Typed names use underscores for both dots and hyphens, such as `payment_intents_create`.
+- Credential class restricts discovery and calls. A merchant API key cannot reach buyer-session operations; a partner access token reaches only install-scoped operations. Raw `api`, `help_search`, and `schema_*` tools are removed.
+- `--allow-live` permits live credentials; each live call must also carry `live: true`. The server's profile, merchant guard, context, and timeout are fixed at startup.
 
-Server flags:
+Use `dry_run: true` to validate a write without sending it. Required idempotency keys are checked on dry runs too. Reuse the same key when retrying an uncertain write. Operations requiring human confirmation use MCP elicitation when available; otherwise the tool explains how the user can proceed. `--allow-destructive` allows agent confirmation with `confirm: true`.
 
-- `--tools GROUP[,GROUP...]` chooses which tools to expose, and can be repeated. Each entry is a tool group such as `customers` or a single tool such as `payment-intents_create`; dotted names also work. Without `--tools` (or with an empty value), the server exposes a curated set for typical integrations: customers, products, payment intents, refunds, webhook endpoints and events, and core checkout session and payment link tools (about 30 tools, about 220 KB of compact `tools/list` result JSON). `--tools all` exposes every tool (about 630 tools, about 3 MB), and `--tools default,invoices` adds groups to the default set. `help`, `init`, read-only `doctor`, and the `schema_*` tools are always exposed. Order tools and `auth_status` are opt-in with `--tools default,orders,auth_status`. An unknown entry stops the server at startup.
-- `--allow-live` lets tools act on live (production) credentials and contexts. Without it, any call that would use a live credential or a selected live context fails, and agents cannot pass `_flint.live`. With it, agents must still acknowledge each live call with `_flint.live`.
-- `--allow-destructive` lets agents confirm destructive operations, and sensitive operations in live mode, with `_flint.confirm`. Without it, the server asks you through MCP elicitation when the client supports it, and otherwise refuses with instructions for you.
-
-Agents can always inspect a write first with `_flint.dry_run: "client"` or, for destructive operations, `_flint.preview`. Successful results that reached the API include a `Flint environment: sandbox|live` line, followed by a `Warnings:` block when the CLI printed warnings. The `help` tool returns a short index without a topic, a tool's arguments and required fields when given a tool name, and control details for `controls`. `schema_input` and `schema_output` return a tool's full schemas on demand, and `schema_events` lists webhook event types (pass `event_type` for payload schemas). Agents can add a `_flint.merchant` guard but cannot replace the profile, merchant guard, or context the server uses. `config set`, `config unset`, and `auth logout` are not available over MCP. The server inherits its credential-store selection at startup; agents cannot change it through per-call `_flint` controls.
+Local commands are operations reached through read or write, including `version`, read-only `doctor`, `history`, `history.clear`, and sandbox-only `trigger`. Trigger waits are capped at 60 seconds. Agents cannot change credential stores, update config, or log out through MCP.
 
 ## Migrating from 0.13.0
 

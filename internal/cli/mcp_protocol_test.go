@@ -108,7 +108,7 @@ func TestMCPProtocolProgressTokens(t *testing.T) {
 	conn := startMCPTestConn(t, app, defaultOptions())
 	conn.initialize(`{}`)
 	for _, token := range []string{`{}`, `[]`, `false`, `null`, `1.5`, `1e3`, `1.0`, `9007199254740992`} {
-		conn.send(`{"jsonrpc":"2.0","id":"token","method":"tools/call","params":{"name":"help","_meta":{"progressToken":` + token + `}}}`)
+		conn.send(`{"jsonrpc":"2.0","id":"token","method":"tools/call","params":{"name":"flint_help","_meta":{"progressToken":` + token + `}}}`)
 		message := conn.next()
 		if message["id"] != "token" || lookupPathValue(message, "error.code") != float64(-32602) {
 			t.Fatalf("token %s: %#v", token, message)

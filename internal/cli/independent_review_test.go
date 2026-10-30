@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -120,7 +121,7 @@ func TestMCPUnverifiedEnvironmentElicitsConfirmation(t *testing.T) {
 			t.Setenv("FLINT_ACCESS_TOKEN", "synthetic-partner-token")
 			conn := startMCPTestConn(t, app, defaultOptions())
 			conn.initialize(`{"elicitation":{"form":{}}}`)
-			conn.send(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"payment-intents_create","arguments":{"amount_money":{"amount":500,"currency":"USD"},"payment_options":["card"],"_flint":{"idempotency_key":"saved-test-action-1"}}}}`)
+			conn.send(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"flint_write","arguments":{"operation":"payment-intents.create","arguments":{"amount_money":{"amount":500,"currency":"USD"},"payment_options":["card"]},"idempotency_key":"saved-test-action-1"}}}`)
 			request := conn.next()
 			if request["method"] != "elicitation/create" || writes != 0 || !strings.Contains(fmt.Sprint(lookupPathValue(request, "params.message")), "cannot verify") {
 				t.Fatalf("writes=%d request=%v", writes, request)
@@ -164,7 +165,8 @@ func TestMCPOptionalFieldProjectionsMatchCLI(t *testing.T) {
 			app, out, _ := testApp(t, server.URL)
 			args := append([]string{"customers", "get", "cus_review", "--output", "json"}, test.flags...)
 			exit := app.Run(args)
-			result := mcpCall(t, app, defaultOptions(), "customers_get", map[string]any{"customer_id": "cus_review", "_flint": test.controls})
+			cmd := mustMCPTool(t, app, "customers.get")
+			result := app.runMCPTool(context.Background(), cmd, map[string]any{"customer_id": "cus_review", "_flint": test.controls}, defaultOptions(), mcpPolicy{}, true)
 			text := mcpResultText(result)
 			if exit == ExitOK {
 				value, _ := json.Marshal(lookupPathValue(result, "structuredContent.value"))

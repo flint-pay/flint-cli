@@ -59,7 +59,7 @@ func TestMCPSetupToolsDoNotProbeFreshKeyring(t *testing.T) {
 	}
 	app.LoadCredential = func(string) (string, error) { t.Error("fresh MCP profile queried keyring"); return "", nil }
 	for _, name := range []string{"init", "doctor"} {
-		cmd, ok := app.mcpTool(name, mcpPolicyFromOptions(defaultOptions()))
+		cmd, ok := app.mcpTool(name, mcpPolicy{allTools: true})
 		if !ok {
 			t.Fatalf("setup tool %s unavailable", name)
 		}
@@ -67,7 +67,7 @@ func TestMCPSetupToolsDoNotProbeFreshKeyring(t *testing.T) {
 		if e != nil {
 			t.Fatal(e)
 		}
-		if _, ok := lookupPath(schema, "properties._flint.properties.credential_store"); ok {
+		if _, ok := lookupPath(schema, "properties.credential_store"); ok {
 			t.Error("agent can change credential store")
 		}
 		if _, ok := lookupPath(schema, "properties.fix"); ok {

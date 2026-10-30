@@ -110,7 +110,7 @@ func TestMCPSparseDeliveryConfigurationUpdates(t *testing.T) {
 					arguments["expected_version"] = version
 				}
 				response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{
-					"name": family.command, "arguments": arguments,
+					"name": mcpToolName(family.command), "arguments": arguments,
 				}}, mcpAllToolsOptions(t))
 				result := response["result"].(map[string]any)
 				raw, err := json.Marshal(result)
@@ -118,10 +118,10 @@ func TestMCPSparseDeliveryConfigurationUpdates(t *testing.T) {
 					t.Fatal(err)
 				}
 				if valid {
-					if credentialReads != 1 || !strings.Contains(string(raw), "API_KEY_REQUIRED") || strings.Contains(string(raw), "advertised input schema") {
+					if credentialReads != 1 || !strings.Contains(string(raw), "API_KEY_REQUIRED") || strings.Contains(string(raw), "schema") {
 						t.Fatalf("valid sparse update did not reach authentication: reads=%d result=%s", credentialReads, raw)
 					}
-				} else if credentialReads != 0 || !strings.Contains(string(raw), "advertised input schema") {
+				} else if credentialReads != 0 || !strings.Contains(string(raw), "schema") {
 					t.Fatalf("invalid update was not rejected before authentication: reads=%d result=%s", credentialReads, raw)
 				}
 			}
@@ -140,32 +140,32 @@ func TestMCPSparseDeliveryConfigurationUpdates(t *testing.T) {
 
 func TestMCPListenRequiresAndCapsStreamBounds(t *testing.T) {
 	t.Parallel()
-	registry := NewRegistry()
-	listen, ok := registry.ByName("listen")
+	listen, ok := NewRegistry().ByName("listen")
 	if !ok {
-		t.Fatal("listen command is missing")
+		t.Fatal("missing listen")
 	}
 	for _, test := range []struct {
 		name      string
 		arguments map[string]any
 		wantError string
 	}{
-		{name: "missing", arguments: map[string]any{"forward_to": "http://localhost:8080/webhooks"}, wantError: "_flint"},
-		{name: "too many records", arguments: map[string]any{"forward_to": "http://localhost:8080/webhooks", "_flint": map[string]any{"max_events": float64(mcpMaxStreamEvents + 1)}}, wantError: "maximum"},
-		{name: "too long", arguments: map[string]any{"forward_to": "http://localhost:8080/webhooks", "_flint": map[string]any{"for": "3m"}}, wantError: "must not exceed"},
-		{name: "bounded by records", arguments: map[string]any{"forward_to": "http://localhost:8080/webhooks", "_flint": map[string]any{"max_events": float64(10)}}},
-		{name: "bounded by duration", arguments: map[string]any{"forward_to": "http://localhost:8080/webhooks", "_flint": map[string]any{"for": "30s"}}},
+		{"default bounds", map[string]any{}, ""},
+		{"too many records", map[string]any{"max_events": float64(mcpMaxStreamEvents + 1)}, "maximum"},
+		{"too long", map[string]any{"max_seconds": float64(121)}, "maximum"},
+		{"bounded by records", map[string]any{"max_events": float64(10)}, ""},
+		{"bounded by duration", map[string]any{"max_seconds": float64(30)}, ""},
+		{"old private controls", map[string]any{"_flint": map[string]any{"for": "30s"}}, "additional properties"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			err := validateMCPArguments(listen, test.arguments)
 			if test.wantError == "" {
 				if err != nil {
-					t.Fatalf("validateMCPArguments() error = %v", err)
+					t.Fatal(err)
 				}
 				return
 			}
-			if err == nil || !strings.Contains(strings.ToLower(err.Error()), strings.ToLower(test.wantError)) {
-				t.Fatalf("validateMCPArguments() error = %v, want %q", err, test.wantError)
+			if err == nil || !strings.Contains(err.Error(), test.wantError) {
+				t.Fatalf("error=%v want=%s", err, test.wantError)
 			}
 		})
 	}
@@ -232,8 +232,8 @@ func TestMCPClientCanCancelInFlightListen(t *testing.T) {
 		Params: map[string]any{
 			"name": "listen",
 			"arguments": map[string]any{
-				"forward_to": "http://127.0.0.1:1/webhooks",
-				"_flint":     map[string]any{"for": "2m"},
+				"forward_to":  "http://127.0.0.1:1/webhooks",
+				"max_seconds": 120,
 			},
 		},
 	}); err != nil {
@@ -313,8 +313,8 @@ func TestMCPListenDurationAndExplicitEventCounts(t *testing.T) {
 		controls  map[string]any
 		wantError bool
 	}{
-		{"duration only has no event cap", 101, map[string]any{"for": "200ms"}, false},
-		{"explicit 100 is an expected count", 1, map[string]any{"for": "200ms", "max_events": 100}, true},
+		{"duration only uses the default event cap", 100, map[string]any{"for": "1s"}, false},
+		{"explicit 100 is an expected count", 1, map[string]any{"for": "1s", "max_events": 100}, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			server := listenAPI(t, func(w http.ResponseWriter, r *http.Request, _ int) {

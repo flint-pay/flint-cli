@@ -578,6 +578,7 @@ func TestEveryBooleanFlagAcceptsExplicitTrueAndFalse(t *testing.T) {
 		"no-open":           {"support", "open"},
 		"allow-live":        {"mcp", "serve"},
 		"allow-destructive": {"mcp", "serve"},
+		"read-only":         {"mcp", "serve"},
 		"check":             {"upgrade"},
 		"list":              {"trigger"},
 		"print-secret":      {"listen"},

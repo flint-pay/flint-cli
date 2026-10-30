@@ -116,7 +116,7 @@ func validateRequestBody(c *Command, label string, body map[string]any) ([]map[s
 			}
 		}
 		sort.Strings(flags)
-		message := "The input contains _flint, which holds execution controls for MCP tool calls only; the CLI would send it to the API as a body field. Remove it and pass the controls as flags"
+		message := "The input contains the retired _flint control object; it is not an API body field. Remove it and pass terminal controls as flags"
 		if len(flags) > 0 {
 			message += ": " + strings.Join(flags, " ")
 		} else {

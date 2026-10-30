@@ -80,13 +80,15 @@ test("server.json uses only fields and argument shapes defined by its schema", (
 
 test("server.json describes the MCP server's tool selection and safety flags", () => {
   const named = Object.fromEntries(server.packages[0].packageArguments.filter(argument => argument.type === "named").map(argument => [argument.name, argument]));
-  assert.deepEqual(Object.keys(named).sort(), ["--allow-destructive", "--allow-live", "--tools"]);
+  assert.deepEqual(Object.keys(named).sort(), ["--allow-destructive", "--allow-live", "--read-only", "--tools"]);
   const toolsDescription = named["--tools"].description;
-  assert.match(toolsDescription, /Without --tools.*empty value.*curated core set/);
-  assert.match(toolsDescription, /help and schema_\* are always on/);
-  assert.match(toolsDescription, /--tools all to expose every tool/);
-  assert.match(toolsDescription, /--tools default,GROUP to add groups to the default set/);
-  assert.match(toolsDescription, /dotted names are accepted/);
+  assert.match(toolsDescription, /Opt into typed tools/);
+  assert.match(toolsDescription, /operation IDs, dotted resource prefixes, or typed names/);
+  assert.match(toolsDescription, /all for every available operation/);
+  assert.match(toolsDescription, /Search, describe, and help use the same scope/);
+  assert.match(toolsDescription, /Omit for five discovery tools/);
+  assert.doesNotMatch(toolsDescription, /curated|schema_|default,GROUP/);
+  assert.match(named["--read-only"].description, /refuse every write/);
   assert.doesNotMatch(toolsDescription, /\d[\d,.]*\s*(?:(?:curated\s+)?tools\b|[KM]B\b)/i);
   assert.deepEqual(server.packages[0].packageArguments.filter(argument => argument.type === "positional").map(argument => argument.value), ["mcp", "serve"]);
 });

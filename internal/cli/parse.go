@@ -15,7 +15,7 @@ var boolFlags = map[string]bool{
 	// that declares them accepts them, but the parser still has to know they
 	// take no value.
 	"list": true, "new-session": true, "private": true, "no-open": true, "ai-agent": true,
-	"allow-live": true, "allow-destructive": true, "no-wait": true, "check": true, "print-secret": true,
+	"read-only": true, "allow-live": true, "allow-destructive": true, "no-wait": true, "check": true, "print-secret": true,
 }
 
 var globalFlags = map[string]bool{

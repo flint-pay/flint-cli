@@ -792,12 +792,8 @@ func TestMCPFlagsSerializeBooleansAndInheritServerContext(t *testing.T) {
 
 func TestMCPOutputTransformsRemainStructuredAndSchemaCompatible(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 1, Method: "tools/call", Params: map[string]any{
-		"name": "version",
-		"arguments": map[string]any{
-			"_flint": map[string]any{"field": "cli_version"},
-		},
-	}}, mcpAllToolsOptions(t))
+	cmd := mustMCPTool(t, app, "version")
+	response := rpcResult(1, app.runMCPTool(context.Background(), cmd, map[string]any{"_flint": map[string]any{"field": "cli_version"}}, mcpAllToolsOptions(t), mcpPolicy{allTools: true}, true))
 	result := response["result"].(map[string]any)
 	if result["isError"] == true {
 		t.Fatalf("MCP transform failed: %#v", result)
@@ -813,7 +809,7 @@ func TestMCPOutputTransformsRemainStructuredAndSchemaCompatible(t *testing.T) {
 
 	malformed := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: 2, Method: "tools/call", Params: map[string]any{
 		"name":      "version",
-		"arguments": map[string]any{"_flint": map[string]any{"select": []any{true}}},
+		"arguments": map[string]any{"select": []any{true}},
 	}}, mcpAllToolsOptions(t))
 	malformedResult := malformed["result"].(map[string]any)
 	if malformedResult["isError"] != true || strings.Contains(fmt.Sprint(malformedResult), "structuredContent") {
