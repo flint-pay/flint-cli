@@ -255,7 +255,7 @@ func TestDXErrorsPreserveAPIContext(t *testing.T) {
 			t.Fatal(result)
 		}
 		actions, _ := lookupPath(result, "error.remediation.next_actions")
-		if len(actions.([]any)) != 2 {
+		if len(actions.([]any)) != 1 || actions.([]any)[0].(map[string]any)["command"] != "existing" {
 			t.Fatal(result)
 		}
 		if status == 403 && e.ExitCode != ExitAuth {

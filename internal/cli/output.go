@@ -86,12 +86,15 @@ func (a *App) writeError(err *CLIError, opts Options) {
 		fmt.Fprintf(a.Stderr, "Request ID: %s\n", err.RequestID)
 	}
 	if details, ok := err.Details.(map[string]any); ok {
+		if err.idempotencyKey != "" && details["outcome"] != "unknown" {
+			fmt.Fprintln(a.Stderr, "Idempotency key: "+terminalSafe(err.idempotencyKey))
+		}
 		if remediation, ok := details["remediation"].(map[string]any); ok {
-			renderNextActions(a.Stderr, remediation["next_actions"])
+			renderRemediation(a.Stderr, remediation)
 		}
 		if nested, ok := details["details"].(map[string]any); ok {
 			if remediation, ok := nested["remediation"].(map[string]any); ok {
-				renderNextActions(a.Stderr, remediation["next_actions"])
+				renderRemediation(a.Stderr, remediation)
 			}
 		}
 	}
@@ -100,6 +103,13 @@ func (a *App) writeError(err *CLIError, opts Options) {
 			fmt.Fprintln(a.Stderr, "Did you mean: "+strings.Join(suggestions, ", "))
 		}
 	}
+}
+
+func renderRemediation(w io.Writer, remediation map[string]any) {
+	if step, _ := remediation["next_steps"].(string); strings.TrimSpace(step) != "" {
+		fmt.Fprintln(w, "Next: "+step)
+	}
+	renderNextActions(w, remediation["next_actions"])
 }
 
 func renderNextActions(w io.Writer, value any) {

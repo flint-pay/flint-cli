@@ -2859,11 +2859,10 @@ func mcpCommandError(cmd *Command, outcome mcpCallResult, policy mcpPolicy, over
 					}
 				}
 				copyError["details"] = translated
-				// A retry must reuse the key, or a write that already reached
-				// Flint could run twice.
-				if detailMap, ok := translated.(map[string]any); ok && detailMap["outcome"] != "unknown" && !strings.Contains(message, "_flint.idempotency_key") {
+				if detailMap, ok := translated.(map[string]any); ok && commandIdempotencyClass(cmd) != "none" && !strings.Contains(message, "_flint.idempotency_key") {
 					if key, ok := detailMap["idempotency_key"].(string); ok && key != "" {
-						message = strings.TrimSpace(message + ` To retry, call the tool again with the same arguments and _flint.idempotency_key set to "` + key + `"; a different key could make the write run twice.`)
+						advice := idempotencyRetryAdvice(remediationRetry(copyError["remediation"]), key)
+						message = strings.TrimSpace(message + " " + mcpTranslateRemediation(advice, cmd, policy))
 					}
 				}
 			}

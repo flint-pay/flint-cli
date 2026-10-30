@@ -69,7 +69,6 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 	if requestErr != nil {
 		return req, requestErr
 	}
-	defer func() { requestErr = withIdempotencyRetryContext(requestErr, req.IdempotencyKey) }()
 	if e := validateExpansions(cmd.OperationID, opts.Expand); e != nil {
 		return req, e
 	}

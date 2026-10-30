@@ -21,6 +21,7 @@ type requestAttempt struct {
 }
 
 type requestHistory struct {
+	sent       bool
 	started    time.Time
 	attempts   []*requestAttempt
 	requestIDs []string
@@ -65,7 +66,7 @@ func (h *requestHistory) finalError(ctx context.Context, e *CLIError, method, pa
 	// idempotency replay) cannot settle an earlier write's transport ambiguity.
 	write := method != http.MethodGet && method != http.MethodHead
 	uncertain := h.uncertain != nil && (write || e.ExitCode == ExitNetwork)
-	if len(h.attempts) == 0 || !(canceled || timedOut || uncertain) {
+	if !h.sent || len(h.attempts) == 0 || !(canceled || timedOut || uncertain) {
 		return e
 	}
 

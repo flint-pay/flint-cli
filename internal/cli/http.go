@@ -160,6 +160,7 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 			retryable := replaySafe && errorRetryable(requestErr) && !errors.Is(ctx.Err(), context.Canceled) && !errors.Is(requestErr.Cause, context.Canceled)
 			requestErr.retryable = &retryable
 			requestErr = history.finalError(ctx, requestErr, method, path, idempotencyKey)
+			requestErr.requestSent = history.sent
 			requestErr = withIdempotencyRetryContext(requestErr, idempotencyKey)
 		}
 	}()
@@ -248,7 +249,17 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 			fact.DurationMs = time.Since(attemptStarted).Milliseconds()
 			cancelContext()
 		}
-		resp, err := client.Do(req)
+		dispatched := false
+		attemptClient := *client
+		transport := client.Transport
+		if transport == nil {
+			transport = http.DefaultTransport
+		}
+		attemptClient.Transport = requestDispatchTransport{base: transport, dispatched: &dispatched}
+		resp, err := attemptClient.Do(req)
+		if dispatched && !connectionFailedBeforeSend(err) {
+			history.sent = true
+		}
 		if err != nil {
 			cancelAttempt()
 			if errors.Is(err, context.Canceled) {
@@ -266,7 +277,11 @@ func (a *App) doRequest(ctx context.Context, baseURL, key, method, path string, 
 				e = networkError("CLIENT_TIMEOUT", "The request attempt timed out before Flint returned a response.", err)
 			}
 			history.failure(fact, e, !connectionFailedBeforeSend(err))
-			if replaySafe && retryRequest(ctx, attempt, "") {
+			if !dispatched {
+				retryable := false
+				e.retryable = &retryable
+			}
+			if dispatched && replaySafe && retryRequest(ctx, attempt, "") {
 				continue
 			}
 			return nil, e
@@ -480,7 +495,7 @@ func apiErrorFromResponse(resp *apiResponse) *CLIError {
 		message = fmt.Sprintf("Flint returned HTTP %d.", resp.Status)
 	}
 	retryable := responseRetryable(resp)
-	e := &CLIError{retryable: &retryable, HTTPStatus: resp.Status, ExitCode: exit, Type: "api_error", Code: "HTTP_" + strconv.Itoa(resp.Status), Message: message}
+	e := &CLIError{requestSent: true, retryable: &retryable, HTTPStatus: resp.Status, ExitCode: exit, Type: "api_error", Code: "HTTP_" + strconv.Itoa(resp.Status), Message: message}
 	if m, ok := resp.Value.(map[string]any); ok {
 		if raw, ok := m["error"].(map[string]any); ok {
 			if v, ok := raw["type"].(string); ok {
@@ -534,12 +549,13 @@ func networkError(code, message string, cause error) *CLIError {
 
 func withIdempotencyRetryContext(err *CLIError, idempotencyKey string) *CLIError {
 	idempotencyKey = strings.TrimSpace(idempotencyKey)
-	if err == nil || idempotencyKey == "" {
+	if err == nil || !err.requestSent || idempotencyKey == "" {
 		return err
 	}
 	if details, ok := err.Details.(map[string]any); ok && details["outcome"] == "unknown" {
 		return err
 	}
+	err.idempotencyKey = idempotencyKey
 	// A response can be lost after Flint commits a mutation. Preserve the logical
 	// request key in both JSON and human output so a retry cannot duplicate it.
 	details, _ := err.Details.(map[string]any)
@@ -570,7 +586,15 @@ func withIdempotencyRetryContext(err *CLIError, idempotencyKey string) *CLIError
 		remediation = copyMap(remediation)
 	}
 	actions, _ := remediation["next_actions"].([]any)
-	message := "For a retry of the same request, reuse --idempotency-key " + idempotencyKey + "."
+	retry := remediationRetry(details["remediation"])
+	if details["remediation"] == nil {
+		retry = remediationRetry(target["remediation"])
+	}
+	message := idempotencyRetryAdvice(retry, idempotencyKey)
+	if message == "" {
+		err.Details = details
+		return err
+	}
 	for _, action := range actions {
 		if next, ok := action.(map[string]any); ok && next["reason_message"] == message {
 			err.Details = details
@@ -581,6 +605,49 @@ func withIdempotencyRetryContext(err *CLIError, idempotencyKey string) *CLIError
 	target["remediation"] = remediation
 	err.Details = details
 	return err
+}
+
+// Observe dispatch separately from key allocation. Client validation and an
+// already canceled context can fail before RoundTrip ever runs.
+type requestDispatchTransport struct {
+	base       http.RoundTripper
+	dispatched *bool
+}
+
+func (t requestDispatchTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if err := req.Context().Err(); err != nil {
+		return nil, err
+	}
+	// net/http validates values inside its transport. Check them before marking
+	// possible dispatch, including when a caller supplies another RoundTripper.
+	for name, values := range req.Header {
+		for _, value := range values {
+			for i := 0; i < len(value); i++ {
+				if c := value[i]; c == 127 || c < 32 && c != '\t' {
+					return nil, fmt.Errorf("invalid HTTP header value for %q", name)
+				}
+			}
+		}
+	}
+	*t.dispatched = true
+	return t.base.RoundTrip(req)
+}
+
+func remediationRetry(value any) string {
+	remediation, _ := value.(map[string]any)
+	retry, _ := remediation["retry"].(string)
+	return retry
+}
+
+func idempotencyRetryAdvice(retry, key string) string {
+	switch retry {
+	case "same_request":
+		return "Wait for Retry-After or use backoff, then resend the identical request with --idempotency-key " + key + "."
+	case "after_refresh":
+		return "Read the current resource, rebuild the request, and use a new --idempotency-key for the new request."
+	default:
+		return ""
+	}
 }
 
 func invalidResponseError(code, message string, cause error) *CLIError {
