@@ -174,6 +174,12 @@ func TestFollowOptionsAndNormalList(t *testing.T) {
 	if exit := app.Run([]string{"api-request-logs", "list", "--output", "json"}); exit != ExitOK || calls.Load() != 1 || !strings.Contains(out.String(), `"next_page_token":"next"`) {
 		t.Fatalf("exit=%d calls=%d out=%s stderr=%s", exit, calls.Load(), out, stderr)
 	}
+	out.Reset()
+	calls.Store(0)
+	fakeFollowClock(app, time.Now(), 0)
+	if exit := app.Run([]string{"api-request-logs", "list", "--follow", "--for", "1s", "--output", "json"}); exit != ExitOK || calls.Load() != 1 || !strings.Contains(out.String(), `"cursor":`) || strings.Contains(out.String(), "next_page_token") {
+		t.Fatalf("follow exit=%d calls=%d out=%s stderr=%s", exit, calls.Load(), out, stderr)
+	}
 	cmd, _ := r.ByName("api-request-logs.list")
 	if cmd.Stream || !cmd.Follow || !strings.Contains(strings.Join(cmd.Examples, " "), "--follow") {
 		t.Fatal(cmd)

@@ -1831,6 +1831,10 @@ func generatedBodyArgument(argument Arg) bool {
 }
 
 func exhaustiveArgumentValues(argument Arg) []string {
+	// The catalog exercises all filters in normal list mode; follow has bounded tests.
+	if argument.Name == "follow" {
+		return []string{"false"}
+	}
 	if argument.Type == "boolean" {
 		return []string{"true"}
 	}
