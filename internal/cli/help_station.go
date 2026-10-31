@@ -1,27 +1,18 @@
 package cli
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
-	"os"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
+
+	"github.com/flint-pay/flint-cli/internal/opindex"
 )
 
-// Flint Help is the community and support site. It is a separate origin from
-// the public API, so it has its own base URL rather than reusing FLINT_BASE_URL.
+// Support only builds a composer link; search uses the local operation index.
 const helpStationURL = "https://help.withflintpay.com"
-
-// The search API is public, so these commands never send a credential. The
-// composer link carries context only; HelpService is first-party, and there is
-// no public support-threads route to post through yet.
-const helpSearchPath = "/api/search"
 const helpSearchLimit = 8
 
 // Product areas the composer accepts, mirroring HELP_PRODUCT_AREAS in
@@ -45,39 +36,21 @@ var supportProductAreas = []string{
 	"sales",
 }
 
-type helpSearchResult struct {
-	Title       string `json:"title"`
-	URL         string `json:"url"`
-	Slug        string `json:"slug"`
-	Status      string `json:"status"`
-	Kind        string `json:"kind"`
-	ProductArea string `json:"productArea"`
-	Excerpt     string `json:"excerpt"`
-	ReplyCount  int    `json:"replyCount"`
-	Answered    bool   `json:"answered"`
-	// Passed through untouched: Flint Help serves an epoch number, and the CLI
-	// has no reason to reinterpret it.
-	UpdatedAt any `json:"updatedAt"`
-}
-
-func helpStationBaseURL() (string, *CLIError) {
-	value := strings.TrimSpace(os.Getenv("FLINT_HELP_URL"))
-	if value == "" {
-		return helpStationURL, nil
-	}
-	normalized, err := validateBaseURL(value)
-	if err != nil {
-		return "", configError(
-			"INVALID_HELP_URL",
-			"FLINT_HELP_URL must be an absolute HTTP or HTTPS URL without credentials, a query, or a fragment.",
-			err,
-		)
-	}
-	return normalized, nil
-}
-
-func helpAskURL(base string) string {
-	return base + "/new?kind=question&source=cli.help"
+// cliSearchFilter includes the terminal's full catalog, independent of MCP
+// exposure and credentials. Synthetic MCP operations have no terminal command.
+func (a *App) cliSearchFilter() opindex.Filter {
+	return opindex.Filter{Limit: helpSearchLimit, Exposed: func(entry opindex.Entry) bool {
+		switch entry.Type {
+		case "operation":
+			cmd, ok := a.Registry.ByName(entry.ID)
+			return ok && cmd.CanonicalName == entry.ID && entry.ID != "__complete"
+		case "event":
+			return true
+		case "topic":
+			return slices.Contains(helpTopicNames, entry.ID)
+		}
+		return false
+	}}
 }
 
 func (a *App) localHelpSearch(cmd *Command, opts Options) int {
@@ -85,139 +58,62 @@ func (a *App) localHelpSearch(cmd *Command, opts Options) int {
 	if query == "" {
 		return a.fail(usageError("MISSING_REQUIRED_ARGUMENT", "Missing required argument: query", "query"), opts)
 	}
-	base, baseErr := helpStationBaseURL()
-	if baseErr != nil {
-		return a.fail(baseErr, opts)
-	}
-	results, searchErr := a.searchFlintHelp(base, query, opts)
-	if searchErr != nil {
-		return a.fail(searchErr, opts)
-	}
-	items := make([]any, 0, len(results))
-	for _, result := range results {
-		items = append(items, map[string]any{
-			"title":        result.Title,
-			"url":          result.URL,
-			"slug":         result.Slug,
-			"status":       result.Status,
-			"kind":         result.Kind,
-			"product_area": result.ProductArea,
-			"excerpt":      result.Excerpt,
-			"reply_count":  result.ReplyCount,
-			"answered":     result.Answered,
-			"updated_at":   result.UpdatedAt,
-		})
-	}
-	return a.outputLocal(map[string]any{"data": map[string]any{
-		"query":   query,
-		"results": items,
-		"ask_url": helpAskURL(base),
-	}}, cmd, opts)
-}
-
-func (a *App) searchFlintHelp(base, query string, opts Options) ([]helpSearchResult, *CLIError) {
-	target := base + helpSearchPath + "?q=" + url.QueryEscape(query) + "&limit=" + strconv.Itoa(helpSearchLimit)
-	ctx := a.Context
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	ctx, cancel := context.WithTimeout(ctx, opts.Timeout)
-	defer cancel()
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	index, err := a.operationIndex()
 	if err != nil {
-		return nil, usageError("INVALID_REQUEST_URL", err.Error(), "query")
+		return a.fail(cliError(ExitSoftware, errorTypeInternal, "SCHEMA_SNAPSHOT_INVALID", err.Error()), opts)
 	}
-	request.Header.Set("Accept", "application/json")
-	request.Header.Set("User-Agent", "flintpay-cli/"+a.Info.Version)
-	request.Header.Set("X-Flint-CLI-Version", a.Info.Version)
-	if opts.Debug {
-		fmt.Fprintf(a.Stderr, "debug: GET %s\n", target)
-	}
-	response, err := a.helpHTTPClient().Do(request)
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, &CLIError{ExitCode: ExitNetwork, Type: errorTypeTimeout, Code: "HELP_SEARCH_TIMEOUT", Message: "Flint Help did not respond before the timeout.", Cause: err}
+	a.Registry.commandTree()
+	hits, _ := index.Search(query, a.cliSearchFilter())
+	items := make([]any, 0, len(hits))
+	for _, hit := range hits {
+		item := map[string]any{"name": hit.ID, "type": hit.Type, "description": hit.Title}
+		switch hit.Type {
+		case "operation":
+			command, _ := a.Registry.ByName(hit.ID)
+			item["type"] = "command"
+			item["command"] = strings.Join(command.Path, " ")
+			item["description"] = command.Description
+			item["section"] = command.Section
+			item["method"] = command.Method
+			item["api_path"] = command.APIPath
+			item["operation_id"] = command.OperationID
+		case "event":
+			item["command"] = "flint help events " + hit.ID
+		case "topic":
+			item["command"] = "flint help " + hit.ID
 		}
-		return nil, networkError("HELP_SEARCH_UNREACHABLE", "Flint Help could not be reached: "+err.Error(), err)
+		items = append(items, item)
 	}
-	defer response.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(response.Body, 1<<20))
-	if err != nil {
-		return nil, networkError("HELP_SEARCH_READ_FAILED", "Could not read the Flint Help search response.", err)
+	data := map[string]any{"query": query, "results": items}
+	if len(items) == 0 {
+		data["hint"] = "Try fewer words or run flint help --all."
 	}
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return nil, &CLIError{
-			ExitCode: ExitAPI,
-			Type:     errorTypeUnavailable,
-			Code:     "HELP_SEARCH_FAILED",
-			Message:  fmt.Sprintf("Flint Help search returned HTTP %d.", response.StatusCode),
-			Details:  map[string]any{"status": response.StatusCode, "url": target},
-		}
-	}
-	var results []helpSearchResult
-	if err := json.Unmarshal(body, &results); err != nil {
-		return nil, invalidResponseError("INVALID_HELP_SEARCH_RESPONSE", "Flint Help returned a search response the CLI could not read.", err)
-	}
-	return results, nil
-}
-
-func (a *App) helpHTTPClient() *http.Client {
-	if a.HTTPClient != nil {
-		return a.HTTPClient
-	}
-	// Public help searches retain normal redirect handling while sharing the
-	// bounded connection pool. API requests keep their stricter redirect policy.
-	client := *defaultAPIHTTPClient
-	client.CheckRedirect = nil
-	return &client
+	return a.outputLocal(map[string]any{"data": data}, cmd, opts)
 }
 
 func renderHelpSearchHuman(w io.Writer, value any, _ time.Time) {
 	data, _ := lookupPath(value, "data.results")
 	results, _ := data.([]any)
 	if len(results) == 0 {
-		fmt.Fprintln(w, "No Flint Help threads matched that search.")
+		fmt.Fprintln(w, "No commands, events, or topics matched. Try fewer words or run flint help --all.")
 	}
-	for index, raw := range results {
-		result, ok := raw.(map[string]any)
+	for _, raw := range results {
+		item, ok := raw.(map[string]any)
 		if !ok {
 			continue
 		}
-		title, _ := result["title"].(string)
-		line := fmt.Sprintf("%d. %s", index+1, title)
-		if answered, _ := result["answered"].(bool); answered {
-			line += "  ✓ answered"
+		command, _ := item["command"].(string)
+		description, _ := item["description"].(string)
+		kind, _ := item["type"].(string)
+		route := kind
+		if kind == "command" {
+			method, _ := item["method"].(string)
+			path, _ := item["api_path"].(string)
+			route = strings.TrimSpace(method + " " + path)
 		}
-		if area, _ := result["product_area"].(string); area != "" {
-			line += "  " + area
-		}
-		line += "  " + pluralizeReplies(result["reply_count"])
-		fmt.Fprintln(w, line)
-		if target, _ := result["url"].(string); target != "" {
-			fmt.Fprintln(w, "   "+target)
-		}
+		fmt.Fprintf(w, "%-44s %-45s %s\n", strings.TrimPrefix(command, "flint "), description, route)
 	}
-	if ask, ok := firstStringAt(value, "data.ask_url"); ok {
-		fmt.Fprintln(w, "Ask your own: "+ask)
-	}
-}
-
-func pluralizeReplies(value any) string {
-	count := 0
-	switch typed := value.(type) {
-	case int:
-		count = typed
-	case float64:
-		count = int(typed)
-	case json.Number:
-		if parsed, err := typed.Int64(); err == nil {
-			count = int(parsed)
-		}
-	}
-	if count == 1 {
-		return "1 reply"
-	}
-	return strconv.Itoa(count) + " replies"
+	fmt.Fprintln(w, "Run flint <command> --help for flags. To ask Flint, run flint support open.")
 }
 
 // supportComposerContext is the terminal-side context the composer prefills.
@@ -270,10 +166,6 @@ func buildSupportComposerURL(base string, composer supportComposerContext) strin
 }
 
 func (a *App) localSupportOpen(cmd *Command, opts Options) int {
-	base, baseErr := helpStationBaseURL()
-	if baseErr != nil {
-		return a.fail(baseErr, opts)
-	}
 	area := lastRawOption(opts, "area")
 	if area != "" && !slices.Contains(supportProductAreas, area) {
 		return a.fail(usageError(
@@ -300,7 +192,7 @@ func (a *App) localSupportOpen(cmd *Command, opts Options) int {
 		Resource:    lastRawOption(opts, "resource"),
 		Environment: a.supportEnvironmentHint(opts),
 	}
-	target := buildSupportComposerURL(base, composer)
+	target := buildSupportComposerURL(helpStationURL, composer)
 	opened := false
 	// A browser is only useful for a human at a terminal. Machine modes and
 	// --no-open print the link so the caller can hand it on.

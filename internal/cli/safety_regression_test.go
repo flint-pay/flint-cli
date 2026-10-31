@@ -181,47 +181,33 @@ func TestSignupCancellationStopsBeforeKeyIssuance(t *testing.T) {
 	}
 }
 
-func TestStreamAndHelpReuseDefaultConnections(t *testing.T) {
-	for _, stream := range []bool{false, true} {
-		t.Run(fmt.Sprintf("stream=%v", stream), func(t *testing.T) {
-			var connections atomic.Int32
-			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if stream {
-					w.Header().Set("Content-Type", "text/event-stream")
-					io.WriteString(w, "event: ready\ndata: {}\n\n")
-				} else {
-					io.WriteString(w, `[]`)
-				}
-			}))
-			server.Config.ConnState = func(_ net.Conn, state http.ConnState) {
-				if state == http.StateNew {
-					connections.Add(1)
-				}
-			}
-			server.Start()
-			defer server.Close()
-			app, _, _ := testApp(t, server.URL)
-			for i := 0; i < 4; i++ {
-				if stream {
-					response, _, err := app.openListenStream(t.Context(), server.URL, "synthetic", "/v1/webhook-events/stream", "", time.Second, false)
-					if err != nil {
-						t.Fatal(err)
-					}
-					_, readErr := io.Copy(io.Discard, response.Body)
-					response.Body.Close()
-					if readErr != nil {
-						t.Fatal(readErr)
-					}
-				} else {
-					if _, err := app.searchFlintHelp(server.URL, "test", defaultOptions()); err != nil {
-						t.Fatal(err)
-					}
-				}
-			}
-			if count := connections.Load(); count != 1 {
-				t.Fatalf("opened %d connections, want 1", count)
-			}
-		})
+func TestStreamReusesDefaultConnections(t *testing.T) {
+	var connections atomic.Int32
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		io.WriteString(w, "event: ready\ndata: {}\n\n")
+	}))
+	server.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateNew {
+			connections.Add(1)
+		}
+	}
+	server.Start()
+	defer server.Close()
+	app, _, _ := testApp(t, server.URL)
+	for range 4 {
+		response, _, err := app.openListenStream(t.Context(), server.URL, "synthetic", "/v1/webhook-events/stream", "", time.Second, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, readErr := io.Copy(io.Discard, response.Body)
+		response.Body.Close()
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+	}
+	if count := connections.Load(); count != 1 {
+		t.Fatalf("opened %d connections, want 1", count)
 	}
 }
 

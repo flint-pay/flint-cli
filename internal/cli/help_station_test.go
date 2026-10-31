@@ -1,168 +1,202 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/flint-pay/flint-cli/internal/opindex"
 )
 
-const exhaustiveHelpSearchJSON = `[{"title":"Webhook signature check fails","url":"https://help.withflintpay.com/t/webhook-signature-check-fails","slug":"webhook-signature-check-fails","status":"answered","kind":"question","productArea":"webhooks","excerpt":"Verify against the raw body.","replyCount":3,"answered":true,"updatedAt":1756720800}]`
+func offlineHelpSearchApp(t *testing.T) (*App, *bytes.Buffer, *bytes.Buffer) {
+	t.Helper()
+	app, out, errOut := testApp(t, "http://127.0.0.1:1")
+	t.Setenv("FLINT_API_KEY", "")
+	t.Setenv("FLINT_ACCESS_TOKEN", "")
+	app.ConfigDir = t.TempDir() // Search also works with no saved profile.
+	t.Setenv("FLINT_HELP_URL", "ignored://retired-setting")
+	app.LoadCredential = func(string) (string, error) { t.Fatal("offline search read a credential"); return "", nil }
+	app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(*http.Request) (*http.Response, error) { t.Fatal("offline search sent a request"); return nil, nil })}
+	return app, out, errOut
+}
 
-func TestHelpSearchSendsQueryAndRendersResults(t *testing.T) {
-	var gotPath, gotQuery, gotLimit, gotAuthorization string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		gotPath = request.URL.Path
-		gotQuery = request.URL.Query().Get("q")
-		gotLimit = request.URL.Query().Get("limit")
-		gotAuthorization = request.Header.Get("Authorization")
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `[
-			{"title":"Webhook signature check fails","url":"https://help.withflintpay.com/t/sig","slug":"sig","status":"answered","kind":"question","productArea":"webhooks","excerpt":"Verify against the raw body.","replyCount":3,"answered":true,"updatedAt":1756720800},
-			{"title":"Retry after a 409","url":"https://help.withflintpay.com/t/retry","slug":"retry","status":"open","kind":"question","productArea":"api","excerpt":"Reuse the idempotency key.","replyCount":1,"answered":false,"updatedAt":1756807200}
-		]`)
-	}))
-	defer server.Close()
-
-	app, stdout, stderr := testApp(t, "")
-	t.Setenv("FLINT_HELP_URL", server.URL)
-	if exit := app.Run([]string{"help", "search", "webhook", "signature check"}); exit != ExitOK {
-		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
-	}
-	if gotPath != "/api/search" {
-		t.Errorf("path = %q, want /api/search", gotPath)
-	}
-	if gotQuery != "webhook signature check" {
-		t.Errorf("q = %q, want the joined query", gotQuery)
-	}
-	if gotLimit != "8" {
-		t.Errorf("limit = %q, want 8", gotLimit)
-	}
-	if gotAuthorization != "" {
-		t.Errorf("Flint Help search sent a credential: %q", gotAuthorization)
-	}
-	if stderr.Len() != 0 {
-		t.Errorf("stderr = %s", stderr)
-	}
-	output := stdout.String()
-	for _, want := range []string{
-		"1. Webhook signature check fails",
-		"✓ answered",
-		"webhooks",
-		"3 replies",
-		"https://help.withflintpay.com/t/sig",
-		"2. Retry after a 409",
-		"1 reply",
-		"Ask your own: " + server.URL + "/new?kind=question&source=cli.help",
+func TestHelpSearchOfflineOutput(t *testing.T) {
+	for _, tc := range []struct {
+		query, want, kind string
+		top               int
+	}{
+		{"forward webhooks to localhost", "listen", "command", 1},
+		{"exit codes", "exit-codes", "topic", 1},
+		{"api schema for a command", "schema.input", "command", 3},
+		{"POST /v1/refunds", "refunds.create", "command", 1},
+		{"payment succeeded event", "payment_intent.succeeded", "event", 1},
+		{"test card", "test-cards", "topic", 1},
 	} {
-		if !strings.Contains(output, want) {
-			t.Errorf("human output is missing %q:\n%s", want, output)
+		for _, jsonOutput := range []bool{false, true} {
+			app, out, errOut := offlineHelpSearchApp(t)
+			argv := append([]string{"help", "search"}, strings.Fields(tc.query)...)
+			if jsonOutput {
+				argv = append(argv, "--output", "json")
+			}
+			if exit := app.Run(argv); exit != ExitOK || errOut.Len() != 0 {
+				t.Fatalf("exit=%d stdout=%s stderr=%s", exit, out, errOut)
+			}
+			if !jsonOutput {
+				label := strings.ReplaceAll(tc.want, ".", " ")
+				if tc.kind == "event" {
+					label = "help events " + tc.want
+				}
+				if !strings.Contains(out.String(), label) || !strings.Contains(out.String(), "flint support open") {
+					t.Fatal(out)
+				}
+				continue
+			}
+			var value map[string]any
+			if err := json.Unmarshal(out.Bytes(), &value); err != nil {
+				t.Fatal(err)
+			}
+			data := value["data"].(map[string]any)
+			results := data["results"].([]any)
+			if data["query"] != tc.query || len(results) == 0 || len(results) > 8 || data["ask_url"] != nil {
+				t.Fatal(data)
+			}
+			found := false
+			for i, raw := range results {
+				result := raw.(map[string]any)
+				if i < tc.top && result["name"] == tc.want && result["type"] == tc.kind {
+					found = true
+				}
+				if result["type"] == "command" {
+					cmd, _ := app.Registry.ByName(result["name"].(string))
+					want := map[string]any{"name": cmd.Name, "type": "command", "command": strings.Join(cmd.Path, " "), "description": cmd.Description, "section": cmd.Section, "method": cmd.Method, "api_path": cmd.APIPath, "operation_id": cmd.OperationID}
+					if !reflect.DeepEqual(result, want) {
+						t.Fatalf("got=%v want=%v", result, want)
+					}
+				} else {
+					want := "flint help " + result["name"].(string)
+					if result["type"] == "event" {
+						want = "flint help events " + result["name"].(string)
+					}
+					if result["command"] != want || result["description"] == "" {
+						t.Fatal(result)
+					}
+				}
+			}
+			if !found {
+				t.Fatalf("%s: want %s in top %d: %v", tc.query, tc.want, tc.top, results)
+			}
 		}
 	}
-	if strings.Contains(output, "2. Retry after a 409  ✓ answered") {
-		t.Errorf("unanswered thread was marked answered:\n%s", output)
-	}
 }
 
-func TestHelpSearchJSONOutputCarriesEveryField(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, exhaustiveHelpSearchJSON)
-	}))
-	defer server.Close()
-
-	app, stdout, stderr := testApp(t, "")
-	t.Setenv("FLINT_HELP_URL", server.URL)
-	if exit := app.Run([]string{"help", "search", "webhook", "--output", "json"}); exit != ExitOK {
-		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
-	}
-	var envelope struct {
-		Data struct {
-			Query   string `json:"query"`
-			AskURL  string `json:"ask_url"`
-			Results []struct {
-				Title       string `json:"title"`
-				URL         string `json:"url"`
-				Slug        string `json:"slug"`
-				Status      string `json:"status"`
-				Kind        string `json:"kind"`
-				ProductArea string `json:"product_area"`
-				Excerpt     string `json:"excerpt"`
-				ReplyCount  int    `json:"reply_count"`
-				Answered    bool   `json:"answered"`
-				UpdatedAt   int64  `json:"updated_at"`
-			} `json:"results"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(stdout.Bytes(), &envelope); err != nil {
-		t.Fatalf("decode output: %v: %s", err, stdout)
-	}
-	if envelope.Data.Query != "webhook" {
-		t.Errorf("query = %q", envelope.Data.Query)
-	}
-	if envelope.Data.AskURL != server.URL+"/new?kind=question&source=cli.help" {
-		t.Errorf("ask_url = %q", envelope.Data.AskURL)
-	}
-	if len(envelope.Data.Results) != 1 {
-		t.Fatalf("results = %#v", envelope.Data.Results)
-	}
-	result := envelope.Data.Results[0]
-	if result.Title != "Webhook signature check fails" || result.Slug != "webhook-signature-check-fails" ||
-		result.ProductArea != "webhooks" || result.ReplyCount != 3 || !result.Answered ||
-		result.Status != "answered" || result.Kind != "question" ||
-		result.Excerpt != "Verify against the raw body." || result.UpdatedAt != 1756720800 ||
-		result.URL != "https://help.withflintpay.com/t/webhook-signature-check-fails" {
-		t.Errorf("result = %#v", result)
-	}
-}
-
-func TestHelpSearchReportsEmptyResultsAndServerFailures(t *testing.T) {
-	empty := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `[]`)
-	}))
-	defer empty.Close()
-	app, stdout, stderr := testApp(t, "")
-	t.Setenv("FLINT_HELP_URL", empty.URL)
-	if exit := app.Run([]string{"help", "search", "nothing", "matches"}); exit != ExitOK || stderr.Len() != 0 {
-		t.Fatalf("exit=%d stderr=%s", exit, stderr)
-	}
-	if !strings.Contains(stdout.String(), "No Flint Help threads matched") ||
-		!strings.Contains(stdout.String(), "Ask your own: ") {
-		t.Errorf("empty output = %s", stdout)
-	}
-
-	broken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "down", http.StatusBadGateway)
-	}))
-	defer broken.Close()
-	app, stdout, stderr = testApp(t, "")
-	t.Setenv("FLINT_HELP_URL", broken.URL)
-	if exit := app.Run([]string{"help", "search", "anything"}); exit != ExitAPI {
-		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
-	}
-	if !strings.Contains(stderr.String(), "HTTP 502") {
-		t.Errorf("stderr = %s", stderr)
-	}
-}
-
-func TestHelpSearchRequiresAQueryAndAValidHelpURL(t *testing.T) {
-	app, stdout, stderr := testApp(t, "")
+func TestHelpSearchNoMatchesAndMissingQuery(t *testing.T) {
+	app, out, errOut := offlineHelpSearchApp(t)
 	if exit := app.Run([]string{"help", "search"}); exit != ExitUsage {
-		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
+		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, out, errOut)
 	}
+	for _, jsonOutput := range []bool{false, true} {
+		app, out, errOut = offlineHelpSearchApp(t)
+		argv := []string{"help", "search", "zzzxxyyq"}
+		if jsonOutput {
+			argv = append(argv, "--output", "json")
+		}
+		if exit := app.Run(argv); exit != ExitOK || errOut.Len() != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", exit, out, errOut)
+		}
+		if !strings.Contains(out.String(), "Try fewer words") || !strings.Contains(out.String(), "flint help --all") {
+			t.Fatal(out)
+		}
+		if jsonOutput && !strings.Contains(out.String(), `"results":[]`) {
+			t.Fatal(out)
+		}
+	}
+}
 
-	app, _, stderr = testApp(t, "")
-	t.Setenv("FLINT_HELP_URL", "help.withflintpay.com")
-	if exit := app.Run([]string{"help", "search", "webhooks"}); exit != ExitAuth {
-		t.Fatalf("exit=%d stderr=%s", exit, stderr)
+func TestHelpSearchEveryResultResolves(t *testing.T) {
+	app, _, _ := offlineHelpSearchApp(t)
+	index, err := app.operationIndex()
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(stderr.String(), "FLINT_HELP_URL") {
-		t.Errorf("stderr = %s", stderr)
+	filter := app.cliSearchFilter()
+	for _, entry := range index.Entries {
+		if entry.ID == "safety" || entry.ID == "history.clear" {
+			if filter.Exposed(entry) {
+				t.Fatalf("synthetic or unsupported result exposed: %s", entry.ID)
+			}
+			continue
+		}
+		if !filter.Exposed(entry) {
+			t.Fatalf("terminal entry missing: %s", entry.ID)
+		}
+		switch entry.Type {
+		case "operation":
+			cmd, ok := app.Registry.ByName(entry.ID)
+			if !ok {
+				t.Fatal(entry.ID)
+			}
+			resolved := app.Registry.resolveWords(cmd.Path[1:])
+			if resolved.Command != cmd {
+				t.Fatalf("invalid command link %v", cmd.Path)
+			}
+		case "event":
+			resolved := app.Registry.commandTree().Resolve([]string{"events", entry.ID})
+			if resolved.Topic != "events" || !reflect.DeepEqual(resolved.Arguments, []string{entry.ID}) {
+				t.Fatalf("invalid event link %s: %+v", entry.ID, resolved)
+			}
+			if _, err := eventHelpDetail(entry.ID); err != nil {
+				t.Fatalf("event link has no help %s: %v", entry.ID, err)
+			}
+		case "topic":
+			if resolved := app.Registry.commandTree().Resolve([]string{entry.ID}); resolved.Topic != entry.ID {
+				t.Fatalf("invalid topic link %s: %+v", entry.ID, resolved)
+			}
+		}
+	}
+}
+
+func TestHelpSearchMatchesMCPSearch(t *testing.T) {
+	app, _, _ := offlineHelpSearchApp(t)
+	index, err := app.operationIndex()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cliFilter := app.cliSearchFilter()
+	cliFilter.Limit = len(index.Entries)
+	mcpFilter := opindex.Filter{Limit: len(index.Entries), Exposed: func(e opindex.Entry) bool { return e.MCP }}
+	for _, query := range []string{"refund an order", "forward webhooks to localhost", "exit codes", "api schema for a command", "POST /v1/refunds", "payment succeeded event", "test card", "orders.line-items"} {
+		cliHits, _ := index.Search(query, cliFilter)
+		mcpHits, _ := index.Search(query, mcpFilter)
+		cliIDs, mcpIDs := []string{}, []string{}
+		for _, hit := range cliHits {
+			if mcpFilter.Exposed(hit.Entry) {
+				cliIDs = append(cliIDs, hit.ID)
+			}
+		}
+		for _, hit := range mcpHits {
+			if cliFilter.Exposed(hit.Entry) {
+				mcpIDs = append(mcpIDs, hit.ID)
+			}
+		}
+		if !reflect.DeepEqual(cliIDs, mcpIDs) {
+			t.Fatalf("%s CLI=%v MCP=%v", query, cliIDs, mcpIDs)
+		}
+	}
+}
+
+func TestHelpSearchIgnoresConfiguredCredentials(t *testing.T) {
+	for _, credential := range []string{"synthetic_merchant_key", "flint_cses_synthetic"} {
+		app, out, errOut := offlineHelpSearchApp(t)
+		t.Setenv("FLINT_ACCESS_TOKEN", credential)
+		if exit := app.Run([]string{"help", "search", "exit", "codes"}); exit != ExitOK || errOut.Len() != 0 {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", exit, out, errOut)
+		}
 	}
 }
 
@@ -219,7 +253,7 @@ func TestSupportComposerURLBuilding(t *testing.T) {
 
 func TestSupportOpenPrintsTheComposerLinkWithoutOpeningABrowser(t *testing.T) {
 	app, stdout, stderr := testApp(t, "")
-	t.Setenv("FLINT_HELP_URL", "https://help.example.com")
+	t.Setenv("FLINT_HELP_URL", "ignored://retired-setting")
 	t.Setenv("FLINT_API_KEY", "flint_test_key")
 	exit := app.Run([]string{
 		"support", "open",
@@ -232,7 +266,7 @@ func TestSupportOpenPrintsTheComposerLinkWithoutOpeningABrowser(t *testing.T) {
 	if exit != ExitOK || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
-	want := "https://help.example.com/new?kind=question&area=payments&visibility=private&env=sandbox&resource=pi_123&request_id=req_123&source=cli.support"
+	want := "https://help.withflintpay.com/new?kind=question&area=payments&visibility=private&env=sandbox&resource=pi_123&request_id=req_123&source=cli.support"
 	if !strings.Contains(stdout.String(), want) {
 		t.Errorf("stdout = %s, want the composer link %s", stdout, want)
 	}
@@ -333,7 +367,7 @@ func TestSupportOpenDerivesTheEnvironmentFromTheCredential(t *testing.T) {
 	} {
 		t.Run(key, func(t *testing.T) {
 			app, stdout, stderr := testApp(t, "")
-			t.Setenv("FLINT_HELP_URL", "https://help.example.com")
+			t.Setenv("FLINT_HELP_URL", "ignored://retired-setting")
 			t.Setenv("FLINT_API_KEY", key)
 			if exit := app.Run([]string{"support", "open", "--no-open", "--output", "json"}); exit != ExitOK {
 				t.Fatalf("exit=%d stderr=%s", exit, stderr)
@@ -380,7 +414,7 @@ func TestSupportProductAreasMatchHelpComposer(t *testing.T) {
 		t.Fatalf("support product areas = %v, want %v", supportProductAreas, want)
 	}
 	app, stdout, stderr := testApp(t, "http://127.0.0.1:1")
-	t.Setenv("FLINT_HELP_URL", "https://help.example.com")
+	t.Setenv("FLINT_HELP_URL", "ignored://retired-setting")
 	if exit := app.Run([]string{"support", "open", "--area", "disputes", "--no-open", "--output", "json"}); exit != ExitOK {
 		t.Fatalf("exit=%d stderr=%s", exit, stderr)
 	}
@@ -438,5 +472,16 @@ func TestSupportOpenIsNotOfferedToAgentsOverMCP(t *testing.T) {
 	}
 	if !mcpCommandExposed(search) {
 		t.Error("help.search should be available to agents over MCP")
+	}
+}
+
+func TestHelpSearchUnknownTopicKeepsSuggestions(t *testing.T) {
+	app, out, _ := offlineHelpSearchApp(t)
+	exit, value := runJSON(t, app, out, "help", "custmers")
+	if exit != ExitUsage || lookupPathValue(value, "error.code") != "UNKNOWN_COMMAND" {
+		t.Fatalf("unknown help topic exit=%d value=%v", exit, value)
+	}
+	if !strings.Contains(fmt.Sprint(lookupPathValue(value, "error.details.suggestions")), "customers") || !strings.Contains(fmt.Sprint(lookupPathValue(value, "error.message")), "flint help search custmers") {
+		t.Fatalf("unknown help topic lost discovery guidance: %v", value)
 	}
 }

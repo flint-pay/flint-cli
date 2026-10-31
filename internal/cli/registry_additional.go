@@ -36,15 +36,15 @@ func additionalCommands(page []Arg, input Arg) []*Command {
 		{Name: "help", CanonicalName: "help", Path: pathWithFlint("help"), Description: "Show command help or an offline reference topic", Local: true, Arguments: []Arg{{Name: "topic", Type: "string", Positional: 1, Variadic: true, Description: "A command such as customers.create, or a topic: " + strings.Join(helpTopicNames, ", ")}}, Examples: ex("flint help test-cards", "flint help exit-codes")},
 		{
 			Name: "help.search", CanonicalName: "help.search", Path: pathWithFlint("help", "search"),
-			Description: "Search Flint Help for community answers and support threads",
+			Description: "Find commands, webhook events, and reference topics offline",
 			Local:       true,
 			Arguments: []Arg{{
 				Name: "query", Type: "string", Required: true, Positional: 1, Variadic: true,
 				Description: "Words to search for; the rest of the line is the query",
 			}},
 			Examples: ex(
-				"flint help search webhook signature verification",
-				"flint help search payout on hold --output json",
+				"flint help search forward webhooks to localhost",
+				"flint help search refund an order --output json",
 			),
 		},
 		{

@@ -111,8 +111,7 @@ func (a *App) mcpObservedHTTPClient(observer *mcpEnvironmentObserver) *http.Clie
 	if a.HTTPClient != nil {
 		client = *a.HTTPClient
 	} else {
-		// Keep the shared pool. A nil redirect policy lets each caller apply
-		// its own: API requests reject redirects, help searches follow them.
+		// Keep the shared pool; API callers apply their redirect policy.
 		client = *defaultAPIHTTPClient
 		client.CheckRedirect = nil
 	}

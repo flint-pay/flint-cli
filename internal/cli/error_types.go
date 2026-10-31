@@ -12,7 +12,6 @@ const (
 	errorTypeNetwork              = "network_error"
 	errorTypeRateLimit            = "rate_limit_error"
 	errorTypeTimeout              = "timeout_error"
-	errorTypeUnavailable          = "unavailable_error"
 	errorTypeUpgrade              = "upgrade_error"
 	errorTypeUsage                = "usage_error"
 	errorTypeValidation           = "validation_error"
@@ -29,7 +28,6 @@ var localErrorTypes = []string{
 	errorTypeNetwork,
 	errorTypeRateLimit,
 	errorTypeTimeout,
-	errorTypeUnavailable,
 	errorTypeUpgrade,
 	errorTypeUsage,
 	errorTypeValidation,
