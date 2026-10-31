@@ -87,7 +87,7 @@ func applyArgumentValues(cmd *Command) {
 		case "config.set/value":
 			arg.Description = "Value to save for the setting"
 		case "config.unset/key":
-			arg.Enum = []string{"merchant"}
+			arg.Enum = []string{"profile", "merchant"}
 			arg.Description = "Saved profile setting to clear"
 		case "context.switch/context_id":
 			arg.Description = "Authorized context to activate; omit to choose interactively"

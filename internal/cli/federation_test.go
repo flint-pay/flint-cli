@@ -268,6 +268,9 @@ func TestFederationPrecedenceAndContexts(t *testing.T) {
 	}))
 	defer server.Close()
 	app := federationApp(t, server.URL)
+	if err := app.updateConfig(func(cfg *Config) error { cfg.Profiles["environment-only"] = profileWithoutCredential(); return nil }); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("FLINT_PROFILE", "environment-only")
 	t.Setenv("FLINT_ACCESS_TOKEN", "workload_identity")
 	t.Setenv("FLINT_API_KEY", "flint_test_synthetic")

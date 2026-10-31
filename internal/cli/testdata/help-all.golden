@@ -5,12 +5,12 @@ Developer tools:
   flint api-request-logs list                                       List API request logs
   flint auth import                                                 Manually import and validate a Flint API key
   flint auth login                                                  Sign in through the Flint website (recommended for local development)
-  flint auth logout                                                 Revoke the active OAuth session and remove the profile credential
+  flint auth logout                                                 Revoke the active OAuth session and delete the active profile
   flint auth reauth                                                 Change authorized contexts or add scopes in the browser
   flint auth status                                                 Fetch the current credential context from the API without using cached metadata
   flint auth token                                                  Export an OAuth or workload identity access token as JSON
   flint completion <shell>                                          Print an offline bash, zsh, or fish completion script
-  flint config get                                                  Print resolved Flint CLI configuration
+  flint config get                                                  Print resolved Flint CLI configuration and saved profiles
   flint config set <key> <value>                                    Set profile or merchant guard configuration
   flint config unset <key>                                          Clear a saved profile setting
   flint config validate                                             Validate global and project Flint configuration
@@ -22,7 +22,7 @@ Developer tools:
   flint help [<topic>...]                                           Show command help or an offline reference topic
   flint help search <query>...                                      Find commands, webhook events, and reference topics offline
   flint history                                                     List or clear recent Flint resource IDs
-  flint init                                                        Initialize Flint CLI context
+  flint init                                                        Write or validate .flint/config.json project guards; commit this file with your project
   flint listen                                                      Forward Flint webhook events to a local endpoint using the local HMAC listen secret, regardless of endpoint signing methods. JWT handlers need an HMAC path or a local test bypass
   flint mcp serve                                                   Discover and run Flint operations with five MCP tools over stdio (UTF-8 JSON, string or safe integer request IDs). Uses the CLI credential: FLINT_API_KEY, the FLINT_PROFILE (or --profile) profile, or a saved flint login
   flint openapi get                                                 Get OpenAPI spec
