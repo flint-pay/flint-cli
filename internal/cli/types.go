@@ -43,6 +43,8 @@ type Arg struct {
 }
 
 type Command struct {
+	Section             string                `json:"section"`
+	Audience            string                `json:"audience"`
 	Kind                string                `json:"kind,omitempty"`
 	Group               bool                  `json:"-"`
 	Name                string                `json:"name"`

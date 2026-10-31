@@ -515,7 +515,14 @@ func (a *App) localSchema(cmd *Command, opts Options) int {
 	switch cmd.CanonicalName {
 	case "schema.commands":
 		commands := commandList(a.Registry)
-		if prefix := commandNameFromWords(opts.Positionals); prefix != "" {
+		prefix := commandNameFromWords(opts.Positionals)
+		resolution := a.Registry.commandTree().Resolve(opts.Positionals)
+		if resolution.Command != nil {
+			prefix = resolution.Command.Name
+		} else if resolution.Group != nil {
+			prefix = resolution.Group.Name
+		}
+		if prefix != "" {
 			filtered := []map[string]any{}
 			for _, command := range commands {
 				if name := command["name"].(string); name == prefix || strings.HasPrefix(name, prefix+".") {
@@ -557,8 +564,9 @@ func (a *App) localSchema(cmd *Command, opts Options) int {
 		}
 	default:
 		requested := commandNameFromWords(opts.Positionals)
-		target, ok := a.Registry.ByName(requested)
-		if !ok {
+		resolution := a.Registry.commandTree().Resolve(opts.Positionals)
+		target := resolution.Command
+		if target == nil {
 			suggestions := commandNameSuggestions(a.Registry, requested, false)
 			message := "Unknown command: " + requested + "."
 			if requested != "" && len(a.Registry.commandsUnder(pathWithFlint(strings.Split(requested, ".")...))) > 0 {
@@ -573,7 +581,7 @@ func (a *App) localSchema(cmd *Command, opts Options) int {
 		var e *CLIError
 		switch cmd.CanonicalName {
 		case "schema.command":
-			value = map[string]any{"data": commandDocument(target, requested)}
+			value = map[string]any{"data": commandDocument(target, target.Name)}
 		case "schema.input":
 			value, e = requestBodySchema(target)
 		default:
@@ -600,48 +608,53 @@ func (a *App) localSchema(cmd *Command, opts Options) int {
 }
 
 func (a *App) localHelp(cmd *Command, opts Options) int {
-	a.Registry.ensureAPICommands()
-	topic := ""
-	if len(opts.Positionals) > 0 {
-		topic = opts.Positionals[0]
-	}
-	if topic == "" {
+	tree := a.Registry.commandTree()
+	if len(opts.Positionals) == 0 {
 		if opts.Output == "json" {
-			return a.outputLocal(map[string]any{"data": rootHelpIndex(a.Registry)}, cmd, opts)
+			index := rootHelpIndex(a.Registry)
+			if opts.All {
+				index["sections"] = rootHelpSections(tree, true)
+			}
+			return a.outputLocal(map[string]any{"data": index}, cmd, opts)
 		}
-		a.printRootHelp()
+		a.printTreeRootHelp(opts.All)
 		return ExitOK
 	}
-	if target, ok := a.Registry.ByName(topic); ok {
-		if opts.Output == "json" {
-			return a.outputLocal(map[string]any{"data": commandDocument(target, topic)}, cmd, opts)
+	resolution := tree.Resolve(opts.Positionals)
+	if resolution.Command != nil {
+		if resolution.Command.CanonicalName == "help" {
+			opts.Positionals = resolution.Arguments
+			return a.localHelp(resolution.Command, opts)
 		}
-		a.printCommandHelp(target)
-		return ExitOK
+		return a.showCommandHelp(resolution.Command, opts)
 	}
-	value, ok := helpTopic(topic)
-	if topic == "events" && len(opts.Positionals) > 1 {
+	if resolution.Group != nil {
+		return a.showCommandHelp(groupCommand(resolution.Group), opts)
+	}
+	if resolution.Topic == "" {
+		input := strings.Join(commandWords(opts.Positionals), " ")
+		e := usageError("UNKNOWN_COMMAND", "Unknown command or topic: "+input+". Run flint help search "+input+" to find commands.", "topic")
+		e.Details = suggestionDetails(input, resolution.Suggestions)
+		return a.fail(e, opts)
+	}
+	topic := resolution.Topic
+	value, _ := helpTopic(topic)
+	if topic == "events" && len(resolution.Arguments) > 0 {
+		if len(resolution.Arguments) > 1 {
+			return a.fail(usageError("UNEXPECTED_ARGUMENT", "help events accepts one event type.", "event_type"), opts)
+		}
 		var e *CLIError
-		value, e = eventHelpDetail(opts.Positionals[1])
+		value, e = eventHelpDetail(resolution.Arguments[0])
 		if e != nil {
 			return a.fail(e, opts)
 		}
-	} else if len(opts.Positionals) > 1 {
-		return a.fail(usageError("UNEXPECTED_ARGUMENT", "Only help events accepts an event type.", "event_type"), opts)
-	}
-	if !ok {
-		// The offline topics are a short fixed list. Anything else is a question,
-		// and questions belong in Flint Help rather than in a dead end here.
-		unknown := usageError("UNKNOWN_HELP_TOPIC", "Unknown help topic: "+topic+". Topics: "+strings.Join(helpTopicNames, ", ")+".", "topic")
-		unknown.Details = map[string]any{"topics": helpTopicNames, "remediation": map[string]any{"next_actions": []any{
-			map[string]any{"command": "flint help search " + topic},
-		}}}
-		return a.fail(unknown, opts)
+	} else if len(resolution.Arguments) > 0 {
+		return a.fail(usageError("UNEXPECTED_ARGUMENT", "Only help events accepts an event type.", "topic"), opts)
 	}
 	if opts.Output == "json" {
 		return a.outputLocal(map[string]any{"data": value}, cmd, opts)
 	}
-	if topic == "events" && len(opts.Positionals) == 1 {
+	if topic == "events" && len(resolution.Arguments) == 0 {
 		for _, event := range value["events"].([]map[string]any) {
 			fmt.Fprintf(a.Stdout, "%-56s %s\n", event["type"], event["description"])
 		}

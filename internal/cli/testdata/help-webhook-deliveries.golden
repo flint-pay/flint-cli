@@ -1,0 +1,13 @@
+Webhook endpoints, events, deliveries, and test events.
+
+Usage:
+  flint webhook-deliveries <command> [flags]
+
+Commands:
+  attempts list <webhook_delivery_id>          List webhook delivery attempts           GET /v1/webhook-deliveries/{webhook_delivery_id}/attempts
+  create                                       Create webhook delivery                  POST /v1/webhook-deliveries
+  get <webhook_delivery_id>                    Get webhook delivery                     GET /v1/webhook-deliveries/{webhook_delivery_id}
+  list                                         List webhook deliveries                  GET /v1/webhook-deliveries
+  resend <webhook_delivery_id>                 Resend webhook delivery                  POST /v1/webhook-deliveries/{webhook_delivery_id}/resend
+
+Run flint webhook-deliveries <command> --help for flags and examples.

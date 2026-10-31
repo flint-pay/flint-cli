@@ -448,8 +448,12 @@ func assertBuiltCLIHelp(t *testing.T, bin string, path []string, command *cli.Co
 	if !strings.Contains(text, "Usage:") || !strings.Contains(text, strings.Join(command.Path, " ")) {
 		t.Fatalf("%s returned incomplete help:\n%s", strings.Join(argv, " "), text)
 	}
-	if !strings.Contains(text, "Examples:") {
-		t.Fatalf("%s omitted examples:\n%s", strings.Join(argv, " "), text)
+	section := "Examples:"
+	if command.CanonicalName == "help" {
+		section = "Start here:"
+	}
+	if !strings.Contains(text, section) {
+		t.Fatalf("%s omitted %s:\n%s", strings.Join(argv, " "), section, text)
 	}
 }
 

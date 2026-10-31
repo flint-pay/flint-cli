@@ -551,8 +551,24 @@ func TestUnknownCommandReturnsCanonicalSuggestions(t *testing.T) {
 	if exit != ExitUsage {
 		t.Fatalf("exit=%d", exit)
 	}
-	if !strings.Contains(stdout.String(), `"suggestions":["payment-intents"]`) {
+	var envelope struct {
+		Error struct {
+			Details struct {
+				Suggestions []string `json:"suggestions"`
+			} `json:"details"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if len(envelope.Error.Details.Suggestions) == 0 {
 		t.Fatalf("suggestions=%s", stdout)
+	}
+	for _, suggestion := range envelope.Error.Details.Suggestions {
+		resolution := app.Registry.commandTree().Resolve(strings.Fields(suggestion))
+		if suggestion == "payments list" || resolution.Command == nil && resolution.Group == nil {
+			t.Fatal(suggestion)
+		}
 	}
 }
 

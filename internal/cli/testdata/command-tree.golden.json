@@ -2,3172 +2,4452 @@
   {
     "name": "analytics.overview.get",
     "operation_id": "getAnalyticsOverview",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "analytics.payment-volume-timeseries.get",
     "operation_id": "getPaymentVolumeTimeseries",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "analytics.subscriptions.get",
     "operation_id": "getSubscriptionAnalytics",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "api",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "api-keys.create",
     "operation_id": "createAPIKey",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "api-keys.get",
     "operation_id": "getAPIKey",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "api-keys.list",
     "operation_id": "listAPIKeys",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "api-keys.revoke",
     "operation_id": "revokeAPIKey",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "api-keys.update",
     "operation_id": "updateAPIKey",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "api-request-logs.get",
     "operation_id": "getAPIRequestLog",
-    "kind": "item"
+    "kind": "item",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "api-request-logs.list",
     "operation_id": "listAPIRequestLogs",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "auth.import",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "auth.login",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "auth.logout",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "auth.reauth",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "auth.status",
     "operation_id": "getAuthContext",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "auth.token",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "balance-transactions.get",
     "operation_id": "getBalanceTransaction",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "balance-transactions.list",
     "operation_id": "listBalanceTransactions",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "balances.list",
     "operation_id": "listBalances",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "bundles.components.list",
     "operation_id": "listBundleComponents",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "bundles.create",
     "operation_id": "createBundle",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "bundles.delete",
     "operation_id": "deleteBundle",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "bundles.get",
     "operation_id": "getBundle",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "bundles.list",
     "operation_id": "listBundles",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "bundles.update",
     "operation_id": "updateBundle",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "categories.create",
     "operation_id": "createCategory",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "categories.delete",
     "operation_id": "deleteCategory",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "categories.get",
     "operation_id": "getCategory",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "categories.list",
     "operation_id": "listCategories",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "categories.update",
     "operation_id": "updateCategory",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "checkout-sessions.close",
     "operation_id": "closeCheckoutSession",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "checkout-sessions.create",
     "operation_id": "createCheckoutSession",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "checkout-sessions.customer-verifications.confirm",
     "operation_id": "confirmCheckoutSessionCustomerVerification",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "buyer"
   },
   {
     "name": "checkout-sessions.customer-verifications.create",
     "operation_id": "createCheckoutSessionCustomerVerification",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "buyer"
   },
   {
     "name": "checkout-sessions.delivery-quotes.create",
     "operation_id": "createCheckoutSessionDeliveryQuote",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "checkout-sessions.delivery-quotes.get",
     "operation_id": "getCheckoutSessionDeliveryQuote",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "checkout-sessions.delivery-selections.create",
     "operation_id": "createCheckoutSessionDeliverySelection",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "checkout-sessions.delivery-selections.current.delete",
     "operation_id": "deleteCheckoutSessionCurrentDeliverySelection",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "checkout-sessions.delivery-selections.current.get",
     "operation_id": "getCheckoutSessionCurrentDeliverySelection",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "checkout-sessions.delivery-selections.get",
     "operation_id": "getCheckoutSessionDeliverySelection",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "checkout-sessions.delivery-selections.list",
     "operation_id": "listCheckoutSessionDeliverySelections",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "checkout-sessions.get",
     "operation_id": "getCheckoutSession",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "checkout-sessions.list",
     "operation_id": "listCheckoutSessions",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "checkout-sessions.update",
     "operation_id": "updateCheckoutSession",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "config.get",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "config.set",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "config.unset",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "config.validate",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "context.list",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "context.switch",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "credit-notes.allocations.create",
     "operation_id": "createCreditNoteAllocation",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "credit-notes.allocations.get",
     "operation_id": "getCreditNoteAllocation",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "credit-notes.allocations.list",
     "operation_id": "listCreditNoteAllocations",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "credit-notes.allocations.reverse",
     "operation_id": "reverseCreditNoteAllocation",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "credit-notes.create",
     "operation_id": "createCreditNote",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "credit-notes.get",
     "operation_id": "getCreditNote",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "credit-notes.issue",
     "operation_id": "issueCreditNote",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "credit-notes.list",
     "operation_id": "listCreditNotes",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "credit-notes.pdf.get",
     "operation_id": "getCreditNotePDF",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "credit-notes.refunds.create",
     "operation_id": "createCreditNoteRefund",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "credit-notes.refunds.list",
     "operation_id": "listCreditNoteRefunds",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "credit-notes.update",
     "operation_id": "updateCreditNote",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "credit-notes.void",
     "operation_id": "voidCreditNote",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "custom-domains.create",
     "operation_id": "createCustomDomain",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "custom-domains.delete",
     "operation_id": "deleteCustomDomain",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "custom-domains.get",
     "operation_id": "getCustomDomain",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "custom-domains.list",
     "operation_id": "listCustomDomains",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "custom-domains.validate",
     "operation_id": "validateCustomDomain",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customer-deletion-requests.create",
     "operation_id": "createCustomerDeletionRequest",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customer-deletion-requests.get",
     "operation_id": "getCustomerDeletionRequest",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customer-deletion-requests.list",
     "operation_id": "listCustomerDeletionRequests",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customer-deletion-requests.resolve",
     "operation_id": "resolveCustomerDeletionRequest",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customer-sessions.create",
     "operation_id": "createCustomerSession",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customer-sessions.refresh",
     "operation_id": "refreshCustomerSession",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "keyless"
   },
   {
     "name": "customer-sessions.revoke",
     "operation_id": "revokeCustomerSession",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customer-verifications.confirm",
     "operation_id": "confirmCustomerVerification",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customer-verifications.create",
     "operation_id": "createCustomerVerification",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customers.access-links.create",
     "operation_id": "createCustomerAccessLink",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customers.addresses.create",
     "operation_id": "createCustomerAddress",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customers.addresses.delete",
     "operation_id": "deleteCustomerAddress",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customers.addresses.get",
     "operation_id": "getCustomerAddress",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customers.addresses.list",
     "operation_id": "listCustomerAddresses",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customers.addresses.update",
     "operation_id": "updateCustomerAddress",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customers.create",
     "operation_id": "createCustomer",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customers.get",
     "operation_id": "getCustomer",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customers.link-guest-purchases",
     "operation_id": "linkCustomerGuestPurchases",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customers.list",
     "operation_id": "listCustomers",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customers.sessions.revoke",
     "operation_id": "revokeCustomerSessions",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "customers.update",
     "operation_id": "updateCustomer",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-location-sets.create",
     "operation_id": "createDeliveryLocationSet",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-location-sets.delete",
     "operation_id": "deleteDeliveryLocationSet",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-location-sets.get",
     "operation_id": "getDeliveryLocationSet",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-location-sets.list",
     "operation_id": "listDeliveryLocationSets",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-location-sets.update",
     "operation_id": "updateDeliveryLocationSet",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-methods.create",
     "operation_id": "createDeliveryMethod",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-methods.delete",
     "operation_id": "deleteDeliveryMethod",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-methods.get",
     "operation_id": "getDeliveryMethod",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-methods.list",
     "operation_id": "listDeliveryMethods",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-methods.update",
     "operation_id": "updateDeliveryMethod",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-previews.create",
     "operation_id": "createDeliveryPreview",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-profiles.assign-to-unconfigured",
     "operation_id": "assignToUnconfiguredDeliveryProfile",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-profiles.create",
     "operation_id": "createDeliveryProfile",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-profiles.delete",
     "operation_id": "deleteDeliveryProfile",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-profiles.get",
     "operation_id": "getDeliveryProfile",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-profiles.list",
     "operation_id": "listDeliveryProfiles",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-profiles.update",
     "operation_id": "updateDeliveryProfile",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-quotes.get",
     "operation_id": "getDeliveryQuote",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-quotes.list",
     "operation_id": "listDeliveryQuotes",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-rate-callbacks.check-connection",
     "operation_id": "checkDeliveryRateCallbackConnection",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-rate-callbacks.create",
     "operation_id": "createDeliveryRateCallback",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-rate-callbacks.delete",
     "operation_id": "deleteDeliveryRateCallback",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-rate-callbacks.get",
     "operation_id": "getDeliveryRateCallback",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-rate-callbacks.list",
     "operation_id": "listDeliveryRateCallbacks",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-rate-callbacks.rotate-secret",
     "operation_id": "rotateDeliveryRateCallbackSigningKey",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-rate-callbacks.test-deliveries.create",
     "operation_id": "createDeliveryRateCallbackTestDelivery",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-rate-callbacks.update",
     "operation_id": "updateDeliveryRateCallback",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-revocations.create",
     "operation_id": "revokeDeliveryDependency",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-revocations.get",
     "operation_id": "getDeliveryRevocation",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-revocations.list",
     "operation_id": "listDeliveryRevocations",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-zones.create",
     "operation_id": "createDeliveryZone",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-zones.delete",
     "operation_id": "deleteDeliveryZone",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-zones.get",
     "operation_id": "getDeliveryZone",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-zones.list",
     "operation_id": "listDeliveryZones",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "delivery-zones.update",
     "operation_id": "updateDeliveryZone",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "demo-sessions.create",
     "operation_id": "createDemoSession",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "developer_tools",
+    "audience": "keyless"
   },
   {
     "name": "demo-sessions.reset",
     "operation_id": "resetDemoSession",
-    "kind": "action"
+    "kind": "action",
+    "section": "developer_tools",
+    "audience": "keyless"
   },
   {
     "name": "devices.create",
     "operation_id": "createDevice",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "devices.delete",
     "operation_id": "deleteDevice",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "devices.get",
     "operation_id": "getDevice",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "devices.list",
     "operation_id": "listDevices",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "devices.update",
     "operation_id": "updateDevice",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "discount-previews.create",
     "operation_id": "createDiscountPreview",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "disputes.accept",
     "operation_id": "acceptDispute",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "disputes.get",
     "operation_id": "getDispute",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "disputes.list",
     "operation_id": "listDisputes",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "disputes.response-sessions.create",
     "operation_id": "createDisputeResponseSession",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "disputes.simulate",
     "operation_id": "simulateDispute",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "doctor",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "email-preference-links.lookup",
     "operation_id": "lookupEmailPreferenceLink",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "email-preference-links.unsubscribe",
     "operation_id": "unsubscribeEmailPreferenceLink",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "files.complete",
     "operation_id": "completeFile",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "files.create",
     "operation_id": "createFile",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "files.get",
     "operation_id": "getFile",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "fraud-warnings.get",
     "operation_id": "getFraudWarning",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "fraud-warnings.list",
     "operation_id": "listFraudWarnings",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "fulfillment-events.get",
     "operation_id": "getFulfillmentEvent",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "fulfillment-events.list",
     "operation_id": "listFulfillmentEvents",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "fulfillment-notifications.get",
     "operation_id": "getFulfillmentNotification",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "fulfillment-notifications.list",
     "operation_id": "listFulfillmentNotifications",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "fulfillments.events.create",
     "operation_id": "createFulfillmentEvent",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "fulfillments.get",
     "operation_id": "getFulfillment",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "fulfillments.list",
     "operation_id": "listFulfillments",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "fulfillments.shipments.create",
     "operation_id": "createShipment",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "fulfillments.transitions.create",
     "operation_id": "transitionFulfillment",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "fulfillments.update",
     "operation_id": "updateFulfillment",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-card-funding-dispositions.create",
     "operation_id": "createGiftCardFundingDisposition",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-card-funding-dispositions.get",
     "operation_id": "getGiftCardFundingDisposition",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-card-funding-dispositions.list",
     "operation_id": "listGiftCardFundingDispositions",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-card-loads.get",
     "operation_id": "getGiftCardLoad",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-card-loads.list",
     "operation_id": "listGiftCardLoads",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-card-notifications.cancel",
     "operation_id": "cancelGiftCardNotification",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-card-notifications.create",
     "operation_id": "createGiftCardNotification",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-card-notifications.get",
     "operation_id": "getGiftCardNotification",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-card-notifications.list",
     "operation_id": "listGiftCardNotifications",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-card-redemptions.cancel",
     "operation_id": "cancelGiftCardRedemption",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-card-redemptions.capture",
     "operation_id": "captureGiftCardRedemption",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-card-redemptions.create",
     "operation_id": "createGiftCardRedemption",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-card-redemptions.get",
     "operation_id": "getGiftCardRedemption",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-card-redemptions.list",
     "operation_id": "listGiftCardRedemptions",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-card-transactions.list",
     "operation_id": "listGiftCardTransactions",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-cards.adjust-balance",
     "operation_id": "adjustGiftCardBalance",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-cards.cash-out",
     "operation_id": "cashOutGiftCard",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-cards.create",
     "operation_id": "createGiftCard",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-cards.get",
     "operation_id": "getGiftCard",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-cards.list",
     "operation_id": "listGiftCards",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-cards.loads.create",
     "operation_id": "createGiftCardLoad",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-cards.lookup",
     "operation_id": "lookupGiftCard",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-cards.rotate-code",
     "operation_id": "rotateGiftCardCode",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-cards.transitions.create",
     "operation_id": "transitionGiftCard",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "gift-cards.update",
     "operation_id": "updateGiftCard",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "help",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "help.search",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "history",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "init",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "inventory-adjustments.create",
     "operation_id": "createInventoryAdjustment",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-adjustments.get",
     "operation_id": "getInventoryAdjustment",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-adjustments.list",
     "operation_id": "listInventoryAdjustments",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-allocation-policies.create",
     "operation_id": "createInventoryAllocationPolicy",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-allocation-policies.delete",
     "operation_id": "deleteInventoryAllocationPolicy",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-allocation-policies.get",
     "operation_id": "getInventoryAllocationPolicy",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-allocation-policies.list",
     "operation_id": "listInventoryAllocationPolicies",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-allocation-policies.revisions.get",
     "operation_id": "getInventoryAllocationPolicyRevision",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-allocation-policies.revisions.list",
     "operation_id": "listInventoryAllocationPolicyRevisions",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-allocation-policies.update",
     "operation_id": "updateInventoryAllocationPolicy",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-counts.create",
     "operation_id": "createInventoryCount",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-counts.get",
     "operation_id": "getInventoryCount",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-counts.list",
     "operation_id": "listInventoryCounts",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-counts.transitions.create",
     "operation_id": "transitionInventoryCount",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-counts.update",
     "operation_id": "updateInventoryCount",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-items.create",
     "operation_id": "createInventoryItem",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-items.delete",
     "operation_id": "deleteInventoryItem",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-items.get",
     "operation_id": "getInventoryItem",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-items.list",
     "operation_id": "listInventoryItems",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-items.update",
     "operation_id": "updateInventoryItem",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-levels.get",
     "operation_id": "getInventoryLevel",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-levels.list",
     "operation_id": "listInventoryLevels",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-levels.update",
     "operation_id": "updateInventoryLevel",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-movements.get",
     "operation_id": "getInventoryMovement",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-movements.list",
     "operation_id": "listInventoryMovements",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-receipts.create",
     "operation_id": "createInventoryReceipt",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-receipts.get",
     "operation_id": "getInventoryReceipt",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-receipts.list",
     "operation_id": "listInventoryReceipts",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-reservations.create",
     "operation_id": "createInventoryReservation",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-reservations.get",
     "operation_id": "getInventoryReservation",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-reservations.list",
     "operation_id": "listInventoryReservations",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-reservations.transitions.create",
     "operation_id": "transitionInventoryReservation",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-reservations.update",
     "operation_id": "updateInventoryReservation",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-transfers.create",
     "operation_id": "createInventoryTransfer",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-transfers.get",
     "operation_id": "getInventoryTransfer",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-transfers.list",
     "operation_id": "listInventoryTransfers",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-transfers.transitions.create",
     "operation_id": "transitionInventoryTransfer",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "inventory-transfers.update",
     "operation_id": "updateInventoryTransfer",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoice-payment-terms.create",
     "operation_id": "createInvoicePaymentTerm",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoice-payment-terms.delete",
     "operation_id": "deleteInvoicePaymentTerm",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoice-payment-terms.get",
     "operation_id": "getInvoicePaymentTerm",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoice-payment-terms.list",
     "operation_id": "listInvoicePaymentTerms",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoice-payment-terms.update",
     "operation_id": "updateInvoicePaymentTerm",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.activities.list",
     "operation_id": "listInvoiceActivities",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.checkout-sessions.create",
     "operation_id": "createInvoiceCheckoutSession",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.collect",
     "operation_id": "collectInvoice",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.create",
     "operation_id": "createInvoice",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.delivery-attempts.list",
     "operation_id": "listInvoiceDeliveryAttempts",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.get",
     "operation_id": "getInvoice",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.issue",
     "operation_id": "issueInvoice",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.late-fees.create",
     "operation_id": "createInvoiceLateFee",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.late-fees.waive",
     "operation_id": "waiveInvoiceLateFee",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.list",
     "operation_id": "listInvoices",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.manual-payments.create",
     "operation_id": "createInvoiceManualPayment",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.manual-payments.get",
     "operation_id": "getInvoiceManualPayment",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.manual-payments.list",
     "operation_id": "listInvoiceManualPayments",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.manual-payments.reverse",
     "operation_id": "reverseInvoiceManualPayment",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.mark-uncollectible",
     "operation_id": "markInvoiceUncollectible",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.payment-attempts.cancel",
     "operation_id": "cancelInvoicePaymentAttempt",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.payment-attempts.get",
     "operation_id": "getInvoicePaymentAttempt",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.payment-attempts.list",
     "operation_id": "listInvoicePaymentAttempts",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.pdf.get",
     "operation_id": "getInvoicePDF",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.regenerate-public-link",
     "operation_id": "regenerateInvoicePublicLink",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.send-reminder",
     "operation_id": "sendInvoiceReminder",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.update",
     "operation_id": "updateInvoice",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "invoices.void",
     "operation_id": "voidInvoice",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "listen",
     "operation_id": "streamWebhookEvents",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "locations.create",
     "operation_id": "createLocation",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "locations.delete",
     "operation_id": "deleteLocation",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "locations.get",
     "operation_id": "getLocation",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "locations.list",
     "operation_id": "listLocations",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "locations.update",
     "operation_id": "updateLocation",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "mcp.serve",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "me.addresses.create",
     "operation_id": "createMeAddress",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.addresses.delete",
     "operation_id": "deleteMeAddress",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.addresses.get",
     "operation_id": "getMeAddress",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.addresses.list",
     "operation_id": "listMeAddresses",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.addresses.update",
     "operation_id": "updateMeAddress",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.deletion-requests.create",
     "operation_id": "createMeDeletionRequest",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.deletion-requests.get",
     "operation_id": "getMeDeletionRequest",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.deletion-requests.list",
     "operation_id": "listMeDeletionRequests",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.email-change-requests.confirm",
     "operation_id": "confirmMeEmailChangeRequest",
-    "kind": "action"
+    "kind": "action",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.email-change-requests.create",
     "operation_id": "createMeEmailChangeRequest",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.email-preferences.get",
     "operation_id": "getMeEmailPreferences",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.email-preferences.update",
     "operation_id": "updateMeEmailPreferences",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.flint-wallet.cards.list",
     "operation_id": "listMeFlintWalletCards",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.flint-wallet.cards.store-setups.create",
     "operation_id": "createMeFlintWalletStoreSetup",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.fulfillment-events.list",
     "operation_id": "listMeFulfillmentEvents",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.fulfillments.get",
     "operation_id": "getMeFulfillment",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.fulfillments.list",
     "operation_id": "listMeFulfillments",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.get",
     "operation_id": "getMe",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.gift-cards.create",
     "operation_id": "saveMeGiftCard",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.gift-cards.delete",
     "operation_id": "removeMeGiftCard",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.gift-cards.get",
     "operation_id": "getMeGiftCard",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.gift-cards.list",
     "operation_id": "listMeGiftCards",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.gift-cards.transactions.list",
     "operation_id": "listMeGiftCardTransactions",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.invoices.checkout-sessions.create",
     "operation_id": "createMeInvoiceCheckoutSession",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.invoices.credit-notes.get",
     "operation_id": "getMeCreditNote",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.invoices.credit-notes.list",
     "operation_id": "listMeCreditNotes",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.invoices.credit-notes.pdf.get",
     "operation_id": "getMeCreditNotePDF",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.invoices.get",
     "operation_id": "getMeInvoice",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.invoices.list",
     "operation_id": "listMeInvoices",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.invoices.pdf.get",
     "operation_id": "getMeInvoicePDF",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.orders.activities.list",
     "operation_id": "listMeOrderActivities",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.orders.get",
     "operation_id": "getMeOrder",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.orders.list",
     "operation_id": "listMeOrders",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.orders.send-receipt",
     "operation_id": "sendMeOrderReceipt",
-    "kind": "action"
+    "kind": "action",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.packages.get",
     "operation_id": "getMePackage",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.packages.list",
     "operation_id": "listMePackages",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.payment-intents.get",
     "operation_id": "getMePaymentIntent",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.payment-intents.list",
     "operation_id": "listMePaymentIntents",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.payment-methods.create",
     "operation_id": "createMePaymentMethod",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.payment-methods.delete",
     "operation_id": "deleteMePaymentMethod",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.payment-methods.get",
     "operation_id": "getMePaymentMethod",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.payment-methods.list",
     "operation_id": "listMePaymentMethods",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.refunds.get",
     "operation_id": "getMeRefund",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.refunds.list",
     "operation_id": "listMeRefunds",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.return-previews.create",
     "operation_id": "createMeReturnPreview",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.return-resolutions.checkout-sessions.create",
     "operation_id": "createMeReturnResolutionCheckoutSession",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.return-resolutions.get",
     "operation_id": "getMeReturnResolution",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.returns.cancel",
     "operation_id": "cancelMeReturn",
-    "kind": "action"
+    "kind": "action",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.returns.create",
     "operation_id": "createMeReturn",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.returns.get",
     "operation_id": "getMeReturn",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.returns.list",
     "operation_id": "listMeReturns",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.session.revoke",
     "operation_id": "revokeMeSession",
-    "kind": "action"
+    "kind": "action",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.shipments.get",
     "operation_id": "getMeShipment",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.shipments.list",
     "operation_id": "listMeShipments",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.subscription-previews.create",
     "operation_id": "createMeSubscriptionPreview",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.subscriptions.cancel",
     "operation_id": "cancelMeSubscription",
-    "kind": "action"
+    "kind": "action",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.subscriptions.get",
     "operation_id": "getMeSubscription",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.subscriptions.line-items.update",
     "operation_id": "updateMeSubscriptionLineItem",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.subscriptions.list",
     "operation_id": "listMeSubscriptions",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.subscriptions.pause",
     "operation_id": "pauseMeSubscription",
-    "kind": "action"
+    "kind": "action",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.subscriptions.payment-retries.create",
     "operation_id": "createMeSubscriptionPaymentRetry",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.subscriptions.payment-retries.get",
     "operation_id": "getMeSubscriptionPaymentRetry",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.subscriptions.payment-retries.list",
     "operation_id": "listMeSubscriptionPaymentRetries",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.subscriptions.renew",
     "operation_id": "renewMeSubscription",
-    "kind": "action"
+    "kind": "action",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.subscriptions.resume",
     "operation_id": "resumeMeSubscription",
-    "kind": "action"
+    "kind": "action",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.subscriptions.skip-cycle",
     "operation_id": "skipMeSubscriptionCycle",
-    "kind": "action"
+    "kind": "action",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.subscriptions.update",
     "operation_id": "updateMeSubscription",
-    "kind": "item"
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "me.update",
     "operation_id": "updateMe",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "merchant-account-session-refreshes.create",
     "operation_id": "refreshMerchantAccountSession",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "merchant-account-sessions.create",
     "operation_id": "createMerchantAccountSession",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "merchant-billing-balances.get",
     "operation_id": "getMerchantBillingBalance",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "merchant-billing-balances.list",
     "operation_id": "listMerchantBillingBalances",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "merchant-billing-entries.list",
     "operation_id": "listMerchantBillingEntries",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "merchant-billing-invoices.get",
     "operation_id": "getMerchantBillingInvoice",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "merchant-billing-invoices.list",
     "operation_id": "listMerchantBillingInvoices",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "merchant.get",
     "operation_id": "getMerchant",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "merchant.update",
     "operation_id": "updateMerchant",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "modifier-groups.create",
     "operation_id": "createModifierGroup",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "modifier-groups.delete",
     "operation_id": "deleteModifierGroup",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "modifier-groups.get",
     "operation_id": "getModifierGroup",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "modifier-groups.list",
     "operation_id": "listModifierGroups",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "modifier-groups.update",
     "operation_id": "updateModifierGroup",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "modifier-sets.create",
     "operation_id": "createModifierSet",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "modifier-sets.delete",
     "operation_id": "deleteModifierSet",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "modifier-sets.get",
     "operation_id": "getModifierSet",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "modifier-sets.list",
     "operation_id": "listModifierSets",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "modifier-sets.update",
     "operation_id": "updateModifierSet",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "onboarding.advance",
     "operation_id": "advanceOnboarding",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "onboarding.api-key.create",
     "operation_id": "createOnboardingAPIKey",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "onboarding.start",
     "operation_id": "startOnboarding",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "keyless"
   },
   {
     "name": "onboarding.state.get",
     "operation_id": "getOnboardingState",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "onboarding.verify-email",
     "operation_id": "verifyOnboardingEmail",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "keyless"
   },
   {
     "name": "openapi.get",
     "operation_id": "getOpenAPISpec",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "developer_tools",
+    "audience": "keyless"
   },
   {
     "name": "orders.access-links.create",
     "operation_id": "createOrderAccessLink",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.activities.list",
     "operation_id": "listOrderActivities",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.charges.create",
     "operation_id": "createOrderCharge",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.charges.delete",
     "operation_id": "deleteOrderCharge",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.charges.update",
     "operation_id": "updateOrderCharge",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.close",
     "operation_id": "closeOrder",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.create",
     "operation_id": "createOrder",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.delivery-selections.current.get",
     "operation_id": "getOrderCurrentDeliverySelection",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.discounts.create",
     "operation_id": "applyOrderDiscount",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.discounts.remove",
     "operation_id": "removeOrderDiscounts",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.discounts.reprice",
     "operation_id": "repriceOrderDiscounts",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.fulfillments.create",
     "operation_id": "createFulfillment",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.get",
     "operation_id": "getOrder",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.gift-cards.create",
     "operation_id": "applyOrderGiftCard",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.gift-cards.delete",
     "operation_id": "removeOrderGiftCard",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.inventory-exception.resolve",
     "operation_id": "resolveOrderInventoryException",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.line-items.create",
     "operation_id": "createOrderLineItems",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.line-items.delete",
     "operation_id": "deleteOrderLineItem",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.line-items.update",
     "operation_id": "updateOrderLineItem",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.list",
     "operation_id": "listOrders",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.pay",
     "operation_id": "payOrder",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.payment-attempts.cancel",
     "operation_id": "cancelOrderPaymentAttempt",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.payment-attempts.get",
     "operation_id": "getOrderPaymentAttempt",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.payment-attempts.list",
     "operation_id": "listOrderPaymentAttempts",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.payment-intents.create",
     "operation_id": "createOrderPaymentIntent",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.send-receipt",
     "operation_id": "sendOrderReceipt",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "orders.update",
     "operation_id": "updateOrder",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "organizations.create",
     "operation_id": "createOrganization",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "organizations.delete",
     "operation_id": "deleteOrganization",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "organizations.get",
     "operation_id": "getOrganization",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "organizations.list",
     "operation_id": "listOrganizations",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "organizations.memberships.create",
     "operation_id": "grantOrganizationMembership",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "organizations.memberships.delete",
     "operation_id": "removeOrganizationMembership",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "organizations.memberships.list",
     "operation_id": "listOrganizationMemberships",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "organizations.update",
     "operation_id": "updateOrganization",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "packages.get",
     "operation_id": "getPackage",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "packages.items.create",
     "operation_id": "createPackageItem",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "packages.items.delete",
     "operation_id": "deletePackageItem",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "packages.items.get",
     "operation_id": "getPackageItem",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "packages.items.list",
     "operation_id": "listPackageItems",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "packages.items.update",
     "operation_id": "updatePackageItem",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "packages.list",
     "operation_id": "listPackages",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "packages.transitions.create",
     "operation_id": "transitionPackage",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "packages.update",
     "operation_id": "updatePackage",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "packages.void",
     "operation_id": "voidPackage",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "partner-app-installs.list",
     "operation_id": "listMerchantPartnerAppInstalls",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "partner-app-installs.revoke",
     "operation_id": "revokeMerchantPartnerAppInstall",
-    "kind": "action"
+    "kind": "action",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "partner-apps.create",
     "operation_id": "createPartnerApp",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "partner-apps.credentials.create",
     "operation_id": "createPartnerAppCredential",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "partner-apps.credentials.delete",
     "operation_id": "deletePartnerAppCredential",
-    "kind": "item"
+    "kind": "item",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "partner-apps.credentials.get",
     "operation_id": "getPartnerAppCredential",
-    "kind": "item"
+    "kind": "item",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "partner-apps.credentials.list",
     "operation_id": "listPartnerAppCredentials",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "partner-apps.delete",
     "operation_id": "deletePartnerApp",
-    "kind": "item"
+    "kind": "item",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "partner-apps.get",
     "operation_id": "getPartnerApp",
-    "kind": "item"
+    "kind": "item",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "partner-apps.installs.environment-grants.revoke",
     "operation_id": "revokePartnerAppEnvironmentGrant",
-    "kind": "action"
+    "kind": "action",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "partner-apps.installs.get",
     "operation_id": "getPartnerAppInstall",
-    "kind": "item"
+    "kind": "item",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "partner-apps.installs.list",
     "operation_id": "listPartnerAppInstalls",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "partner-apps.installs.revoke",
     "operation_id": "revokePartnerAppInstall",
-    "kind": "action"
+    "kind": "action",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "partner-apps.list",
     "operation_id": "listPartnerApps",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "partner-apps.rotate-secret",
     "operation_id": "rotatePartnerAppSecret",
-    "kind": "action"
+    "kind": "action",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "partner-apps.update",
     "operation_id": "updatePartnerApp",
-    "kind": "item"
+    "kind": "item",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "payment-intents.activities.list",
     "operation_id": "listPaymentIntentActivities",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-intents.cancel",
     "operation_id": "cancelPaymentIntent",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-intents.capture",
     "operation_id": "capturePaymentIntent",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-intents.confirm",
     "operation_id": "confirmPaymentIntent",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-intents.create",
     "operation_id": "createPaymentIntent",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-intents.get",
     "operation_id": "getPaymentIntent",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-intents.list",
     "operation_id": "listPaymentIntents",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-intents.send-receipt",
     "operation_id": "sendPaymentIntentReceipt",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-intents.update",
     "operation_id": "updatePaymentIntent",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-links.create",
     "operation_id": "createPaymentLink",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-links.get",
     "operation_id": "getPaymentLink",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-links.list",
     "operation_id": "listPaymentLinks",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-links.public.get",
     "operation_id": "getPaymentLinkPublic",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "keyless"
   },
   {
     "name": "payment-links.resolve",
     "operation_id": "resolvePaymentLink",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "keyless"
   },
   {
     "name": "payment-links.update",
     "operation_id": "updatePaymentLink",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-method-domains.create",
     "operation_id": "createPaymentMethodDomain",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-method-domains.get",
     "operation_id": "getPaymentMethodDomain",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-method-domains.list",
     "operation_id": "listPaymentMethodDomains",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-method-domains.update",
     "operation_id": "updatePaymentMethodDomain",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-methods.create",
     "operation_id": "createPaymentMethod",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-methods.delete",
     "operation_id": "deletePaymentMethod",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-methods.get",
     "operation_id": "getPaymentMethod",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-methods.list",
     "operation_id": "listPaymentMethods",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-reviews.approve",
     "operation_id": "approvePaymentReview",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-reviews.decline",
     "operation_id": "declinePaymentReview",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-reviews.get",
     "operation_id": "getPaymentReview",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payment-reviews.list",
     "operation_id": "listPaymentReviews",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payout-destinations.delete",
     "operation_id": "deletePayoutDestination",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payout-destinations.get",
     "operation_id": "getPayoutDestination",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payout-destinations.list",
     "operation_id": "listPayoutDestinations",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payout-destinations.update",
     "operation_id": "updatePayoutDestination",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payout-settings.get",
     "operation_id": "getPayoutSettings",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payout-settings.update",
     "operation_id": "updatePayoutSettings",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payouts.cancel",
     "operation_id": "cancelPayout",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payouts.create",
     "operation_id": "createPayout",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payouts.get",
     "operation_id": "getPayout",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "payouts.list",
     "operation_id": "listPayouts",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "products.create",
     "operation_id": "createProduct",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "products.delete",
     "operation_id": "deleteProduct",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "products.get",
     "operation_id": "getProduct",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "products.list",
     "operation_id": "listProducts",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "products.options.get",
     "operation_id": "getProductOption",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "products.options.list",
     "operation_id": "listProductOptions",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "products.update",
     "operation_id": "updateProduct",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "products.variants.create",
     "operation_id": "createProductVariant",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "products.variants.delete",
     "operation_id": "deleteProductVariant",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "products.variants.get",
     "operation_id": "getProductVariant",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "products.variants.list",
     "operation_id": "listProductVariants",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "products.variants.update",
     "operation_id": "updateProductVariant",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "promotion-codes.list",
     "operation_id": "listPromotionCodes",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "promotions.codes.create",
     "operation_id": "createPromotionCode",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "promotions.codes.delete",
     "operation_id": "deletePromotionCode",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "promotions.codes.get",
     "operation_id": "getPromotionCode",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "promotions.codes.update",
     "operation_id": "updatePromotionCode",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "promotions.create",
     "operation_id": "createPromotion",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "promotions.delete",
     "operation_id": "deletePromotion",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "promotions.get",
     "operation_id": "getPromotion",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "promotions.list",
     "operation_id": "listPromotions",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "promotions.update",
     "operation_id": "updatePromotion",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "refunds.create",
     "operation_id": "createRefund",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "refunds.get",
     "operation_id": "getRefund",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "refunds.list",
     "operation_id": "listRefunds",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "refunds.update",
     "operation_id": "updateRefund",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "report-downloads.get",
     "operation_id": "getReportDownload",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "reports.create",
     "operation_id": "createReport",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "reports.get",
     "operation_id": "getReport",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "reports.list",
     "operation_id": "listReports",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "resource-timelines.get",
     "operation_id": "getResourceTimeline",
-    "kind": "item"
+    "kind": "item",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "return-dispositions.cancel",
     "operation_id": "cancelReturnDisposition",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-dispositions.get",
     "operation_id": "getReturnDisposition",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-dispositions.list",
     "operation_id": "listReturnDispositions",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-dispositions.retry",
     "operation_id": "retryReturnDisposition",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-inspections.get",
     "operation_id": "getReturnInspection",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-inspections.line-items.decide",
     "operation_id": "decideReturnInspectionLineItem",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-inspections.list",
     "operation_id": "listReturnInspections",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-policies.create",
     "operation_id": "createReturnPolicy",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-policies.delete",
     "operation_id": "deleteReturnPolicy",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-policies.get",
     "operation_id": "getReturnPolicy",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-policies.list",
     "operation_id": "listReturnPolicies",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-policies.revisions.create",
     "operation_id": "createReturnPolicyRevision",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-policies.revisions.get",
     "operation_id": "getReturnPolicyRevision",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-policies.revisions.list",
     "operation_id": "listReturnPolicyRevisions",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-policies.update",
     "operation_id": "updateReturnPolicy",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-previews.create",
     "operation_id": "createReturnPreview",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-reasons.create",
     "operation_id": "createReturnReason",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-reasons.delete",
     "operation_id": "deleteReturnReason",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-reasons.get",
     "operation_id": "getReturnReason",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-reasons.list",
     "operation_id": "listReturnReasons",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-reasons.update",
     "operation_id": "updateReturnReason",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-receipts.get",
     "operation_id": "getReturnReceipt",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-receipts.line-items.verify",
     "operation_id": "verifyReturnReceiptLineItem",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-receipts.list",
     "operation_id": "listReturnReceipts",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-resolutions.cancel",
     "operation_id": "cancelReturnResolution",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-resolutions.checkout-sessions.create",
     "operation_id": "createReturnResolutionCheckoutSession",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-resolutions.confirm",
     "operation_id": "confirmReturnResolution",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-resolutions.get",
     "operation_id": "getReturnResolution",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-resolutions.list",
     "operation_id": "listReturnResolutions",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-resolutions.release",
     "operation_id": "releaseReturnResolution",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-resolutions.retry",
     "operation_id": "retryReturnResolution",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "return-resolutions.update",
     "operation_id": "updateReturnResolution",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.access-links.create",
     "operation_id": "createReturnAccessLink",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.activities.list",
     "operation_id": "listReturnActivities",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.cancel",
     "operation_id": "cancelReturn",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.complete",
     "operation_id": "completeReturn",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.create",
     "operation_id": "createReturn",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.decide",
     "operation_id": "decideReturn",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.dispositions.create",
     "operation_id": "createReturnDisposition",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.get",
     "operation_id": "getReturn",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.inspections.create",
     "operation_id": "createReturnInspection",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.line-items.cancel",
     "operation_id": "cancelReturnLineItem",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.line-items.create",
     "operation_id": "createReturnLineItem",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.line-items.delete",
     "operation_id": "deleteReturnLineItem",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.line-items.get",
     "operation_id": "getReturnLineItem",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.line-items.list",
     "operation_id": "listReturnLineItems",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.line-items.update",
     "operation_id": "updateReturnLineItem",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.line-items.waive-inspection",
     "operation_id": "waiveReturnLineItemInspection",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.list",
     "operation_id": "listReturns",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.process",
     "operation_id": "processReturn",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.receipts.create",
     "operation_id": "createReturnReceipt",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.reopen",
     "operation_id": "reopenReturn",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.resolutions.create",
     "operation_id": "createReturnResolution",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "returns.update",
     "operation_id": "updateReturn",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "risk-lists.create",
     "operation_id": "createRiskList",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "risk-lists.delete",
     "operation_id": "deleteRiskList",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "risk-lists.get",
     "operation_id": "getRiskList",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "risk-lists.items.create",
     "operation_id": "createRiskListItems",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "risk-lists.items.delete",
     "operation_id": "deleteRiskListItem",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "risk-lists.items.get",
     "operation_id": "getRiskListItem",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "risk-lists.items.list",
     "operation_id": "listRiskListItems",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "risk-lists.list",
     "operation_id": "listRiskLists",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "risk-lists.update",
     "operation_id": "updateRiskList",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "risk-previews.create",
     "operation_id": "createRiskPreview",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "risk-rules.attributes.get",
     "operation_id": "getRiskRuleAttributes",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "risk-rules.create",
     "operation_id": "createRiskRule",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "risk-rules.delete",
     "operation_id": "deleteRiskRule",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "risk-rules.get",
     "operation_id": "getRiskRule",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "risk-rules.list",
     "operation_id": "listRiskRules",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "risk-rules.update",
     "operation_id": "updateRiskRule",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "sandboxes.api-keys.create",
     "operation_id": "createSandboxAPIKey",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "sandboxes.create",
     "operation_id": "createSandbox",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "sandboxes.delete",
     "operation_id": "deleteSandbox",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "sandboxes.get",
     "operation_id": "getSandbox",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "sandboxes.list",
     "operation_id": "listSandboxes",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "sandboxes.reset",
     "operation_id": "resetSandbox",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "schema.command",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "schema.commands",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "schema.errors",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "schema.events",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "schema.input",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "schema.output",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "settings.effective.get",
     "operation_id": "getEffectiveSettings",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "settings.get",
     "operation_id": "getSettings",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "settings.update",
     "operation_id": "updateSettings",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "shipments.get",
     "operation_id": "getShipment",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "shipments.list",
     "operation_id": "listShipments",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "shipments.packages.create",
     "operation_id": "createPackage",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "shipments.update",
     "operation_id": "updateShipment",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "shipments.void",
     "operation_id": "voidShipment",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "signup",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "subscription-delivery-migrations.create",
     "operation_id": "createSubscriptionDeliveryMigration",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscription-delivery-migrations.failures.list",
     "operation_id": "listSubscriptionDeliveryMigrationFailures",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscription-delivery-migrations.get",
     "operation_id": "getSubscriptionDeliveryMigration",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscription-delivery-migrations.list",
     "operation_id": "listSubscriptionDeliveryMigrations",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscription-offers.create",
     "operation_id": "createSubscriptionOffer",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscription-offers.delete",
     "operation_id": "deleteSubscriptionOffer",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscription-offers.get",
     "operation_id": "getSubscriptionOffer",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscription-offers.list",
     "operation_id": "listSubscriptionOffers",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscription-offers.update",
     "operation_id": "updateSubscriptionOffer",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscription-plans.create",
     "operation_id": "createSubscriptionPlan",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscription-plans.delete",
     "operation_id": "deleteSubscriptionPlan",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscription-plans.get",
     "operation_id": "getSubscriptionPlan",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscription-plans.list",
     "operation_id": "listSubscriptionPlans",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscription-plans.update",
     "operation_id": "updateSubscriptionPlan",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscription-previews.create",
     "operation_id": "createSubscriptionPreview",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.access-links.create",
     "operation_id": "createSubscriptionAccessLink",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.cancel",
     "operation_id": "cancelSubscription",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.change-plan",
     "operation_id": "changeSubscriptionPlan",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.create",
     "operation_id": "createSubscription",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.get",
     "operation_id": "getSubscription",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.line-items.create",
     "operation_id": "createSubscriptionLineItem",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.line-items.delete",
     "operation_id": "deleteSubscriptionLineItem",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.line-items.update",
     "operation_id": "updateSubscriptionLineItem",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.list",
     "operation_id": "listSubscriptions",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.pause",
     "operation_id": "pauseSubscription",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.payment-retries.create",
     "operation_id": "createSubscriptionPaymentRetry",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.payment-retries.get",
     "operation_id": "getSubscriptionPaymentRetry",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.payment-retries.list",
     "operation_id": "listSubscriptionPaymentRetries",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.renew",
     "operation_id": "renewSubscription",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.resume",
     "operation_id": "resumeSubscription",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.skip-cycle",
     "operation_id": "skipSubscriptionCycle",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "subscriptions.update",
     "operation_id": "updateSubscription",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "support.open",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "tax-connection.connect",
     "operation_id": "connectTaxConnection",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "tax-connection.disconnect",
     "operation_id": "disconnectTaxConnection",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "tax-connection.get",
     "operation_id": "getTaxConnection",
-    "kind": "singleton"
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "tax-connection.registrations.create",
     "operation_id": "createTaxRegistration",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "tax-connection.registrations.delete",
     "operation_id": "deleteTaxRegistration",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "tax-connection.registrations.get",
     "operation_id": "getTaxRegistration",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "tax-connection.registrations.list",
     "operation_id": "listTaxRegistrations",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "tax-connection.registrations.update",
     "operation_id": "updateTaxRegistration",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "test-clocks.advance",
     "operation_id": "advanceTestClock",
-    "kind": "action"
+    "kind": "action",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "test-clocks.create",
     "operation_id": "createTestClock",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "test-clocks.delete",
     "operation_id": "deleteTestClock",
-    "kind": "item"
+    "kind": "item",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "test-clocks.get",
     "operation_id": "getTestClock",
-    "kind": "item"
+    "kind": "item",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "test-clocks.list",
     "operation_id": "listTestClocks",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "developer_tools",
+    "audience": "merchant"
   },
   {
     "name": "trigger",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "upgrade",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "version",
-    "kind": "cli"
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
   },
   {
     "name": "webhook-deliveries.attempts.list",
     "operation_id": "listWebhookDeliveryAttempts",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "webhook-deliveries.create",
     "operation_id": "createWebhookDelivery",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "webhook-deliveries.get",
     "operation_id": "getWebhookDelivery",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "webhook-deliveries.list",
     "operation_id": "listWebhookDeliveries",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "webhook-deliveries.resend",
     "operation_id": "resendWebhookDelivery",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "webhook-endpoints.create",
     "operation_id": "createWebhookEndpoint",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "webhook-endpoints.delete",
     "operation_id": "deleteWebhookEndpoint",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "webhook-endpoints.get",
     "operation_id": "getWebhookEndpoint",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "webhook-endpoints.list",
     "operation_id": "listWebhookEndpoints",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "webhook-endpoints.rotate-secret",
     "operation_id": "rotateWebhookEndpointSecret",
-    "kind": "action"
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "webhook-endpoints.test-events.create",
     "operation_id": "createWebhookTestEvent",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "webhook-endpoints.update",
     "operation_id": "updateWebhookEndpoint",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "webhook-event-types.list",
     "operation_id": "listWebhookEventTypes",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "webhook-events.get",
     "operation_id": "getWebhookEvent",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "webhook-events.list",
     "operation_id": "listWebhookEvents",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "workload-identities.create",
     "operation_id": "createWorkloadIdentity",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "workload-identities.delete",
     "operation_id": "deleteWorkloadIdentity",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "workload-identities.get",
     "operation_id": "getWorkloadIdentity",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "workload-identities.list",
     "operation_id": "listWorkloadIdentities",
-    "kind": "collection"
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "workload-identities.update",
     "operation_id": "updateWorkloadIdentity",
-    "kind": "item"
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   }
 ]

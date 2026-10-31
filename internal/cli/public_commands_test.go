@@ -182,7 +182,7 @@ func TestNoArgumentsShowsRootHelpWithoutAuthentication(t *testing.T) {
 		t.Fatalf("unexpected stderr: %s", stderr)
 	}
 	output := stdout.String()
-	for _, text := range []string{"Usage:", "Start here:", "flint auth login", "flint <command> --help"} {
+	for _, text := range []string{"Usage:", "Start here:", "flint login", "flint help <command>"} {
 		if !strings.Contains(output, text) {
 			t.Errorf("help omitted %q: %s", text, output)
 		}

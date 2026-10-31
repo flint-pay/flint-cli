@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 )
@@ -25,8 +24,16 @@ func TestAuditRemovedCommandsUseUnknownCommandSuggestions(t *testing.T) {
 		t.Fatalf("exit=%d result=%v", exit, result)
 	}
 	suggestions, _ := lookupPath(result, "error.details.suggestions")
-	if suggestions != nil && !strings.Contains(fmt.Sprint(suggestions), "cash-out") {
-		t.Fatalf("unhelpful suggestions: %v", suggestions)
+	for _, suggestion := range suggestions.([]any) {
+		if !strings.Contains(suggestion.(string), "cash-out") {
+			t.Fatalf("unhelpful suggestions: %v", suggestions)
+		}
+	}
+	if len(suggestions.([]any)) == 0 {
+		message, _ := lookupPath(result, "error.message")
+		if !strings.Contains(message.(string), "flint help search") {
+			t.Fatalf("missing search fallback: %v", result)
+		}
 	}
 }
 

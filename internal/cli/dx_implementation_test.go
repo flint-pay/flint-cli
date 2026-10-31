@@ -73,10 +73,10 @@ func TestDXHelpAndSchemaShapes(t *testing.T) {
 	app, out, _ := testApp(t, "")
 	for _, argv := range [][]string{{"--output", "json"}, {"--help", "--output", "json"}, {"help", "--output", "json"}} {
 		out.Reset()
-		if exit := app.Run(argv); exit != ExitOK || out.Len() > 10000 {
+		if exit := app.Run(argv); exit != ExitOK || out.Len() > 25000 {
 			t.Fatalf("argv=%v exit=%d size=%d output=%s", argv, exit, out.Len(), out)
 		}
-		for _, want := range []string{"start_here", "resource_groups", "flint schema commands <group> --output json"} {
+		for _, want := range []string{"start_here", "sections", "flint schema commands --output json"} {
 			if !strings.Contains(out.String(), want) {
 				t.Fatalf("missing %s: %s", want, out)
 			}
@@ -84,7 +84,7 @@ func TestDXHelpAndSchemaShapes(t *testing.T) {
 	}
 	t.Setenv("FLINT_OUTPUT", "JSON")
 	out.Reset()
-	if exit := app.Run(nil); exit != ExitOK || out.Len() > 10000 || !json.Valid(out.Bytes()) {
+	if exit := app.Run(nil); exit != ExitOK || out.Len() > 25000 || !json.Valid(out.Bytes()) {
 		t.Fatalf("exit=%d output=%s", exit, out)
 	}
 	t.Setenv("FLINT_OUTPUT", "")

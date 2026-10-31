@@ -69,12 +69,9 @@ func (a *App) Run(argv []string) int {
 		if cmd.CanonicalName == "help" {
 			return a.localHelp(cmd, opts)
 		}
-		if opts.Output == "json" {
-			return a.outputLocal(map[string]any{"data": commandDocument(cmd, cmd.Name)}, cmd, opts)
-		}
-		a.printCommandHelp(cmd)
-		return ExitOK
+		return a.showCommandHelp(cmd, opts)
 	}
+
 	if cmd.Local {
 		return a.runLocal(cmd, opts)
 	}
@@ -358,16 +355,26 @@ func (a *App) fail(err *CLIError, opts Options) int {
 
 func (a *App) printCommandHelp(cmd *Command) {
 	if cmd.Group {
-		fmt.Fprintln(a.Stdout, "Usage:")
+		fmt.Fprintln(a.Stdout, cmd.Description)
+		fmt.Fprintln(a.Stdout, "\nUsage:")
 		fmt.Fprintln(a.Stdout, "  "+strings.Join(cmd.Path, " ")+" <command> [flags]")
-		fmt.Fprintln(a.Stdout)
-		fmt.Fprintln(a.Stdout, "Commands:")
-		for _, child := range a.Registry.commandsUnder(cmd.Path) {
-			fmt.Fprintf(a.Stdout, "  %-36s %s\n", strings.Join(child.Path[len(cmd.Path):], " "), child.Description)
+		fmt.Fprintln(a.Stdout, "\nCommands:")
+		for _, child := range a.Registry.commandTree().Groups[cmd.Name].Commands {
+			label := strings.TrimPrefix(commandUsage(child), strings.Join(cmd.Path, " ")+" ")
+			description := child.Description
+			if child.Audience == "buyer" {
+				description += " (" + buyerCredentialName(child) + ")"
+			}
+			fmt.Fprintf(a.Stdout, "  %-44s %-40s %s %s\n", label, description, child.Method, child.APIPath)
 		}
+		fmt.Fprintln(a.Stdout, "\nRun "+strings.Join(cmd.Path, " ")+" <command> --help for flags and examples.")
 		return
 	}
+
 	fmt.Fprintln(a.Stdout, cmd.Description)
+	if cmd.Audience == "buyer" {
+		fmt.Fprintln(a.Stdout, "Credential: set FLINT_ACCESS_TOKEN to a "+buyerCredentialName(cmd)+".")
+	}
 	fmt.Fprintln(a.Stdout)
 	usage := append([]string{}, cmd.Path...)
 	for _, arg := range cmd.Arguments {
@@ -424,7 +431,7 @@ func (a *App) printCommandHelp(cmd *Command) {
 	if supportsContextSelection(cmd) {
 		fmt.Fprintln(a.Stdout, "  --context ID  Select an authorized context for this command")
 	}
-	fmt.Fprintln(a.Stdout, "  --output human|json|ndjson  --quiet  --debug  --no-input  --live  --merchant ID  --profile NAME ")
+	fmt.Fprintln(a.Stdout, "  --output human|json|ndjson  --quiet  --debug  --no-input  --live  --merchant ID  --profile NAME")
 	fmt.Fprintln(a.Stdout, "  --credential-store keyring|file  Credential backend (or FLINT_CREDENTIAL_STORE; defaults to the profile store or keyring)")
 	var capabilities []string
 	if cmd.Mutation {
@@ -476,6 +483,16 @@ func (a *App) printCommandHelp(cmd *Command) {
 	if cmd.Stream || cmd.Supports.Pagination || cmd.Supports.WaitFor || cmd.CanonicalName == "api" || cmd.CanonicalName == "upgrade" {
 		capabilities = append(capabilities, "--progress auto|plain|json|quiet")
 	}
+	seenCapabilities := map[string]bool{}
+	unique := capabilities[:0]
+	for _, capability := range capabilities {
+		key := strings.Fields(capability)[0]
+		if !seenCapabilities[key] {
+			seenCapabilities[key] = true
+			unique = append(unique, capability)
+		}
+	}
+	capabilities = unique
 	if len(capabilities) > 0 {
 		fmt.Fprintln(a.Stdout)
 		fmt.Fprintln(a.Stdout, "Capability flags:")
@@ -493,90 +510,4 @@ func (a *App) printCommandHelp(cmd *Command) {
 	}
 }
 
-func (a *App) printRootHelp() {
-	fmt.Fprintln(a.Stdout, "Flint Pay command-line interface")
-	fmt.Fprintln(a.Stdout)
-	fmt.Fprintln(a.Stdout, "Usage:")
-	fmt.Fprintln(a.Stdout, "  flint <command> [flags]")
-	fmt.Fprintln(a.Stdout, "  --output human|json|ndjson")
-	fmt.Fprintln(a.Stdout, "  --context ID  Use an authorized browser-session context")
-	fmt.Fprintln(a.Stdout)
-	fmt.Fprintln(a.Stdout, "Start here:")
-	for _, line := range []string{"flint signup", "flint login  (alias for flint auth login)", "flint payment-links create", "flint payment-intents", "flint context list", "flint context switch", "flint reauth", "flint doctor", "flint upgrade", "flint init", "flint auth import", "flint schema commands <resource> --output json", "flint help test-cards", "flint help search <question>", "flint support open --request-id <id>"} {
-		fmt.Fprintln(a.Stdout, "  "+line)
-	}
-	fmt.Fprintln(a.Stdout)
-	fmt.Fprintln(a.Stdout, "Create a primitive:")
-	fmt.Fprintln(a.Stdout, "  flint <resource> --help                         List available operations")
-	fmt.Fprintln(a.Stdout, "  flint <resource> create --help                  Show create flags and examples")
-	fmt.Fprintln(a.Stdout, "  flint <resource> create [flags]                 Create with supported flags")
-	fmt.Fprintln(a.Stdout, "  flint <resource> create --input FILE.json       Create from a JSON request body")
-	fmt.Fprintln(a.Stdout, "  flint schema input <resource>.create --output json  Show the request body schema")
-	fmt.Fprintln(a.Stdout, "  Check resource help first: some groups are read-only or use nested commands.")
-	fmt.Fprintln(a.Stdout)
-	fmt.Fprintln(a.Stdout, "Examples:")
-	fmt.Fprintln(a.Stdout, "  # Create a customer")
-	fmt.Fprintln(a.Stdout, "  flint customers create --email jane@example.com")
-	fmt.Fprintln(a.Stdout, "  # Inspect the schema, prepare product.json, then create a product")
-	fmt.Fprintln(a.Stdout, "  flint products create --help")
-	fmt.Fprintln(a.Stdout, "  flint schema input products.create --output json")
-	fmt.Fprintln(a.Stdout, "  flint products create --input product.json")
-	fmt.Fprintln(a.Stdout, "  # Inspect each schema and prepare the named file before creating")
-	fmt.Fprintln(a.Stdout, "  flint schema input orders.create --output json")
-	fmt.Fprintln(a.Stdout, "  flint orders create --input order.json")
-	fmt.Fprintln(a.Stdout, "  flint schema input subscription-plans.create --output json")
-	fmt.Fprintln(a.Stdout, "  flint subscription-plans create --input plan.json")
-	fmt.Fprintln(a.Stdout, "  # Validate and inspect a request locally, with or without credentials")
-	fmt.Fprintln(a.Stdout, "  flint products create --input product.json --dry-run=client --output json")
-	fmt.Fprintln(a.Stdout)
-	fmt.Fprintln(a.Stdout, "API resource groups (run flint <resource> --help):")
-	seen := map[string]bool{}
-	resources := []string{"checkout-sessions", "payment-intents"}
-	seen["checkout-sessions"], seen["payment-intents"] = true, true
-	for _, command := range a.Registry.Commands {
-		if command.Local || command.APIPath == "" || len(command.Path) < 3 || seen[command.Path[1]] {
-			continue
-		}
-		resource := command.Path[1]
-		seen[resource] = true
-		resources = append(resources, resource)
-	}
-	for i := 0; i < len(resources); i += 2 {
-		if i+1 < len(resources) {
-			fmt.Fprintf(a.Stdout, "  %-32s  %s\n", resources[i], resources[i+1])
-		} else {
-			fmt.Fprintln(a.Stdout, "  "+resources[i])
-		}
-	}
-	fmt.Fprintln(a.Stdout)
-	fmt.Fprintln(a.Stdout, "Scripts and AI agents:")
-	fmt.Fprintln(a.Stdout, "  Use --output json (or FLINT_OUTPUT=json) for JSON results and errors on stdout; it never prompts.")
-	fmt.Fprintln(a.Stdout, "  Exit codes: 0 ok, 1 API error, 2 usage, 3 auth or config, 4 confirmation required, 5 network, 6 wait unmet, 70 internal error.")
-	fmt.Fprintln(a.Stdout, "  Lists return one page; check next_page_token and pass --page-token, or use --all or --limit N.")
-	fmt.Fprintln(a.Stdout, "  List --output ndjson prints one resource per line as pages arrive, without continuation tokens; errors go to stderr.")
-	fmt.Fprintln(a.Stdout, "  Reuse --idempotency-key when retrying a create or update that timed out.")
-	fmt.Fprintln(a.Stdout, "  @last (or @last.pi) is the most recent resource this profile created or changed; all processes share it. Use explicit IDs in parallel commands.")
-	fmt.Fprintln(a.Stdout)
-	fmt.Fprintln(a.Stdout, "Environment:")
-	for _, line := range [][2]string{
-		{"FLINT_API_KEY", "API key; overrides saved credentials"},
-		{"FLINT_OUTPUT", "human, json, or ndjson (streams and lists)"},
-		{"FLINT_NO_INPUT", "1, true, yes, or on to disable prompts"},
-		{"FLINT_PROFILE", "Profile to use, like --profile"},
-		{"FLINT_MERCHANT", "Merchant guard, like --merchant"},
-		{"FLINT_WEBHOOK_SECRET", "signing secret for flint listen"},
-		{"FLINT_ACCESS_TOKEN", "Access token; takes precedence over FLINT_API_KEY"},
-		{"FLINT_WORKLOAD_IDENTITY_ID", "Workload identity; overrides saved login and contexts"},
-		{"FLINT_OIDC_SOURCE", "auto, none, token, token_file, github_actions, gitlab_ci, kubernetes; gcp/azure/aws unsupported"},
-		{"FLINT_OIDC_AUDIENCE", "OIDC audience; defaults to the API base URL origin"},
-		{"FLINT_OIDC_TOKEN", "OIDC JWT for workload identity exchange"},
-		{"FLINT_OIDC_TOKEN_FILE", "Flint OIDC token file; re-read on exchange"},
-		{"FLINT_OIDC_SCOPE", "Optional narrowing scopes for workload tokens"},
-		{"FLINT_BASE_URL", "API server for development; sign in with a separate profile"},
-	} {
-		fmt.Fprintf(a.Stdout, "  %-20s %s\n", line[0], line[1])
-	}
-	fmt.Fprintln(a.Stdout)
-	fmt.Fprintln(a.Stdout, "Run flint <command> --help for help with a specific command.")
-	fmt.Fprintln(a.Stdout, "Run flint schema commands <resource> --output json for a resource's command schemas.")
-}
+func (a *App) printRootHelp() { a.printTreeRootHelp(false) }

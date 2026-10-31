@@ -1,0 +1,28 @@
+Create an API key
+
+Usage:
+  flint api-keys create [flags]
+
+Arguments and flags:
+  --name                       API key name (required)
+  --access                     Key access: full, read_only, or restricted; defaults to restricted with --scope
+  --scope                      Scope to grant; implies --access restricted and is not allowed with full or read_only
+  --input                      JSON body: FILE.json, - for stdin, or inline JSON
+
+Request body:
+  Required top-level fields: access, name
+  Run flint schema input api-keys.create --output json for the full schema.
+  --input takes FILE.json, - for stdin, or inline JSON.
+
+Global flags:
+  --context ID  Select an authorized context for this command
+  --output human|json|ndjson  --quiet  --debug  --no-input  --live  --merchant ID  --profile NAME
+  --credential-store keyring|file  Credential backend (or FLINT_CREDENTIAL_STORE; defaults to the profile store or keyring)
+
+Capability flags:
+  --idempotency-key KEY  --dry-run=client  --confirm  --field PATH (inside the resource; strings raw, other values JSON)  --select FIELDS (inside each resource)  --jq EXPR  --timeout DURATION
+  --timeout is the total request budget including retries (default 150s).
+
+Examples:
+  flint api-keys create --name local-dev --scope payments.payment_intents.read
+  flint api-keys create --name ci-readonly --access read_only

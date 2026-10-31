@@ -12,6 +12,10 @@ import (
 )
 
 type openAPIDocument struct {
+	Tags []struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+	} `json:"tags"`
 	Security          []map[string][]string                  `json:"security"`
 	OpenAPI           string                                 `json:"openapi"`
 	JSONSchemaDialect string                                 `json:"jsonSchemaDialect"`
@@ -104,6 +108,7 @@ func embeddedAllowedCLIScopes() []string {
 }
 
 type openAPIOperation struct {
+	Tags                []string                  `json:"tags"`
 	Security            []map[string][]string     `json:"security"`
 	OperationID         string                    `json:"operationId"`
 	Summary             string                    `json:"summary"`
@@ -614,7 +619,7 @@ func deepCopyMap(src map[string]any) map[string]any {
 
 func commandList(reg *Registry) []map[string]any {
 	out := make([]map[string]any, 0, len(reg.Commands))
-	for _, c := range reg.Commands {
+	for _, c := range reg.commandTree().Commands {
 		out = append(out, commandDocument(c, c.Name))
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i]["name"].(string) < out[j]["name"].(string) })
@@ -634,33 +639,11 @@ func commandNameFromWords(words []string) string {
 // commandNameSuggestions ranks command names, or with groups also their dotted
 // group prefixes, by edit distance. A group named as a command yields its commands.
 func commandNameSuggestions(r *Registry, input string, groups bool) []string {
-	seen := map[string]bool{}
-	var candidates, within []string
-	for _, c := range r.Commands {
-		if strings.HasPrefix(c.Name, input+".") {
-			within = append(within, c.Name)
-		}
-		parts := strings.Split(c.Name, ".")
-		for n := len(parts); n >= 1; n-- {
-			candidate := strings.Join(parts[:n], ".")
-			if (groups || n == len(parts)) && !seen[candidate] {
-				seen[candidate] = true
-				candidates = append(candidates, candidate)
-			}
-		}
+	suggestions := r.commandTree().Suggestions([]string{input})
+	for i := range suggestions {
+		suggestions[i] = strings.ReplaceAll(suggestions[i], " ", ".")
 	}
-	var out []string
-	for _, candidate := range candidates {
-		if candidate != input && editDistance(input, candidate) <= max(2, len(input)/4) {
-			out = append(out, candidate)
-		}
-	}
-	sortStringsByDistance(out, input)
-	if len(out) == 0 {
-		sort.Strings(within)
-		out = within
-	}
-	return out[:min(3, len(out))]
+	return suggestions
 }
 
 func errorCatalogTypes() []string {

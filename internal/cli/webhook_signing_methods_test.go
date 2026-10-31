@@ -313,7 +313,7 @@ func TestSigningHelpAndMCPDescriptions(t *testing.T) {
 		if !ok {
 			t.Fatal("missing command", tc.name)
 		}
-		if cmd.Kind != "" {
+		if !commandOwned(cmd) {
 			operation, ok := openAPIOperationByID(cmd.OperationID)
 			if !ok {
 				t.Fatal("missing operation", cmd.OperationID)
