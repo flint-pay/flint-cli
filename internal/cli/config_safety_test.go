@@ -232,3 +232,47 @@ func TestConfigSafetyInitIsMCPWrite(t *testing.T) {
 		t.Fatalf("init writes project guards: %+v", entry)
 	}
 }
+
+func TestConfigSafetyMCPForceCannotReplaceGuards(t *testing.T) {
+	app, _, _ := testApp(t, "http://127.0.0.1:9")
+	path := filepath.Join(app.WorkingDir, ".flint", "config.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	raw := []byte(`{"merchant_id":"mer_other","sandbox_id":"test_other"}`)
+	if err := os.WriteFile(path, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	result := mcpCall(t, app, defaultOptions(), "init", map[string]any{"force": true})
+	if result["isError"] != true {
+		t.Fatal(result)
+	}
+	current, err := os.ReadFile(path)
+	if err != nil || string(current) != string(raw) {
+		t.Fatal("MCP replaced guards", err)
+	}
+	cmd, _ := app.Registry.ByName("init")
+	schema, e := schemaForMCPTool(cmd, mcpPolicy{})
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, ok := schema["properties"].(map[string]any)["force"]; ok {
+		t.Fatal("MCP advertises force")
+	}
+}
+
+func TestConfigSafetyInitDryRunDoesNotWriteOrRequest(t *testing.T) {
+	app, out, _ := testApp(t, "http://127.0.0.1:9")
+	app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(*http.Request) (*http.Response, error) { t.Fatal("dry run sent HTTP"); return nil, nil })}
+	exit, result := runJSON(t, app, out, "init", "--dry-run=client")
+	if exit != ExitOK || lookupPathValue(result, "data.dry_run") != true {
+		t.Fatal(out)
+	}
+	result = mcpCall(t, app, defaultOptions(), "init", map[string]any{"_flint": map[string]any{"dry_run": "client"}})
+	if result["isError"] == true || lookupPathValue(mcpResultJSON(t, result), "data.dry_run") != true {
+		t.Fatal(result)
+	}
+	if _, err := os.Stat(filepath.Join(app.WorkingDir, ".flint", "config.json")); !os.IsNotExist(err) {
+		t.Fatal("dry run wrote project config", err)
+	}
+}

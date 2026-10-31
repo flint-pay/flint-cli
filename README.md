@@ -491,3 +491,5 @@ count and cursor. JSON requires `--max-events N` or `--for DURATION` and returns
 apply to follow mode. Normal list behavior stays available without `--follow`.
 
 The embedded contract is pinned to Flint `ae5e845faceaa24aad8408cbcc6a64e0b2cfc17e`. `x-flint-destructive` alone determines irreversible operations; `x-flint-secret` marks secret fields. Flint-hosted account operations are excluded from CLI and MCP discovery because they require Flint's hosted account sign-in.
+
+`init --dry-run=client` previews the project config path without network requests or file changes; execution verifies the credential first. MCP init can create or validate guards, but replacing project guards with `--force` requires a terminal.

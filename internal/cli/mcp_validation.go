@@ -49,6 +49,9 @@ func mcpValidateInputs(cmd *Command, entry opindex.Entry, args, controls map[str
 		properties := map[string]any{}
 		required := []string{}
 		for _, arg := range cmd.Arguments {
+			if cmd.CanonicalName == "init" && arg.Name == "force" {
+				continue
+			}
 			typ := arg.Type
 			if typ == "" || typ == "time" {
 				typ = "string"

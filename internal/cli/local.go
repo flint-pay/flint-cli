@@ -682,6 +682,9 @@ func (a *App) localInit(cmd *Command, opts Options) int {
 	}
 	target := filepath.Join(start, ".flint", "config.json")
 	force := len(opts.Raw["force"]) > 0 && opts.Raw["force"][len(opts.Raw["force"])-1] == "true"
+	if force && a.mcpSkipScopeCheck {
+		return a.fail(usageError("OPERATION_NOT_AVAILABLE", "Project guard replacement is available only in a terminal. Run flint init --force there.", "force"), opts)
+	}
 	var resolved ResolvedConfig
 	var err error
 	if force {
@@ -691,6 +694,9 @@ func (a *App) localInit(cmd *Command, opts Options) int {
 	}
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
+	}
+	if opts.DryRunClient() {
+		return a.outputLocal(map[string]any{"data": map[string]any{"dry_run": true, "operation": "init", "project_config_path": target, "force": force, "verification_required": true}}, cmd, opts)
 	}
 	key, _, err := a.resolveCheckCredential(resolved.ProfileName)
 	if err != nil {
