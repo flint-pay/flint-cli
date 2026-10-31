@@ -7,6 +7,10 @@ import (
 
 func TestSandboxTestTokensPinned(t *testing.T) {
 	want := []string{"pm_card_visa", "pm_card_threeDSecure2Required", "pm_card_authenticationRequired", "pm_card_chargeDeclinedInsufficientFunds", "pm_card_chargeDeclined", "pm_card_createDispute", "pm_card_createDisputeInquiry", "pm_card_createDisputeProductNotReceived", "pm_card_riskLevelElevated", "pm_card_riskLevelHighest", "pm_card_radarBlock", "pm_card_bypassPending"}
+	topic, ok := helpTopic("test-cards")
+	if !ok || !reflect.DeepEqual(topic["sandbox_tokens"], sandboxTestTokens()) {
+		t.Fatal("help test-cards is not using the pinned token list")
+	}
 	got := []string{}
 	for _, token := range sandboxTestTokens() {
 		got = append(got, token["token"])

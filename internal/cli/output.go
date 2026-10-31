@@ -404,6 +404,9 @@ func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) *CLIError 
 		renderDoctorHuman(w, value)
 		return nil
 	}
+	if cmd != nil && cmd.CanonicalName == "init" && renderInitHuman(w, value, now) {
+		return nil
+	}
 	if cmd != nil && cmd.Render == "checkout" {
 		renderCheckoutHuman(w, value, now)
 		return nil
@@ -455,6 +458,10 @@ func renderDoctorHuman(w io.Writer, value any) {
 	fmt.Fprintln(w, "Credential source:", terminalSafe(info.CredentialSource))
 	fmt.Fprintln(w, "Profile:", terminalSafe(info.Profile))
 	checks, _ := data["checks"].([]map[string]any)
+	renderChecksHuman(w, checks)
+}
+
+func renderChecksHuman(w io.Writer, checks []map[string]any) {
 	for _, check := range checks {
 		marker := "✓"
 		if check["status"] == "fail" {
