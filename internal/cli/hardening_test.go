@@ -440,7 +440,7 @@ func TestOrderPaymentBareTokenResolvesSingleAwaitingIntent(t *testing.T) {
 	defer server.Close()
 
 	app, stdout, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"orders", "pay", "--idempotency-key", "saved-test-action-1", "ord_123", "--payment-source-token", "pm_card_visa", "--output", "json", "--confirm"})
+	exit := app.Run([]string{"orders", "pay", "--idempotency-key", "saved-test-action-1", "ord_123", "--payment-source-token", "pm_card_visa", "--output", "json"})
 	if exit != ExitOK || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}

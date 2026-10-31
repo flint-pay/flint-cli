@@ -126,9 +126,6 @@ func TestVerificationCreateResponsesRecordHistoryAndResolveReferences(t *testing
 					argv = append(argv, "--input", "-")
 				}
 				argv = append(argv, "--output", "json")
-				if command.Mutation {
-					argv = append(argv, "--confirm")
-				}
 				app.Stdin = strings.NewReader(body)
 				stdout.Reset()
 				stderr.Reset()

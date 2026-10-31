@@ -296,7 +296,7 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 	if cmd.OperationID != "" && !cmd.Local {
 		entry, found = index.OperationSafety(cmd.OperationID)
 	}
-	needs := found && entry.Kind == "write" && entry.ConfirmRequired()
+	needs := found && terminalConfirmationRequired(entry, environment)
 	if unknownRawOperation(cmd) {
 		// No contract classification exists for forward-compatible raw routes.
 		needs = cmd.Method == "DELETE" || cmd.Mutation && (environment == "live" || environment == environmentUnverified)

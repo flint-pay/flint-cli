@@ -71,7 +71,7 @@ func TestEmbeddedCheckoutOriginJSONInput(t *testing.T) {
 				t.Fatal(err)
 			}
 			app.Stdin = strings.NewReader(string(raw))
-			argv = append(argv, "--input", "-", "--output", "json", "--confirm")
+			argv = append(argv, "--input", "-", "--output", "json")
 			if exit := app.Run(argv); exit != ExitOK || stderr.Len() != 0 {
 				t.Fatalf("exit=%d stdout=%s stderr=%s", exit, out, stderr)
 			}
@@ -119,7 +119,7 @@ func TestCustomerAccountJSONInputPreservesSparseUpdates(t *testing.T) {
 				t.Fatalf("sparse settings input rejected: %v", err)
 			}
 			app.Stdin = strings.NewReader(input)
-			if exit := app.Run([]string{"settings", "update", "--input", "-", "--output", "json", "--confirm"}); exit != ExitOK || stderr.Len() != 0 {
+			if exit := app.Run([]string{"settings", "update", "--input", "-", "--output", "json"}); exit != ExitOK || stderr.Len() != 0 {
 				t.Fatalf("exit=%d stdout=%s stderr=%s", exit, out, stderr)
 			}
 			if calls != 1 || !reflect.DeepEqual(sent, expected) {

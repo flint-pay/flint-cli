@@ -755,7 +755,7 @@ func TestExpandAndOpenFlagsExecuteEndToEnd(t *testing.T) {
 			"--quick-pay-name", "Test",
 			"--amount", "2500",
 			"--currency", "USD",
-			"--open", "--confirm",
+			"--open",
 		})
 		if exit != ExitOK || stderr.Len() != 0 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)

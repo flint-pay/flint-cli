@@ -139,10 +139,17 @@ func newRegistry(includeAPI bool) *Registry {
 		}
 		for _, c := range r.Commands {
 			entry, _ := index.Lookup(c.CanonicalName)
-			if entry.Kind != "write" || !entry.ConfirmRequired() {
+			if entry.Kind != "write" {
 				continue
 			}
 			for i, example := range c.Examples {
+				environment := "sandbox"
+				if strings.Contains(example, "--live") {
+					environment = "live"
+				}
+				if !terminalConfirmationRequired(entry, environment) {
+					continue
+				}
 				if !strings.Contains(example, "--confirm") && !strings.Contains(example, "--preview") && !strings.Contains(example, "--dry-run") {
 					c.Examples[i] = example + " --confirm"
 				}

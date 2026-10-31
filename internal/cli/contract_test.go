@@ -316,7 +316,7 @@ func TestPaymentIntentCreateSendsRepeatablePaymentOptions(t *testing.T) {
 	exit := app.Run([]string{
 		"payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--amount", "2500", "--currency", "USD",
 		"--payment-options", "card", "--payment-options", "ach_debit", "--transaction-purpose", "services",
-		"--output", "json", "--confirm",
+		"--output", "json",
 	})
 	if exit != ExitOK || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
@@ -364,7 +364,7 @@ func TestPaymentIntentConfirmSendsConfirmationToken(t *testing.T) {
 	defer server.Close()
 
 	app, stdout, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"payment-intents", "confirm", "pi_123", "--confirmation-token", "ctoken_123", "--output", "json", "--confirm"})
+	exit := app.Run([]string{"payment-intents", "confirm", "pi_123", "--confirmation-token", "ctoken_123", "--output", "json"})
 	if exit != ExitOK || stderr.Len() != 0 || body["credential_type"] != "stripe_confirmation_token" || body["stripe"].(map[string]any)["confirmation_token"] != "ctoken_123" {
 		t.Fatalf("exit=%d body=%#v stdout=%s stderr=%s", exit, body, stdout, stderr)
 	}
@@ -810,7 +810,7 @@ func TestOrderPaymentIntentPermissionUsesOrderScope(t *testing.T) {
 				}))
 				defer server.Close()
 				app, stdout, stderr := testApp(t, server.URL)
-				argv := []string{"orders", "payment-intents", "create", "ord_123", "--idempotency-key", "saved-test-action-1", "--output", "json", "--confirm"}
+				argv := []string{"orders", "payment-intents", "create", "ord_123", "--idempotency-key", "saved-test-action-1", "--output", "json"}
 				if dryRun {
 					argv = append(argv, "--dry-run=client")
 				}

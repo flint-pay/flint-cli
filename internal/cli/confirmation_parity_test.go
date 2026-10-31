@@ -33,7 +33,7 @@ func TestTerminalConfirmationMatchesSharedIndex(t *testing.T) {
 					candidate.CanonicalName = "api"
 				}
 				e := app.confirmCommand(&candidate, AuthContext{Environment: environment}, Options{NoInput: true})
-				want := entry.Kind == "write" && entry.ConfirmRequired()
+				want := entry.Kind == "write" && (entry.Irreversible || environment != "sandbox" && entry.Sensitive)
 				if (e != nil) != want || e != nil && e.ExitCode != ExitConfirmation {
 					t.Fatalf("%s env=%s raw=%v entry=%+v error=%v", cmd.Name, environment, raw, entry, e)
 				}
@@ -54,10 +54,10 @@ func TestTerminalConfirmationParityDispatch(t *testing.T) {
 		tty                      bool
 		wantExit, wantWrites     int
 	}{
-		{name: "sandbox sensitive", environment: "sandbox", args: []string{"payment-intents", "create", "--input", `{"amount_money":{"amount":500,"currency":"USD"},"payment_options":["card"]}`, "--idempotency-key", "parity-test"}, wantExit: ExitConfirmation},
-		{name: "sandbox sensitive accepted", environment: "sandbox", args: []string{"payment-intents", "create", "--input", `{"amount_money":{"amount":500,"currency":"USD"},"payment_options":["card"]}`, "--idempotency-key", "parity-test"}, tty: true, input: "yes\n", wantWrites: 1},
+		{name: "sandbox reversible create", environment: "sandbox", args: []string{"payment-intents", "create", "--input", `{"amount_money":{"amount":500,"currency":"USD"},"payment_options":["card"]}`, "--idempotency-key", "parity-test"}, wantWrites: 1},
+		{name: "live sensitive accepted", environment: "live", args: []string{"payment-intents", "create", "--input", `{"amount_money":{"amount":500,"currency":"USD"},"payment_options":["card"]}`, "--idempotency-key", "parity-test", "--live"}, tty: true, input: "yes\n", wantWrites: 1},
 		{name: "sandbox irreversible", environment: "sandbox", args: []string{"invoices", "void", "inv_test"}, wantExit: ExitConfirmation},
-		{name: "close stays sensitive", environment: "sandbox", args: []string{"orders", "close", "ord_test"}, wantExit: ExitConfirmation},
+		{name: "close is reversible in sandbox", environment: "sandbox", args: []string{"orders", "close", "ord_test"}, wantWrites: 1},
 		{name: "ordinary raw live create", environment: "live", args: []string{"api", "post", "/v1/customers", "--input", `{"name":"Parity"}`, "--live"}, wantWrites: 1},
 		{name: "ordinary raw live overwrite", environment: "live", args: []string{"api", "patch", "/v1/customers/cus_test", "--input", `{"name":"Parity"}`, "--live"}, wantWrites: 1},
 		{name: "raw irreversible", environment: "sandbox", args: []string{"api", "post", "/v1/invoices/inv_test/void"}, wantExit: ExitConfirmation},
@@ -95,7 +95,7 @@ func TestTerminalConfirmationParityDispatch(t *testing.T) {
 func TestTerminalConfirmationDoesNotSendRequests(t *testing.T) {
 	app, _, _ := testApp(t, "http://127.0.0.1:9")
 	app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(*http.Request) (*http.Response, error) { t.Fatal("gate sent HTTP"); return nil, nil })}
-	cmd, _ := app.Registry.ByName("refunds.create")
+	cmd, _ := app.Registry.ByName("invoices.void")
 	if e := app.confirmCommand(cmd, AuthContext{Environment: "sandbox"}, Options{NoInput: true}); e == nil {
 		t.Fatal("missing confirmation")
 	}
@@ -116,5 +116,48 @@ func TestUnknownRawConfirmationFallback(t *testing.T) {
 				t.Fatal(e)
 			}
 		}
+	}
+}
+
+func TestRawLiveConfirmationRemovalsAreUngated(t *testing.T) {
+	app, _, _ := testApp(t, "http://127.0.0.1:9")
+	index, err := app.operationIndex()
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := loadOpenAPI()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, environment := range []string{"live", environmentUnverified} {
+		removed := 0
+		for path, methods := range doc.Paths {
+			for method, operation := range methods {
+				if operation.OperationID == "" {
+					continue
+				}
+				entry, found := index.OperationSafety(operation.OperationID)
+				if !found {
+					t.Fatal(operation.OperationID)
+				}
+				mutation := method != "get" && method != "head" || operation.OperationID == "authorizePartnerInstall"
+				oldRequired := mutation || operation.FlintDestructive
+				cmd := &Command{CanonicalName: "api", OperationID: operation.OperationID, Method: strings.ToUpper(method), APIPath: path, Mutation: mutation, Sensitive: mutation, Destructive: method == "delete" || operation.FlintDestructive}
+				e := app.confirmCommand(cmd, AuthContext{Environment: environment}, Options{NoInput: true})
+				if entry.Kind == "write" && entry.ConfirmRequired() && (e == nil || e.ExitCode != ExitConfirmation) {
+					t.Fatalf("gated operation lost %s confirmation: %s %s %+v error=%v", environment, method, path, entry, e)
+				}
+				if oldRequired && e == nil {
+					removed++
+					if entry.Sensitive || entry.Irreversible {
+						t.Fatalf("unsafe removal: %s %s %+v", method, path, entry)
+					}
+				}
+			}
+		}
+		if removed == 0 {
+			t.Fatal("removal proof did not exercise any routes")
+		}
+		t.Logf("%s: all %d raw confirmation removals are ungated", environment, removed)
 	}
 }

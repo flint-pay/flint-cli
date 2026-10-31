@@ -23,7 +23,7 @@ func TestMixedAuthAccessTokenMutationSafety(t *testing.T) {
 		{"live acknowledgement", "live", "LIVE_ACKNOWLEDGEMENT_REQUIRED", 200, ExitAuth, nil, false},
 		{"live confirmation", "live", "PRODUCTION_CONFIRMATION_REQUIRED", 200, ExitConfirmation, []string{"--live"}, false},
 		{"live confirmed", "live", "", 200, ExitOK, []string{"--live", "--confirm"}, true},
-		{"sandbox", "sandbox", "", 200, ExitOK, []string{"--confirm"}, true},
+		{"sandbox", "sandbox", "", 200, ExitOK, nil, true},
 		{"merchant guard", "live", "MERCHANT_GUARD_MISMATCH", 200, ExitAuth, []string{"--live", "--confirm", "--merchant", "mer_other"}, false},
 		{"unverified", "", "UNVERIFIED_ENVIRONMENT_CONFIRMATION_REQUIRED", 401, ExitConfirmation, nil, false},
 		{"unverified with live", "", "UNVERIFIED_ENVIRONMENT_CONFIRMATION_REQUIRED", 401, ExitConfirmation, []string{"--live"}, false},
