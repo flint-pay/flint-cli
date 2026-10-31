@@ -161,3 +161,38 @@ func TestRawLiveConfirmationRemovalsAreUngated(t *testing.T) {
 		t.Logf("%s: all %d raw confirmation removals are ungated", environment, removed)
 	}
 }
+
+func TestMoneyOutIrreversibleBridgePinned(t *testing.T) {
+	app, _, _ := testApp(t, "http://127.0.0.1:9")
+	index, err := app.operationIndex()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Pin both operation IDs and routes, including the existing cash-out action.
+	for _, item := range []struct{ name, id, path string }{
+		{"refunds.create", "createRefund", "/v1/refunds"},
+		{"payouts.create", "createPayout", "/v1/payouts"},
+		{"credit-notes.refunds.create", "createCreditNoteRefund", "/v1/credit-notes/{credit_note_id}/refunds"},
+		{"gift-cards.cash-out", "cashOutGiftCard", "/v1/gift-cards/{gift_card_id}/cash-out"},
+	} {
+		entry, found := index.Lookup(item.name)
+		if !found || entry.OperationID != item.id || entry.Path != item.path || entry.Method != "POST" || !entry.Irreversible || !entry.ConfirmRequired() {
+			t.Fatalf("money-out safety changed: %s %+v", item.name, entry)
+		}
+		raw, found := index.OperationSafety(item.id)
+		if !found || !raw.Irreversible {
+			t.Fatalf("raw money-out safety changed: %s %+v", item.id, raw)
+		}
+		for _, environment := range []string{"sandbox", "live", environmentUnverified} {
+			if !terminalConfirmationRequired(entry, environment) {
+				t.Fatalf("%s escaped %s confirmation", item.name, environment)
+			}
+		}
+	}
+	for _, name := range []string{"orders.create", "checkout-sessions.create", "payment-intents.create"} {
+		entry, found := index.Lookup(name)
+		if !found || entry.Irreversible || terminalConfirmationRequired(entry, "sandbox") || !terminalConfirmationRequired(entry, "live") || !terminalConfirmationRequired(entry, environmentUnverified) {
+			t.Fatalf("reversible create policy changed: %s %+v", name, entry)
+		}
+	}
+}

@@ -233,6 +233,11 @@ func derivedDestructive(method, path string) bool {
 	if method != "POST" {
 		return false
 	}
+	// Money-out creates remain irreversible until FLI-879 publishes these marks.
+	switch path {
+	case "/v1/refunds", "/v1/payouts", "/v1/credit-notes/{credit_note_id}/refunds":
+		return true
+	}
 	last := path[strings.LastIndex(path, "/")+1:]
 	switch last {
 	case "void", "revoke", "cancel", "mark-uncollectible", "accept", "reset", "rotate-secret", "rotate-code", "cash-out":
