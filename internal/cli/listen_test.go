@@ -1076,7 +1076,6 @@ func TestListenValidatesArgumentsBeforeConnecting(t *testing.T) {
 		code string
 		text string
 	}{
-		{args: []string{"--event-type", "payment_intent.succeded"}, code: "INVALID_EVENT_TYPE", text: "Did you mean payment_intent.succeeded?"},
 		{args: []string{"--event-type", "payment_intent.succeeded", "--event-type", "payment_intent.created"}, code: "MULTIPLE_EVENT_TYPES", text: "one flint listen per type"},
 		{args: []string{"--event-type", "payment_intent.succeeded,payment_intent.created"}, code: "MULTIPLE_EVENT_TYPES", text: "accepts one event type"},
 		{args: []string{"--cursor", "bogus"}, code: "INVALID_CURSOR", text: "starts with whev_"},

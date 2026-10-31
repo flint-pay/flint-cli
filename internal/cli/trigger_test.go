@@ -264,7 +264,7 @@ func TestTriggerLocalChecksAndRefusal(t *testing.T) {
 		{"live", "live", "TEST_MODE_REQUIRED", []string{"order.paid"}, 3},
 		{"unverified", "unverified", "TEST_MODE_REQUIRED", []string{"order.paid"}, 3},
 		{"live_flag", "sandbox", "TEST_MODE_REQUIRED", []string{"order.paid", "--live"}, 2},
-		{"unknown", "sandbox", "INVALID_EVENT_TYPE", []string{"order.paidd"}, 2},
+		{"unknown", "sandbox", "TRIGGER_EVENT_UNSUPPORTED", []string{"order.paidd"}, 2},
 		{"unsupported", "sandbox", "TRIGGER_EVENT_UNSUPPORTED", []string{"invoice.overdue"}, 2},
 		{"list", "sandbox", "", []string{"--list"}, 0},
 		{"dry", "sandbox", "", []string{"order.paid", "--dry-run=client"}, 0},

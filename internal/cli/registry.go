@@ -104,9 +104,6 @@ func newRegistry(includeAPI bool) *Registry {
 			if schema := parameters["query:"+arg.Query]; arg.Query != "" && schema != nil {
 				applyQueryArgumentContract(arg, schema)
 			}
-			if c.Arguments[i].Type == "time" {
-				c.Arguments[i].Description += "; also accepts today, this_week, yesterday, a date, or a duration such as 7d (calendar values use the reporting timezone)"
-			}
 		}
 		for _, argument := range c.Arguments {
 			if argument.Name == "page_size" {
@@ -125,6 +122,7 @@ func newRegistry(includeAPI bool) *Registry {
 		if !c.Local {
 			applyPublicOperationMetadata(c)
 		}
+		applyArgumentValues(c)
 		if commandIdempotencyClass(c) == "required" {
 			for i, example := range c.Examples {
 				if !strings.Contains(example, "--idempotency-key") {

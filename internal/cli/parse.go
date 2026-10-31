@@ -29,6 +29,9 @@ var globalFlags = map[string]bool{
 }
 
 func parseInvocation(r *Registry, argv []string) (*Command, Options, bool, *CLIError) {
+	if cmd, opts, handled, err := parseHelpInvocation(r, argv); handled {
+		return cmd, opts, true, err
+	}
 	opts := defaultOptions()
 	remaining, err := extractFlags(argv, globalFlags, &opts, false)
 	if err != nil {
@@ -274,21 +277,14 @@ func setOption(o *Options, key, value string) *CLIError {
 }
 
 func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
-	if o.CredentialStore != "" && o.CredentialStore != "keyring" && o.CredentialStore != "file" {
-		return usageError("INVALID_CREDENTIAL_STORE", "--credential-store or FLINT_CREDENTIAL_STORE must be keyring or file.", "credential-store")
-	}
 	if help {
 		return nil
 	}
-	for _, arg := range cmd.Arguments {
-		if arg.Query == "" || len(arg.Enum) == 0 || cmd.CanonicalName == "listen" {
-			continue
-		}
-		for _, value := range o.Raw[strings.TrimPrefix(arg.Flag, "--")] {
-			if !containsString(arg.Enum, value) {
-				return usageError("INVALID_ARGUMENT", arg.Flag+" must be one of: "+strings.Join(arg.Enum, ", ")+".", arg.Name)
-			}
-		}
+	if o.CredentialStore != "" && o.CredentialStore != "keyring" && o.CredentialStore != "file" {
+		return usageError("INVALID_CREDENTIAL_STORE", "--credential-store or FLINT_CREDENTIAL_STORE must be keyring or file.", "credential-store")
+	}
+	if err := validateArgumentValues(cmd, o); err != nil {
+		return err
 	}
 	if o.Output != "human" && o.Output != "json" && o.Output != "ndjson" {
 		source := "--output"

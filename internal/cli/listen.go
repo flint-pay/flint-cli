@@ -16,7 +16,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -409,19 +408,8 @@ func validateListenEventType(values []string) *CLIError {
 	if strings.TrimSpace(value) == "" {
 		return usageError("INVALID_EVENT_TYPE", "--event-type must not be empty.", "event_type")
 	}
-	known := listenEventTypes()
-	if len(known) == 0 || slices.Contains(known, value) {
-		return nil
-	}
-	suggestions := listenEventTypeSuggestions(known, value)
-	message := fmt.Sprintf("Unknown webhook event type %q.", terminalSafe(value))
-	if len(suggestions) > 0 {
-		message += " Did you mean " + suggestions[0] + "?"
-	}
-	message += " Run flint help events for the event catalog; if this type is newer than this CLI, run flint upgrade."
-	e := usageError("INVALID_EVENT_TYPE", message, "event_type")
-	e.Details = []map[string]any{{"input": value, "suggestions": suggestions}}
-	return e
+	// A newer server may accept event types absent from this snapshot.
+	return nil
 }
 
 // listenEventTypeSuggestions ranks event types by edit distance. A resource

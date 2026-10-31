@@ -36,6 +36,8 @@ type Arg struct {
 	Positional        int      `json:"positional,omitempty"`
 	BodyPath          string   `json:"body_path,omitempty"`
 	Query             string   `json:"query,omitempty"`
+	Style             string   `json:"style,omitempty"`
+	Explode           *bool    `json:"explode,omitempty"`
 	Repeat            bool     `json:"repeatable,omitempty"`
 	Variadic          bool     `json:"variadic,omitempty"`
 	IDPrefix          string   `json:"id_prefix,omitempty"`

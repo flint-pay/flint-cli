@@ -97,7 +97,7 @@ func TestReportingTimezoneCacheAndOfflineFallback(t *testing.T) {
 
 func TestReportingTimeQueryAndLocalEnums(t *testing.T) {
 	app, out, stderr := testApp(t, "")
-	if exit := app.Run([]string{"orders", "list", "--status", "bogus", "--output", "json"}); exit != ExitUsage || !strings.Contains(out.String(), "INVALID_ARGUMENT") {
+	if exit := app.Run([]string{"orders", "list", "--status", "bogus", "--output", "json"}); exit != ExitUsage || !strings.Contains(out.String(), "INVALID_FLAG_VALUE") {
 		t.Fatalf("exit %d out %s stderr %s", exit, out, stderr)
 	}
 	cmd := mustMCPTool(t, app, "orders.list")

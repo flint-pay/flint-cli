@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -356,13 +357,6 @@ func builtRemoteInvocation(command *cli.Command) []string {
 }
 
 func builtArgumentValues(argument cli.Arg) []string {
-	if len(argument.Enum) > 0 {
-		count := 1
-		if argument.Repeat {
-			count = min(2, len(argument.Enum))
-		}
-		return append([]string(nil), argument.Enum[:count]...)
-	}
 	if argument.Type == "boolean" {
 		return []string{"true"}
 	}
@@ -416,6 +410,12 @@ func builtArgumentValues(argument cli.Arg) []string {
 	if value == "" {
 		value = "test"
 	}
+	// Keep coherent union fixtures (restricted access with scopes, amount
+	// refunds with money, and ACH options with a transaction purpose). Enum
+	// publication must not replace those values with an unrelated first member.
+	if len(argument.Enum) > 0 && !slices.Contains(argument.Enum, value) {
+		value = argument.Enum[0]
+	}
 	if !argument.Repeat {
 		return []string{value}
 	}
@@ -431,6 +431,15 @@ func builtArgumentValues(argument cli.Arg) []string {
 		second = "pi_second=pm_card_mastercard"
 	case "scope":
 		second = "customers.write"
+	}
+	if len(argument.Enum) > 0 && !slices.Contains(argument.Enum, second) {
+		if len(argument.Enum) == 1 {
+			return []string{value}
+		}
+		second = argument.Enum[1]
+		if second == value {
+			second = argument.Enum[0]
+		}
 	}
 	return []string{value, second}
 }

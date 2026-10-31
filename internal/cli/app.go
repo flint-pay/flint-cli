@@ -396,25 +396,7 @@ func (a *App) printCommandHelp(cmd *Command) {
 		fmt.Fprintln(a.Stdout)
 		fmt.Fprintln(a.Stdout, "Arguments and flags:")
 		for _, arg := range cmd.Arguments {
-			label := arg.Flag
-			if label == "" {
-				label = arg.Name
-				if arg.Variadic {
-					label += "..."
-				}
-			}
-			description := arg.Description
-			if arg.AcceptsHistoryRef {
-				ref := "@last"
-				if arg.IDPrefix != "" {
-					ref = "@last." + strings.TrimSuffix(arg.IDPrefix, "_")
-				}
-				description += "; accepts " + ref + " for the most recent resource this profile created or changed"
-			}
-			if arg.Required {
-				description += " (required)"
-			}
-			fmt.Fprintf(a.Stdout, "  %-28s %s\n", label, strings.TrimPrefix(description, "; "))
+			printArgumentHelp(a.Stdout, cmd, arg)
 		}
 	}
 	fmt.Fprintln(a.Stdout)

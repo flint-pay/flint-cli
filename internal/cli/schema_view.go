@@ -91,6 +91,8 @@ func queryDiscoverySchema(schema map[string]any) map[string]any {
 	schema = maps.Clone(schema)
 	if schema["format"] == "date-time" {
 		delete(schema, "format")
+		description, _ := schema["description"].(string)
+		schema["description"] = queryTimeDescription(description)
 	}
 	if item, ok := schema["items"].(map[string]any); ok {
 		schema["items"] = queryDiscoverySchema(item)

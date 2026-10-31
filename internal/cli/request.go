@@ -95,6 +95,10 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		return req, inputErr
 	}
 	for _, arg := range cmd.Arguments {
+		// Query arrays and their history references are normalized together below.
+		if arg.Query != "" {
+			continue
+		}
 		var values []string
 		if arg.Positional > 0 && len(opts.Positionals) >= arg.Positional {
 			values = []string{opts.Positionals[arg.Positional-1]}
@@ -126,9 +130,6 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 			}
 			if arg.Positional > 0 {
 				req.Path = strings.Replace(req.Path, "{"+arg.Name+"}", url.PathEscape(value), 1)
-			}
-			if arg.Query != "" {
-				continue
 			}
 			if arg.BodyPath != "" && arg.Name != "input" {
 				if strings.HasSuffix(arg.BodyPath, ".currency") {
@@ -162,7 +163,7 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		if arg.Query == "" {
 			continue
 		}
-		values := opts.Raw[strings.TrimPrefix(arg.Flag, "--")]
+		values := argumentValues(arg, opts)
 		for _, value := range values {
 			if arg.IDPrefix != "" {
 				value = strings.TrimSpace(value)
@@ -198,6 +199,9 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 				value = instant
 			}
 			query.Add(arg.Query, value)
+		}
+		if arg.Repeat && arg.Style == "form" && arg.Explode != nil && !*arg.Explode && len(query[arg.Query]) > 0 {
+			query.Set(arg.Query, strings.Join(query[arg.Query], ","))
 		}
 	}
 	if opts.Limit > 0 {
