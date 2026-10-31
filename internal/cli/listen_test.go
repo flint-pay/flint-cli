@@ -761,9 +761,8 @@ func TestListenReportsFailedForwardsAndExitsNonZero(t *testing.T) {
 	const readyCursor = "whev_00ABCDEFGHIJKLMNOPQRSTUVWX"
 	const firstID = "whev_01ABCDEFGHIJKLMNOPQRSTUVWX"
 	const secondID = "whev_02ABCDEFGHIJKLMNOPQRSTUVWX"
-	var requests atomic.Int32
-	local := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		if requests.Add(1)%2 == 1 {
+	local := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("webhook-id") == firstID {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprint(w, "boom:\n\x1b[31m signature mismatch "+strings.Repeat("x", 600))
 			return
@@ -857,14 +856,14 @@ func TestListenHandlerSlowerThanTimeoutDoesNotStopListener(t *testing.T) {
 	const firstID = "whev_01ABCDEFGHIJKLMNOPQRSTUVWX"
 	const secondID = "whev_02ABCDEFGHIJKLMNOPQRSTUVWX"
 	firstDeliveryAbandoned := make(chan struct{})
-	var deliveries atomic.Int32
+	var abandonedOnce sync.Once
 	local := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if deliveries.Add(1) == 1 {
+		if r.Header.Get("webhook-id") == firstID {
 			// A paused handler: it answers only after the listener gives up.
 			// The server notices the disconnect only once the body is read.
 			_, _ = io.Copy(io.Discard, r.Body)
 			<-r.Context().Done()
-			close(firstDeliveryAbandoned)
+			abandonedOnce.Do(func() { close(firstDeliveryAbandoned) })
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -1076,8 +1075,8 @@ func TestListenValidatesArgumentsBeforeConnecting(t *testing.T) {
 		code string
 		text string
 	}{
-		{args: []string{"--event-type", "payment_intent.succeeded", "--event-type", "payment_intent.created"}, code: "MULTIPLE_EVENT_TYPES", text: "one flint listen per type"},
-		{args: []string{"--event-type", "payment_intent.succeeded,payment_intent.created"}, code: "MULTIPLE_EVENT_TYPES", text: "accepts one event type"},
+		{args: []string{"--event-type", " "}, code: "INVALID_EVENT_TYPE", text: "must not be empty"},
+		{args: []string{"--event-type", "payment_intent.succeeded,"}, code: "INVALID_EVENT_TYPE", text: "must not be empty"},
 		{args: []string{"--cursor", "bogus"}, code: "INVALID_CURSOR", text: "starts with whev_"},
 		{args: []string{"--cursor", "whev_"}, code: "INVALID_CURSOR", text: "starts with whev_"},
 		{args: []string{"--forward-to", "https://example.com/webhooks"}, code: "INVALID_FORWARD_URL", text: "host.docker.internal"},
