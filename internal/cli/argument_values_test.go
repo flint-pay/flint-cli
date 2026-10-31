@@ -20,7 +20,7 @@ func TestArgumentValueMetadata(t *testing.T) {
 		want              []string
 	}{
 		{"config.set", "key", []string{"profile", "merchant"}},
-		{"config.unset", "key", []string{"merchant"}},
+		{"config.unset", "key", []string{"profile", "merchant"}},
 		{"api-keys.create", "access", []string{"full", "read_only", "restricted"}},
 		{"api-keys.update", "access", []string{"full", "read_only", "restricted"}},
 		{"support.open", "area", supportProductAreas},

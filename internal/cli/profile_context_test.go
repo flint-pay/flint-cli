@@ -45,7 +45,7 @@ func TestHistoryEnvironmentKeyOverridesSavedContext(t *testing.T) {
 			if err := os.MkdirAll(projectDir, 0700); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(filepath.Join(projectDir, "config.json"), []byte(`{"merchant":"mer_current","sandbox":"test_other"}`), 0600); err != nil {
+			if err := os.WriteFile(filepath.Join(projectDir, "config.json"), []byte(`{"merchant_id":"mer_current","sandbox_id":"test_other"}`), 0600); err != nil {
 				t.Fatal(err)
 			}
 			out.Reset()

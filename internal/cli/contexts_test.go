@@ -367,7 +367,7 @@ func TestContextProjectSelectionAndGuard(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(project, "config.json")
-	if err := os.WriteFile(path, []byte(`{"context":"ctx_b"}`), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(`{"context_id":"ctx_b"}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if exit := app.Run([]string{"auth", "status", "--output", "json"}); exit != ExitOK || !strings.Contains(out.String(), `"context_id":"ctx_b"`) {
@@ -377,7 +377,7 @@ func TestContextProjectSelectionAndGuard(t *testing.T) {
 	if exit := app.Run([]string{"auth", "status", "--context", "ctx_a", "--output", "json"}); exit != ExitOK || !strings.Contains(out.String(), `"context_id":"ctx_a"`) {
 		t.Fatalf("override: %d %s", exit, out)
 	}
-	if err := os.WriteFile(path, []byte(`{"context":"ctx_b","merchant":"mer_other"}`), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(`{"context_id":"ctx_b","merchant_id":"mer_other"}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	out.Reset()

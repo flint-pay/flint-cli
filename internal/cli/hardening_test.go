@@ -165,6 +165,9 @@ func TestEveryCommandHelpRendersWithoutAuthentication(t *testing.T) {
 func TestLocalConfigAndSchemaCommands(t *testing.T) {
 	app, stdout, stderr := testApp(t, "")
 	t.Setenv("FLINT_API_KEY", "")
+	if err := app.updateConfig(func(cfg *Config) error { cfg.Profiles["qa"] = profileWithoutCredential(); return nil }); err != nil {
+		t.Fatal(err)
+	}
 
 	for _, test := range []struct {
 		argv []string
@@ -257,7 +260,7 @@ func TestConfigPrecedenceAndSandboxGuard(t *testing.T) {
 	if err := os.MkdirAll(projectDir, 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, "config.json"), []byte(`{"profile":"project","merchant":"mer_project","sandbox":"test_project"}`), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, "config.json"), []byte(`{"profile":"project","merchant_id":"mer_project","sandbox_id":"test_project"}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	app.WorkingDir = filepath.Join(projectRoot, "nested")
