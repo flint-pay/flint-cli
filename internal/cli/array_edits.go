@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+type arrayReadProjection struct{ Field, Item string }
+
 func appendArrayEditArguments(doc *openAPIDocument, path, method string, operation openAPIOperation, args []Arg) []Arg {
 	if method != "PATCH" {
 		return args
@@ -159,6 +161,23 @@ func (a *App) prepareArrayEdits(ctx context.Context, cmd *Command, opts Options,
 	changed := false
 	for field, c := range changes {
 		raw, present := data[field]
+		if !present {
+			if projection, ok := publicOperationOverlays[cmd.OperationID].ArrayReads[field]; ok {
+				references, ok := data[projection.Field].([]any)
+				if ok {
+					projected := make([]any, 0, len(references))
+					for _, reference := range references {
+						object, _ := reference.(map[string]any)
+						value, ok := object[projection.Item].(string)
+						if !ok {
+							return usageError("ARRAY_EDIT_READ_INVALID", "GET category references omit their handle; cannot safely edit category_handles.", field)
+						}
+						projected = append(projected, value)
+					}
+					raw, present = projected, true
+				}
+			}
+		}
 		if !present {
 			return usageError("ARRAY_EDIT_READ_INVALID", "GET did not return "+field+"; cannot safely edit its list.", field)
 		}

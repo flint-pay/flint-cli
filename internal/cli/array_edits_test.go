@@ -28,6 +28,7 @@ func TestArrayEditsMergeNoopAndConflict(t *testing.T) {
 		{"remove missing noop", []string{"--remove-enabled-events", "refund.succeeded"}, []string{"payment_intent.succeeded"}, 0, nil, 1, 0},
 		{"noop with scalar change", []string{"--add-enabled-events", "payment_intent.succeeded", "--status", "active"}, []string{"payment_intent.succeeded"}, 0, []string{"payment_intent.succeeded"}, 1, 1},
 		{"mixed", []string{"--remove-enabled-events", "payment_intent.succeeded", "--add-enabled-events", "refund.succeeded"}, []string{"payment_intent.succeeded"}, 0, []string{"refund.succeeded"}, 1, 1},
+		{"stdin conflict preserves input", []string{"--input", "-", "--add-enabled-events", "refund.succeeded"}, []string{"payment_intent.succeeded"}, 1, []string{"payment_intent.succeeded", "order.created", "refund.succeeded"}, 2, 2},
 		{"version conflict once", []string{"--add-enabled-events", "refund.succeeded"}, []string{"payment_intent.succeeded"}, 1, []string{"payment_intent.succeeded", "order.created", "refund.succeeded"}, 2, 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -55,12 +56,16 @@ func TestArrayEditsMergeNoopAndConflict(t *testing.T) {
 				patches++
 				keys = append(keys, r.Header.Get("Idempotency-Key"))
 				var body struct {
-					Version int      `json:"expected_version"`
-					Events  []string `json:"enabled_events"`
+					Version     int      `json:"expected_version"`
+					Events      []string `json:"enabled_events"`
+					Description string   `json:"description"`
 				}
 				_ = json.NewDecoder(r.Body).Decode(&body)
 				if body.Version != gets+2 {
 					t.Errorf("version=%d gets=%d", body.Version, gets)
+				}
+				if slices.Contains(tc.flags, "--input") && body.Description != "keep" {
+					t.Errorf("lost stdin description %q", body.Description)
 				}
 				last = body.Events
 				if patches <= tc.conflicts {
@@ -72,6 +77,7 @@ func TestArrayEditsMergeNoopAndConflict(t *testing.T) {
 			}))
 			defer server.Close()
 			app, out, stderr := testApp(t, server.URL)
+			app.Stdin = strings.NewReader(`{"description":"keep"}`)
 			args := append([]string{"webhook-endpoints", "update", "whep_test", "--idempotency-key", "array-edit"}, tc.flags...)
 			exit, result := runJSON(t, app, out, args...)
 			if exit != 0 || gets != tc.gets || patches != tc.patches || !reflect.DeepEqual(last, tc.want) {
@@ -224,5 +230,57 @@ func TestArrayEditsRefuseIncompleteRead(t *testing.T) {
 	_, e = app.prepareRequest(context.Background(), cmd, opts, ResolvedConfig{}, "", server.URL)
 	if e == nil || e.Code != "ARRAY_EDIT_READ_INVALID" || patches != 0 {
 		t.Fatal(e, patches)
+	}
+}
+
+func TestArrayEditsCategoryHandleReadProjection(t *testing.T) {
+	for _, group := range []string{"products", "bundles"} {
+		t.Run(group, func(t *testing.T) {
+			var patch map[string]any
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/v1/auth-context" {
+					fmt.Fprint(w, exhaustiveAuthContextJSON("sandbox"))
+					return
+				}
+				if r.Method == "GET" {
+					fmt.Fprint(w, `{"data":{"version":3,"categories":[{"category_id":"ctg_existing","handle":"old-category"}]}}`)
+					return
+				}
+				_ = json.NewDecoder(r.Body).Decode(&patch)
+				fmt.Fprint(w, `{"data":{"version":4}}`)
+			}))
+			defer server.Close()
+			app, out, _ := testApp(t, server.URL)
+			id := "prod_test"
+			if group == "bundles" {
+				id = "bun_test"
+			}
+			exit, result := runJSON(t, app, out, group, "update", id, "--add-category-handles", "new-category")
+			if exit != 0 || !reflect.DeepEqual(patch["category_handles"], []any{"old-category", "new-category"}) {
+				t.Fatal(exit, result, patch)
+			}
+		})
+	}
+}
+
+func TestArrayEditsReadFieldsMatchEmbeddedSpec(t *testing.T) {
+	doc, _ := loadOpenAPI()
+	for _, cmd := range NewRegistry().Commands {
+		for _, arg := range cmd.Arguments {
+			if arg.ArrayEdit != "add" {
+				continue
+			}
+			schema := responseSchema(doc.Paths[cmd.APIPath]["get"].Responses)
+			path := "data." + arg.BodyPath
+			if projection, ok := publicOperationOverlays[cmd.OperationID].ArrayReads[arg.BodyPath]; ok {
+				path = "data." + projection.Field + ".0." + projection.Item
+			}
+			if _, err := argumentReader().Lookup(schema, path); err != nil {
+				t.Errorf("%s %s read %s: %v", cmd.Name, arg.Flag, path, err)
+			}
+			if _, err := argumentReader().Lookup(schema, "data.version"); err != nil {
+				t.Errorf("%s missing read version: %v", cmd.Name, err)
+			}
+		}
 	}
 }

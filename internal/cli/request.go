@@ -27,6 +27,7 @@ type preparedRequest struct {
 	OverriddenFields []string
 	ArrayEditNoop    bool
 	ArrayEditValue   any
+	OriginalInput    map[string]any
 }
 
 // commandIdempotencyClass derives write safety from the vendored API contract.
@@ -98,6 +99,7 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		return req, inputErr
 	}
 	inputBody := deepCopyMap(body)
+	req.OriginalInput = inputBody
 	overridden := map[string]bool{}
 	for _, arg := range cmd.Arguments {
 		// Query arrays and their history references are normalized together below.
