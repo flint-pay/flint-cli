@@ -2,6 +2,8 @@
 // and the embedded public API contract. It performs no network requests.
 package opindex
 
+import "sync"
+
 // Command is the registry boundary; the index never assigns command names.
 type Command struct {
 	Name, CanonicalName, Title, Method, Path, OperationID string
@@ -47,6 +49,7 @@ type Index struct {
 	credentialPolicies map[string]Entry
 	names              map[string]string
 	impliedBy          map[string][]string
+	searchOnce         *sync.Once
 	documents          []searchDocument
 	frequencies        map[string]int
 }

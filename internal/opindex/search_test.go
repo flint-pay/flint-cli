@@ -2,6 +2,7 @@ package opindex
 
 import (
 	"reflect"
+	"sync"
 	"testing"
 )
 
@@ -136,4 +137,29 @@ func searchHitIDs(hits []Hit) []string {
 		ids[i] = hit.ID
 	}
 	return ids
+}
+
+func TestSearchConcurrentInitialization(t *testing.T) {
+	index, err := New([]Command{{Name: "customers.list", OperationID: "listCustomers"}}, []byte(`{"paths":{"/v1/customers":{"get":{"operationId":"listCustomers","summary":"List customers"}}}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if index.documents != nil {
+		t.Fatal("search documents built before search")
+	}
+	var readers sync.WaitGroup
+	for range 16 {
+		readers.Add(1)
+		go func() {
+			defer readers.Done()
+			hits, _ := index.Search("customers", Filter{})
+			if len(hits) == 0 || hits[0].ID != "customers.list" {
+				t.Error("concurrent search lost operation")
+			}
+		}()
+	}
+	readers.Wait()
+	if len(index.documents) == 0 {
+		t.Fatal("search documents were not cached")
+	}
 }

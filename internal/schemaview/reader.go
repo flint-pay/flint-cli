@@ -12,9 +12,17 @@ import (
 	"strings"
 )
 
-type Reader struct{ root map[string]any }
+type Reader struct {
+	root              map[string]any
+	referenceResolver func(string) (map[string]any, bool)
+}
 
 func New(root map[string]any) *Reader { return &Reader{root: root} }
+
+// NewLazy resolves external document references only when a view follows them.
+func NewLazy(root map[string]any, referenceResolver func(string) (map[string]any, bool)) *Reader {
+	return &Reader{root: root, referenceResolver: referenceResolver}
+}
 
 type Variants struct {
 	Discriminator string              `json:"discriminator"`
@@ -216,6 +224,9 @@ func (r *Reader) reference(ref string) (map[string]any, bool) {
 		value = schemaMap(value)[part]
 	}
 	node, ok := value.(map[string]any)
+	if !ok && r.referenceResolver != nil {
+		return r.referenceResolver(ref)
+	}
 	return node, ok
 }
 func conjoin(a, b map[string]any) map[string]any {

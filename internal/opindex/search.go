@@ -42,9 +42,16 @@ type searchDocument struct {
 func (ix *Index) Search(query string, filter Filter) ([]Hit, int) {
 	q := strings.ToLower(strings.TrimSpace(query))
 	tokens := searchTokens(q)
-	docs, df := ix.documents, ix.frequencies
-	if docs == nil {
-		docs, df = buildSearchDocuments(ix.Entries)
+	var docs []searchDocument
+	var df map[string]int
+	if ix.searchOnce != nil {
+		ix.searchOnce.Do(func() { ix.documents, ix.frequencies = buildSearchDocuments(ix.Entries) })
+		docs, df = ix.documents, ix.frequencies
+	} else {
+		docs, df = ix.documents, ix.frequencies
+		if docs == nil {
+			docs, df = buildSearchDocuments(ix.Entries)
+		}
 	}
 	idf := func(word string) float64 { return math.Log1p(float64(len(docs)) / float64(1+df[word])) }
 	type rankedHit struct {

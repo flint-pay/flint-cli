@@ -24,13 +24,13 @@ func embeddedSnapshotHash() string {
 }
 
 func matchPublicOperation(method, path string) (openAPIOperation, bool) {
-	doc, err := loadOpenAPI()
+	doc := loadOperationMetadata()
 	parsed, parseErr := url.Parse(path)
-	if err != nil || parseErr != nil {
+	if parseErr != nil {
 		return openAPIOperation{}, false
 	}
 	if operation, ok := doc.Paths[parsed.Path][strings.ToLower(method)]; ok {
-		return operation, true
+		return openAPIOperationByID(operation.OperationID)
 	}
 	actual := strings.Split(parsed.Path, "/")
 	bestScore := -1
@@ -57,7 +57,10 @@ func matchPublicOperation(method, path string) (openAPIOperation, bool) {
 			}
 		}
 	}
-	return best, bestScore >= 0
+	if bestScore < 0 {
+		return openAPIOperation{}, false
+	}
+	return openAPIOperationByID(best.OperationID)
 }
 
 // Resolve raw API safety metadata before both flag validation and execution.
