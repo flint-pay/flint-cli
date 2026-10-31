@@ -405,7 +405,7 @@ func (a *App) upgradeWithPackageManager(ctx context.Context, opts Options, metho
 	var output []byte
 	var err error
 	a.withUpgradeProgress(ctx, opts, "Verifying installed Flint CLI "+version, func() {
-		output, err = a.runCommand(ctx, executable, "version", "--field", "data.cli_version", "--color", "never")
+		output, err = a.runCommand(ctx, executable, "version", "--jq", ".data.cli_version", "--output", "human", "--color", "never")
 	})
 	if ctx.Err() != nil {
 		return "", networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out.", ctx.Err())
@@ -668,7 +668,7 @@ func (a *App) replaceExecutableAtomically(ctx context.Context, executable string
 	if err := temporary.Close(); err != nil {
 		return "", writeFailure(err)
 	}
-	output, verifyErr := a.runCommand(ctx, temporaryPath, "version", "--field", "data.cli_version", "--color", "never")
+	output, verifyErr := a.runCommand(ctx, temporaryPath, "version", "--jq", ".data.cli_version", "--output", "human", "--color", "never")
 	if err := ctx.Err(); err != nil {
 		return "", networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out; the existing installation was left unchanged.", err)
 	}
@@ -679,7 +679,7 @@ func (a *App) replaceExecutableAtomically(ctx context.Context, executable string
 	err = withLocalFileLock(ctx, filepath.Join(directory, ".flint-upgrade"), func() error {
 		// Another updater may have installed this version, or a newer one,
 		// while the archive downloaded. Never replace a working newer binary.
-		output, currentErr := a.runCommand(ctx, executable, "version", "--field", "data.cli_version", "--color", "never")
+		output, currentErr := a.runCommand(ctx, executable, "version", "--jq", ".data.cli_version", "--output", "human", "--color", "never")
 		if ctx.Err() != nil {
 			return networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out; the existing installation was left unchanged.", ctx.Err())
 		}
