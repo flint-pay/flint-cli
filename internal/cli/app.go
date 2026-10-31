@@ -46,6 +46,9 @@ func New(info BuildInfo) *App {
 }
 
 func (a *App) Run(argv []string) int {
+	if len(argv) > 0 && argv[0] == "__complete" {
+		return a.runCompletionWords(argv[1:])
+	}
 	cmd, opts, help, parseErr := parseInvocation(a.Registry, argv)
 	applyEnvironmentOptions(&opts)
 	if parseErr != nil {

@@ -458,3 +458,12 @@ The npm trusted publisher must name the `npm` GitHub environment and the `cli-re
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
+
+## Shell completion
+
+Completion is offline and uses the embedded command tree, flags, and enum values.
+It does not suggest resource IDs or history values. Reload after upgrading Flint.
+
+- Bash: add `source <(flint completion bash)` to `~/.bashrc`.
+- Zsh: run `autoload -Uz compinit; compinit`, then add `source <(flint completion zsh)` to `~/.zshrc`.
+- Fish: run `flint completion fish > ~/.config/fish/completions/flint.fish`.

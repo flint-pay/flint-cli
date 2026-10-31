@@ -14,6 +14,8 @@ import (
 
 func (a *App) runLocal(cmd *Command, opts Options) int {
 	switch cmd.CanonicalName {
+	case "completion":
+		return a.localCompletion(cmd, opts)
 	case "trigger":
 		return a.localTrigger(cmd, opts)
 	case "version":

@@ -113,7 +113,7 @@ func operationReturnsArray(doc *openAPIDocument, operation openAPIOperation) boo
 func validateCommandNames(commands []*Command) error {
 	names, tools := map[string]*Command{}, map[string]*Command{}
 	reserved := map[string]bool{}
-	for _, name := range []string{"api", "auth", "config", "context", "doctor", "help", "history", "init", "listen", "login", "logout", "mcp", "reauth", "schema", "signup", "support", "trigger", "upgrade", "version", "whoami"} {
+	for _, name := range []string{"api", "completion", "auth", "config", "context", "doctor", "help", "history", "init", "listen", "login", "logout", "mcp", "reauth", "schema", "signup", "support", "trigger", "upgrade", "version", "whoami"} {
 		reserved[name] = true
 	}
 	for _, name := range helpTopicNames {
