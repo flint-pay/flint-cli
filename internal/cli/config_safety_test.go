@@ -220,3 +220,15 @@ func TestConfigSafetyInitGuards(t *testing.T) {
 		t.Fatal(string(current))
 	}
 }
+
+func TestConfigSafetyInitIsMCPWrite(t *testing.T) {
+	app, _, _ := testApp(t, "http://127.0.0.1:9")
+	index, err := app.operationIndex()
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, ok := index.Lookup("init")
+	if !ok || entry.Kind != "write" {
+		t.Fatalf("init writes project guards: %+v", entry)
+	}
+}
