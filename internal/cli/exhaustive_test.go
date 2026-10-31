@@ -1401,15 +1401,8 @@ func TestEveryLocalCommandExecutes(t *testing.T) {
 			case "help":
 				argv = append(argv, "test-cards")
 			case "help.search":
-				helpStation := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-					w.Header().Set("Content-Type", "application/json")
-					fmt.Fprint(w, exhaustiveHelpSearchJSON)
-				}))
-				defer helpStation.Close()
-				t.Setenv("FLINT_HELP_URL", helpStation.URL)
 				argv = append(argv, "webhook", "signature")
 			case "support.open":
-				t.Setenv("FLINT_HELP_URL", "https://help.example.com")
 				argv = append(argv, "--no-open")
 			case "mcp.serve":
 				app.Stdin = strings.NewReader(

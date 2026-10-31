@@ -169,6 +169,8 @@ Delivery rate callbacks take the same repeatable `--signing-method jwt|hmac` fla
 
 `flint`, `flint --help`, and `flint help` group commands into Developer tools, Merchant resources, and Buyer session. Use `flint help customers create`, `flint help customers.create`, or `flint customers create --help` for the same help. `flint help --all` lists every command; add `--output json` for a structured index. `flint schema commands --output json` returns the same command tree as a full catalog, including each command's section and credential audience. Buyer help identifies the required session credential.
 
+`flint help search <words>` searches commands, webhook events, and reference topics offline, without a credential or network request. Results link to command help; use `flint support open` to ask Flint.
+
 `flint schema errors --output json` lists CLI and public API error types, exit codes, and listen error codes under `data`. `flint schema events --output json` returns a compact event list under `data`; pass an exact type such as `payment_intent.succeeded` or a prefix such as `payment_intent` to get a raw OpenAPI document with the matching payload schemas and their referenced components.
 
 Primitives use their resource names, such as `customers`, `products`, `orders`, and `subscription-plans`. Start with `flint <resource> --help` to list operations, then `flint <resource> create --help` to see flags, examples, and required top-level request fields when creation is supported. Some groups are read-only or use nested command paths; their resource help lists the exact commands.

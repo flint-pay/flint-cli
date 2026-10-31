@@ -58,7 +58,8 @@ func TestOperationIndexClassification(t *testing.T) {
 }
 
 func TestSearchGolden(t *testing.T) {
-	ix, err := (&App{Registry: NewRegistry()}).operationIndex()
+	app := &App{Registry: NewRegistry()}
+	ix, err := app.operationIndex()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +76,7 @@ func TestSearchGolden(t *testing.T) {
 		{"forward webhooks to localhost", "listen", 1}, {"exit codes", "exit-codes", 1}, {"api schema for a command", "schema.input", 3}, {"POST /v1/refunds", "refunds.create", 1},
 	} {
 		t.Run(tc.q, func(t *testing.T) {
-			hits, _ := ix.Search(tc.q, opindex.Filter{Exposed: func(e opindex.Entry) bool { return e.ID != "safety" }})
+			hits, _ := ix.Search(tc.q, app.cliSearchFilter())
 			found := false
 			ids := []string{}
 			for i, h := range hits {
