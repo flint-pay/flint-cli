@@ -161,3 +161,31 @@ func TestMCPTypedRequiredControls(t *testing.T) {
 		}
 	}
 }
+
+func TestMCPTypedArrayDescriptions(t *testing.T) {
+	app := discoveryFixture(t)
+	policy := app.mcpPolicy(mcpServeOptions(t, "--tools", "all"))
+	for _, name := range []string{"api-keys.create", "signup"} {
+		cmd, ok := app.Registry.ByName(name)
+		if !ok {
+			t.Fatal(name)
+		}
+		schema, e := schemaForMCPTool(cmd, policy)
+		if e != nil {
+			t.Fatal(e)
+		}
+		props := schema["properties"].(map[string]any)
+		field := "scopes"
+		if name == "signup" {
+			field = "requested_capability"
+		}
+		items := props[field].(map[string]any)["items"].(map[string]any)
+		text, _ := items["description"].(string)
+		if text == "" {
+			t.Fatalf("%s.%s lost item help", name, field)
+		}
+		if name != "signup" && !strings.Contains(text, "allowed values") {
+			t.Fatalf("%s.%s lost enum guidance: %s", name, field, text)
+		}
+	}
+}
