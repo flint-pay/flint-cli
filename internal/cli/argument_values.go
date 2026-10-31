@@ -179,10 +179,6 @@ func argumentValueLabel(arg Arg) string {
 }
 
 func printArgumentHelp(w io.Writer, cmd *Command, arg Arg) {
-	// The current CLI-owned listener accepts one filter; L1 owns multiple filters.
-	if cmd.CanonicalName == "listen" && arg.Name == "event_type" {
-		arg.Repeat = false
-	}
 
 	label := arg.Flag
 	if label == "" {

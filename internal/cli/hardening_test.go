@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -552,10 +553,11 @@ func TestListenIdleTimeoutJoinsBlockedForwardBeforeReturning(t *testing.T) {
 	}()
 
 	app, stdout, _ := testApp(t, "")
+	var startedOnce, stoppedOnce sync.Once
 	app.ForwardHTTPClient = &http.Client{Transport: listenRoundTripFunc(func(request *http.Request) (*http.Response, error) {
-		close(forwardStarted)
+		startedOnce.Do(func() { close(forwardStarted) })
 		<-request.Context().Done()
-		close(forwardStopped)
+		stoppedOnce.Do(func() { close(forwardStopped) })
 		return nil, request.Context().Err()
 	})}
 	opts := defaultOptions()

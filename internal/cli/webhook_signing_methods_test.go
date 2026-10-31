@@ -301,7 +301,7 @@ func TestSigningHelpAndMCPDescriptions(t *testing.T) {
 		{"webhook-endpoints.create", []string{"--signing-methods", "jwt|hmac"}},
 		{"webhook-endpoints.update", []string{"--signing-methods", "--expected-version", "signing_methods"}},
 		{"webhook-endpoints.rotate-secret", []string{"--confirm"}},
-		{"listen", []string{"local HMAC listen secret", "regardless of endpoint signing methods", "JWT handlers need an HMAC path or a local test bypass"}},
+		{"listen", []string{"local HMAC listen secret", "regardless of endpoint signing methods", "at-least-once", "tunnel", "registered sandbox endpoint"}},
 		{"delivery-rate-callbacks.create", []string{"--signing-methods", "jwt|hmac"}},
 		{"delivery-rate-callbacks.update", []string{"--signing-methods", "--expected-version", "signing_methods"}},
 		{"delivery-rate-callbacks.rotate-secret", []string{"--confirm"}},
@@ -337,7 +337,7 @@ func TestSigningHelpAndMCPDescriptions(t *testing.T) {
 		"delivery-rate-callbacks.create":        {"signing_methods defaults to [jwt]", "Authorization: Bearer <token>", "aud set to the delivery_rate_callback_id", "save them if present"},
 		"delivery-rate-callbacks.update":        {"replaces the set", "409 ACTION_NOT_ALLOWED with reason secret_not_issued", "expected_version is required when sending", "signing_methods"},
 		"delivery-rate-callbacks.rotate-secret": {"issue the first one and enable hmac", "secret and key_id"},
-		"listen":                                {"HMAC listen secret", "regardless of endpoint signing methods", "JWT handlers need an HMAC path or a local test bypass"},
+		"listen":                                {"HMAC", "at-least-once", "tunnel", "registered sandbox endpoint"},
 	} {
 		cmd, _ := NewRegistry().ByName(name)
 		schema, _ := schemaForMCPTool(cmd, mcpPolicy{})
