@@ -59,7 +59,7 @@ func TestRegistryContract(t *testing.T) {
 				t.Errorf("%s route %s %s differs from %s at %s %s", cmd.Name, cmd.Method, cmd.APIPath, cmd.OperationID, route.Method, route.Path)
 			}
 			operation, operationExists := openAPIOperationByID(cmd.OperationID)
-			if !operationExists || (operation.FlintRouteClass == "" && cmd.OperationID != "authorizePartnerInstall" && cmd.OperationID != "previewPartnerInstallAuthorization" && cmd.OperationID != "exchangePartnerInstallToken" && cmd.OperationID != "getOpenAPISpec") {
+			if !operationExists || (cmd.AuthRequired && operation.FlintRouteClass == "") {
 				t.Errorf("%s operation %s has no public route class", cmd.Name, cmd.OperationID)
 			}
 			wantSensitive := operation.FlintRouteClass == "sensitive_write" || operation.FlintRouteClass == "external_provider_action" || operation.FlintRouteClass == "payment" || operation.OperationID == "authorizePartnerInstall"

@@ -2934,8 +2934,20 @@
   },
   {
     "method": "POST",
-    "path": "/v1/gift-cards/{gift_card_id}/transitions",
-    "operation_id": "transitionGiftCard",
+    "path": "/v1/gift-cards/{gift_card_id}/close",
+    "operation_id": "closeGiftCard",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards/{gift_card_id}/freeze",
+    "operation_id": "freezeGiftCard",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gift-cards/{gift_card_id}/unfreeze",
+    "operation_id": "unfreezeGiftCard",
     "classification": "resource"
   },
   {

@@ -240,8 +240,8 @@ func TestQueryArrayStyleMetadata(t *testing.T) {
 }
 
 func TestHelpDescriptionLint(t *testing.T) {
-	// Fixed on Flint main; the next spec refresh must clear this baseline.
-	upstreamEmptyParameterDescriptions := map[string]bool{"deletePayoutDestination/query/expected_version": false}
+	// No upstream parameter descriptions may be empty after the spec refresh.
+	upstreamEmptyParameterDescriptions := map[string]bool{}
 	sentenceBoundary := regexp.MustCompile(`[.!?]\s+`)
 	check := func(name, text string) {
 		if strings.Contains(text, ".;") {

@@ -125,6 +125,9 @@ Configuration selection uses `--profile`, `FLINT_PROFILE`, a project pin in `.fl
 
 API commands follow their routes: keep literal path segments, supply path IDs as
 positionals, then use `get`, `list`, `create`, `update`, `replace`, or `delete`.
+GET collections use `list` when response `data` is an array, including lists
+without page tokens. Pagination flags appear only when the route accepts them.
+
 POST action routes keep their action, such as `orders pay` and
 `webhook-endpoints rotate-secret`. Nested collections include their verb:
 `orders discounts create`, `organizations memberships create`, and

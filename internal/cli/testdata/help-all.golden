@@ -215,13 +215,15 @@ Merchant resources:
   flint gift-card-transactions list                                 List gift card transactions
   flint gift-cards adjust-balance <gift_card_id>                    Adjust gift card value
   flint gift-cards cash-out <gift_card_id>                          Record a cash-out
+  flint gift-cards close <gift_card_id>                             Close a gift card
   flint gift-cards create                                           Create a gift card
+  flint gift-cards freeze <gift_card_id>                            Freeze a gift card
   flint gift-cards get <gift_card_id>                               Get a gift card
   flint gift-cards list                                             List gift cards
   flint gift-cards loads create <gift_card_id>                      Load a gift card
   flint gift-cards lookup                                           Look up a gift card code
   flint gift-cards rotate-code <gift_card_id>                       Replace a gift card code
-  flint gift-cards transitions create <gift_card_id>                Transition a gift card
+  flint gift-cards unfreeze <gift_card_id>                          Unfreeze a gift card
   flint gift-cards update <gift_card_id>                            Update a gift card
   flint inventory-adjustments create                                Create inventory adjustment
   flint inventory-adjustments get <inventory_adjustment_id>         Get inventory adjustment
@@ -447,7 +449,7 @@ Merchant resources:
   flint return-policies update <return_policy_id>                   Update return policy
   flint return-previews create                                      Create return preview
   flint return-reasons create                                       Create return reason
-  flint return-reasons delete <return_reason_id>                    Retire return reason
+  flint return-reasons delete <return_reason_id>                    Archive return reason
   flint return-reasons get <return_reason_id>                       Get return reason
   flint return-reasons list                                         List return reasons
   flint return-reasons update <return_reason_id>                    Update return reason

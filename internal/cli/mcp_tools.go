@@ -565,7 +565,7 @@ func schemaForMCPTool(cmd *Command, policy mcpPolicy) (map[string]any, *CLIError
 	if paginated {
 		if pageSize, ok := properties["page_size"].(map[string]any); ok {
 			pageSize["default"] = 10
-			pageSize["description"] = "Maximum number of results to return, from 1 to 100. Defaults to 10 here."
+			pageSize["description"] = "Results per page, 1 to 100; default 10."
 		}
 	}
 	if kind == "write" && idempotency == "required" {

@@ -62,7 +62,7 @@ func commandName(doc *openAPIDocument, path, method string, operation openAPIOpe
 		kind, verb = "item", verbs[method]
 	case method == "GET":
 		verb = "get"
-		if operationIsPage(doc, operation) {
+		if operationReturnsArray(doc, operation) {
 			kind, verb = "collection", "list"
 		}
 	case method == "POST":
@@ -79,30 +79,35 @@ func commandName(doc *openAPIDocument, path, method string, operation openAPIOpe
 	return strings.Join(append(nouns, verb), "."), kind, nil
 }
 
-func operationIsPage(doc *openAPIDocument, operation openAPIOperation) bool {
-	var hasProperty func(map[string]any, int) bool
-	hasProperty = func(schema map[string]any, depth int) bool {
+// Collection naming depends on data's shape, independently of page-token support.
+func operationReturnsArray(doc *openAPIDocument, operation openAPIOperation) bool {
+	var matches func(map[string]any, int, func(map[string]any) bool) bool
+	matches = func(schema map[string]any, depth int, predicate func(map[string]any) bool) bool {
 		if schema == nil || depth > 32 {
 			return false
 		}
-		if ref, ok := schema["$ref"].(string); ok && hasProperty(doc.Components.Schemas[strings.TrimPrefix(ref, "#/components/schemas/")], depth+1) {
+		if predicate(schema) {
 			return true
 		}
-		if props, ok := schema["properties"].(map[string]any); ok {
-			if _, ok := props["next_page_token"]; ok {
+		if ref, ok := schema["$ref"].(string); ok {
+			if name, local := strings.CutPrefix(ref, "#/components/schemas/"); local && matches(doc.Components.Schemas[name], depth+1, predicate) {
 				return true
 			}
 		}
 		if branches, ok := schema["allOf"].([]any); ok {
 			for _, branch := range branches {
-				if object, ok := branch.(map[string]any); ok && hasProperty(object, depth+1) {
+				if object, ok := branch.(map[string]any); ok && matches(object, depth+1, predicate) {
 					return true
 				}
 			}
 		}
 		return false
 	}
-	return hasProperty(responseSchema(operation.Responses), 0)
+	return matches(responseSchema(operation.Responses), 0, func(schema map[string]any) bool {
+		properties, _ := schema["properties"].(map[string]any)
+		data, _ := properties["data"].(map[string]any)
+		return matches(data, 0, func(schema map[string]any) bool { return schema["type"] == "array" })
+	})
 }
 
 func validateCommandNames(commands []*Command) error {
