@@ -126,3 +126,38 @@ func TestMCPTypedDescriptions(t *testing.T) {
 		}
 	}
 }
+
+func TestMCPTypedRequiredControls(t *testing.T) {
+	app := discoveryFixture(t)
+	for _, flags := range [][]string{{"--tools", "all"}, {"--tools", "all", "--allow-live"}, {"--tools", "all", "--read-only"}} {
+		policy := app.mcpPolicy(mcpServeOptions(t, flags...))
+		tools, e := app.mcpAdvertisedTools(policy, latestMCPProtocolVersion)
+		if e != nil {
+			t.Fatal(e)
+		}
+		for _, tool := range tools {
+			name := tool["name"].(string)
+			if mcpAlwaysEnabled(name) {
+				continue
+			}
+			entry, _ := policy.index.Lookup(name)
+			schema := tool["inputSchema"].(map[string]any)
+			props := schema["properties"].(map[string]any)
+			expected := map[string]bool{"select": true, "live": policy.allowLive, "all": entry.Kind == "read" && entry.Paginated, "wait_for": entry.Kind == "read" && entry.Get, "wait_seconds": entry.Kind == "read" && entry.Get, "dry_run": entry.Kind == "write", "confirm": entry.Kind == "write" && entry.ConfirmRequired()}
+			for key, want := range expected {
+				if (props[key] != nil) != want {
+					t.Errorf("%s %s present=%t want=%t", name, key, props[key] != nil, want)
+				}
+			}
+			if entry.Kind == "write" && props["idempotency_key"] == nil {
+				t.Errorf("%s missing write key control", name)
+			}
+			if (containsString(mcpStrings(schema["required"]), "idempotency_key")) != (entry.Kind == "write" && entry.Idempotency == "required") {
+				t.Errorf("%s key requirement mismatch", name)
+			}
+			if policy.readOnly && entry.Kind == "write" {
+				t.Errorf("read-only lists %s", name)
+			}
+		}
+	}
+}
