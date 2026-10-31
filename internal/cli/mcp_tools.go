@@ -743,7 +743,7 @@ var mcpLocalTools = map[string]struct{ title, description string }{
 	"history.clear":   {"Clear resource history", "Delete this CLI's saved list of recent resource IDs. Needs confirm: true."},
 	"version":         {"CLI version", "Flint CLI version and build, and the public API version and schema hash it targets."},
 	"doctor":          {"Check the Flint setup", "Check this server's Flint credential, connectivity, scopes, and API version compatibility."},
-	"init":            {"Flint setup status", "Report whether a Flint credential is configured, with setup checks and suggested first steps."},
+	"init":            {"Initialize project guards", "Write or validate .flint/config.json guards for the active merchant and sandbox. force replaces an existing project config. Without a credential, report sign-in steps."},
 	"config.get":      {"Resolved configuration", "Show the Flint CLI configuration this server resolves: profile, merchant guard, context, and their sources."},
 	"config.validate": {"Validate configuration", "Validate the global and project Flint configuration and the credential they select."},
 	"signup":          {"Sign up for Flint", "Create a Flint account and sandbox API key in two calls: first email, first_name, and last_name (Flint emails a code), then verification_code. Only for a profile without a saved credential."},

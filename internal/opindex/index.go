@@ -31,7 +31,7 @@ type operationRoute struct {
 	Method, Path string
 }
 
-var localReads = map[string]bool{"version": true, "doctor": true, "init": true, "config.get": true, "config.validate": true, "history": true, "auth.status": true, "help": true, "help.search": true, "context.list": true, "support.open": true, "completion": true}
+var localReads = map[string]bool{"version": true, "doctor": true, "config.get": true, "config.validate": true, "history": true, "auth.status": true, "help": true, "help.search": true, "context.list": true, "support.open": true, "completion": true}
 var localExposed = map[string]bool{"version": true, "doctor": true, "init": true, "config.get": true, "config.validate": true, "history": true, "history.clear": true, "signup": true, "listen": true, "auth.status": true, "trigger": true}
 var hidden = map[string]bool{"mcp.serve": true, "config.set": true, "config.unset": true, "auth.logout": true, "api": true, "help": true, "help.search": true}
 
