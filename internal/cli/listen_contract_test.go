@@ -154,3 +154,25 @@ func TestListenEndpointHistoryReference(t *testing.T) {
 		t.Fatalf("code=%d endpoint=%s out=%s err=%s", code, endpoint, out, stderr)
 	}
 }
+
+func TestListenMCPPassesNewEventTypes(t *testing.T) {
+	app, _, _ := testApp(t, "http://127.0.0.1:9")
+	cmd, _ := app.Registry.ByName("listen")
+	if err := validateMCPToolArguments(cmd, map[string]any{"event_type": []any{"future.new_type"}, "max_events": 1}, mcpPolicy{}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestListenReplayRetainsEndpointAndFilters(t *testing.T) {
+	app, out, _ := testApp(t, "http://127.0.0.1:9")
+	opts := Options{Output: "human", Raw: map[string][]string{"forward-to": {"http://localhost/hook"}, "webhook-endpoint-id": {"whep_custom"}, "event-type": {"customer.created,order.paid", "invoice.created"}}}
+	state := &listenStreamState{failed: 1, replayCursor: "whev_replay"}
+	if err := app.writeListenCheckpoint(opts, state); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"--webhook-endpoint-id whep_custom", "--event-type customer.created,order.paid,invoice.created", "--cursor whev_replay"} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("missing %s in %s", want, out)
+		}
+	}
+}

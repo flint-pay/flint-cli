@@ -518,6 +518,9 @@ func schemaForMCPTool(cmd *Command, policy mcpPolicy) (map[string]any, *CLIError
 	}
 	delete(schema, "description")
 	properties, _ := schema["properties"].(map[string]any)
+	if public.CanonicalName == "listen" {
+		properties["event_type"] = map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Event types, including newer server values. Omit for all."}
+	}
 	if public.Local {
 		delete(properties, "for")
 		if public.Stream || public.CanonicalName == "trigger" {
