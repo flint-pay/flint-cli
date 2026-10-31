@@ -117,7 +117,7 @@ func commandSection(commands []*Command) string {
 			return sectionDeveloper
 		}
 		buyer = buyer && cmd.Audience == "buyer"
-		operation, _ := openAPIOperationByID(cmd.OperationID)
+		operation, _ := operationMetadataByID(cmd.OperationID)
 		scoped := len(operation.FlintRequiredScopes) > 0
 		for _, scope := range operation.FlintRequiredScopes {
 			scoped = scoped && strings.HasPrefix(scope, "developer.")
@@ -149,7 +149,7 @@ func commandGroupDescription(top string, commands []*Command) string {
 	}
 	counts := map[string]int{}
 	for _, cmd := range commands {
-		if operation, ok := openAPIOperationByID(cmd.OperationID); ok {
+		if operation, ok := operationMetadataByID(cmd.OperationID); ok {
 			for _, tag := range operation.Tags {
 				counts[tag]++
 			}
@@ -162,7 +162,7 @@ func commandGroupDescription(top string, commands []*Command) string {
 		}
 	}
 	if best != "" {
-		doc, _ := loadOpenAPI()
+		doc := loadOperationMetadata()
 		for _, tag := range doc.Tags {
 			if tag.Name == best && tag.Description != "" {
 				return tag.Description

@@ -46,7 +46,7 @@ func (r *Registry) ensureAPICommands() {
 	}
 }
 
-func newRegistry(includeAPI bool) *Registry {
+func newRegistryFromSnapshot(includeAPI bool) *Registry {
 	r := &Registry{treeBuild: &sync.Once{}, localOnly: !includeAPI, byName: map[string]*Command{}, byPath: map[string]*Command{}}
 	definitions := append(curatedCommandDefinitions(), triggerCommand(), completionCommand())
 	if includeAPI {

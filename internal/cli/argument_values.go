@@ -11,15 +11,7 @@ import (
 )
 
 var argumentReader = sync.OnceValue(func() *schemaview.Reader {
-	doc, err := loadOpenAPI()
-	if err != nil {
-		panic(err)
-	}
-	components := map[string]any{}
-	for name, schema := range doc.Components.Schemas {
-		components[name] = schema
-	}
-	return schemaview.New(map[string]any{"components": map[string]any{"schemas": components}})
+	return schemaview.NewLazy(nil, resolveComponentReference)
 })
 
 const queryTimeGuidance = "Also accepts today, this_week, yesterday, a date, or a duration such as 7d; calendar values use the reporting timezone."

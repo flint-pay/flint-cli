@@ -416,6 +416,7 @@ If upgrading from 0.9.0, also follow [the 0.10.0 migration notes](docs/migrating
 ## Develop
 
 ```bash
+go generate ./internal/cli  # regenerate the embedded command and operation index
 make build      # bin/flint
 make test       # go test ./...
 make contract   # tests, then diff the API coverage report against coverage.json
@@ -439,7 +440,9 @@ Layout:
 
 Sandbox and live requests both use `https://api.withflintpay.com`. Browser login binds the OAuth session to the approved environment; imported API keys retain their own environment. Imported API keys and legacy sessions require `--live` to acknowledge production access; multi-context sessions use the selected context. Set `FLINT_BASE_URL` before signing in to a development server, using a separate profile. Saved OAuth sessions stay bound to that server and reject a conflicting URL override. A trailing `/v1` in `FLINT_BASE_URL` is stripped with a warning on stderr unless `--quiet`.
 
-`internal/spec/openapi.json` is the public API snapshot used to build the command catalog. The reviewed source commit, export path, SHA-256, operation count, and operation-set SHA-256 are pinned in `internal/spec/provenance.json` and checked offline by `TestSnapshot`. Intentional lag is recorded there; startup and tests never fetch a newer export. When updating it, use `git show <reviewed-commit>:web/apps/developers/src/generated/openapi.json` from a local Flint repository, update the provenance pin and coverage classifications, run `make coverage`, and run `make contract`. Set `FLINT_SPEC_REPO` to that local repository when running `go test ./internal/spec` to also compare the pinned source bytes and operation set. The coverage report checks that every public operation has a dedicated command or an explicit exclusion with a reason. Feedback commands are retired; use `flint support open` to start a thread on Flint Help.
+`internal/spec/openapi.json` is the public API snapshot used to build the command catalog. The reviewed source commit, export path, SHA-256, operation count, and operation-set SHA-256 are pinned in `internal/spec/provenance.json` and checked offline by `TestSnapshot`. Intentional lag is recorded there; startup and tests never fetch a newer export. API commands load their generated command metadata at startup and decode only the schemas they need. Full schema and event inspection retain the complete snapshot. After changing the snapshot, command definitions, examples, or help metadata, run `go generate ./internal/cli`; parity tests check the generated index against the full snapshot and command generators.
+
+When updating it, use `git show <reviewed-commit>:web/apps/developers/src/generated/openapi.json` from a local Flint repository, update the provenance pin and coverage classifications, run `make coverage`, and run `make contract`. Set `FLINT_SPEC_REPO` to that local repository when running `go test ./internal/spec` to also compare the pinned source bytes and operation set. The coverage report checks that every public operation has a dedicated command or an explicit exclusion with a reason. Feedback commands are retired; use `flint support open` to start a thread on Flint Help.
 
 Tests use local HTTP servers and synthetic credentials. They do not require an API key or write to a Flint account.
 

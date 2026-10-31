@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 )
 
 type operation struct {
@@ -58,7 +59,7 @@ func New(commands []Command, document []byte) (*Index, error) {
 			}
 		}
 	}
-	ix := &Index{byID: map[string]Entry{}, names: map[string]string{}, impliedBy: map[string][]string{}, credentialPolicies: map[string]Entry{}}
+	ix := &Index{searchOnce: &sync.Once{}, byID: map[string]Entry{}, names: map[string]string{}, impliedBy: map[string][]string{}, credentialPolicies: map[string]Entry{}}
 	for id, route := range routes {
 		schemes := securitySchemes(route.Security)
 		kind := "write"
@@ -185,7 +186,6 @@ func New(commands []Command, document []byte) (*Index, error) {
 		typed[name] = entry.ID
 		ix.names[name] = entry.ID
 	}
-	ix.documents, ix.frequencies = buildSearchDocuments(ix.Entries)
 	return ix, nil
 }
 

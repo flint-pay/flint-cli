@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	apispec "github.com/flint-pay/flint-cli/internal/spec"
 )
@@ -55,7 +56,7 @@ func (doc openAPIDocument) scopeNeedsLiveKey(scope, environment string) bool {
 }
 
 func missingScopeGuidance(scopes []string, environment string) (eligible, liveOnly []string) {
-	doc, _ := loadOpenAPI()
+	doc := loadOperationMetadata()
 	eligible, liveOnly = []string{}, []string{}
 	for _, scope := range scopes {
 		if doc.scopeNeedsLiveKey(scope, environment) {
@@ -125,14 +126,28 @@ type openAPIOperation struct {
 }
 
 func openAPIOperationByID(operationID string) (openAPIOperation, bool) {
-	doc, err := loadOpenAPI()
-	if err != nil {
+	if !fullSnapshotLoaded.Load() {
+		cached, _ := indexedOperations.LoadOrStore(operationID, sync.OnceValue(func() operationLookup {
+			var op openAPIOperation
+			ok := apispec.Startup().Operation(operationID, &op)
+			return operationLookup{op, ok}
+		}))
+		result := cached.(func() operationLookup)()
+		return result.op, result.ok
+	}
+	if _, err := loadOpenAPI(); err != nil {
 		return openAPIOperation{}, false
 	}
-	_ = doc
 	operation, ok := openAPIOperations[operationID]
 	return operation, ok
 }
+
+type operationLookup struct {
+	op openAPIOperation
+	ok bool
+}
+
+var indexedOperations sync.Map
 
 func validateExpansions(operationID string, values []string) *CLIError {
 	if len(values) == 0 {
@@ -162,11 +177,8 @@ func expansionValues(operationID string) ([]string, error) {
 	if operationID == "" {
 		return []string{}, nil
 	}
-	if _, err := loadOpenAPI(); err != nil {
-		return nil, err
-	}
 	allowed := map[string]bool{}
-	operation := openAPIOperations[operationID]
+	operation, _ := openAPIOperationByID(operationID)
 	for _, parameter := range operation.Parameters {
 		if parameter["name"] != "expand" {
 			continue
@@ -198,9 +210,12 @@ func loadOpenAPI() (openAPIDocument, error) {
 				}
 			}
 		}
+		fullSnapshotLoaded.Store(true)
 	})
 	return openAPICached, openAPIErr
 }
+
+var fullSnapshotLoaded atomic.Bool
 
 var (
 	openAPIOperations map[string]openAPIOperation
@@ -243,10 +258,7 @@ func requestBodySchema(c *Command) (map[string]any, *CLIError) {
 }
 
 func commandSchema(c *Command, input bool) (map[string]any, *CLIError) {
-	doc, err := loadOpenAPI()
-	if err != nil {
-		return nil, cliError(ExitUsage, errorTypeInternal, "SCHEMA_SNAPSHOT_INVALID", err.Error())
-	}
+	doc := commandOpenAPI(c)
 	name := c.OutputSchema
 	if input {
 		name = c.InputSchema
@@ -343,6 +355,15 @@ func reachableSchemaComponents(root map[string]any, schemas map[string]map[strin
 
 func collectComponentRefs(value any, refs map[string]bool) {
 	walkJSONSchemas(value, func(schema map[string]any) {
+		discriminator, _ := schema["discriminator"].(map[string]any)
+		mapping, _ := discriminator["mapping"].(map[string]any)
+		for _, target := range mapping {
+			if ref, ok := target.(string); ok {
+				if name, ok := strings.CutPrefix(ref, "#/components/schemas/"); ok {
+					refs[name] = true
+				}
+			}
+		}
 		if ref, ok := schema["$ref"].(string); ok {
 			if name, found := strings.CutPrefix(ref, "#/components/schemas/"); found && name != "" {
 				refs[name] = true
