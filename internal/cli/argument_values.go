@@ -43,6 +43,9 @@ func applyArgumentValues(cmd *Command) {
 	parameters := operationParameterSchemas(cmd.OperationID)
 	for i := range cmd.Arguments {
 		arg := &cmd.Arguments[i]
+		if arg.bodyGenerated {
+			continue
+		}
 		var schema map[string]any
 		switch {
 		case arg.Query != "":

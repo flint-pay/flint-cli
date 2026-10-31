@@ -5,11 +5,31 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
+var generatedBodyArguments sync.Map
+
 // Body flags are a view of the contract. Only nested shortcuts are overlays.
 func publicBodyArguments(operation openAPIOperation, existing []Arg) []Arg {
+	if operation.OperationID == "" {
+		return buildBodyArguments(operation, existing)
+	}
+	cached, ok := generatedBodyArguments.Load(operation.OperationID)
+	if !ok {
+		cached, _ = generatedBodyArguments.LoadOrStore(operation.OperationID, buildBodyArguments(operation, existing))
+	}
+	args := append([]Arg(nil), cached.([]Arg)...)
+	for i := range args {
+		args[i].Enum = append([]string(nil), args[i].Enum...)
+		args[i].Variants = append([]string(nil), args[i].Variants...)
+		args[i].RequiredFor = append([]string(nil), args[i].RequiredFor...)
+	}
+	return args
+}
+
+func buildBodyArguments(operation openAPIOperation, existing []Arg) []Arg {
 	media, schema := requestContentSchema(operation.RequestBody)
 	if media != "application/json" {
 		return nil
@@ -51,6 +71,7 @@ func publicBodyArguments(operation openAPIOperation, existing []Arg) []Arg {
 			continue
 		}
 		arg := flag(name, openAPIArgumentType(typ, node), name, "", "", slices.Contains(required, name))
+		arg.bodyGenerated = true
 		arg.Description, _ = field.Schema["description"].(string)
 		if arg.Description == "" {
 			arg.Description = "Set " + name + "."
