@@ -84,16 +84,7 @@ func publicBodyArguments(operation openAPIOperation, existing []Arg) []Arg {
 		if resolved.Variants != nil {
 			arg.Variants = resolved.Membership[name]
 			arg.Discriminator = "--" + strings.ReplaceAll(resolved.Variants.Discriminator, "_", "-")
-			if name == resolved.Variants.Discriminator {
-				var hints []string
-				for field, tags := range resolved.Membership {
-					if len(tags) == 1 {
-						hints = append(hints, "--"+strings.ReplaceAll(field, "_", "-")+" alone selects "+tags[0])
-					}
-				}
-				sort.Strings(hints)
-				arg.InferenceHint = strings.Join(hints, "; ")
-			}
+
 			for tag, fields := range resolved.Variants.Requires {
 				if slices.Contains(fields, name) {
 					arg.RequiredFor = append(arg.RequiredFor, tag)
@@ -102,6 +93,23 @@ func publicBodyArguments(operation openAPIOperation, existing []Arg) []Arg {
 			sort.Strings(arg.RequiredFor)
 		}
 		args = append(args, arg)
+	}
+	if resolved.Variants != nil {
+		for i := range args {
+			if args[i].Name != resolved.Variants.Discriminator {
+				continue
+			}
+			var hints []string
+			candidates := append(append([]Arg(nil), args...), publicOperationOverlays[operation.OperationID].Arguments...)
+			for _, candidate := range candidates {
+				root := strings.Split(candidate.BodyPath, ".")[0]
+				if tags := resolved.Membership[root]; candidate.BodyPath != "" && len(tags) == 1 {
+					hints = append(hints, candidate.Flag+" alone selects "+tags[0])
+				}
+			}
+			sort.Strings(hints)
+			args[i].InferenceHint = strings.Join(hints, "; ")
+		}
 	}
 	return args
 }

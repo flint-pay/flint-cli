@@ -147,6 +147,12 @@ func TestGeneratedBodyFlagRoundTripMinimalRequests(t *testing.T) {
 		t.Run(cmd.Name, func(t *testing.T) {
 			body := minimalRequestBody(t, cmd)
 			raw, _ := json.Marshal(body)
+			argv := append([]string{}, cmd.Path[1:]...)
+			for _, arg := range cmd.Arguments {
+				if arg.Positional > 0 {
+					argv = append(argv, exhaustiveArgumentValues(arg)[0])
+				}
+			}
 			opts := defaultOptions()
 			opts.Input = string(raw)
 			opts.DryRun = "client"
@@ -176,14 +182,22 @@ func TestGeneratedBodyFlagRoundTripMinimalRequests(t *testing.T) {
 					values = []string{fmt.Sprint(value)}
 				}
 				opts.Raw[strings.TrimPrefix(arg.Flag, "--")] = values
-				// A4a still appends repeated flags; exercise replacement in A4b.
-				if arg.Repeat {
-					delete(body, arg.BodyPath)
+				for _, value := range values {
+					argv = append(argv, arg.Flag+"="+value)
 				}
+				delete(body, arg.BodyPath)
 				checked++
 			}
 			input, _ := json.Marshal(body)
-			opts.Input = string(input)
+			argv = append(argv, "--input", string(input))
+			if cmd.Mutation {
+				argv = append(argv, "--idempotency-key", "body-roundtrip")
+			}
+			_, opts, _, parseErr := parseInvocation(app.Registry, argv)
+			if parseErr != nil {
+				t.Fatal(parseErr)
+			}
+			opts.DryRun = "client"
 			req, e := app.prepareRequest(context.Background(), cmd, opts, ResolvedConfig{}, "", "http://127.0.0.1:9")
 			if e != nil {
 				t.Fatal(e)
@@ -223,6 +237,26 @@ func TestGeneratedBodyNullableKinds(t *testing.T) {
 		}
 		if !found {
 			t.Fatal(tc)
+		}
+	}
+}
+
+func TestGeneratedBodyInferenceHelpNamesRealFlags(t *testing.T) {
+	for _, cmd := range NewRegistry().Commands {
+		declared := map[string]bool{}
+		for _, arg := range cmd.Arguments {
+			declared[arg.Flag] = true
+		}
+		for _, arg := range cmd.Arguments {
+			for _, hint := range strings.Split(arg.InferenceHint, "; ") {
+				if hint == "" {
+					continue
+				}
+				flag := strings.Fields(hint)[0]
+				if !declared[flag] {
+					t.Fatal(cmd.Name, flag)
+				}
+			}
 		}
 	}
 }
