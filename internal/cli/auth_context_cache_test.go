@@ -90,7 +90,7 @@ func TestCachedScopeDenialRevalidatesOnce(t *testing.T) {
 				if err := os.MkdirAll(dir, 0700); err != nil {
 					t.Fatal(err)
 				}
-				if err := os.WriteFile(filepath.Join(dir, "config.json"), []byte(fmt.Sprintf(`{"sandbox":%q}`, scenario.sandbox)), 0600); err != nil {
+				if err := os.WriteFile(filepath.Join(dir, "config.json"), []byte(fmt.Sprintf(`{"sandbox_id":%q}`, scenario.sandbox)), 0600); err != nil {
 					t.Fatal(err)
 				}
 			}

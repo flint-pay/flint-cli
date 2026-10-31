@@ -206,7 +206,7 @@ func TestPendingLiveLoginPreservesAcknowledgement(t *testing.T) {
 		t.Fatal(err)
 	}
 	projectPath := filepath.Join(projectDir, "config.json")
-	if err := os.WriteFile(projectPath, []byte(`{"sandbox":"test_123"}`), 0600); err != nil {
+	if err := os.WriteFile(projectPath, []byte(`{"sandbox_id":"test_123"}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	args := []string{"login", "--live", "--profile", "review", "--merchant", "mer_123", "--scope", "commerce.subscriptions.read"}
@@ -228,11 +228,11 @@ func TestPendingLiveLoginPreservesAcknowledgement(t *testing.T) {
 		flags   []string
 		project string
 	}{
-		{[]string{"--profile", "review", "--merchant", "mer_123"}, `{"sandbox":"test_123"}`},
-		{[]string{"--live", "--profile", "review", "--merchant", "mer_other"}, `{"sandbox":"test_123"}`},
-		{[]string{"--live", "--profile", "review"}, `{"sandbox":"test_123"}`},
-		{args[1:], `{"sandbox":"test_other"}`},
-		{args[1:], `{"sandbox":"test_123","context":"ctx_other"}`},
+		{[]string{"--profile", "review", "--merchant", "mer_123"}, `{"sandbox_id":"test_123"}`},
+		{[]string{"--live", "--profile", "review", "--merchant", "mer_other"}, `{"sandbox_id":"test_123"}`},
+		{[]string{"--live", "--profile", "review"}, `{"sandbox_id":"test_123"}`},
+		{args[1:], `{"sandbox_id":"test_other"}`},
+		{args[1:], `{"sandbox_id":"test_123","context_id":"ctx_other"}`},
 	} {
 		if err := os.WriteFile(projectPath, []byte(test.project), 0600); err != nil {
 			t.Fatal(err)
@@ -243,7 +243,7 @@ func TestPendingLiveLoginPreservesAcknowledgement(t *testing.T) {
 			t.Fatalf("exit=%d devices=%d polls=%d revokes=%d err=%v result=%v", exit, devices, polls, revokes, err, result)
 		}
 	}
-	if err := os.WriteFile(projectPath, []byte(`{"sandbox":"test_123"}`), 0600); err != nil {
+	if err := os.WriteFile(projectPath, []byte(`{"sandbox_id":"test_123"}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	stored := ""

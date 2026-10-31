@@ -55,7 +55,7 @@ flint reauth                                # change browser-approved access
 
 Manage and revoke sessions on the [CLI sessions page](https://app.withflintpay.com/developers/cli).
 
-Context selection uses `--context ID`, then a project's `.flint/config.json` `context` field, then the profile default. For example, `{"context":"ctx_development"}` pins a project. Switching changes the profile default, not a project pin. Each running command retains its starting context. Access tokens remain restricted to one context and refresh automatically. LIVE contexts are labeled in the selector and command diagnostics; selected multi-context sessions do not need `--live` on every command, while sensitive/destructive operations still require confirmation.
+Context selection uses `--context ID`, then a project's `.flint/config.json` `context_id` field, then the profile default. For example, `{"context_id":"ctx_development"}` pins a project. Switching changes the profile default, not a project pin. Each running command retains its starting context. Access tokens remain restricted to one context and refresh automatically. LIVE contexts are labeled in the selector and command diagnostics; selected multi-context sessions do not need `--live` on every command, while sensitive/destructive operations still require confirmation.
 
 Environment credentials (`FLINT_API_KEY` or `FLINT_ACCESS_TOKEN`) override configured browser-session contexts. An explicit `--context` cannot be combined with these overrides. Merchant and sandbox guards still apply.
 

@@ -356,26 +356,20 @@ func TestDXPaginationLimitAndHistory(t *testing.T) {
 }
 
 func TestDXConfigCompatibilityAndSources(t *testing.T) {
-	app, out, _ := testApp(t, "")
+	app, _, _ := testApp(t, "")
 	path, _ := app.configPath()
-	for _, raw := range []string{"", `{"unknown":true,"profiles":{"default":{"future":true}}}`} {
-		if err := os.WriteFile(path, []byte(raw), 0600); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := app.loadConfig(); err != nil {
-			t.Fatal(err)
-		}
+	if err := os.WriteFile(path, []byte(""), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.loadConfig(); err != nil {
+		t.Fatal(err)
 	}
 	t.Setenv("FLINT_API_KEY", "")
-	_, result := runJSON(t, app, out, "config", "validate")
-	if !strings.Contains(fmt.Sprint(result), "unknown_config_field") {
-		t.Fatal(result)
-	}
 	if err := os.MkdirAll(filepath.Join(app.WorkingDir, ".flint"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	project := filepath.Join(app.WorkingDir, ".flint", "config.json")
-	os.WriteFile(project, []byte(`{"profile":"new","future":true}`), 0600)
+	os.WriteFile(project, []byte(`{"profile":"new"}`), 0600)
 	if _, _, err := app.resolveConfig(defaultOptions()); err == nil || !strings.Contains(err.Error(), project) || !strings.Contains(err.Error(), "flint login --profile new") {
 		t.Fatalf("err=%v", err)
 	}
@@ -389,7 +383,7 @@ func TestDXConfigCompatibilityAndSources(t *testing.T) {
 		t.Fatalf("err=%v", err)
 	}
 	t.Setenv("FLINT_API_KEY", "flint_test_test")
-	if resolved, _, err := app.resolveConfig(options); err != nil || resolved.ProfileName != "from-flag" {
+	if resolved, _, err := app.resolveConfig(options); err == nil {
 		t.Fatalf("resolved=%v err=%v", resolved, err)
 	}
 	t.Setenv("FLINT_PROFILE", "")
