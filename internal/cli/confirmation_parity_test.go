@@ -100,3 +100,21 @@ func TestTerminalConfirmationDoesNotSendRequests(t *testing.T) {
 		t.Fatal("missing confirmation")
 	}
 }
+
+func TestUnknownRawConfirmationFallback(t *testing.T) {
+	app, _, _ := testApp(t, "http://127.0.0.1:9")
+	for _, environment := range []string{"sandbox", "live", environmentUnverified} {
+		for _, method := range []string{"GET", "POST", "PATCH", "DELETE"} {
+			raw, _ := app.Registry.ByName("api")
+			cmd := resolveAPICommand(raw, Options{Positionals: []string{method, "/v1/future-resources"}})
+			want := method == "DELETE" || method != "GET" && environment != "sandbox"
+			e := app.confirmCommand(cmd, AuthContext{Environment: environment}, Options{NoInput: true})
+			if (e != nil) != want {
+				t.Fatalf("%s %s error=%v want=%v", environment, method, e, want)
+			}
+			if e := app.confirmCommand(cmd, AuthContext{Environment: environment}, Options{Confirm: true}); e != nil {
+				t.Fatal(e)
+			}
+		}
+	}
+}

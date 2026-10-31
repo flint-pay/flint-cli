@@ -78,7 +78,7 @@ func TestArrayEditsMergeNoopAndConflict(t *testing.T) {
 			defer server.Close()
 			app, out, stderr := testApp(t, server.URL)
 			app.Stdin = strings.NewReader(`{"description":"keep"}`)
-			args := append([]string{"webhook-endpoints", "update", "whep_test", "--idempotency-key", "array-edit"}, tc.flags...)
+			args := append([]string{"webhook-endpoints", "update", "whep_test", "--idempotency-key", "array-edit", "--confirm"}, tc.flags...)
 			exit, result := runJSON(t, app, out, args...)
 			if exit != 0 || gets != tc.gets || patches != tc.patches || !reflect.DeepEqual(last, tc.want) {
 				t.Fatalf("exit=%d GET=%d PATCH=%d values=%v want=%v result=%v stderr=%s", exit, gets, patches, last, tc.want, result, stderr)
@@ -109,7 +109,7 @@ func TestArrayEditsStopAfterSecondConflict(t *testing.T) {
 	}))
 	defer server.Close()
 	app, out, _ := testApp(t, server.URL)
-	exit, result := runJSON(t, app, out, "webhook-endpoints", "update", "whep_test", "--add-enabled-events", "refund.succeeded")
+	exit, result := runJSON(t, app, out, "webhook-endpoints", "update", "whep_test", "--add-enabled-events", "refund.succeeded", "--confirm")
 	code, _ := lookupPath(result, "error.code")
 	if exit != ExitAPI || code != "VERSION_CONFLICT" || gets != 2 || patches != 2 {
 		t.Fatal(exit, result, gets, patches)
@@ -132,7 +132,7 @@ func TestArrayEditsRefuseConflictsAndOfflineReads(t *testing.T) {
 			calls++
 		}))
 		app, out, _ := testApp(t, server.URL)
-		exit, result := runJSON(t, app, out, append([]string{"webhook-endpoints", "update", "whep_test"}, flags...)...)
+		exit, result := runJSON(t, app, out, append([]string{"webhook-endpoints", "update", "whep_test", "--confirm"}, flags...)...)
 		server.Close()
 		if exit != 2 || calls != 0 {
 			t.Fatal(flags, exit, result, calls)

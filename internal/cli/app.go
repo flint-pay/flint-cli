@@ -297,6 +297,10 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 		entry, found = index.OperationSafety(cmd.OperationID)
 	}
 	needs := found && entry.Kind == "write" && entry.ConfirmRequired()
+	if unknownRawOperation(cmd) {
+		// No contract classification exists for forward-compatible raw routes.
+		needs = cmd.Method == "DELETE" || cmd.Mutation && (environment == "live" || environment == environmentUnverified)
+	}
 	// Keep the earlier irreversible bridge's error code stable. Legacy hints
 	// affect only this diagnostic, never whether confirmation is required.
 	bridgeCode := entry.Irreversible && !cmd.Destructive && !cmd.Sensitive
