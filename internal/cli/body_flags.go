@@ -82,6 +82,17 @@ func publicBodyArguments(operation openAPIOperation, existing []Arg) []Arg {
 		}
 		if resolved.Variants != nil {
 			arg.Variants = resolved.Membership[name]
+			arg.Discriminator = "--" + strings.ReplaceAll(resolved.Variants.Discriminator, "_", "-")
+			if name == resolved.Variants.Discriminator {
+				var hints []string
+				for field, tags := range resolved.Membership {
+					if len(tags) == 1 {
+						hints = append(hints, "--"+strings.ReplaceAll(field, "_", "-")+" alone selects "+tags[0])
+					}
+				}
+				sort.Strings(hints)
+				arg.InferenceHint = strings.Join(hints, "; ")
+			}
 			for tag, fields := range resolved.Variants.Requires {
 				if slices.Contains(fields, name) {
 					arg.RequiredFor = append(arg.RequiredFor, tag)

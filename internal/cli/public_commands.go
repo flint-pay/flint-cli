@@ -213,6 +213,7 @@ var publicResourceIDPrefixes = map[string]string{
 	"inventory_reservation_id":           "invr_",
 	"inventory_transfer_id":              "invtr_",
 	"invoice_id":                         "inv_",
+	"invoice_schedule_entry_id":          "invse_",
 	"invoice_late_fee_id":                "inlf_",
 	"invoice_payment_term_id":            "ipt_",
 	"location_id":                        "loc_",
@@ -360,6 +361,11 @@ func publicAPIExample(
 				value = "true"
 			case argument.Type == "time":
 				value = "2h"
+				if argument.BodyPath != "" {
+					value = "+2h"
+				}
+			case argument.Type == "date":
+				value = "2026-10-31"
 			}
 			parts = append(parts, argument.Flag, value)
 		}

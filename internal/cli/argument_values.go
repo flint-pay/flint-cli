@@ -200,10 +200,14 @@ func printArgumentHelp(w io.Writer, cmd *Command, arg Arg) {
 	}
 	description := strings.TrimSpace(arg.Description)
 	if len(arg.RequiredFor) > 0 {
-		description += " (required for " + strings.Join(arg.RequiredFor, "|") + ")"
+		description += " (required for " + arg.Discriminator + " " + strings.Join(arg.RequiredFor, "|") + ")"
 	}
 	if arg.Required {
-		description += " (required)"
+		if arg.InferenceHint != "" {
+			description += " (required; " + arg.InferenceHint + ")"
+		} else {
+			description += " (required)"
+		}
 	}
 	fmt.Fprintf(w, "  %-38s %s\n", label, description)
 	if len(arg.Enum) > 6 && len(arg.Enum) <= 12 {

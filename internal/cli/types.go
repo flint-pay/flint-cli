@@ -27,6 +27,8 @@ type BuildInfo struct {
 }
 
 type Arg struct {
+	Discriminator     string   `json:"discriminator,omitempty"`
+	InferenceHint     string   `json:"inference_hint,omitempty"`
 	Nullable          bool     `json:"nullable,omitempty"`
 	Variants          []string `json:"variants,omitempty"`
 	RequiredFor       []string `json:"required_for,omitempty"`

@@ -108,3 +108,28 @@ func TestGeneratedBodySignedTime(t *testing.T) {
 		}
 	}
 }
+
+func TestGeneratedBodyExamplesAndHistoryPrefix(t *testing.T) {
+	registry := NewRegistry()
+	for _, cmd := range registry.Commands {
+		for _, arg := range cmd.Arguments {
+			if arg.BodyPath == "invoice_schedule_entry_id" && arg.IDPrefix != "invse_" {
+				t.Fatal(cmd.Name, arg.IDPrefix)
+			}
+		}
+		for _, example := range cmd.Examples {
+			if strings.Contains(example, "--expires-at 2h") || strings.Contains(example, "--start-date value") || strings.Contains(example, "--end-date value") {
+				t.Fatal(example)
+			}
+		}
+	}
+	cmd, _ := registry.ByName("api-keys.create")
+	for _, arg := range cmd.Arguments {
+		if arg.Name == "access" && !strings.Contains(arg.InferenceHint, "--scopes alone selects restricted") {
+			t.Fatal(arg)
+		}
+		if arg.Name == "scopes" && arg.Discriminator != "--access" {
+			t.Fatal(arg)
+		}
+	}
+}

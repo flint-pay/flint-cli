@@ -4,10 +4,10 @@ Usage:
   flint api-keys create [flags]
 
 Arguments and flags:
-  --access full|read_only|restricted     Key access. Full and read_only resolve from the current scope catalog for the key's mode; restricted holds only its listed scopes. Granting full or read_only requires a freshly verified authorized user session or a full-access API key. (required)
+  --access full|read_only|restricted     Key access. Full and read_only resolve from the current scope catalog for the key's mode; restricted holds only its listed scopes. Granting full or read_only requires a freshly verified authorized user session or a full-access API key. (required; --scopes alone selects restricted)
   --expires-at TIME                      RFC3339 timestamp. Accepts RFC3339, calendar dates in the reporting timezone, now, +30d or -2h; relative body times require a sign.
   --name TEXT                             (required)
-  --scopes TEXT[,TEXT...]                The scopes to grant. Required only with access restricted; forbidden with full or read_only. (required for restricted)
+  --scopes TEXT[,TEXT...]                The scopes to grant. Required only with access restricted; forbidden with full or read_only. (required for --access restricted)
     96 values: flint schema command api-keys.create --output json
     Repeat this flag for multiple values.
   --input TEXT                           JSON body: FILE.json, - for stdin, or inline JSON
