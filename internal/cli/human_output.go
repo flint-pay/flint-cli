@@ -90,8 +90,21 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 	// Resource identifiers generally precede foreign IDs in the alphabet. Prefer
 	// the command's own resource name when several identifiers are present.
 	if cmd != nil {
-		group := strings.ReplaceAll(strings.Split(cmd.CanonicalName, ".")[0], "-", "_")
-		addFirst(strings.TrimSuffix(group, "s") + "_id")
+		parts := strings.Split(cmd.CanonicalName, ".")
+		group := parts[0]
+		if len(parts) > 1 {
+			group = parts[len(parts)-2]
+		}
+		group = strings.ReplaceAll(group, "-", "_")
+		switch {
+		case strings.HasSuffix(group, "ies"):
+			group = strings.TrimSuffix(group, "ies") + "y"
+		case strings.HasSuffix(group, "sses"):
+			group = strings.TrimSuffix(group, "es")
+		default:
+			group = strings.TrimSuffix(group, "s")
+		}
+		addFirst(group + "_id")
 	}
 	if len(columns) == 0 {
 		for _, key := range keys {
