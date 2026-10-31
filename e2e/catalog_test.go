@@ -395,6 +395,10 @@ func builtRemoteInvocation(command *cli.Command) []string {
 }
 
 func builtArgumentValues(argument cli.Arg) []string {
+	// The catalog exercises all filters in normal list mode; follow has bounded tests.
+	if argument.Name == "follow" {
+		return []string{"false"}
+	}
 	if argument.Type == "boolean" {
 		return []string{"true"}
 	}

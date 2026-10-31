@@ -387,10 +387,25 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 			return err
 		}
 	}
-	if o.MaxEvents > 0 && !cmd.Stream {
+	follow := cmd.Follow && lastRawOption(*o, "follow") == "true"
+	o.streamCommand = cmd.Stream || follow
+	if follow {
+		for _, name := range []string{"created-before", "all", "limit", "page-token"} {
+			if used(name) {
+				return usageError("CONFLICTING_FLAGS", "--"+name+" cannot be used with --follow.", name)
+			}
+		}
+		if used("field") || used("select") || used("jq") {
+			return usageError("UNSUPPORTED_FLAG", "Output transforms do not apply to --follow.", "follow")
+		}
+		if o.Output == "json" && o.MaxEvents == 0 && o.For == 0 {
+			return usageError("STREAM_BOUND_REQUIRED", "JSON streaming requires --max-events or --for so automation cannot hang indefinitely. Use --output ndjson for an intentionally unbounded stream.", "for")
+		}
+	}
+	if o.MaxEvents > 0 && !cmd.Stream && !follow {
 		return usageError("UNSUPPORTED_FLAG", "--max-events and --for apply only to streaming commands.", "for")
 	}
-	if o.For > 0 && !cmd.Stream && len(o.WaitFor) == 0 && cmd.CanonicalName != "trigger" {
+	if o.For > 0 && !cmd.Stream && !follow && len(o.WaitFor) == 0 && cmd.CanonicalName != "trigger" {
 		return usageError("UNSUPPORTED_FLAG", "--for applies only to streaming commands and bounded waits.", "for")
 	}
 	if o.JQ != "" && o.Field != "" {
@@ -440,7 +455,7 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	if used("fix") && cmd.CanonicalName != "doctor" {
 		return usageError("UNSUPPORTED_FLAG", "--fix applies only to flint doctor.", "fix")
 	}
-	if used("progress") && !cmd.Stream && !o.All && !o.Paginate && o.Limit == 0 && len(o.WaitFor) == 0 && cmd.CanonicalName != "upgrade" && cmd.CanonicalName != "trigger" {
+	if used("progress") && !cmd.Stream && !follow && !o.All && !o.Paginate && o.Limit == 0 && len(o.WaitFor) == 0 && cmd.CanonicalName != "upgrade" && cmd.CanonicalName != "trigger" {
 		return usageError("UNSUPPORTED_FLAG", "--progress applies only to pagination, streams, waits, and upgrades.", "progress")
 	}
 	maxPositional := 0
@@ -499,6 +514,9 @@ func isShortFlag(token string) bool {
 
 func unknownFlagError(token string, allowed map[string]bool) *CLIError {
 	key, _, _ := strings.Cut(strings.TrimLeft(token, "-"), "=")
+	if key == "follow" {
+		return usageError("UNSUPPORTED_FLAG", "--follow applies only to api-request-logs list.", key)
+	}
 	shown := "--" + key
 	message := "Unknown flag: " + shown + "."
 	if !strings.HasPrefix(token, "--") {

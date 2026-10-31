@@ -44,6 +44,9 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 	if cmd.CanonicalName == "listen" {
 		return a.executeListen(ctx, cmd, opts, req, key, baseURL)
 	}
+	if cmd.Follow && lastRawOption(opts, "follow") == "true" {
+		return a.executeFollow(ctx, opts, req, key, baseURL)
+	}
 	if cmd.CanonicalName == "api" && opts.Paginate {
 		return a.executeRawPagination(ctx, opts, req, key, baseURL)
 	}
