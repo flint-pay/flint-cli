@@ -619,7 +619,7 @@ func TestMCPToolsMatchCanonicalRegistryAndInputSchemas(t *testing.T) {
 		entry, _ := index.Lookup(cmd.CanonicalName)
 		expected["title"] = entry.Title
 		expected["readOnlyHint"] = entry.Kind == "read"
-		expected["destructiveHint"] = entry.Kind == "write" && (entry.Irreversible || entry.Overwrites)
+		expected["destructiveHint"] = entry.Kind == "write" && entry.Irreversible
 		expected["idempotentHint"] = entry.Kind == "read" || entry.Method == "PUT" || entry.Method == "DELETE" || entry.Idempotency == "required"
 		if !ok || fmt.Sprint(annotations) != fmt.Sprint(expected) {
 			t.Errorf("MCP annotations differ for %s: %#v", cmd.CanonicalName, tool["annotations"])
