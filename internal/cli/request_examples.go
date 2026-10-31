@@ -99,7 +99,7 @@ func specRequestCommandExample(cmd *Command, operation openAPIOperation) string 
 			pathAndQuery = append(pathAndQuery, arg)
 		}
 	}
-	base := []string{publicAPIExample(cmd.Name, pathAndQuery, false, false)}
+	base := []string{publicAPIExample(cmd.Name, pathAndQuery, false)}
 	finish := func(parts []string) string {
 		if commandIdempotencyClass(cmd) == "required" {
 			parts = append(parts, "--idempotency-key", "saved-action-1")

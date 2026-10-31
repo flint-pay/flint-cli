@@ -58,7 +58,10 @@ func TestSpecRequestHelpExamplesPrepareValidBodies(t *testing.T) {
 			continue
 		}
 		count++
-		example := specRequestCommandExample(cmd, operation)
+		if len(cmd.Examples) == 0 {
+			t.Fatalf("%s has no help example", cmd.Name)
+		}
+		example := cmd.Examples[0]
 		if strings.Contains(example, "request.json") {
 			t.Errorf("%s has unexplained file: %s", cmd.Name, example)
 		}
@@ -110,9 +113,33 @@ func TestSpecRequestExamplesDiscoveryBudgetAndVariant(t *testing.T) {
 		}
 	}
 	cmd, _ := registry.ByName("refunds.create")
-	for _, example := range compactRequestExamples(cmd, "full") {
+	full := compactRequestExamples(cmd, "full")
+	if len(full) == 0 {
+		t.Fatal("missing full refund example")
+	}
+	for _, example := range full {
 		if example.Body["refund_type"] != "full" {
 			t.Fatal("wrong variant", example)
+		}
+	}
+}
+
+func TestSpecRequestMCPDescribeExamples(t *testing.T) {
+	app := discoveryFixture(t)
+	policy := app.mcpPolicy(defaultOptions())
+	value := discoveryData(t, app, policy, "flint_describe", map[string]any{"operation": "refunds.create", "variant": "full"})
+	examples, ok := value["request_examples"].([]requestExample)
+	if !ok || len(examples) != 1 || examples[0].Body["refund_type"] != "full" {
+		t.Fatalf("missing refund variant example: %v", value)
+	}
+	for _, args := range []map[string]any{
+		{"operation": "payment-intents.create", "kind": "result"},
+		{"operation": "payment-intents.create", "path": "amount_money"},
+		{"operation": "payment-links.create"},
+	} {
+		value := discoveryData(t, app, policy, "flint_describe", args)
+		if _, ok := value["request_examples"]; ok {
+			t.Fatalf("unexpected examples for %v: %v", args, value)
 		}
 	}
 }

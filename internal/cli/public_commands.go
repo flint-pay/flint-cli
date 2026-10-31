@@ -41,8 +41,10 @@ func publicAPICommands() []*Command {
 			command.Kind = kind
 			command.Render, command.Supports.Open = overlay.Render, overlay.Open
 			command.Examples = append([]string(nil), overlay.Examples...)
-			if len(command.Examples) == 0 {
-				command.Examples = ex(publicAPIExample(name, arguments, operation.RequestBody != nil, destructive))
+			if operation.RequestBody != nil {
+				command.Examples = ex(specRequestCommandExample(command, operation))
+			} else if len(command.Examples) == 0 {
+				command.Examples = ex(publicAPIExample(name, arguments, destructive))
 			}
 			// Looking up an email preference link is the existing read-only POST.
 			if overlay.ReadOnly {
@@ -341,7 +343,6 @@ func schemaRefName(value any) string {
 func publicAPIExample(
 	name string,
 	arguments []Arg,
-	hasInput bool,
 	destructive bool,
 ) string {
 	parts := []string{"flint"}
@@ -376,9 +377,6 @@ func publicAPIExample(
 			}
 			parts = append(parts, argument.Flag, value)
 		}
-	}
-	if hasInput {
-		parts = append(parts, "--input", "request.json")
 	}
 	if destructive {
 		parts = append(parts, "--confirm")
