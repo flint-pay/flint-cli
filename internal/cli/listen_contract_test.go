@@ -135,3 +135,22 @@ func TestListenMultipleTypesAndServerRenameHint(t *testing.T) {
 		t.Fatalf("filter=%s out=%s", gotFilter, out)
 	}
 }
+
+func TestListenEndpointHistoryReference(t *testing.T) {
+	server := listenAPI(t, func(w http.ResponseWriter, r *http.Request, _ int) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprint(w, listenEventFrame("whev_fixture", "customer.created", `{}`))
+	})
+	app, out, stderr := testApp(t, server.URL)
+	if err := app.recordHistory(map[string]any{"data": map[string]any{"webhook_endpoint_id": "whep_history"}}, "webhook-endpoints.create", historyScope{Profile: "default", Environment: "sandbox", MerchantID: "mer_123", SandboxID: "test_123"}); err != nil {
+		t.Fatal(err)
+	}
+	endpoint := ""
+	app.ForwardHTTPClient = &http.Client{Transport: listenRoundTripFunc(func(r *http.Request) (*http.Response, error) {
+		endpoint = r.Header.Get("Flint-Webhook-Endpoint-Id")
+		return &http.Response{StatusCode: 204, Body: io.NopCloser(strings.NewReader("")), Header: make(http.Header), Request: r}, nil
+	})}
+	if code := app.Run([]string{"listen", "--forward-to", "http://127.0.0.1:1/hook", "--webhook-endpoint-id", "@last.whep", "--max-events", "1", "--output", "ndjson"}); code != ExitOK || endpoint != "whep_history" {
+		t.Fatalf("code=%d endpoint=%s out=%s err=%s", code, endpoint, out, stderr)
+	}
+}
