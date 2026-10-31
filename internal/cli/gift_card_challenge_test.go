@@ -183,7 +183,7 @@ func TestGiftCardChallengeErrorPreservesRemediation(t *testing.T) {
 			t.Setenv("FLINT_API_KEY", "")
 			t.Setenv("FLINT_ACCESS_TOKEN", "ckat_v1.x")
 			app.Stdin = strings.NewReader(`{"code":"synthetic-code","expected_version":7}`)
-			if exit := app.Run([]string{"orders", "gift-cards", "ord_test", "--input", "-", "--output", "json"}); exit != ExitAPI || stderr.Len() != 0 {
+			if exit := app.Run([]string{"orders", "gift-cards", "create", "ord_test", "--input", "-", "--output", "json"}); exit != ExitAPI || stderr.Len() != 0 {
 				t.Fatalf("exit=%d stdout=%s stderr=%s", exit, out, stderr)
 			}
 			var output map[string]any

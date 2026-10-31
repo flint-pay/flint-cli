@@ -73,9 +73,9 @@ func TestMCPFallbackRoundTripsPreparedRequest(t *testing.T) {
 		{"customers", "create", "--input", string(body), "--idempotency-key", "a key with 'quotes'"},
 		{"customers", "update", "cus_roundtrip", "--input", string(body)},
 		{"refunds", "create", "--input", `{"payment_intent_id":"pi_roundtrip","refund_type":"amount","amount_money":{"amount":1234,"currency":"KWD"}}`, "--idempotency-key", "refund-key"},
-		{"orders", "list", "--status", "open", "--status", "closed", "--customer", "cus_roundtrip", "--page-size", "5", "--page-token=--next 'page'\n", "--created-after", "7d"},
+		{"orders", "list", "--status", "open", "--status", "closed", "--customer-id", "cus_roundtrip", "--page-size", "5", "--page-token=--next 'page'\n", "--created-after", "7d"},
 		{"customers", "get", "cus_roundtrip", "--expand", "default_payment_method", "--expand", "default_payment_method"},
-		{"timeline", "--page-size", "3", "--page-token=--next 'page'\n", "--", "--resource/with 'quotes'\nand spaces"},
+		{"resource-timelines", "get", "--page-size", "3", "--page-token=--next 'page'\n", "--", "--resource/with 'quotes'\nand spaces"},
 	} {
 		t.Run(strings.Join(args[:min(2, len(args))], "."), func(t *testing.T) {
 			app, _, _ := testApp(t, "http://127.0.0.1:1")

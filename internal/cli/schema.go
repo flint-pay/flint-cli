@@ -12,6 +12,7 @@ import (
 )
 
 type openAPIDocument struct {
+	Security          []map[string][]string                  `json:"security"`
 	OpenAPI           string                                 `json:"openapi"`
 	JSONSchemaDialect string                                 `json:"jsonSchemaDialect"`
 	FlintAPIVersion   string                                 `json:"x-flint-api-version"`
@@ -111,6 +112,7 @@ type openAPIOperation struct {
 	RequestBody         map[string]any            `json:"requestBody"`
 	Responses           map[string]map[string]any `json:"responses"`
 	FlintRouteClass     string                    `json:"x-flint-route-class"`
+	FlintAudience       string                    `json:"x-flint-audience"`
 	FlintCLIAction      string                    `json:"x-flint-cli-action"`
 	FlintDestructive    bool                      `json:"x-flint-destructive"`
 	FlintRequiredScopes []string                  `json:"x-flint-required-scopes"`
@@ -221,9 +223,9 @@ func commandDocument(c *Command, requested string) map[string]any {
 }
 
 // schemaForCommand returns the output schema, or the MCP tool input schema:
-// the request body plus path arguments, CLI alternatives, and _flint controls.
+// the request body plus path and query arguments.
 func schemaForCommand(c *Command, input bool) (map[string]any, *CLIError) {
-	schema, e := commandSchema(c, input, input)
+	schema, e := commandSchema(c, input)
 	if e != nil || !input {
 		return schema, e
 	}
@@ -232,10 +234,10 @@ func schemaForCommand(c *Command, input bool) (map[string]any, *CLIError) {
 
 // requestBodySchema describes exactly the JSON object that --input supplies.
 func requestBodySchema(c *Command) (map[string]any, *CLIError) {
-	return commandSchema(c, true, false)
+	return commandSchema(c, true)
 }
 
-func commandSchema(c *Command, input, alternatives bool) (map[string]any, *CLIError) {
+func commandSchema(c *Command, input bool) (map[string]any, *CLIError) {
 	doc, err := loadOpenAPI()
 	if err != nil {
 		return nil, cliError(ExitUsage, errorTypeInternal, "SCHEMA_SNAPSHOT_INVALID", err.Error())
@@ -291,9 +293,6 @@ func commandSchema(c *Command, input, alternatives bool) (map[string]any, *CLIEr
 		return map[string]any{"$schema": "https://json-schema.org/draft/2020-12/schema"}, nil
 	}
 	out := deepCopyMap(root)
-	if alternatives {
-		applyCommandInputAlternatives(out, c, doc.Components.Schemas)
-	}
 	out["$schema"] = "https://json-schema.org/draft/2020-12/schema"
 	out["$id"] = "https://cli.withflintpay.com/schema/" + c.CanonicalName + map[bool]string{true: "/input", false: "/output"}[input]
 	defs := reachableSchemaDefinitions(out, doc.Components.Schemas)
@@ -302,42 +301,6 @@ func commandSchema(c *Command, input, alternatives bool) (map[string]any, *CLIEr
 		out["$defs"] = defs
 	}
 	return out, nil
-}
-
-func applyCommandInputAlternatives(schema map[string]any, c *Command, schemas map[string]map[string]any) {
-	if c.CanonicalName != "payment-intents.create" {
-		return
-	}
-	properties, _ := schema["properties"].(map[string]any)
-	if properties == nil {
-		properties = map[string]any{}
-		schema["properties"] = properties
-	}
-	standaloneProperties := map[string]any{"payment_options": deepCopyMap(properties["payment_options"].(map[string]any))}
-	if nested, ok := schemas["CreateOrderPaymentIntentRequest"]; ok {
-		if nestedProperties, ok := nested["properties"].(map[string]any); ok {
-			for name, property := range nestedProperties {
-				if _, exists := properties[name]; !exists || name == "payment_options" {
-					if propertyMap, ok := property.(map[string]any); ok {
-						properties[name] = deepCopyMap(propertyMap)
-					} else {
-						properties[name] = property
-					}
-				}
-			}
-		}
-	}
-	properties["order"] = map[string]any{"type": "string", "description": "Order ID. The payment amount derives from the order balance."}
-	properties["amount"] = map[string]any{"type": "integer", "minimum": 1, "description": "Standalone amount in the smallest currency unit."}
-	properties["currency"] = map[string]any{"type": "string", "description": "Standalone ISO currency code."}
-	standaloneConditions := schema["allOf"]
-	delete(schema, "allOf")
-	delete(schema, "required")
-	schema["oneOf"] = []any{
-		map[string]any{"allOf": standaloneConditions, "properties": standaloneProperties, "required": []string{"amount_money", "payment_options"}, "not": map[string]any{"required": []string{"order"}}},
-		map[string]any{"allOf": standaloneConditions, "properties": standaloneProperties, "required": []string{"amount", "currency", "payment_options"}, "not": map[string]any{"anyOf": []any{map[string]any{"required": []string{"order"}}, map[string]any{"required": []string{"amount_money"}}}}},
-		map[string]any{"required": []string{"order"}, "not": map[string]any{"anyOf": []any{map[string]any{"required": []string{"amount_money"}}, map[string]any{"required": []string{"amount"}}, map[string]any{"required": []string{"currency"}}}}},
-	}
 }
 
 func reachableSchemaDefinitions(root map[string]any, schemas map[string]map[string]any) map[string]any {
@@ -688,7 +651,7 @@ func commandNameSuggestions(r *Registry, input string, groups bool) []string {
 	}
 	var out []string
 	for _, candidate := range candidates {
-		if editDistance(input, candidate) <= max(2, len(input)/4) {
+		if candidate != input && editDistance(input, candidate) <= max(2, len(input)/4) {
 			out = append(out, candidate)
 		}
 	}

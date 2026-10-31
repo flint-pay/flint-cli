@@ -165,7 +165,7 @@ func TestVerifiedCheckoutTransformsRemainVisible(t *testing.T) {
 	defer server.Close()
 	for _, flags := range [][]string{{"--jq", ".data.url"}, {"--select", "url"}, {"--jq", ".data.url", "--output", "json"}} {
 		a, out, _ := testApp(t, server.URL)
-		argv := append([]string{"checkout", "create", "--quick-pay-name", "T-shirt", "--amount", "2500", "--currency", "USD"}, flags...)
+		argv := append([]string{"checkout-sessions", "create", "--quick-pay-name", "T-shirt", "--amount", "2500", "--currency", "USD"}, flags...)
 		if exit := a.Run(argv); exit != ExitOK || !strings.Contains(out.String(), "https://checkout.example/session") {
 			t.Fatalf("flags=%v exit=%d output=%q", flags, exit, out.String())
 		}

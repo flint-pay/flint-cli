@@ -38,7 +38,7 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 				"skipped_checks": []string{"scopes", "merchant_guard", "sandbox_guard"},
 			})
 		}
-		return previewRequest(req, permissionCommand(cmd, opts), authContext, opts.Preview), nil
+		return previewRequest(req, cmd, authContext, opts.Preview), nil
 	}
 	if cmd.CanonicalName == "listen" {
 		return a.executeListen(ctx, cmd, opts, req, key, baseURL)
@@ -98,19 +98,6 @@ func previewRequest(req preparedRequest, cmd *Command, authContext AuthContext, 
 		}
 	}
 	return map[string]any{"data": data}
-}
-
-// The order shortcut sends a different operation from standalone creation.
-// Resolve its permission contract without changing request-building metadata.
-func permissionCommand(cmd *Command, opts Options) *Command {
-	if cmd != nil && cmd.CanonicalName == "payment-intents.create" && len(opts.Raw["order"]) > 0 {
-		if operation, ok := matchPublicOperation("POST", "/v1/orders/{order_id}/payment-intents"); ok {
-			resolved := *cmd
-			resolved.OperationID = operation.OperationID
-			return &resolved
-		}
-	}
-	return cmd
 }
 
 func permissionPreview(cmd *Command, authContext AuthContext) map[string]any {
@@ -489,15 +476,8 @@ func lookupResourcePath(value any, path string) (any, bool) {
 	return lookupPath(resourceRoot(value), path)
 }
 
-var terminalStates = map[string]map[string]bool{
-	"payment-intents.get":   {"succeeded": true, "canceled": true, "expired": true},
-	"refunds.get":           {"failed": true},
-	"checkout-sessions.get": {"paid": true, "expired": true, "closed": true, "invalidated": true},
-	"orders.get":            {"closed": true},
-}
-
 func terminallyImpossible(cmd *Command, conditions []waitCondition, observed map[string]string) bool {
-	states := terminalStates[cmd.CanonicalName]
+	states := publicOperationOverlays[cmd.OperationID].TerminalStates
 	if len(states) == 0 {
 		return false
 	}

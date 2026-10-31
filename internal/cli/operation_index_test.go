@@ -43,7 +43,7 @@ func TestOperationIndexClassification(t *testing.T) {
 		t.Fatalf("trigger: %+v", trigger)
 	}
 	t.Logf("audiences=%v merchant-exposed=%d events=%d bridge=%d/%d", counts, exposed, events, ix.PublishedDestructive, ix.DerivedDestructive)
-	if events != 251 || counts["buyer"] != 70 || counts["merchant"] != 531 || counts["local"] != 32 || counts["keyless"] != 15 || exposed != 541 {
+	if events != 251 || counts["buyer"] != 70 || counts["merchant"] != 531 || counts["local"] != 32 || counts["keyless"] != 8 || exposed != 541 {
 		t.Errorf("classification changed: %v events=%d", counts, events)
 	}
 	if ix.DerivedDestructive == 0 || ix.PublishedDestructive == ix.DerivedDestructive {
@@ -62,7 +62,7 @@ func TestSearchGolden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Registry names remain authoritative until the command-tree renames land.
+	// Search uses the same route-derived names as the terminal registry.
 	for _, tc := range []struct {
 		q, want string
 		top     int
@@ -70,8 +70,8 @@ func TestSearchGolden(t *testing.T) {
 		{"refund an order", "refunds.create", 1}, {"refund", "refunds.list", 1}, {"refund status", "refunds.list", 1}, {"refund", "refunds.create", 3}, {"refund status", "refunds.create", 3}, {"orders", "orders.list", 1}, {"today orders", "orders.list", 1},
 		{"create customer", "customers.create", 1}, {"cancel payment intent", "payment-intents.cancel", 1}, {"capture payment", "payment-intents.capture", 1}, {"pay order", "orders.pay", 1},
 		{"webhook deliveries", "webhook-deliveries.list", 1}, {"resend webhook", "webhook-deliveries.resend", 1}, {"rotate webhook secret", "webhook-endpoints.rotate-secret", 1}, {"delete webhook endpoint", "webhook-endpoints.delete", 1},
-		{"payment succeeded event", "payment_intent.succeeded", 1}, {"test card", "test-cards", 1}, {"who am i", "auth.status", 1}, {"timeline of a payment", "timeline", 1}, {"reset sandbox", "sandboxes.reset", 1},
-		{"api request logs", "request-logs.list", 1}, {"gift card balance", "gift-cards.adjust-balance", 2}, {"discount code", "promotion-codes.list", 1},
+		{"payment succeeded event", "payment_intent.succeeded", 1}, {"test card", "test-cards", 1}, {"who am i", "auth.status", 1}, {"timeline of a payment", "resource-timelines.get", 1}, {"reset sandbox", "sandboxes.reset", 1},
+		{"api request logs", "api-request-logs.list", 1}, {"gift card balance", "gift-cards.adjust-balance", 2}, {"discount code", "promotion-codes.list", 1},
 		{"forward webhooks to localhost", "listen", 1}, {"exit codes", "exit-codes", 1}, {"api schema for a command", "schema.input", 3}, {"POST /v1/refunds", "refunds.create", 1},
 	} {
 		t.Run(tc.q, func(t *testing.T) {

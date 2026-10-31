@@ -1464,13 +1464,15 @@
     "method": "GET",
     "path": "/v1/oauth/authorize",
     "operation_id": "authorizePartnerInstall",
-    "classification": "resource"
+    "classification": "raw-api-only",
+    "reason": "E1: Unauthenticated OAuth protocol route; use auth commands or the raw api command."
   },
   {
     "method": "GET",
     "path": "/v1/oauth/authorize/preview",
     "operation_id": "previewPartnerInstallAuthorization",
-    "classification": "resource"
+    "classification": "raw-api-only",
+    "reason": "E1: Unauthenticated OAuth protocol route; use auth commands or the raw api command."
   },
   {
     "method": "POST",
@@ -2964,19 +2966,22 @@
     "method": "POST",
     "path": "/v1/oauth/contexts",
     "operation_id": "listCLIContexts",
-    "classification": "resource"
+    "classification": "raw-api-only",
+    "reason": "E1: Unauthenticated OAuth protocol route; use auth commands or the raw api command."
   },
   {
     "method": "POST",
     "path": "/v1/oauth/device/authorize",
     "operation_id": "authorizeCLIDevice",
-    "classification": "resource"
+    "classification": "raw-api-only",
+    "reason": "E1: Unauthenticated OAuth protocol route; use auth commands or the raw api command."
   },
   {
     "method": "POST",
     "path": "/v1/oauth/device/reauthorize",
     "operation_id": "reauthorizeCLIDevice",
-    "classification": "resource"
+    "classification": "raw-api-only",
+    "reason": "E1: Unauthenticated OAuth protocol route; use auth commands or the raw api command."
   },
   {
     "method": "POST",
@@ -3480,13 +3485,15 @@
     "method": "POST",
     "path": "/v1/oauth/revoke",
     "operation_id": "revokeOAuthToken",
-    "classification": "resource"
+    "classification": "raw-api-only",
+    "reason": "E1: Unauthenticated OAuth protocol route; use auth commands or the raw api command."
   },
   {
     "method": "POST",
     "path": "/v1/oauth/token",
     "operation_id": "exchangeOAuthToken",
-    "classification": "resource"
+    "classification": "raw-api-only",
+    "reason": "E1: Unauthenticated OAuth protocol route; use auth commands or the raw api command."
   },
   {
     "method": "POST",

@@ -49,7 +49,7 @@ func requestIdempotencyKey(cmd *Command, opts Options) (string, *CLIError) {
 	if unknownRawOperation(cmd) {
 		return key, nil
 	}
-	switch commandIdempotencyClass(permissionCommand(cmd, opts)) {
+	switch commandIdempotencyClass(cmd) {
 	case "required":
 		if strings.TrimSpace(key) == "" {
 			return "", usageError("IDEMPOTENCY_KEY_REQUIRED", "--idempotency-key is required for this operation. Save a key with the action before sending and reuse the same key on retry; a key generated for one command cannot protect a later run from repeating the action.", "--idempotency-key")
@@ -151,13 +151,7 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 			}
 		}
 	}
-	// Convenience quick-pay flags select the corresponding checkout variant. JSON
-	// input keeps its explicit discriminator and must satisfy the public contract.
-	if cmd.CanonicalName == "checkout-sessions.create" {
-		if _, hasType := body["type"]; !hasType && (len(opts.Raw["quick-pay-name"]) > 0 || len(opts.Raw["amount"]) > 0 || len(opts.Raw["currency"]) > 0) {
-			body["type"] = "quick_pay"
-		}
-	}
+
 	if e := selectRequestUnionTags(cmd, opts, body); e != nil {
 		return req, e
 	}
@@ -218,35 +212,16 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 	for _, expand := range opts.Expand {
 		query.Add("expand", expand)
 	}
-	if cmd.CanonicalName == "payment-intents.create" {
-		orderValues := opts.Raw["order"]
-		if len(orderValues) > 0 {
-			if len(opts.Raw["amount"]) > 0 || len(opts.Raw["currency"]) > 0 || len(opts.Raw["payment-option"]) > 0 || len(opts.Raw["transaction-purpose"]) > 0 {
-				return req, usageError("CONFLICTING_ARGUMENTS", "--order cannot be combined with --amount, --currency, --payment-option, or --transaction-purpose because the order-scoped request has a separate contract.", "order")
-			}
-			if _, hasAmount := body["amount_money"]; hasAmount {
-				return req, usageError("CONFLICTING_ARGUMENTS", "--order cannot be combined with amount_money because the amount derives from the order balance.", "order")
-			}
-			orderID := orderValues[len(orderValues)-1]
-			if strings.HasPrefix(orderID, "@last") {
-				v, e := a.resolveHistoryRef(orderID, "ord_", historyScopeFromResolved(resolved))
-				if e != nil {
-					return req, e
-				}
-				orderID = v
-			}
-			req.Path = "/v1/orders/" + url.PathEscape(orderID) + "/payment-intents"
-			delete(body, "order_id")
-		} else if opts.Input == "" {
-			if len(opts.Raw["amount"]) == 0 || len(opts.Raw["currency"]) == 0 {
-				return req, usageError("MISSING_REQUIRED_ARGUMENT", "Standalone payment intents require --amount and --currency.", "amount")
-			}
-			if len(opts.Raw["payment-option"]) == 0 {
-				return req, usageError("MISSING_REQUIRED_ARGUMENT", "Standalone payment intents require at least one --payment-option.", "payment_option")
-			}
+	if cmd.CanonicalName != "api" && cmd.OperationID == "createPaymentIntent" && opts.Input == "" {
+		if len(opts.Raw["amount"]) == 0 || len(opts.Raw["currency"]) == 0 {
+			return req, usageError("MISSING_REQUIRED_ARGUMENT", "Standalone payment intents require --amount and --currency.", "amount")
+		}
+		if len(opts.Raw["payment-option"]) == 0 {
+			return req, usageError("MISSING_REQUIRED_ARGUMENT", "Standalone payment intents require at least one --payment-option.", "payment_option")
 		}
 	}
-	if cmd.CanonicalName == "orders.pay" {
+
+	if cmd.CanonicalName != "api" && cmd.OperationID == "payOrder" {
 		if e := a.prepareOrderPayment(ctx, body, cmd, opts, resolved, key, baseURL, req.Path); e != nil {
 			return req, e
 		}
@@ -294,6 +269,12 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 // request body; a tag already present in --input is kept, so JSON input must
 // still satisfy the contract on its own.
 func selectRequestUnionTags(cmd *Command, opts Options, body map[string]any) *CLIError {
+	// Raw requests resolve operation IDs for contract metadata and safety checks.
+	// Convenience defaults belong only to named commands, never the raw body.
+	if cmd.CanonicalName == "api" {
+		return nil
+	}
+
 	flagged := func(names ...string) bool {
 		for _, name := range names {
 			if len(opts.Raw[name]) > 0 {
@@ -302,8 +283,12 @@ func selectRequestUnionTags(cmd *Command, opts Options, body map[string]any) *CL
 		}
 		return false
 	}
-	switch cmd.CanonicalName {
-	case "payment-links.create":
+	switch publicOperationOverlays[cmd.OperationID].Union {
+	case "quick_pay":
+		if _, hasType := body["type"]; !hasType && flagged("quick-pay-name", "amount", "currency") {
+			body["type"] = "quick_pay"
+		}
+	case "line_items":
 		if !flagged("item-name", "amount", "currency") {
 			return nil
 		}
@@ -316,7 +301,7 @@ func selectRequestUnionTags(cmd *Command, opts Options, body map[string]any) *CL
 				item["type"] = "custom_fixed"
 			}
 		}
-	case "payment-intents.confirm":
+	case "credential":
 		credentials := map[string]string{
 			"confirmation-token":   "stripe_confirmation_token",
 			"payment-source-token": "token",
@@ -344,9 +329,9 @@ func selectRequestUnionTags(cmd *Command, opts Options, body map[string]any) *CL
 			return usageError("CONFLICTING_ARGUMENTS", fmt.Sprintf("--%s requires credential_type %s.", selected[0], credentialType), "credential_type")
 		}
 		body["credential_type"] = credentialType
-	case "api-keys.create", "api-keys.update", "sandboxes.api-keys.create", "sandboxes.create":
+	case "api_key":
 		return inferAPIKeyAccess(cmd, opts, body)
-	case "invoices.create":
+	case "invoice":
 		if !flagged("order") {
 			return nil
 		}
@@ -378,12 +363,7 @@ func (a *App) validateBody(cmd *Command, opts Options, body map[string]any, req 
 		return nil
 	}
 	target, label := cmd, cmd.CanonicalName
-	if resolved := permissionCommand(cmd, opts); resolved.OperationID != cmd.OperationID {
-		// payment-intents.create --order sends the order-scoped request.
-		operation, _ := openAPIOperationByID(resolved.OperationID)
-		resolved.InputSchema = requestSchemaName(operation.RequestBody)
-		target, label = resolved, cmd.CanonicalName+" --order"
-	}
+
 	warnings, e := validateRequestBody(target, label, body)
 	if e != nil {
 		if details, ok := e.Details.(map[string]any); ok {
@@ -714,8 +694,8 @@ func inferAPIKeyAccess(cmd *Command, opts Options, body map[string]any) *CLIErro
 	if _, hasAccess := body["access"]; !hasAccess && len(opts.Raw["scope"]) > 0 {
 		body["access"] = "restricted"
 	}
-	creates := cmd.CanonicalName != "api-keys.update"
-	if cmd.CanonicalName == "sandboxes.create" {
+	creates := cmd.OperationID != "updateAPIKey"
+	if cmd.OperationID == "createSandbox" {
 		_, hasIssue := body["issue_test_key"]
 		if !hasIssue && (len(opts.Raw["access"]) > 0 || len(opts.Raw["scope"]) > 0 || len(opts.Raw["test-key-name"]) > 0) {
 			body["issue_test_key"] = true

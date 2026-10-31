@@ -669,8 +669,8 @@ func (a *App) localInit(cmd *Command, opts Options) int {
 		"checks": checks,
 		"next_steps": []map[string]string{
 			{"workflow": "commerce_order", "command": "flint orders create --input order.json"},
-			{"workflow": "hosted_checkout", "command": "flint checkout create --quick-pay-name T-shirt --amount 2500 --currency USD --open"},
-			{"workflow": "standalone_payment", "command": "flint payment create --amount 2500 --currency USD --payment-option card"},
+			{"workflow": "hosted_checkout", "command": "flint checkout-sessions create --quick-pay-name T-shirt --amount 2500 --currency USD --open"},
+			{"workflow": "standalone_payment", "command": "flint payment-intents create --amount 2500 --currency USD --payment-option card"},
 		},
 	}}
 	if outputErr := a.writeResult(value, cmd, opts); outputErr != nil {

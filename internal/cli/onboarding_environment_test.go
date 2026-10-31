@@ -206,7 +206,7 @@ func TestSandboxAPIKeysCreateRoutes(t *testing.T) {
 		},
 		{
 			name: "test-key alias",
-			argv: []string{"sandboxes", "test-key", "test_123"},
+			argv: []string{"sandboxes", "api-keys", "create", "test_123"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, created)
 			},
@@ -255,7 +255,7 @@ func TestSandboxAPIKeysCreateDryRunShowsRoute(t *testing.T) {
 	server, requests := sandboxAPIKeyServer(t, func(w http.ResponseWriter, r *http.Request) {})
 	app, out, _ := testApp(t, server.URL)
 	t.Setenv("FLINT_API_KEY", "flint_live_synthetic")
-	exit, result := runJSON(t, app, out, "sandboxes", "test-key", "test_123", "--input", sandboxAPIKeyInput, "--live", "--dry-run", "client")
+	exit, result := runJSON(t, app, out, "sandboxes", "api-keys", "create", "test_123", "--input", sandboxAPIKeyInput, "--live", "--dry-run", "client")
 	if exit != ExitOK || lookupPathValue(result, "data.path") != "/v1/sandboxes/test_123/api-keys" || len(*requests) != 0 {
 		t.Fatalf("exit=%d requests=%v result=%v", exit, *requests, result)
 	}

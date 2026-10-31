@@ -1,0 +1,118 @@
+{
+  "cancelPaymentIntent": [
+    "--cancellation-reason"
+  ],
+  "capturePaymentIntent": [
+    "--amount",
+    "--currency"
+  ],
+  "confirmPaymentIntent": [
+    "--confirmation-token",
+    "--payment-method",
+    "--payment-source-token"
+  ],
+  "createAPIKey": [
+    "--access",
+    "--name",
+    "--scope"
+  ],
+  "createCheckoutSession": [
+    "--amount",
+    "--currency",
+    "--quick-pay-name"
+  ],
+  "createCustomer": [
+    "--email",
+    "--name"
+  ],
+  "createCustomerVerification": [
+    "--customer",
+    "--purpose"
+  ],
+  "createDeliveryRateCallback": [
+    "--signing-method"
+  ],
+  "createInvoice": [
+    "--order",
+    "--recipient-email"
+  ],
+  "createInvoiceLateFee": [
+    "--invoice-schedule-entry-id"
+  ],
+  "createOrganization": [
+    "--name",
+    "--parent-organization"
+  ],
+  "createPaymentIntent": [
+    "--amount",
+    "--capture-method",
+    "--currency",
+    "--customer",
+    "--payment-option",
+    "--transaction-purpose"
+  ],
+  "createPaymentLink": [
+    "--amount",
+    "--currency",
+    "--item-name",
+    "--name"
+  ],
+  "createRefund": [
+    "--amount",
+    "--currency",
+    "--order",
+    "--payment-intent",
+    "--reason",
+    "--refund-type"
+  ],
+  "createSandbox": [
+    "--access",
+    "--name",
+    "--scope",
+    "--test-key-name"
+  ],
+  "createSandboxAPIKey": [
+    "--access",
+    "--name",
+    "--scope"
+  ],
+  "createWebhookEndpoint": [
+    "--enabled-event",
+    "--signing-method",
+    "--url"
+  ],
+  "createWebhookTestEvent": [
+    "--event-type"
+  ],
+  "issueInvoice": [
+    "--delivery-mode"
+  ],
+  "linkCustomerGuestPurchases": [
+    "--customer-verification"
+  ],
+  "payOrder": [
+    "--payment-source-token"
+  ],
+  "revokeAPIKey": [
+    "--expected-version"
+  ],
+  "updateAPIKey": [
+    "--access",
+    "--expected-version",
+    "--name",
+    "--scope"
+  ],
+  "updateDeliveryRateCallback": [
+    "--expected-version",
+    "--signing-method"
+  ],
+  "updateWebhookEndpoint": [
+    "--enabled-event",
+    "--expected-version",
+    "--signing-method",
+    "--url"
+  ],
+  "waiveInvoiceLateFee": [
+    "--reason"
+  ]
+}

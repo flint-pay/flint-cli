@@ -240,7 +240,7 @@ func historyPrefixForCommand(command string) string {
 	return map[string]string{
 		"payment-intents": "pi_", "orders": "ord_", "customers": "cus_", "refunds": "ref_",
 		"checkout-sessions": "cs_", "webhook-endpoints": "whep_", "webhook-events": "whev_", "webhook-deliveries": "wdel_",
-		"request-logs": "rlog_", "invoices": "inv_", "organizations": "org_", "merchants": "mer_",
+		"api-request-logs": "rlog_", "invoices": "inv_", "organizations": "org_", "merchant": "mer_",
 		"sandboxes": "test_", "api-keys": "key_", "payment-links": "pl_",
 		"packages": "pkg_", "shipments": "shp_",
 	}[namespace]

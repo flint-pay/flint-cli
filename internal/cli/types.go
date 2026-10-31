@@ -43,6 +43,7 @@ type Arg struct {
 }
 
 type Command struct {
+	Kind                string                `json:"kind,omitempty"`
 	Group               bool                  `json:"-"`
 	Name                string                `json:"name"`
 	CanonicalName       string                `json:"canonical_name"`

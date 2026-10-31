@@ -60,3 +60,72 @@ func TestChallengeTokenHeaderFollowsTheContract(t *testing.T) {
 		t.Fatalf("Flint-Challenge-Token=%q X-Turnstile-Token=%q", header, legacy)
 	}
 }
+
+func TestRawAPIBodiesDoNotUseNamedCommandConveniences(t *testing.T) {
+	// Each overlay with union inference stays out of raw API preparation. Include
+	// standalone intent requirements and order payment preparation as well.
+	for _, route := range []struct{ method, path string }{
+		{"post", "/v1/payment-intents/pi_review/confirm"},
+		{"post", "/v1/checkout-sessions"},
+		{"post", "/v1/payment-links"},
+		{"post", "/v1/api-keys"},
+		{"patch", "/v1/api-keys/key_review"},
+		{"post", "/v1/sandboxes/test_review/api-keys"},
+		{"post", "/v1/sandboxes"},
+		{"post", "/v1/invoices"},
+		{"post", "/v1/payment-intents"},
+		{"post", "/v1/orders/ord_review/pay"},
+	} {
+		for _, input := range []string{"", "{}", `{"caller_defined":true}`} {
+			t.Run(route.path+"/"+input, func(t *testing.T) {
+				app, _, _ := testApp(t, "http://127.0.0.1:1")
+				app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(*http.Request) (*http.Response, error) {
+					t.Fatal("preparation must not send a request")
+					return nil, nil
+				})}
+				argv := []string{"api", route.method, route.path, "--confirm", "--idempotency-key", "saved-review-action"}
+				if input != "" {
+					argv = append(argv, "--input", input)
+				}
+				cmd, opts, _, err := parseInvocation(app.Registry, argv)
+				if err != nil {
+					t.Fatal(err)
+				}
+				cmd = resolveAPICommand(cmd, opts)
+				if cmd.OperationID == "" {
+					t.Fatal("raw route must resolve its public operation ID")
+				}
+				req, err := app.prepareRequest(t.Context(), cmd, opts, ResolvedConfig{}, "", "http://127.0.0.1:1")
+				if err != nil {
+					t.Fatal(err)
+				}
+				want := input
+				if want == "" {
+					want = "{}"
+				}
+				if string(req.Body) != want {
+					t.Fatalf("raw request body=%s, want %s", req.Body, want)
+				}
+			})
+		}
+	}
+}
+
+func TestNamedPaymentIntentConfirmKeepsAttachedDefault(t *testing.T) {
+	app, _, _ := testApp(t, "http://127.0.0.1:1")
+	app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(*http.Request) (*http.Response, error) {
+		t.Fatal("preparation must not send a request")
+		return nil, nil
+	})}
+	cmd, opts, _, err := parseInvocation(app.Registry, []string{"payment-intents", "confirm", "pi_review", "--confirm", "--idempotency-key", "saved-review-action"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := app.prepareRequest(t.Context(), cmd, opts, ResolvedConfig{}, "", "http://127.0.0.1:1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(req.Body) != `{"credential_type":"attached"}` {
+		t.Fatalf("named request body=%s", req.Body)
+	}
+}
