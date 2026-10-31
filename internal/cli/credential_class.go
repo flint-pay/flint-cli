@@ -72,7 +72,7 @@ func (a *App) credentialClassError(command *Command) *CLIError {
 		code = "BUYER_CREDENTIAL_REQUIRED"
 		message = fmt.Sprintf("%s acts as a buyer and needs a session credential accepted by this operation, but the active credential is %s.", name, credentialClassLabel(source, credential))
 		if containsString(entry.Schemes, "CustomerSessionBearer") {
-			message = fmt.Sprintf("%s acts as a buyer and needs a customer session secret, but the active credential is %s.", name, credentialClassLabel(source, credential))
+			message = fmt.Sprintf("%s acts as a buyer and needs a customer session secret, but the active credential is %s. Create a customer session with a merchant credential, then set FLINT_ACCESS_TOKEN to its secret.", name, credentialClassLabel(source, credential))
 			action = map[string]any{
 				"command":        `flint customer-sessions create --input '{"customer_id":"CUSTOMER_ID"}' --field secret`,
 				"reason_message": "Run this command with a merchant credential, then set FLINT_ACCESS_TOKEN to the returned customer session secret.",

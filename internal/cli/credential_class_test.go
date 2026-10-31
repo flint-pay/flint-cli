@@ -219,3 +219,23 @@ func TestCredentialClassTransportPassThrough(t *testing.T) {
 		})
 	}
 }
+
+func TestCredentialClassHumanBuyerRemediation(t *testing.T) {
+	app, _, stderr := testApp(t, "http://127.0.0.1:1")
+	t.Setenv("FLINT_API_KEY", "flint_test_example")
+	t.Setenv("FLINT_ACCESS_TOKEN", "")
+	t.Setenv("FLINT_WORKLOAD_IDENTITY_ID", "")
+	app.LoadCredential = func(string) (string, error) { t.Fatal("credential lookup before class rejection"); return "", nil }
+	app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(*http.Request) (*http.Response, error) {
+		t.Fatal("request before class rejection")
+		return nil, nil
+	})}
+	if exit := app.Run([]string{"me", "orders", "list"}); exit != ExitAuth {
+		t.Fatalf("exit=%d stderr=%s", exit, stderr)
+	}
+	for _, want := range []string{"customer-sessions create", "set FLINT_ACCESS_TOKEN to its secret"} {
+		if !strings.Contains(stderr.String(), want) {
+			t.Errorf("missing %q in %s", want, stderr)
+		}
+	}
+}
