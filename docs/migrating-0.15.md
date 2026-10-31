@@ -142,7 +142,7 @@ In 0.14.x, `--scope`, `--access`, or `--test-key-name` made `sandboxes create` i
 
 ### Time values in body flags
 
-Body time flags, such as `--expires-at` and `test-clocks create --frozen-at`, accept RFC 3339, a date in the reporting timezone, `now`, and signed relative times: `+30d` is 30 days from now and `-2h` is two hours ago. A bare `30d` in a body flag exits 2 with `AMBIGUOUS_RELATIVE_TIME`. In 0.14.x body flags accepted only RFC 3339.
+Body time flags, such as `--expires-at` and `test-clocks create --frozen-at`, accept RFC 3339, a date in the reporting timezone, `now`, and signed relative times: `+30d` is 30 days from now and `-2h` is two hours ago. A bare `30d` in a body flag exits 2 with `AMBIGUOUS_RELATIVE_TIME`. These flags are new in 0.15.0. Times inside `--input` bodies are still sent as written, so keep RFC 3339 there.
 
 ## Time filters
 
@@ -151,7 +151,7 @@ Query filters accept the same inputs as before, with changes to dates and calend
 | Input | 0.14.x | 0.15.0 |
 | --- | --- | --- |
 | `YYYY-MM-DD` | Midnight UTC | Midnight in the merchant's reporting timezone |
-| `yesterday` | Accepted | The previous calendar day, in the reporting timezone |
+| `yesterday` | 24 hours before now | Midnight at the start of the previous calendar day, in the reporting timezone |
 | `today`, `this_week` | Not accepted | Midnight today, or midnight on Monday of this week, in the reporting timezone |
 | `2h`, `7d`, `2w` | Rolling duration in the past | Unchanged |
 
@@ -236,7 +236,7 @@ What to change:
 - **`--tools`.** Entries are operation IDs (`refunds.create`) or groups (`orders`, `payment-intents`), comma-separated or repeated. `--tools default`, `--tools help`, and entries like `payment-intents_create` stop the server at startup; use `payment-intents.create` instead, and drop `help` because `flint_help` is always available. `--tools all` selects every operation. Typed names replace every dot and hyphen with an underscore and use only lowercase letters, digits, and underscores. Old dotted or hyphenated tool names are rejected. Typed mode has no `flint_read` or `flint_write`; search, describe, and help stay, limited to the same scope. Keep the client's server name at most five characters so prefixed names fit 64 characters.
 - **Sizes.** `tools/list` is about 6 KB by default, under 50 KB for `--tools orders`, and under 780,000 bytes for `--tools all` (about 548 tools). No single tool exceeds 10,000 bytes. The previous `--tools all` result was about 3 MB.
 - **Controls.** Move `_flint.*` fields to top-level arguments, outside `arguments`. `_flint.dry_run: "client"` and `_flint.preview` are now `dry_run: true`. Per-call `merchant` and profile guards are removed; the server's profile, merchant guard, context, and timeout are fixed at startup. `live` appears only when the server runs with `--allow-live`.
-- **Removed tools.** `schema_command`, `schema_commands`, `schema_input`, `schema_output`, `schema_events`, and `help_search` are replaced by `flint_describe` (arguments, `kind: "result"`, nested `path`, `depth`, `variant`, and `event` for webhook payloads) and `flint_search`. The `help` tool is `flint_help`, with the topics `safety`, `errors`, `events`, and `test-cards`. The raw `api` tool is removed; call the typed operation, or use `flint api` in a terminal.
+- **Removed tools.** `schema_command`, `schema_commands`, `schema_errors`, `schema_input`, `schema_output`, `schema_events`, and `help_search` are replaced by `flint_describe` (arguments, `kind: "result"`, nested `path`, `depth`, `variant`, and `event` for webhook payloads), `flint_search`, and the `errors` and `events` topics of `flint_help`. The `help` tool is `flint_help`, with the topics `safety`, `errors`, `events`, and `test-cards`. The `doctor` and `init` tools, and `auth_status`, are now local operations (`doctor`, `init`, `auth.status`) that you reach through `flint_read` and `flint_write`. The raw `api` tool is removed; call the typed operation, or use `flint api` in a terminal.
 - **Credential class.** A merchant API key no longer sees buyer-session operations, and a partner access token reaches only install-scoped operations. Discovery and calls follow the same filter.
 
 ### Confirmation over MCP
@@ -314,7 +314,7 @@ These additions need no changes to existing scripts.
 - **Generated flags** for every body scalar and scalar array, and `--add-FIELD` and `--remove-FIELD` for scalar arrays on readable, version-guarded PATCH routes. For example, `flint webhook-endpoints update whep_123 --add-enabled-events refund.succeeded` reads the current list and version, merges, and sends the PATCH, retrying once on a version conflict.
 - **`flint completion bash|zsh|fish`** prints an offline completion script for commands, flags, and allowed values.
 - **`flint schema input COMMAND --example`** prints a documented request body as raw JSON, ready to save or pipe to `--input`. Generated help examples now use the same documented bodies. Without `--example`, `schema input` prints the schema as before.
-- **Test clocks and dispute simulation.** `flint test-clocks create|get|list|advance|delete` and `flint disputes simulate DISPUTE_ID --outcome won|lost|inquiry_closed|escalated` move sandbox customers and disputes through time. They arrived in the 0.14.3 snapshot; 0.15.0 adds recipes that use them in `flint trigger`.
+- **Test clocks and dispute simulation.** `flint test-clocks create|get|list|advance|delete` and `flint disputes simulate DISPUTE_ID --outcome won|lost|inquiry_closed|escalated` move sandbox customers and subscriptions through time, and decide a sandbox dispute. The commands arrived in the 0.14.3 snapshot; 0.15.0 adds `flint trigger` recipes that use them.
 - **Faster startup.** The CLI loads a compact generated command index instead of the full API document. In the pull request's measurements, `flint version` went from a median of 0.50 s to 0.03 s and `flint customers list` from 1.11 s to 0.18 s on a shared host, with peak memory near 35 MB instead of 180 MB.
 - **`--credential-store keyring|file`** and `FLINT_CREDENTIAL_STORE` apply to every command that reads credentials, including `flint mcp serve`. They are unchanged from 0.14.3.
 
