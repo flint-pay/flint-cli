@@ -346,14 +346,11 @@ func builtRemoteInvocation(command *cli.Command) []string {
 	if command.Mutation {
 		argv = append(argv, "--idempotency-key", "idem_compiled_exhaustive")
 	}
-	if command.Destructive {
+	if command.Mutation || command.Destructive {
 		argv = append(argv, "--confirm")
 	}
 	if strings.HasPrefix(command.CanonicalName, "sandboxes.") {
 		argv = append(argv, "--live")
-		if command.Mutation && !command.Destructive {
-			argv = append(argv, "--confirm")
-		}
 	}
 	return argv
 }
