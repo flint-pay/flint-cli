@@ -391,7 +391,7 @@ Use `dry_run: true` to validate a write without sending it. The prepared request
 | Live, `--allow-destructive` | Require `--allow-live` and per-call `live: true` | Also require `confirm: true` |
 | Read-only server | Reads run under the environment rules | All writes are unavailable, including dry runs |
 
-Unverified credentials follow live confirmation rules, without the verified-live access checks. Local operations such as `history.clear` count as sandbox. Typed tools include the canonical operation ID in `_meta["com.withflintpay/operation"]` and mark sensitive operations separately. `destructiveHint` describes irreversible writes and overwrites; the confirmation gate covers sensitive or irreversible operations.
+Unverified credentials follow live confirmation rules, without the verified-live access checks. Local operations such as `history.clear` count as sandbox. Typed tools include the canonical operation ID in `_meta["com.withflintpay/operation"]` and mark sensitive operations separately. `destructiveHint` follows the contract's `x-flint-destructive` flag; the confirmation gate covers sensitive or irreversible operations.
 
 Local commands are operations reached through read or write, including `version`, read-only `doctor`, `history`, `history.clear`, and sandbox-only `trigger`. Trigger waits are capped at 60 seconds. Agents cannot change credential stores, update config, or log out through MCP.
 

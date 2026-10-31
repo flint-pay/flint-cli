@@ -48,7 +48,11 @@ func terminalConfirmationRequired(entry opindex.Entry, environment string) bool 
 		verb := entry.Path[strings.LastIndex(entry.Path, "/")+1:]
 		switch verb {
 		case "pay", "confirm", "capture", "collect":
-			return false
+			for _, resource := range []string{"orders", "payment-intents", "invoices", "gift-card-redemptions"} {
+				if strings.HasPrefix(entry.Path, "/v1/"+resource+"/") {
+					return false
+				}
+			}
 		}
 		return entry.Irreversible
 	}

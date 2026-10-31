@@ -41,7 +41,7 @@ func TestMCPSafetyMetadataDistinguishesHintsAndGates(t *testing.T) {
 			t.Fatal(tool)
 		}
 		hints := tool["annotations"].(map[string]any)
-		if hints["destructiveHint"] != (entry.Kind == "write" && (entry.Irreversible || entry.Overwrites)) {
+		if hints["destructiveHint"] != (entry.Kind == "write" && entry.Irreversible) {
 			t.Fatal(tool)
 		}
 		props := tool["inputSchema"].(map[string]any)["properties"].(map[string]any)

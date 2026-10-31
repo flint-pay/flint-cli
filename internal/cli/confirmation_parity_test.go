@@ -33,7 +33,8 @@ func TestTerminalConfirmationMatchesSharedIndex(t *testing.T) {
 					candidate.CanonicalName = "api"
 				}
 				e := app.confirmCommand(&candidate, AuthContext{Environment: environment}, Options{NoInput: true})
-				collection := strings.HasSuffix(entry.Path, "/pay") || strings.HasSuffix(entry.Path, "/confirm") || strings.HasSuffix(entry.Path, "/capture") || strings.HasSuffix(entry.Path, "/collect")
+				collectionRoute := strings.HasPrefix(entry.Path, "/v1/orders/") || strings.HasPrefix(entry.Path, "/v1/payment-intents/") || strings.HasPrefix(entry.Path, "/v1/invoices/") || strings.HasPrefix(entry.Path, "/v1/gift-card-redemptions/")
+				collection := collectionRoute && (strings.HasSuffix(entry.Path, "/pay") || strings.HasSuffix(entry.Path, "/confirm") || strings.HasSuffix(entry.Path, "/capture") || strings.HasSuffix(entry.Path, "/collect"))
 				want := entry.Kind == "write" && (environment == "sandbox" && entry.Irreversible && !collection || environment != "sandbox" && entry.ConfirmRequired())
 				if (e != nil) != want || e != nil && e.ExitCode != ExitConfirmation {
 					t.Fatalf("%s env=%s raw=%v entry=%+v error=%v", cmd.Name, environment, raw, entry, e)

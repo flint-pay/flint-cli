@@ -6,6 +6,8 @@ Usage:
   flint help --all              Every command, one per line
   flint help search <words>     Find commands and topics offline
 
+Flint-hosted account operations require Flint's hosted account sign-in and are excluded from discovery.
+
 Start here:
   flint login
   flint signup
@@ -49,31 +51,32 @@ Merchant resources:
   delivery-previews                   delivery-profiles                   delivery-quotes
   delivery-rate-callbacks             delivery-revocations                delivery-zones
   devices                             discount-previews                   disputes
-  email-preference-links              files                               fraud-warnings
-  fulfillment-events                  fulfillment-notifications           fulfillments
-  gift-card-funding-dispositions      gift-card-loads                     gift-card-notifications
-  gift-card-redemptions               gift-card-transactions              gift-cards
-  inventory-adjustments               inventory-allocation-policies       inventory-counts
-  inventory-items                     inventory-levels                    inventory-movements
-  inventory-receipts                  inventory-reservations              inventory-transfers
-  invoice-payment-terms               invoices                            locations
-  merchant                            merchant-account-session-refreshes  merchant-account-sessions
-  merchant-billing-balances           merchant-billing-entries            merchant-billing-invoices
-  modifier-groups                     modifier-sets                       onboarding
-  orders                              organizations                       packages
-  payment-intents                     payment-links                       payment-method-domains
-  payment-methods                     payment-reviews                     payout-destinations
-  payout-settings                     payouts                             products
-  promotion-codes                     promotions                          refunds
-  report-downloads                    reports                             return-dispositions
-  return-inspections                  return-policies                     return-previews
-  return-reasons                      return-receipts                     return-resolutions
-  returns                             risk-lists                          risk-previews
-  risk-rules                          sandboxes                           settings
-  shipments                           subscription-delivery-migrations    subscription-offers
-  subscription-plans                  subscription-previews               subscriptions
-  tax-connection                      webhook-deliveries                  webhook-endpoints
-  webhook-event-types                 webhook-events                      workload-identities
+  email-preference-links              email-preferences                   files
+  fraud-warnings                      fulfillment-events                  fulfillment-notifications
+  fulfillments                        gift-card-funding-dispositions      gift-card-loads
+  gift-card-notifications             gift-card-redemptions               gift-card-transactions
+  gift-cards                          inventory-adjustments               inventory-allocation-policies
+  inventory-counts                    inventory-items                     inventory-levels
+  inventory-movements                 inventory-receipts                  inventory-reservations
+  inventory-transfers                 invoice-payment-terms               invoices
+  locations                           merchant                            merchant-account-session-refreshes
+  merchant-account-sessions           merchant-billing-balances           merchant-billing-entries
+  merchant-billing-invoices           modifier-groups                     modifier-sets
+  onboarding                          orders                              organizations
+  packages                            payment-intents                     payment-links
+  payment-method-domains              payment-methods                     payment-reviews
+  payout-destinations                 payout-settings                     payouts
+  products                            promotion-codes                     promotions
+  refunds                             report-downloads                    reports
+  return-dispositions                 return-inspections                  return-policies
+  return-previews                     return-reasons                      return-receipts
+  return-resolutions                  returns                             risk-lists
+  risk-previews                       risk-rules                          sandboxes
+  settings                            shipments                           subscription-delivery-migrations
+  subscription-offers                 subscription-plans                  subscription-previews
+  subscriptions                       tax-connection                      webhook-deliveries
+  webhook-endpoints                   webhook-event-types                 webhook-events
+  workload-identities
 
 Buyer session (set FLINT_ACCESS_TOKEN to a customer session secret, flint_cses_...):
   me                               Customer-session endpoints for a customer to manage their own account, commerce data, and sign-out.
