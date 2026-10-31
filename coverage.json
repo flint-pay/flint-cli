@@ -77,7 +77,7 @@
     "operation_id": "listAPIRequestLogs",
     "classification": "resource",
     "commands": [
-      "request-logs.list"
+      "api-request-logs.list"
     ]
   },
   {
@@ -86,7 +86,7 @@
     "operation_id": "getAPIRequestLog",
     "classification": "resource",
     "commands": [
-      "request-logs.get"
+      "api-request-logs.get"
     ]
   },
   {
@@ -851,7 +851,7 @@
     "operation_id": "assignToUnconfiguredDeliveryProfile",
     "classification": "resource",
     "commands": [
-      "delivery-profiles.assign-to-unconfigured.create"
+      "delivery-profiles.assign-to-unconfigured"
     ]
   },
   {
@@ -941,7 +941,7 @@
     "operation_id": "createDeliveryRateCallbackTestDelivery",
     "classification": "resource",
     "commands": [
-      "delivery-rate-callbacks.test-deliveries"
+      "delivery-rate-callbacks.test-deliveries.create"
     ]
   },
   {
@@ -1529,7 +1529,7 @@
     "operation_id": "transitionGiftCard",
     "classification": "resource",
     "commands": [
-      "gift-cards.transitions"
+      "gift-cards.transitions.create"
     ]
   },
   {
@@ -1664,7 +1664,7 @@
     "operation_id": "transitionInventoryCount",
     "classification": "resource",
     "commands": [
-      "inventory-counts.transitions"
+      "inventory-counts.transitions.create"
     ]
   },
   {
@@ -1826,7 +1826,7 @@
     "operation_id": "transitionInventoryReservation",
     "classification": "resource",
     "commands": [
-      "inventory-reservations.transitions"
+      "inventory-reservations.transitions.create"
     ]
   },
   {
@@ -1871,7 +1871,7 @@
     "operation_id": "transitionInventoryTransfer",
     "classification": "resource",
     "commands": [
-      "inventory-transfers.transitions"
+      "inventory-transfers.transitions.create"
     ]
   },
   {
@@ -2357,7 +2357,7 @@
     "operation_id": "saveMeGiftCard",
     "classification": "resource",
     "commands": [
-      "me.gift-cards"
+      "me.gift-cards.create"
     ]
   },
   {
@@ -2789,7 +2789,7 @@
     "operation_id": "getMerchant",
     "classification": "resource",
     "commands": [
-      "merchants.get"
+      "merchant.get"
     ]
   },
   {
@@ -2798,7 +2798,7 @@
     "operation_id": "updateMerchant",
     "classification": "resource",
     "commands": [
-      "merchants.update"
+      "merchant.update"
     ]
   },
   {
@@ -2958,64 +2958,50 @@
     "method": "GET",
     "path": "/v1/oauth/authorize",
     "operation_id": "authorizePartnerInstall",
-    "classification": "resource",
-    "commands": [
-      "oauth.authorize"
-    ]
+    "classification": "raw-api-only",
+    "reason": "E1: Unauthenticated OAuth protocol route; use auth commands or the raw api command."
   },
   {
     "method": "GET",
     "path": "/v1/oauth/authorize/preview",
     "operation_id": "previewPartnerInstallAuthorization",
-    "classification": "resource",
-    "commands": [
-      "oauth.authorize.preview.get"
-    ]
+    "classification": "raw-api-only",
+    "reason": "E1: Unauthenticated OAuth protocol route; use auth commands or the raw api command."
   },
   {
     "method": "POST",
     "path": "/v1/oauth/contexts",
     "operation_id": "listCLIContexts",
-    "classification": "resource",
-    "commands": [
-      "oauth.contexts"
-    ]
+    "classification": "raw-api-only",
+    "reason": "E1: Unauthenticated OAuth protocol route; use auth commands or the raw api command."
   },
   {
     "method": "POST",
     "path": "/v1/oauth/device/authorize",
     "operation_id": "authorizeCLIDevice",
-    "classification": "resource",
-    "commands": [
-      "oauth.device.authorize"
-    ]
+    "classification": "raw-api-only",
+    "reason": "E1: Unauthenticated OAuth protocol route; use auth commands or the raw api command."
   },
   {
     "method": "POST",
     "path": "/v1/oauth/device/reauthorize",
     "operation_id": "reauthorizeCLIDevice",
-    "classification": "resource",
-    "commands": [
-      "oauth.device.reauthorize"
-    ]
+    "classification": "raw-api-only",
+    "reason": "E1: Unauthenticated OAuth protocol route; use auth commands or the raw api command."
   },
   {
     "method": "POST",
     "path": "/v1/oauth/revoke",
     "operation_id": "revokeOAuthToken",
-    "classification": "resource",
-    "commands": [
-      "oauth.revoke"
-    ]
+    "classification": "raw-api-only",
+    "reason": "E1: Unauthenticated OAuth protocol route; use auth commands or the raw api command."
   },
   {
     "method": "POST",
     "path": "/v1/oauth/token",
     "operation_id": "exchangeOAuthToken",
-    "classification": "resource",
-    "commands": [
-      "oauth.token"
-    ]
+    "classification": "raw-api-only",
+    "reason": "E1: Unauthenticated OAuth protocol route; use auth commands or the raw api command."
   },
   {
     "method": "POST",
@@ -3176,7 +3162,7 @@
     "operation_id": "applyOrderDiscount",
     "classification": "resource",
     "commands": [
-      "orders.discounts"
+      "orders.discounts.create"
     ]
   },
   {
@@ -3212,7 +3198,7 @@
     "operation_id": "applyOrderGiftCard",
     "classification": "resource",
     "commands": [
-      "orders.gift-cards"
+      "orders.gift-cards.create"
     ]
   },
   {
@@ -3374,7 +3360,7 @@
     "operation_id": "grantOrganizationMembership",
     "classification": "resource",
     "commands": [
-      "organizations.memberships"
+      "organizations.memberships.create"
     ]
   },
   {
@@ -4229,7 +4215,7 @@
     "operation_id": "getResourceTimeline",
     "classification": "workflow",
     "commands": [
-      "timeline"
+      "resource-timelines.get"
     ]
   },
   {
@@ -5426,7 +5412,7 @@
     "operation_id": "listWebhookDeliveryAttempts",
     "classification": "resource",
     "commands": [
-      "webhook-deliveries.attempts"
+      "webhook-deliveries.attempts.list"
     ]
   },
   {
@@ -5498,7 +5484,7 @@
     "operation_id": "createWebhookTestEvent",
     "classification": "resource",
     "commands": [
-      "webhook-endpoints.test"
+      "webhook-endpoints.test-events.create"
     ]
   },
   {

@@ -811,18 +811,18 @@ func mcpToolDescription(cmd *Command, schema map[string]any) string {
 // mcpBaseDescription uses the public API's operation description, trimmed to
 // its first sentences, when it says more than the CLI's one-line summary.
 func mcpBaseDescription(cmd *Command) string {
-	switch cmd.CanonicalName {
-	case "webhook-endpoints.create":
+	switch cmd.OperationID {
+	case "createWebhookEndpoint":
 		return "Create a webhook endpoint. signing_methods defaults to [jwt]; verify Authorization: Bearer <token> with Flint's JWKS. A shared secret is returned only when hmac is included; save it if present."
-	case "webhook-endpoints.update":
+	case "updateWebhookEndpoint":
 		return "Update a webhook endpoint. signing_methods replaces the set; omit to leave unchanged. Adding hmac without an issued secret returns 409 ACTION_NOT_ALLOWED with reason secret_not_issued; use rotate-secret to issue one and enable hmac. Removing hmac deletes shared secrets."
-	case "webhook-endpoints.rotate-secret":
+	case "rotateWebhookEndpointSecret":
 		return "Rotate a webhook endpoint secret, or issue the first one and enable hmac. Save the returned secret."
-	case "delivery-rate-callbacks.create":
+	case "createDeliveryRateCallback":
 		return "Create a delivery rate callback. signing_methods defaults to [jwt]; verify Authorization: Bearer <token> with Flint's JWKS and aud set to the delivery_rate_callback_id. A shared secret and key_id are returned only when hmac is included; save them if present."
-	case "delivery-rate-callbacks.update":
+	case "updateDeliveryRateCallback":
 		return "Update a delivery rate callback. signing_methods replaces the set; omit to keep it. Adding hmac without a secret returns 409 ACTION_NOT_ALLOWED with reason secret_not_issued; rotate-secret issues one and enables hmac. Removing hmac deletes shared secrets."
-	case "delivery-rate-callbacks.rotate-secret":
+	case "rotateDeliveryRateCallbackSigningKey":
 		return "Rotate a delivery rate callback secret, or issue the first one and enable hmac. Save the returned secret and key_id."
 	}
 	if local, ok := mcpLocalTools[cmd.CanonicalName]; ok {

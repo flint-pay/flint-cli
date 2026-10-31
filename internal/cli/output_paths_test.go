@@ -41,7 +41,7 @@ func TestOutputPathsFieldValuesAndEnvelope(t *testing.T) {
 		{"empty list", "customers.list", "customer_id", "", map[string]any{"data": []any{}}},
 		{"checkout", "checkout-sessions.create", "checkout_auth_token", "synthetic-token\n", map[string]any{"data": map[string]any{"checkout_auth_token": "synthetic-token"}}},
 		{"event data", "webhook-events.get", "data.object.id", "obj_test\n", map[string]any{"data": map[string]any{"data": map[string]any{"object": map[string]any{"id": "obj_test"}}}}},
-		{"timeline", "timeline", "entries", "[]\n", map[string]any{"data": map[string]any{"entries": []any{}}}},
+		{"resource-timelines.get", "resource-timelines.get", "entries", "[]\n", map[string]any{"data": map[string]any{"entries": []any{}}}},
 		{"metadata", "customers.get", "metadata.custom", "null\n", map[string]any{"data": map[string]any{"metadata": map[string]any{}}}},
 		{"index", "orders.get", "line_items.0.name", "Item\n", map[string]any{"data": map[string]any{"line_items": []any{map[string]any{"name": "Item"}}}}},
 		{"local", "version", "cli_version", "test\n", map[string]any{"data": map[string]any{"cli_version": "test"}}},

@@ -106,7 +106,7 @@ func (a *App) Run(argv []string) int {
 	if authErr != nil {
 		return a.fail(authErr, opts)
 	}
-	if !a.mcpSkipScopeCheck && authEnvelope.fromCache && !opts.DryRunClient() && commandPermissionError(permissionCommand(effective, opts), authEnvelope.Data, resolved.ProfileName) != nil {
+	if !a.mcpSkipScopeCheck && authEnvelope.fromCache && !opts.DryRunClient() && commandPermissionError(effective, authEnvelope.Data, resolved.ProfileName) != nil {
 		// Revalidate a cached denial before any guards, confirmation, or target
 		// request. The refreshed context must pass the normal checks below.
 		authCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
@@ -162,7 +162,7 @@ func (a *App) Run(argv []string) int {
 		return ExitOK
 	}
 	if !a.mcpSkipScopeCheck && !opts.DryRunClient() {
-		if e := commandPermissionError(permissionCommand(effective, opts), authContext, resolved.ProfileName); e != nil {
+		if e := commandPermissionError(effective, authContext, resolved.ProfileName); e != nil {
 			return a.fail(e, opts)
 		}
 	}
@@ -459,7 +459,7 @@ func (a *App) printCommandHelp(cmd *Command) {
 		capabilities = append(capabilities, "--max-events N", "--for DURATION")
 	}
 	if cmd.Supports.Open {
-		capabilities = append(capabilities, "--open")
+		capabilities = append(capabilities, "--open (open the checkout URL in an interactive terminal with human output)")
 	}
 	if cmd.Supports.Field {
 		capabilities = append(capabilities, "--field PATH (inside the resource; strings raw, other values JSON)")

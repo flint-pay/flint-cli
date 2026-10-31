@@ -101,9 +101,9 @@ func TestTimelineAllPreservesEnvelopeAndCollectsEntries(t *testing.T) {
 			app, out, _ := testApp(t, server.URL)
 			var result any
 			if viaMCP {
-				result = mcpResultJSON(t, mcpCall(t, app, defaultOptions(), "flint_read", map[string]any{"operation": "timeline", "arguments": map[string]any{"resource_id": "pi_test", "page_size": 1}, "all": true}))
+				result = mcpResultJSON(t, mcpCall(t, app, defaultOptions(), "flint_read", map[string]any{"operation": "resource-timelines.get", "arguments": map[string]any{"resource_id": "pi_test", "page_size": 1}, "all": true}))
 			} else {
-				argv := []string{"timeline", "pi_test"}
+				argv := []string{"resource-timelines", "get", "pi_test"}
 				if raw {
 					argv = []string{"api", "get", "/v1/resource-timelines/pi_test"}
 				}
@@ -133,7 +133,7 @@ func TestTimelineAllPreservesEnvelopeAndCollectsEntries(t *testing.T) {
 					t.Errorf("%s = %#v, want %#v", path, got, want)
 				}
 			}
-			cmd, _ := app.Registry.ByName("timeline")
+			cmd, _ := app.Registry.ByName("resource-timelines.get")
 			schema, err := mcpOutputSchema(cmd)
 			if err != nil {
 				t.Fatal(err)

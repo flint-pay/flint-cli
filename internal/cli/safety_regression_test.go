@@ -15,65 +15,60 @@ import (
 	"github.com/flint-pay/flint-cli/internal/webhooksigning"
 )
 
-func TestOAuthAuthorizationSafetyForCanonicalAndRawCommands(t *testing.T) {
-	for _, raw := range []bool{false, true} {
-		for _, scenario := range []struct {
-			name      string
-			mode      string
-			flags     []string
-			wantExit  int
-			wantCode  string
-			wantCalls int32
-		}{
-			{"live_requires_acknowledgment", "live", nil, ExitAuth, "LIVE_ACKNOWLEDGEMENT_REQUIRED", 0},
-			{"confirm_does_not_replace_live", "live", []string{"--confirm"}, ExitAuth, "LIVE_ACKNOWLEDGEMENT_REQUIRED", 0},
-			{"live_requires_confirmation", "live", []string{"--live"}, ExitConfirmation, "PRODUCTION_CONFIRMATION_REQUIRED", 0},
-			{"live_confirmed", "live", []string{"--live", "--confirm"}, ExitOK, "", 1},
-			{"sandbox", "test", nil, ExitOK, "", 1},
-			{"mode_mismatch", "test", []string{"--live", "--confirm"}, ExitAuth, "CREDENTIAL_MODE_MISMATCH", 0},
-			{"dry_run", "live", []string{"--live", "--dry-run=client", "--idempotency-key", "review_oauth"}, ExitOK, "", 0},
-			{"repeated_mode_cannot_hide_live", "live", []string{"--mode", "test"}, ExitAuth, "LIVE_ACKNOWLEDGEMENT_REQUIRED", 0},
-		} {
-			t.Run(fmt.Sprintf("raw=%v/%s", raw, scenario.name), func(t *testing.T) {
-				var calls atomic.Int32
-				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					calls.Add(1)
-					if r.URL.Path != "/v1/oauth/authorize" || r.URL.Query().Get("mode") != scenario.mode {
-						t.Errorf("unexpected request: %s", r.URL)
-					}
-					if r.URL.Query().Get("code_challenge") != "synthetic_pkce_challenge_012345678901234567890" || r.URL.Query().Get("code_challenge_method") != "S256" {
-						t.Errorf("PKCE parameters were not preserved: %s", r.URL)
-					}
-					if r.Header.Get("Authorization") != "" || r.Header.Get("Idempotency-Key") != "" {
-						t.Error("public authorization must omit credentials and idempotency keys")
-					}
-					w.Header().Set("Location", "https://example.com/callback?code=synthetic")
-					w.WriteHeader(http.StatusFound)
-				}))
-				defer server.Close()
-				app, out, stderr := testApp(t, server.URL)
-				t.Setenv("FLINT_API_KEY", "")
-				t.Setenv("FLINT_ACCESS_TOKEN", "synthetic_session")
-				argv := []string{"oauth", "authorize", "--client-id", "papp_test", "--mode", scenario.mode, "--redirect-uri", "https://example.com/callback", "--response-type", "code", "--state", "test", "--code-challenge", "synthetic_pkce_challenge_012345678901234567890", "--code-challenge-method", "S256"}
-				flags := scenario.flags
-				if raw {
-					path := "/v1/oauth/authorize?client_id=papp_test&mode=" + scenario.mode + "&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code&state=test&code_challenge=synthetic_pkce_challenge_012345678901234567890&code_challenge_method=S256"
-					if scenario.name == "repeated_mode_cannot_hide_live" {
-						path += "&mode=test"
-						flags = nil
-					}
-					argv = []string{"api", "get", path}
+func TestOAuthAuthorizationSafetyForRawCommands(t *testing.T) {
+	for _, scenario := range []struct {
+		name      string
+		mode      string
+		flags     []string
+		wantExit  int
+		wantCode  string
+		wantCalls int32
+	}{
+		{"live_requires_acknowledgment", "live", nil, ExitAuth, "LIVE_ACKNOWLEDGEMENT_REQUIRED", 0},
+		{"confirm_does_not_replace_live", "live", []string{"--confirm"}, ExitAuth, "LIVE_ACKNOWLEDGEMENT_REQUIRED", 0},
+		{"live_requires_confirmation", "live", []string{"--live"}, ExitConfirmation, "PRODUCTION_CONFIRMATION_REQUIRED", 0},
+		{"live_confirmed", "live", []string{"--live", "--confirm"}, ExitOK, "", 1},
+		{"sandbox", "test", nil, ExitOK, "", 1},
+		{"mode_mismatch", "test", []string{"--live", "--confirm"}, ExitAuth, "CREDENTIAL_MODE_MISMATCH", 0},
+		{"dry_run", "live", []string{"--live", "--dry-run=client", "--idempotency-key", "review_oauth"}, ExitOK, "", 0},
+		{"repeated_mode_cannot_hide_live", "live", []string{"--mode", "test"}, ExitAuth, "LIVE_ACKNOWLEDGEMENT_REQUIRED", 0},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			var calls atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls.Add(1)
+				if r.URL.Path != "/v1/oauth/authorize" || r.URL.Query().Get("mode") != scenario.mode {
+					t.Errorf("unexpected request: %s", r.URL)
 				}
-				argv = append(argv, flags...)
-				argv = append(argv, "--output", "json")
-				if exit := app.Run(argv); exit != scenario.wantExit || calls.Load() != scenario.wantCalls || !strings.Contains(out.String(), scenario.wantCode) {
-					t.Fatalf("exit=%d calls=%d stdout=%s stderr=%s", exit, calls.Load(), out, stderr)
+				if r.URL.Query().Get("code_challenge") != "synthetic_pkce_challenge_012345678901234567890" || r.URL.Query().Get("code_challenge_method") != "S256" {
+					t.Errorf("PKCE parameters were not preserved: %s", r.URL)
 				}
-				if scenario.name == "dry_run" && strings.Contains(out.String(), `"Idempotency-Key"`) {
-					t.Fatalf("none-class preview included an idempotency key: %s", out)
+				if r.Header.Get("Authorization") != "" || r.Header.Get("Idempotency-Key") != "" {
+					t.Error("public authorization must omit credentials and idempotency keys")
 				}
-			})
-		}
+				w.Header().Set("Location", "https://example.com/callback?code=synthetic")
+				w.WriteHeader(http.StatusFound)
+			}))
+			defer server.Close()
+			app, out, stderr := testApp(t, server.URL)
+			t.Setenv("FLINT_API_KEY", "")
+			t.Setenv("FLINT_ACCESS_TOKEN", "synthetic_session")
+			flags := scenario.flags
+			path := "/v1/oauth/authorize?client_id=papp_test&mode=" + scenario.mode + "&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code&state=test&code_challenge=synthetic_pkce_challenge_012345678901234567890&code_challenge_method=S256"
+			if scenario.name == "repeated_mode_cannot_hide_live" {
+				path += "&mode=test"
+				flags = nil
+			}
+			argv := []string{"api", "get", path}
+			argv = append(argv, flags...)
+			argv = append(argv, "--output", "json")
+			if exit := app.Run(argv); exit != scenario.wantExit || calls.Load() != scenario.wantCalls || !strings.Contains(out.String(), scenario.wantCode) {
+				t.Fatalf("exit=%d calls=%d stdout=%s stderr=%s", exit, calls.Load(), out, stderr)
+			}
+			if scenario.name == "dry_run" && strings.Contains(out.String(), `"Idempotency-Key"`) {
+				t.Fatalf("none-class preview included an idempotency key: %s", out)
+			}
+		})
 	}
 }
 

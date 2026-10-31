@@ -17,7 +17,7 @@ func TestPaymentLinkAndCheckoutOpen(t *testing.T) {
 		args                 []string
 	}{
 		{"payment link", "/v1/payment-links", `{"data":{"payment_link_id":"pl_test","url":"` + target + `"}}`, []string{"payment-links", "create", "--name", "Test payment", "--item-name", "Test payment", "--amount", "1000", "--currency", "USD"}},
-		{"checkout", "/v1/checkout-sessions", `{"data":{"checkout_session":{"checkout_session_id":"cs_test","url":"` + target + `"},"checkout_access":{"checkout_auth_token":"csauth_test"}}}`, []string{"checkout", "create", "--quick-pay-name", "Test payment", "--amount", "1000", "--currency", "USD"}},
+		{"checkout", "/v1/checkout-sessions", `{"data":{"checkout_session":{"checkout_session_id":"cs_test","url":"` + target + `"},"checkout_access":{"checkout_auth_token":"csauth_test"}}}`, []string{"checkout-sessions", "create", "--quick-pay-name", "Test payment", "--amount", "1000", "--currency", "USD"}},
 	} {
 		for _, tc := range []struct {
 			name            string
@@ -223,7 +223,7 @@ func TestCheckoutCreateDiscriminatorInput(t *testing.T) {
 	} {
 		t.Run(fixture.name, func(t *testing.T) {
 			app, _, _ := testApp(t, "")
-			argv := append([]string{"checkout", "create"}, fixture.flags...)
+			argv := append([]string{"checkout-sessions", "create"}, fixture.flags...)
 			if fixture.input != "" {
 				app.Stdin = strings.NewReader(fixture.input)
 				argv = append(argv, "--input", "-")

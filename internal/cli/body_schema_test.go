@@ -190,11 +190,12 @@ func TestSchemaInputDescribesTheInputBody(t *testing.T) {
 	if body["required"] == nil || body["oneOf"] != nil {
 		t.Errorf("payment-intents.create body schema should keep the public request shape: %v", body)
 	}
-	// The MCP tool schema keeps its CLI arguments and execution controls.
+	// The MCP tool schema keeps execution controls and the public body.
+	// Standalone creation no longer advertises an alternate order operation.
 	tool, _ := schemaForMCPCommand(command)
 	properties, _ := tool["properties"].(map[string]any)
-	if properties["_flint"] == nil || properties["order"] == nil || tool["oneOf"] == nil {
-		t.Errorf("MCP tool schema lost CLI arguments: %v", properties)
+	if properties["_flint"] == nil || properties["amount_money"] == nil || properties["order"] != nil || tool["oneOf"] != nil {
+		t.Errorf("MCP tool schema differs from the standalone operation: %v", properties)
 	}
 }
 
@@ -271,8 +272,8 @@ func TestUndocumentedBodyFieldsAreRejected(t *testing.T) {
 		}
 	}
 	app.Stdin = strings.NewReader(`{"tip_money":{"amount":1,"currency":"USD"}}`)
-	exit, result := runJSON(t, app, stdout, "payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--order", "ord_test", "--input", "-", "--dry-run", "client")
-	if exit != ExitUsage || !strings.Contains(fmt.Sprint(result), "payment-intents.create --order") {
+	exit, result := runJSON(t, app, stdout, "orders", "payment-intents", "create", "ord_test", "--idempotency-key", "saved-test-action-1", "--input", "-", "--dry-run", "client")
+	if exit != ExitUsage || !strings.Contains(fmt.Sprint(result), "orders.payment-intents.create") {
 		t.Fatalf("exit=%d result=%v", exit, result)
 	}
 }
@@ -420,9 +421,9 @@ func TestAPIKeyAccessFlagsOnUpdateAndSandboxCommands(t *testing.T) {
 		{"update name only", []string{"api-keys", "update", "key_123", "--name", "ci"}, ExitOK, "", map[string]any{"name": "ci"}},
 		{"update full with scope", []string{"api-keys", "update", "key_123", "--access", "full", "--scope", "customers.read", "--expected-version", "3"}, ExitUsage, "INVALID_REQUEST_BODY", nil},
 		{"update input scopes without access", []string{"api-keys", "update", "key_123", "--input", `{"scopes":["customers.read"],"expected_version":3}`}, ExitUsage, "INVALID_REQUEST_BODY", nil},
-		{"test key scope implies restricted", []string{"sandboxes", "test-key", "test_123", "--name", "qa", "--scope", "customers.read"}, ExitOK, "", map[string]any{"name": "qa", "access": "restricted", "scopes": []any{"customers.read"}}},
+		{"test key scope implies restricted", []string{"sandboxes", "api-keys", "create", "test_123", "--name", "qa", "--scope", "customers.read"}, ExitOK, "", map[string]any{"name": "qa", "access": "restricted", "scopes": []any{"customers.read"}}},
 		{"test key full", []string{"sandboxes", "api-keys", "create", "test_123", "--name", "qa", "--access", "full"}, ExitOK, "", map[string]any{"name": "qa", "access": "full"}},
-		{"test key without access", []string{"sandboxes", "test-key", "test_123", "--name", "qa"}, ExitUsage, "MISSING_REQUIRED_ARGUMENT", nil},
+		{"test key without access", []string{"sandboxes", "api-keys", "create", "test_123", "--name", "qa"}, ExitUsage, "MISSING_REQUIRED_ARGUMENT", nil},
 		{"sandbox scope issues a restricted key", []string{"sandboxes", "create", "--name", "qa", "--scope", "customers.read", "--test-key-name", "qa key"}, ExitOK, "", map[string]any{"name": "qa", "issue_test_key": true, "access": "restricted", "scopes": []any{"customers.read"}, "test_key_name": "qa key"}},
 		{"sandbox read only key", []string{"sandboxes", "create", "--name", "qa", "--access", "read_only"}, ExitOK, "", map[string]any{"name": "qa", "issue_test_key": true, "access": "read_only"}},
 		{"sandbox without key", []string{"sandboxes", "create", "--name", "qa"}, ExitOK, "", map[string]any{"name": "qa"}},

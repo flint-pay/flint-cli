@@ -560,7 +560,7 @@ func suggestFlags(input string, allowed map[string]bool) []string {
 func (r *Registry) NounSuggestions(input string) []string {
 	normalized := strings.ReplaceAll(input, "_", "-")
 	if normalized == "payments" {
-		return []string{"payment-intents", "payment"}
+		return []string{"payment-intents"}
 	}
 	seen := map[string]bool{}
 	var out []string
@@ -572,7 +572,7 @@ func (r *Registry) NounSuggestions(input string) []string {
 			}
 			candidate := path[1]
 			close := editDistance(normalized, candidate) <= max(2, len(normalized)/3) || (len(normalized) >= 4 && strings.Contains(candidate, normalized))
-			if !seen[candidate] && close {
+			if candidate != normalized && !seen[candidate] && close {
 				seen[candidate] = true
 				out = append(out, candidate)
 			}
@@ -592,7 +592,7 @@ func (r *Registry) subcommandSuggestions(group string, rest []string) []string {
 		sub := c.Path[2:]
 		typed := strings.Join(rest[:min(len(sub), len(rest))], " ")
 		name := strings.Join(sub, " ")
-		if !seen[name] && (editDistance(typed, name) <= max(1, len(name)/3) || (len(typed) >= 3 && strings.HasPrefix(name, typed))) {
+		if name != strings.Join(rest, " ") && !seen[name] && (editDistance(typed, name) <= max(1, len(name)/3) || (len(typed) >= 3 && strings.HasPrefix(name, typed))) {
 			seen[name] = true
 			out = append(out, name)
 		}

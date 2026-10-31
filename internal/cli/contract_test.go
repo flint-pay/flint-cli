@@ -86,7 +86,7 @@ func TestRegistryContract(t *testing.T) {
 			t.Errorf("%s output schema: %v", cmd.Name, e)
 		}
 	}
-	for aliasName, canonical := range map[string]string{"payment.create": "payment-intents.create", "checkout.create": "checkout-sessions.create", "checkout.get": "checkout-sessions.get", "checkout.list": "checkout-sessions.list", "whoami": "auth.status", "logout": "auth.logout", "update": "upgrade"} {
+	for aliasName, canonical := range map[string]string{"login": "auth.login", "reauth": "auth.reauth", "whoami": "auth.status", "logout": "auth.logout"} {
 		cmd, ok := registry.ByName(aliasName)
 		if !ok || cmd.CanonicalName != canonical {
 			t.Errorf("alias %s does not normalize to %s", aliasName, canonical)
@@ -100,7 +100,7 @@ func TestFulfillmentCommandsUseExplicitOpenAPIMetadata(t *testing.T) {
 	registry := NewRegistry()
 	for _, name := range []string{
 		"delivery-rate-callbacks.check-connection",
-		"delivery-rate-callbacks.test-deliveries",
+		"delivery-rate-callbacks.test-deliveries.create",
 	} {
 		command, ok := registry.ByName(name)
 		if !ok {
@@ -339,7 +339,7 @@ func TestPaymentIntentCreateRequiresOptionsOnlyForStandaloneRequests(t *testing.
 
 	stdout.Reset()
 	stderr.Reset()
-	exit = app.Run([]string{"payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--order", "ord_123", "--dry-run=client", "--output", "json"})
+	exit = app.Run([]string{"orders", "payment-intents", "create", "ord_123", "--idempotency-key", "saved-test-action-1", "--dry-run=client", "--output", "json"})
 	if exit != ExitOK || stderr.Len() != 0 || !strings.Contains(stdout.String(), `"path":"/v1/orders/ord_123/payment-intents"`) {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
@@ -551,7 +551,7 @@ func TestUnknownCommandReturnsCanonicalSuggestions(t *testing.T) {
 	if exit != ExitUsage {
 		t.Fatalf("exit=%d", exit)
 	}
-	if !strings.Contains(stdout.String(), `"suggestions":["payment-intents","payment"]`) {
+	if !strings.Contains(stdout.String(), `"suggestions":["payment-intents"]`) {
 		t.Fatalf("suggestions=%s", stdout)
 	}
 }
@@ -613,7 +613,7 @@ func TestMCPToolsMatchCanonicalRegistryAndInputSchemas(t *testing.T) {
 	if len(tools) != want {
 		t.Fatalf("MCP tools=%d, want %d", len(tools), want)
 	}
-	if _, exists := byName["payment.create"]; exists {
+	if _, exists := byName["payment-intents.create"]; exists {
 		t.Fatal("MCP exposed an alias as a separate tool")
 	}
 }
@@ -794,7 +794,7 @@ func TestOrderPaymentIntentPermissionUsesOrderScope(t *testing.T) {
 				}))
 				defer server.Close()
 				app, stdout, stderr := testApp(t, server.URL)
-				argv := []string{"payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--order", "ord_123", "--output", "json"}
+				argv := []string{"orders", "payment-intents", "create", "ord_123", "--idempotency-key", "saved-test-action-1", "--output", "json"}
 				if dryRun {
 					argv = append(argv, "--dry-run=client")
 				}
@@ -1035,7 +1035,7 @@ func TestInitPrintsGoldenPathsInCanonicalOrder(t *testing.T) {
 	if commerce < 0 || hosted <= commerce || standalone <= hosted {
 		t.Fatalf("golden paths are out of order: %s", stdout)
 	}
-	if !strings.Contains(stdout.String(), `flint payment create --amount 2500 --currency USD --payment-option card`) {
+	if !strings.Contains(stdout.String(), `flint payment-intents create --amount 2500 --currency USD --payment-option card`) {
 		t.Fatalf("standalone golden path is not runnable: %s", stdout)
 	}
 }

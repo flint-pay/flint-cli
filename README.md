@@ -13,7 +13,7 @@ npm install -g @flintpay/cli      # resolves a prebuilt binary for your platform
 brew install flint-pay/tap/flint   # macOS and Linux
 ```
 
-After installation, `flint upgrade` (or its alias `flint update`) checks for the latest stable release using GitHub's `releases/latest` web redirect. If that lookup fails, it falls back to the GitHub REST API and uses `GITHUB_TOKEN` when set. Run `flint upgrade --check` to see the current and latest stable versions without changing anything; it exits 0 whether or not an update is available, and `--output json` reports `update_available`. On macOS and Linux it uses npm or Homebrew when they own the installation, or securely replaces a standalone binary after verifying the release checksum. On Windows it prints the exact npm or manual update step to run after closing the CLI. Progress appears on stderr, with an elapsed-time update every 10 seconds during longer steps. Use `--quiet` to hide it, or `--output json --progress json` for structured results and progress on separate streams.
+After installation, `flint upgrade` checks for the latest stable release using GitHub's `releases/latest` web redirect. If that lookup fails, it falls back to the GitHub REST API and uses `GITHUB_TOKEN` when set. Run `flint upgrade --check` to see the current and latest stable versions without changing anything; it exits 0 whether or not an update is available, and `--output json` reports `update_available`. On macOS and Linux it uses npm or Homebrew when they own the installation, or securely replaces a standalone binary after verifying the release checksum. On Windows it prints the exact npm or manual update step to run after closing the CLI. Progress appears on stderr, with an elapsed-time update every 10 seconds during longer steps. Use `--quiet` to hide it, or `--output json --progress json` for structured results and progress on separate streams.
 
 Prebuilt archives for macOS, Linux, and Windows are attached to each `cli/v*` [release](https://github.com/flint-pay/flint-cli/releases) with a `checksums.txt`. [`scripts/install.sh`](scripts/install.sh) downloads and verifies the right one. The release workflow also publishes a container image to `ghcr.io/flint-pay/flint-cli`.
 
@@ -116,6 +116,31 @@ Fresh profiles skip keyring lookup. Existing profiles without a presence marker 
 API-key auth-context metadata is cached in memory and in a separate 0600 file for five minutes, keyed by a SHA-256 hash of the key and API base URL. The cache contains no API key. Commands whose scope checks pass use the cached metadata. Before refusing a command for missing scopes in cached metadata, the CLI fetches the current context once and checks it again, including environment, merchant, sandbox, and confirmation requirements. A failed refresh stops the command before its target request. `flint auth status` (also `flint whoami`) always fetches the current context, so scope, expiry, and revocation changes are visible immediately. A later HTTP 401 or 403 invalidates the cache; OAuth credential handling is unchanged.
 
 Configuration selection uses `--profile`, `FLINT_PROFILE`, a project pin in `.flint/config.json`, then the default profile. With `FLINT_API_KEY`, `FLINT_ACCESS_TOKEN`, or `FLINT_WORKLOAD_IDENTITY_ID`, a missing profile is allowed and scopes resource history. Empty config files are accepted and unknown fields are ignored; `flint config validate` reports unknown fields as warnings. Use `flint config unset merchant` to clear the selected profile's saved merchant guard. Project and environment guards still apply, and mismatch errors identify their source.
+
+## Command names
+
+API commands follow their routes: keep literal path segments, supply path IDs as
+positionals, then use `get`, `list`, `create`, `update`, `replace`, or `delete`.
+POST action routes keep their action, such as `orders pay` and
+`webhook-endpoints rotate-secret`. Nested collections include their verb:
+`orders discounts create`, `organizations memberships create`, and
+`webhook-deliveries attempts list`.
+
+The route is the naming source: use `merchant get`, `api-request-logs list`,
+`resource-timelines get RESOURCE_ID`, and `webhook-endpoints test-events create`.
+Only `login`, `logout`, `reauth`, and `whoami` remain shortcuts. Use
+`checkout-sessions create|get|list`, `payment-intents create`,
+`sandboxes api-keys create`, `invoices late-fees create`, and `upgrade` in scripts.
+OAuth protocol routes are available through `flint api`; sign-in commands handle
+the browser protocol for you.
+
+`payment-intents create --order` is removed. Use
+`orders payment-intents create ORDER_ID` for the order-scoped operation.
+Query filters use their field names, such as `orders list --customer-id` and
+`refunds list --order-id` or `--payment-intent-id`. Existing body convenience flags
+keep their current names, including `--customer`, `--scope`, and `--payment-option`.
+MCP operation IDs use these same dotted command names; typed tool names replace
+every dot and hyphen with an underscore.
 
 ## Use
 
@@ -337,7 +362,7 @@ Local commands are operations reached through read or write, including `version`
 
 ## Migrating from 0.10.0
 
-0.11.0 refreshes the embedded public API snapshot, which renames and removes commands; for example, `reviews` commands are now `payment-reviews` and `flint sandboxes test-key` is now `flint sandboxes api-keys create` (the old name still works). See [the 0.11.0 migration notes](docs/migrating-0.11.md) for the command and MCP tool changes.
+0.11.0 refreshes the embedded public API snapshot, which renames and removes commands; for example, `reviews` commands are now `payment-reviews` and `flint sandboxes api-keys create` is now `flint sandboxes api-keys create` (the old name still works). See [the 0.11.0 migration notes](docs/migrating-0.11.md) for the command and MCP tool changes.
 
 If upgrading from 0.9.0, also follow [the 0.10.0 migration notes](docs/migrating-0.10.md) for required idempotency keys, retry rules, and error fields. If upgrading from 0.8.0, also follow [the 0.9.0 migration notes](docs/migrating-0.9.md) for the public API refresh's command and MCP tool lists, parameter changes, and schema field inventory. In particular, use `flint gift-cards adjust-balance`, `flint gift-cards cash-out`, and `flint webhook-deliveries list --webhook-event-id whev_123`; create refunds with an explicit `--refund-type full|amount|targets`.
 

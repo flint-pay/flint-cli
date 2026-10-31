@@ -48,7 +48,7 @@ func TestListNDJSONPages(t *testing.T) {
 		{name: "empty", args: []string{"--all"}, pages: 1, sizes: []string{""}, empty: true},
 		{name: "select", args: []string{"--all", "--select", "customer_id,email"}, pages: 2, sizes: []string{"", ""}, count: 4, selectFields: true},
 		{name: "empty select", args: []string{"--select", "email"}, pages: 1, sizes: []string{""}, empty: true},
-		{name: "timeline", args: []string{"--all", "--select", "resource_timeline_entry_id"}, pages: 2, sizes: []string{"", ""}, count: 4, timeline: true},
+		{name: "resource-timelines.get", args: []string{"--all", "--select", "resource_timeline_entry_id"}, pages: 2, sizes: []string{"", ""}, count: 4, timeline: true},
 		{name: "environment", pages: 1, sizes: []string{""}, count: 2, env: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestListNDJSONPages(t *testing.T) {
 				args = []string{"products", "list"}
 			}
 			if tc.timeline {
-				args = []string{"timeline", "pi_test"}
+				args = []string{"resource-timelines", "get", "pi_test"}
 			}
 			if tc.env {
 				t.Setenv("FLINT_OUTPUT", "NDJSON")
@@ -200,7 +200,7 @@ func TestListNDJSONFlagsAndWriteFailure(t *testing.T) {
 
 func TestListNDJSONRejectsWaitAndRoutesEarlyErrors(t *testing.T) {
 	for _, args := range [][]string{
-		{"timeline", "pi_test", "--output", "ndjson", "--wait-for", "resource_id=pi_test"},
+		{"resource-timelines", "get", "pi_test", "--output", "ndjson", "--wait-for", "resource_id=pi_test"},
 		{"customers", "list", "--output", "ndjson", "--limit", "bad"},
 		{"customers", "list", "--output", "ndjson", "--unknown-flag"},
 	} {
@@ -213,7 +213,7 @@ func TestListNDJSONRejectsWaitAndRoutesEarlyErrors(t *testing.T) {
 		}
 	}
 	// Waiting still works with the existing JSON output mode.
-	_, _, _, e := parseInvocation(NewRegistry(), []string{"timeline", "pi_test", "--output", "json", "--wait-for", "resource_id=pi_test"})
+	_, _, _, e := parseInvocation(NewRegistry(), []string{"resource-timelines", "get", "pi_test", "--output", "json", "--wait-for", "resource_id=pi_test"})
 	if e != nil {
 		t.Fatal(e)
 	}

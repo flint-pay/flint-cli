@@ -1,0 +1,3173 @@
+[
+  {
+    "name": "analytics.overview.get",
+    "operation_id": "getAnalyticsOverview",
+    "kind": "singleton"
+  },
+  {
+    "name": "analytics.payment-volume-timeseries.get",
+    "operation_id": "getPaymentVolumeTimeseries",
+    "kind": "singleton"
+  },
+  {
+    "name": "analytics.subscriptions.get",
+    "operation_id": "getSubscriptionAnalytics",
+    "kind": "singleton"
+  },
+  {
+    "name": "api",
+    "kind": "cli"
+  },
+  {
+    "name": "api-keys.create",
+    "operation_id": "createAPIKey",
+    "kind": "collection"
+  },
+  {
+    "name": "api-keys.get",
+    "operation_id": "getAPIKey",
+    "kind": "item"
+  },
+  {
+    "name": "api-keys.list",
+    "operation_id": "listAPIKeys",
+    "kind": "collection"
+  },
+  {
+    "name": "api-keys.revoke",
+    "operation_id": "revokeAPIKey",
+    "kind": "action"
+  },
+  {
+    "name": "api-keys.update",
+    "operation_id": "updateAPIKey",
+    "kind": "item"
+  },
+  {
+    "name": "api-request-logs.get",
+    "operation_id": "getAPIRequestLog",
+    "kind": "item"
+  },
+  {
+    "name": "api-request-logs.list",
+    "operation_id": "listAPIRequestLogs",
+    "kind": "collection"
+  },
+  {
+    "name": "auth.import",
+    "kind": "cli"
+  },
+  {
+    "name": "auth.login",
+    "kind": "cli"
+  },
+  {
+    "name": "auth.logout",
+    "kind": "cli"
+  },
+  {
+    "name": "auth.reauth",
+    "kind": "cli"
+  },
+  {
+    "name": "auth.status",
+    "operation_id": "getAuthContext",
+    "kind": "cli"
+  },
+  {
+    "name": "auth.token",
+    "kind": "cli"
+  },
+  {
+    "name": "balance-transactions.get",
+    "operation_id": "getBalanceTransaction",
+    "kind": "item"
+  },
+  {
+    "name": "balance-transactions.list",
+    "operation_id": "listBalanceTransactions",
+    "kind": "collection"
+  },
+  {
+    "name": "balances.list",
+    "operation_id": "listBalances",
+    "kind": "collection"
+  },
+  {
+    "name": "bundles.components.list",
+    "operation_id": "listBundleComponents",
+    "kind": "collection"
+  },
+  {
+    "name": "bundles.create",
+    "operation_id": "createBundle",
+    "kind": "collection"
+  },
+  {
+    "name": "bundles.delete",
+    "operation_id": "deleteBundle",
+    "kind": "item"
+  },
+  {
+    "name": "bundles.get",
+    "operation_id": "getBundle",
+    "kind": "item"
+  },
+  {
+    "name": "bundles.list",
+    "operation_id": "listBundles",
+    "kind": "collection"
+  },
+  {
+    "name": "bundles.update",
+    "operation_id": "updateBundle",
+    "kind": "item"
+  },
+  {
+    "name": "categories.create",
+    "operation_id": "createCategory",
+    "kind": "collection"
+  },
+  {
+    "name": "categories.delete",
+    "operation_id": "deleteCategory",
+    "kind": "item"
+  },
+  {
+    "name": "categories.get",
+    "operation_id": "getCategory",
+    "kind": "item"
+  },
+  {
+    "name": "categories.list",
+    "operation_id": "listCategories",
+    "kind": "collection"
+  },
+  {
+    "name": "categories.update",
+    "operation_id": "updateCategory",
+    "kind": "item"
+  },
+  {
+    "name": "checkout-sessions.close",
+    "operation_id": "closeCheckoutSession",
+    "kind": "action"
+  },
+  {
+    "name": "checkout-sessions.create",
+    "operation_id": "createCheckoutSession",
+    "kind": "collection"
+  },
+  {
+    "name": "checkout-sessions.customer-verifications.confirm",
+    "operation_id": "confirmCheckoutSessionCustomerVerification",
+    "kind": "action"
+  },
+  {
+    "name": "checkout-sessions.customer-verifications.create",
+    "operation_id": "createCheckoutSessionCustomerVerification",
+    "kind": "collection"
+  },
+  {
+    "name": "checkout-sessions.delivery-quotes.create",
+    "operation_id": "createCheckoutSessionDeliveryQuote",
+    "kind": "collection"
+  },
+  {
+    "name": "checkout-sessions.delivery-quotes.get",
+    "operation_id": "getCheckoutSessionDeliveryQuote",
+    "kind": "item"
+  },
+  {
+    "name": "checkout-sessions.delivery-selections.create",
+    "operation_id": "createCheckoutSessionDeliverySelection",
+    "kind": "collection"
+  },
+  {
+    "name": "checkout-sessions.delivery-selections.current.delete",
+    "operation_id": "deleteCheckoutSessionCurrentDeliverySelection",
+    "kind": "singleton"
+  },
+  {
+    "name": "checkout-sessions.delivery-selections.current.get",
+    "operation_id": "getCheckoutSessionCurrentDeliverySelection",
+    "kind": "singleton"
+  },
+  {
+    "name": "checkout-sessions.delivery-selections.get",
+    "operation_id": "getCheckoutSessionDeliverySelection",
+    "kind": "item"
+  },
+  {
+    "name": "checkout-sessions.delivery-selections.list",
+    "operation_id": "listCheckoutSessionDeliverySelections",
+    "kind": "collection"
+  },
+  {
+    "name": "checkout-sessions.get",
+    "operation_id": "getCheckoutSession",
+    "kind": "item"
+  },
+  {
+    "name": "checkout-sessions.list",
+    "operation_id": "listCheckoutSessions",
+    "kind": "collection"
+  },
+  {
+    "name": "checkout-sessions.update",
+    "operation_id": "updateCheckoutSession",
+    "kind": "item"
+  },
+  {
+    "name": "config.get",
+    "kind": "cli"
+  },
+  {
+    "name": "config.set",
+    "kind": "cli"
+  },
+  {
+    "name": "config.unset",
+    "kind": "cli"
+  },
+  {
+    "name": "config.validate",
+    "kind": "cli"
+  },
+  {
+    "name": "context.list",
+    "kind": "cli"
+  },
+  {
+    "name": "context.switch",
+    "kind": "cli"
+  },
+  {
+    "name": "credit-notes.allocations.create",
+    "operation_id": "createCreditNoteAllocation",
+    "kind": "collection"
+  },
+  {
+    "name": "credit-notes.allocations.get",
+    "operation_id": "getCreditNoteAllocation",
+    "kind": "item"
+  },
+  {
+    "name": "credit-notes.allocations.list",
+    "operation_id": "listCreditNoteAllocations",
+    "kind": "collection"
+  },
+  {
+    "name": "credit-notes.allocations.reverse",
+    "operation_id": "reverseCreditNoteAllocation",
+    "kind": "action"
+  },
+  {
+    "name": "credit-notes.create",
+    "operation_id": "createCreditNote",
+    "kind": "collection"
+  },
+  {
+    "name": "credit-notes.get",
+    "operation_id": "getCreditNote",
+    "kind": "item"
+  },
+  {
+    "name": "credit-notes.issue",
+    "operation_id": "issueCreditNote",
+    "kind": "action"
+  },
+  {
+    "name": "credit-notes.list",
+    "operation_id": "listCreditNotes",
+    "kind": "collection"
+  },
+  {
+    "name": "credit-notes.pdf.get",
+    "operation_id": "getCreditNotePDF",
+    "kind": "singleton"
+  },
+  {
+    "name": "credit-notes.refunds.create",
+    "operation_id": "createCreditNoteRefund",
+    "kind": "collection"
+  },
+  {
+    "name": "credit-notes.refunds.list",
+    "operation_id": "listCreditNoteRefunds",
+    "kind": "collection"
+  },
+  {
+    "name": "credit-notes.update",
+    "operation_id": "updateCreditNote",
+    "kind": "item"
+  },
+  {
+    "name": "credit-notes.void",
+    "operation_id": "voidCreditNote",
+    "kind": "action"
+  },
+  {
+    "name": "custom-domains.create",
+    "operation_id": "createCustomDomain",
+    "kind": "collection"
+  },
+  {
+    "name": "custom-domains.delete",
+    "operation_id": "deleteCustomDomain",
+    "kind": "item"
+  },
+  {
+    "name": "custom-domains.get",
+    "operation_id": "getCustomDomain",
+    "kind": "item"
+  },
+  {
+    "name": "custom-domains.list",
+    "operation_id": "listCustomDomains",
+    "kind": "collection"
+  },
+  {
+    "name": "custom-domains.validate",
+    "operation_id": "validateCustomDomain",
+    "kind": "action"
+  },
+  {
+    "name": "customer-deletion-requests.create",
+    "operation_id": "createCustomerDeletionRequest",
+    "kind": "collection"
+  },
+  {
+    "name": "customer-deletion-requests.get",
+    "operation_id": "getCustomerDeletionRequest",
+    "kind": "item"
+  },
+  {
+    "name": "customer-deletion-requests.list",
+    "operation_id": "listCustomerDeletionRequests",
+    "kind": "collection"
+  },
+  {
+    "name": "customer-deletion-requests.resolve",
+    "operation_id": "resolveCustomerDeletionRequest",
+    "kind": "action"
+  },
+  {
+    "name": "customer-sessions.create",
+    "operation_id": "createCustomerSession",
+    "kind": "collection"
+  },
+  {
+    "name": "customer-sessions.refresh",
+    "operation_id": "refreshCustomerSession",
+    "kind": "action"
+  },
+  {
+    "name": "customer-sessions.revoke",
+    "operation_id": "revokeCustomerSession",
+    "kind": "action"
+  },
+  {
+    "name": "customer-verifications.confirm",
+    "operation_id": "confirmCustomerVerification",
+    "kind": "action"
+  },
+  {
+    "name": "customer-verifications.create",
+    "operation_id": "createCustomerVerification",
+    "kind": "collection"
+  },
+  {
+    "name": "customers.access-links.create",
+    "operation_id": "createCustomerAccessLink",
+    "kind": "collection"
+  },
+  {
+    "name": "customers.addresses.create",
+    "operation_id": "createCustomerAddress",
+    "kind": "collection"
+  },
+  {
+    "name": "customers.addresses.delete",
+    "operation_id": "deleteCustomerAddress",
+    "kind": "item"
+  },
+  {
+    "name": "customers.addresses.get",
+    "operation_id": "getCustomerAddress",
+    "kind": "item"
+  },
+  {
+    "name": "customers.addresses.list",
+    "operation_id": "listCustomerAddresses",
+    "kind": "collection"
+  },
+  {
+    "name": "customers.addresses.update",
+    "operation_id": "updateCustomerAddress",
+    "kind": "item"
+  },
+  {
+    "name": "customers.create",
+    "operation_id": "createCustomer",
+    "kind": "collection"
+  },
+  {
+    "name": "customers.get",
+    "operation_id": "getCustomer",
+    "kind": "item"
+  },
+  {
+    "name": "customers.link-guest-purchases",
+    "operation_id": "linkCustomerGuestPurchases",
+    "kind": "action"
+  },
+  {
+    "name": "customers.list",
+    "operation_id": "listCustomers",
+    "kind": "collection"
+  },
+  {
+    "name": "customers.sessions.revoke",
+    "operation_id": "revokeCustomerSessions",
+    "kind": "action"
+  },
+  {
+    "name": "customers.update",
+    "operation_id": "updateCustomer",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-location-sets.create",
+    "operation_id": "createDeliveryLocationSet",
+    "kind": "collection"
+  },
+  {
+    "name": "delivery-location-sets.delete",
+    "operation_id": "deleteDeliveryLocationSet",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-location-sets.get",
+    "operation_id": "getDeliveryLocationSet",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-location-sets.list",
+    "operation_id": "listDeliveryLocationSets",
+    "kind": "collection"
+  },
+  {
+    "name": "delivery-location-sets.update",
+    "operation_id": "updateDeliveryLocationSet",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-methods.create",
+    "operation_id": "createDeliveryMethod",
+    "kind": "collection"
+  },
+  {
+    "name": "delivery-methods.delete",
+    "operation_id": "deleteDeliveryMethod",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-methods.get",
+    "operation_id": "getDeliveryMethod",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-methods.list",
+    "operation_id": "listDeliveryMethods",
+    "kind": "collection"
+  },
+  {
+    "name": "delivery-methods.update",
+    "operation_id": "updateDeliveryMethod",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-previews.create",
+    "operation_id": "createDeliveryPreview",
+    "kind": "collection"
+  },
+  {
+    "name": "delivery-profiles.assign-to-unconfigured",
+    "operation_id": "assignToUnconfiguredDeliveryProfile",
+    "kind": "action"
+  },
+  {
+    "name": "delivery-profiles.create",
+    "operation_id": "createDeliveryProfile",
+    "kind": "collection"
+  },
+  {
+    "name": "delivery-profiles.delete",
+    "operation_id": "deleteDeliveryProfile",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-profiles.get",
+    "operation_id": "getDeliveryProfile",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-profiles.list",
+    "operation_id": "listDeliveryProfiles",
+    "kind": "collection"
+  },
+  {
+    "name": "delivery-profiles.update",
+    "operation_id": "updateDeliveryProfile",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-quotes.get",
+    "operation_id": "getDeliveryQuote",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-quotes.list",
+    "operation_id": "listDeliveryQuotes",
+    "kind": "collection"
+  },
+  {
+    "name": "delivery-rate-callbacks.check-connection",
+    "operation_id": "checkDeliveryRateCallbackConnection",
+    "kind": "action"
+  },
+  {
+    "name": "delivery-rate-callbacks.create",
+    "operation_id": "createDeliveryRateCallback",
+    "kind": "collection"
+  },
+  {
+    "name": "delivery-rate-callbacks.delete",
+    "operation_id": "deleteDeliveryRateCallback",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-rate-callbacks.get",
+    "operation_id": "getDeliveryRateCallback",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-rate-callbacks.list",
+    "operation_id": "listDeliveryRateCallbacks",
+    "kind": "collection"
+  },
+  {
+    "name": "delivery-rate-callbacks.rotate-secret",
+    "operation_id": "rotateDeliveryRateCallbackSigningKey",
+    "kind": "action"
+  },
+  {
+    "name": "delivery-rate-callbacks.test-deliveries.create",
+    "operation_id": "createDeliveryRateCallbackTestDelivery",
+    "kind": "collection"
+  },
+  {
+    "name": "delivery-rate-callbacks.update",
+    "operation_id": "updateDeliveryRateCallback",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-revocations.create",
+    "operation_id": "revokeDeliveryDependency",
+    "kind": "collection"
+  },
+  {
+    "name": "delivery-revocations.get",
+    "operation_id": "getDeliveryRevocation",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-revocations.list",
+    "operation_id": "listDeliveryRevocations",
+    "kind": "collection"
+  },
+  {
+    "name": "delivery-zones.create",
+    "operation_id": "createDeliveryZone",
+    "kind": "collection"
+  },
+  {
+    "name": "delivery-zones.delete",
+    "operation_id": "deleteDeliveryZone",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-zones.get",
+    "operation_id": "getDeliveryZone",
+    "kind": "item"
+  },
+  {
+    "name": "delivery-zones.list",
+    "operation_id": "listDeliveryZones",
+    "kind": "collection"
+  },
+  {
+    "name": "delivery-zones.update",
+    "operation_id": "updateDeliveryZone",
+    "kind": "item"
+  },
+  {
+    "name": "demo-sessions.create",
+    "operation_id": "createDemoSession",
+    "kind": "collection"
+  },
+  {
+    "name": "demo-sessions.reset",
+    "operation_id": "resetDemoSession",
+    "kind": "action"
+  },
+  {
+    "name": "devices.create",
+    "operation_id": "createDevice",
+    "kind": "collection"
+  },
+  {
+    "name": "devices.delete",
+    "operation_id": "deleteDevice",
+    "kind": "item"
+  },
+  {
+    "name": "devices.get",
+    "operation_id": "getDevice",
+    "kind": "item"
+  },
+  {
+    "name": "devices.list",
+    "operation_id": "listDevices",
+    "kind": "collection"
+  },
+  {
+    "name": "devices.update",
+    "operation_id": "updateDevice",
+    "kind": "item"
+  },
+  {
+    "name": "discount-previews.create",
+    "operation_id": "createDiscountPreview",
+    "kind": "collection"
+  },
+  {
+    "name": "disputes.accept",
+    "operation_id": "acceptDispute",
+    "kind": "action"
+  },
+  {
+    "name": "disputes.get",
+    "operation_id": "getDispute",
+    "kind": "item"
+  },
+  {
+    "name": "disputes.list",
+    "operation_id": "listDisputes",
+    "kind": "collection"
+  },
+  {
+    "name": "disputes.response-sessions.create",
+    "operation_id": "createDisputeResponseSession",
+    "kind": "collection"
+  },
+  {
+    "name": "disputes.simulate",
+    "operation_id": "simulateDispute",
+    "kind": "action"
+  },
+  {
+    "name": "doctor",
+    "kind": "cli"
+  },
+  {
+    "name": "email-preference-links.lookup",
+    "operation_id": "lookupEmailPreferenceLink",
+    "kind": "action"
+  },
+  {
+    "name": "email-preference-links.unsubscribe",
+    "operation_id": "unsubscribeEmailPreferenceLink",
+    "kind": "action"
+  },
+  {
+    "name": "files.complete",
+    "operation_id": "completeFile",
+    "kind": "action"
+  },
+  {
+    "name": "files.create",
+    "operation_id": "createFile",
+    "kind": "collection"
+  },
+  {
+    "name": "files.get",
+    "operation_id": "getFile",
+    "kind": "item"
+  },
+  {
+    "name": "fraud-warnings.get",
+    "operation_id": "getFraudWarning",
+    "kind": "item"
+  },
+  {
+    "name": "fraud-warnings.list",
+    "operation_id": "listFraudWarnings",
+    "kind": "collection"
+  },
+  {
+    "name": "fulfillment-events.get",
+    "operation_id": "getFulfillmentEvent",
+    "kind": "item"
+  },
+  {
+    "name": "fulfillment-events.list",
+    "operation_id": "listFulfillmentEvents",
+    "kind": "collection"
+  },
+  {
+    "name": "fulfillment-notifications.get",
+    "operation_id": "getFulfillmentNotification",
+    "kind": "item"
+  },
+  {
+    "name": "fulfillment-notifications.list",
+    "operation_id": "listFulfillmentNotifications",
+    "kind": "collection"
+  },
+  {
+    "name": "fulfillments.events.create",
+    "operation_id": "createFulfillmentEvent",
+    "kind": "collection"
+  },
+  {
+    "name": "fulfillments.get",
+    "operation_id": "getFulfillment",
+    "kind": "item"
+  },
+  {
+    "name": "fulfillments.list",
+    "operation_id": "listFulfillments",
+    "kind": "collection"
+  },
+  {
+    "name": "fulfillments.shipments.create",
+    "operation_id": "createShipment",
+    "kind": "collection"
+  },
+  {
+    "name": "fulfillments.transitions.create",
+    "operation_id": "transitionFulfillment",
+    "kind": "collection"
+  },
+  {
+    "name": "fulfillments.update",
+    "operation_id": "updateFulfillment",
+    "kind": "item"
+  },
+  {
+    "name": "gift-card-funding-dispositions.create",
+    "operation_id": "createGiftCardFundingDisposition",
+    "kind": "collection"
+  },
+  {
+    "name": "gift-card-funding-dispositions.get",
+    "operation_id": "getGiftCardFundingDisposition",
+    "kind": "item"
+  },
+  {
+    "name": "gift-card-funding-dispositions.list",
+    "operation_id": "listGiftCardFundingDispositions",
+    "kind": "collection"
+  },
+  {
+    "name": "gift-card-loads.get",
+    "operation_id": "getGiftCardLoad",
+    "kind": "item"
+  },
+  {
+    "name": "gift-card-loads.list",
+    "operation_id": "listGiftCardLoads",
+    "kind": "collection"
+  },
+  {
+    "name": "gift-card-notifications.cancel",
+    "operation_id": "cancelGiftCardNotification",
+    "kind": "action"
+  },
+  {
+    "name": "gift-card-notifications.create",
+    "operation_id": "createGiftCardNotification",
+    "kind": "collection"
+  },
+  {
+    "name": "gift-card-notifications.get",
+    "operation_id": "getGiftCardNotification",
+    "kind": "item"
+  },
+  {
+    "name": "gift-card-notifications.list",
+    "operation_id": "listGiftCardNotifications",
+    "kind": "collection"
+  },
+  {
+    "name": "gift-card-redemptions.cancel",
+    "operation_id": "cancelGiftCardRedemption",
+    "kind": "action"
+  },
+  {
+    "name": "gift-card-redemptions.capture",
+    "operation_id": "captureGiftCardRedemption",
+    "kind": "action"
+  },
+  {
+    "name": "gift-card-redemptions.create",
+    "operation_id": "createGiftCardRedemption",
+    "kind": "collection"
+  },
+  {
+    "name": "gift-card-redemptions.get",
+    "operation_id": "getGiftCardRedemption",
+    "kind": "item"
+  },
+  {
+    "name": "gift-card-redemptions.list",
+    "operation_id": "listGiftCardRedemptions",
+    "kind": "collection"
+  },
+  {
+    "name": "gift-card-transactions.list",
+    "operation_id": "listGiftCardTransactions",
+    "kind": "collection"
+  },
+  {
+    "name": "gift-cards.adjust-balance",
+    "operation_id": "adjustGiftCardBalance",
+    "kind": "action"
+  },
+  {
+    "name": "gift-cards.cash-out",
+    "operation_id": "cashOutGiftCard",
+    "kind": "action"
+  },
+  {
+    "name": "gift-cards.create",
+    "operation_id": "createGiftCard",
+    "kind": "collection"
+  },
+  {
+    "name": "gift-cards.get",
+    "operation_id": "getGiftCard",
+    "kind": "item"
+  },
+  {
+    "name": "gift-cards.list",
+    "operation_id": "listGiftCards",
+    "kind": "collection"
+  },
+  {
+    "name": "gift-cards.loads.create",
+    "operation_id": "createGiftCardLoad",
+    "kind": "collection"
+  },
+  {
+    "name": "gift-cards.lookup",
+    "operation_id": "lookupGiftCard",
+    "kind": "action"
+  },
+  {
+    "name": "gift-cards.rotate-code",
+    "operation_id": "rotateGiftCardCode",
+    "kind": "action"
+  },
+  {
+    "name": "gift-cards.transitions.create",
+    "operation_id": "transitionGiftCard",
+    "kind": "collection"
+  },
+  {
+    "name": "gift-cards.update",
+    "operation_id": "updateGiftCard",
+    "kind": "item"
+  },
+  {
+    "name": "help",
+    "kind": "cli"
+  },
+  {
+    "name": "help.search",
+    "kind": "cli"
+  },
+  {
+    "name": "history",
+    "kind": "cli"
+  },
+  {
+    "name": "init",
+    "kind": "cli"
+  },
+  {
+    "name": "inventory-adjustments.create",
+    "operation_id": "createInventoryAdjustment",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-adjustments.get",
+    "operation_id": "getInventoryAdjustment",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-adjustments.list",
+    "operation_id": "listInventoryAdjustments",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-allocation-policies.create",
+    "operation_id": "createInventoryAllocationPolicy",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-allocation-policies.delete",
+    "operation_id": "deleteInventoryAllocationPolicy",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-allocation-policies.get",
+    "operation_id": "getInventoryAllocationPolicy",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-allocation-policies.list",
+    "operation_id": "listInventoryAllocationPolicies",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-allocation-policies.revisions.get",
+    "operation_id": "getInventoryAllocationPolicyRevision",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-allocation-policies.revisions.list",
+    "operation_id": "listInventoryAllocationPolicyRevisions",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-allocation-policies.update",
+    "operation_id": "updateInventoryAllocationPolicy",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-counts.create",
+    "operation_id": "createInventoryCount",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-counts.get",
+    "operation_id": "getInventoryCount",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-counts.list",
+    "operation_id": "listInventoryCounts",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-counts.transitions.create",
+    "operation_id": "transitionInventoryCount",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-counts.update",
+    "operation_id": "updateInventoryCount",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-items.create",
+    "operation_id": "createInventoryItem",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-items.delete",
+    "operation_id": "deleteInventoryItem",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-items.get",
+    "operation_id": "getInventoryItem",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-items.list",
+    "operation_id": "listInventoryItems",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-items.update",
+    "operation_id": "updateInventoryItem",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-levels.get",
+    "operation_id": "getInventoryLevel",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-levels.list",
+    "operation_id": "listInventoryLevels",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-levels.update",
+    "operation_id": "updateInventoryLevel",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-movements.get",
+    "operation_id": "getInventoryMovement",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-movements.list",
+    "operation_id": "listInventoryMovements",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-receipts.create",
+    "operation_id": "createInventoryReceipt",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-receipts.get",
+    "operation_id": "getInventoryReceipt",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-receipts.list",
+    "operation_id": "listInventoryReceipts",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-reservations.create",
+    "operation_id": "createInventoryReservation",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-reservations.get",
+    "operation_id": "getInventoryReservation",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-reservations.list",
+    "operation_id": "listInventoryReservations",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-reservations.transitions.create",
+    "operation_id": "transitionInventoryReservation",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-reservations.update",
+    "operation_id": "updateInventoryReservation",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-transfers.create",
+    "operation_id": "createInventoryTransfer",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-transfers.get",
+    "operation_id": "getInventoryTransfer",
+    "kind": "item"
+  },
+  {
+    "name": "inventory-transfers.list",
+    "operation_id": "listInventoryTransfers",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-transfers.transitions.create",
+    "operation_id": "transitionInventoryTransfer",
+    "kind": "collection"
+  },
+  {
+    "name": "inventory-transfers.update",
+    "operation_id": "updateInventoryTransfer",
+    "kind": "item"
+  },
+  {
+    "name": "invoice-payment-terms.create",
+    "operation_id": "createInvoicePaymentTerm",
+    "kind": "collection"
+  },
+  {
+    "name": "invoice-payment-terms.delete",
+    "operation_id": "deleteInvoicePaymentTerm",
+    "kind": "item"
+  },
+  {
+    "name": "invoice-payment-terms.get",
+    "operation_id": "getInvoicePaymentTerm",
+    "kind": "item"
+  },
+  {
+    "name": "invoice-payment-terms.list",
+    "operation_id": "listInvoicePaymentTerms",
+    "kind": "collection"
+  },
+  {
+    "name": "invoice-payment-terms.update",
+    "operation_id": "updateInvoicePaymentTerm",
+    "kind": "item"
+  },
+  {
+    "name": "invoices.activities.list",
+    "operation_id": "listInvoiceActivities",
+    "kind": "collection"
+  },
+  {
+    "name": "invoices.checkout-sessions.create",
+    "operation_id": "createInvoiceCheckoutSession",
+    "kind": "collection"
+  },
+  {
+    "name": "invoices.collect",
+    "operation_id": "collectInvoice",
+    "kind": "action"
+  },
+  {
+    "name": "invoices.create",
+    "operation_id": "createInvoice",
+    "kind": "collection"
+  },
+  {
+    "name": "invoices.delivery-attempts.list",
+    "operation_id": "listInvoiceDeliveryAttempts",
+    "kind": "collection"
+  },
+  {
+    "name": "invoices.get",
+    "operation_id": "getInvoice",
+    "kind": "item"
+  },
+  {
+    "name": "invoices.issue",
+    "operation_id": "issueInvoice",
+    "kind": "action"
+  },
+  {
+    "name": "invoices.late-fees.create",
+    "operation_id": "createInvoiceLateFee",
+    "kind": "collection"
+  },
+  {
+    "name": "invoices.late-fees.waive",
+    "operation_id": "waiveInvoiceLateFee",
+    "kind": "action"
+  },
+  {
+    "name": "invoices.list",
+    "operation_id": "listInvoices",
+    "kind": "collection"
+  },
+  {
+    "name": "invoices.manual-payments.create",
+    "operation_id": "createInvoiceManualPayment",
+    "kind": "collection"
+  },
+  {
+    "name": "invoices.manual-payments.get",
+    "operation_id": "getInvoiceManualPayment",
+    "kind": "item"
+  },
+  {
+    "name": "invoices.manual-payments.list",
+    "operation_id": "listInvoiceManualPayments",
+    "kind": "collection"
+  },
+  {
+    "name": "invoices.manual-payments.reverse",
+    "operation_id": "reverseInvoiceManualPayment",
+    "kind": "action"
+  },
+  {
+    "name": "invoices.mark-uncollectible",
+    "operation_id": "markInvoiceUncollectible",
+    "kind": "action"
+  },
+  {
+    "name": "invoices.payment-attempts.cancel",
+    "operation_id": "cancelInvoicePaymentAttempt",
+    "kind": "action"
+  },
+  {
+    "name": "invoices.payment-attempts.get",
+    "operation_id": "getInvoicePaymentAttempt",
+    "kind": "item"
+  },
+  {
+    "name": "invoices.payment-attempts.list",
+    "operation_id": "listInvoicePaymentAttempts",
+    "kind": "collection"
+  },
+  {
+    "name": "invoices.pdf.get",
+    "operation_id": "getInvoicePDF",
+    "kind": "singleton"
+  },
+  {
+    "name": "invoices.regenerate-public-link",
+    "operation_id": "regenerateInvoicePublicLink",
+    "kind": "action"
+  },
+  {
+    "name": "invoices.send-reminder",
+    "operation_id": "sendInvoiceReminder",
+    "kind": "action"
+  },
+  {
+    "name": "invoices.update",
+    "operation_id": "updateInvoice",
+    "kind": "item"
+  },
+  {
+    "name": "invoices.void",
+    "operation_id": "voidInvoice",
+    "kind": "action"
+  },
+  {
+    "name": "listen",
+    "operation_id": "streamWebhookEvents",
+    "kind": "cli"
+  },
+  {
+    "name": "locations.create",
+    "operation_id": "createLocation",
+    "kind": "collection"
+  },
+  {
+    "name": "locations.delete",
+    "operation_id": "deleteLocation",
+    "kind": "item"
+  },
+  {
+    "name": "locations.get",
+    "operation_id": "getLocation",
+    "kind": "item"
+  },
+  {
+    "name": "locations.list",
+    "operation_id": "listLocations",
+    "kind": "collection"
+  },
+  {
+    "name": "locations.update",
+    "operation_id": "updateLocation",
+    "kind": "item"
+  },
+  {
+    "name": "mcp.serve",
+    "kind": "cli"
+  },
+  {
+    "name": "me.addresses.create",
+    "operation_id": "createMeAddress",
+    "kind": "collection"
+  },
+  {
+    "name": "me.addresses.delete",
+    "operation_id": "deleteMeAddress",
+    "kind": "item"
+  },
+  {
+    "name": "me.addresses.get",
+    "operation_id": "getMeAddress",
+    "kind": "item"
+  },
+  {
+    "name": "me.addresses.list",
+    "operation_id": "listMeAddresses",
+    "kind": "collection"
+  },
+  {
+    "name": "me.addresses.update",
+    "operation_id": "updateMeAddress",
+    "kind": "item"
+  },
+  {
+    "name": "me.deletion-requests.create",
+    "operation_id": "createMeDeletionRequest",
+    "kind": "collection"
+  },
+  {
+    "name": "me.deletion-requests.get",
+    "operation_id": "getMeDeletionRequest",
+    "kind": "item"
+  },
+  {
+    "name": "me.deletion-requests.list",
+    "operation_id": "listMeDeletionRequests",
+    "kind": "collection"
+  },
+  {
+    "name": "me.email-change-requests.confirm",
+    "operation_id": "confirmMeEmailChangeRequest",
+    "kind": "action"
+  },
+  {
+    "name": "me.email-change-requests.create",
+    "operation_id": "createMeEmailChangeRequest",
+    "kind": "collection"
+  },
+  {
+    "name": "me.email-preferences.get",
+    "operation_id": "getMeEmailPreferences",
+    "kind": "singleton"
+  },
+  {
+    "name": "me.email-preferences.update",
+    "operation_id": "updateMeEmailPreferences",
+    "kind": "singleton"
+  },
+  {
+    "name": "me.flint-wallet.cards.list",
+    "operation_id": "listMeFlintWalletCards",
+    "kind": "collection"
+  },
+  {
+    "name": "me.flint-wallet.cards.store-setups.create",
+    "operation_id": "createMeFlintWalletStoreSetup",
+    "kind": "collection"
+  },
+  {
+    "name": "me.fulfillment-events.list",
+    "operation_id": "listMeFulfillmentEvents",
+    "kind": "collection"
+  },
+  {
+    "name": "me.fulfillments.get",
+    "operation_id": "getMeFulfillment",
+    "kind": "item"
+  },
+  {
+    "name": "me.fulfillments.list",
+    "operation_id": "listMeFulfillments",
+    "kind": "collection"
+  },
+  {
+    "name": "me.get",
+    "operation_id": "getMe",
+    "kind": "singleton"
+  },
+  {
+    "name": "me.gift-cards.create",
+    "operation_id": "saveMeGiftCard",
+    "kind": "collection"
+  },
+  {
+    "name": "me.gift-cards.delete",
+    "operation_id": "removeMeGiftCard",
+    "kind": "item"
+  },
+  {
+    "name": "me.gift-cards.get",
+    "operation_id": "getMeGiftCard",
+    "kind": "item"
+  },
+  {
+    "name": "me.gift-cards.list",
+    "operation_id": "listMeGiftCards",
+    "kind": "collection"
+  },
+  {
+    "name": "me.gift-cards.transactions.list",
+    "operation_id": "listMeGiftCardTransactions",
+    "kind": "collection"
+  },
+  {
+    "name": "me.invoices.checkout-sessions.create",
+    "operation_id": "createMeInvoiceCheckoutSession",
+    "kind": "collection"
+  },
+  {
+    "name": "me.invoices.credit-notes.get",
+    "operation_id": "getMeCreditNote",
+    "kind": "item"
+  },
+  {
+    "name": "me.invoices.credit-notes.list",
+    "operation_id": "listMeCreditNotes",
+    "kind": "collection"
+  },
+  {
+    "name": "me.invoices.credit-notes.pdf.get",
+    "operation_id": "getMeCreditNotePDF",
+    "kind": "singleton"
+  },
+  {
+    "name": "me.invoices.get",
+    "operation_id": "getMeInvoice",
+    "kind": "item"
+  },
+  {
+    "name": "me.invoices.list",
+    "operation_id": "listMeInvoices",
+    "kind": "collection"
+  },
+  {
+    "name": "me.invoices.pdf.get",
+    "operation_id": "getMeInvoicePDF",
+    "kind": "singleton"
+  },
+  {
+    "name": "me.orders.activities.list",
+    "operation_id": "listMeOrderActivities",
+    "kind": "collection"
+  },
+  {
+    "name": "me.orders.get",
+    "operation_id": "getMeOrder",
+    "kind": "item"
+  },
+  {
+    "name": "me.orders.list",
+    "operation_id": "listMeOrders",
+    "kind": "collection"
+  },
+  {
+    "name": "me.orders.send-receipt",
+    "operation_id": "sendMeOrderReceipt",
+    "kind": "action"
+  },
+  {
+    "name": "me.packages.get",
+    "operation_id": "getMePackage",
+    "kind": "item"
+  },
+  {
+    "name": "me.packages.list",
+    "operation_id": "listMePackages",
+    "kind": "collection"
+  },
+  {
+    "name": "me.payment-intents.get",
+    "operation_id": "getMePaymentIntent",
+    "kind": "item"
+  },
+  {
+    "name": "me.payment-intents.list",
+    "operation_id": "listMePaymentIntents",
+    "kind": "collection"
+  },
+  {
+    "name": "me.payment-methods.create",
+    "operation_id": "createMePaymentMethod",
+    "kind": "collection"
+  },
+  {
+    "name": "me.payment-methods.delete",
+    "operation_id": "deleteMePaymentMethod",
+    "kind": "item"
+  },
+  {
+    "name": "me.payment-methods.get",
+    "operation_id": "getMePaymentMethod",
+    "kind": "item"
+  },
+  {
+    "name": "me.payment-methods.list",
+    "operation_id": "listMePaymentMethods",
+    "kind": "collection"
+  },
+  {
+    "name": "me.refunds.get",
+    "operation_id": "getMeRefund",
+    "kind": "item"
+  },
+  {
+    "name": "me.refunds.list",
+    "operation_id": "listMeRefunds",
+    "kind": "collection"
+  },
+  {
+    "name": "me.return-previews.create",
+    "operation_id": "createMeReturnPreview",
+    "kind": "collection"
+  },
+  {
+    "name": "me.return-resolutions.checkout-sessions.create",
+    "operation_id": "createMeReturnResolutionCheckoutSession",
+    "kind": "collection"
+  },
+  {
+    "name": "me.return-resolutions.get",
+    "operation_id": "getMeReturnResolution",
+    "kind": "item"
+  },
+  {
+    "name": "me.returns.cancel",
+    "operation_id": "cancelMeReturn",
+    "kind": "action"
+  },
+  {
+    "name": "me.returns.create",
+    "operation_id": "createMeReturn",
+    "kind": "collection"
+  },
+  {
+    "name": "me.returns.get",
+    "operation_id": "getMeReturn",
+    "kind": "item"
+  },
+  {
+    "name": "me.returns.list",
+    "operation_id": "listMeReturns",
+    "kind": "collection"
+  },
+  {
+    "name": "me.session.revoke",
+    "operation_id": "revokeMeSession",
+    "kind": "action"
+  },
+  {
+    "name": "me.shipments.get",
+    "operation_id": "getMeShipment",
+    "kind": "item"
+  },
+  {
+    "name": "me.shipments.list",
+    "operation_id": "listMeShipments",
+    "kind": "collection"
+  },
+  {
+    "name": "me.subscription-previews.create",
+    "operation_id": "createMeSubscriptionPreview",
+    "kind": "collection"
+  },
+  {
+    "name": "me.subscriptions.cancel",
+    "operation_id": "cancelMeSubscription",
+    "kind": "action"
+  },
+  {
+    "name": "me.subscriptions.get",
+    "operation_id": "getMeSubscription",
+    "kind": "item"
+  },
+  {
+    "name": "me.subscriptions.line-items.update",
+    "operation_id": "updateMeSubscriptionLineItem",
+    "kind": "item"
+  },
+  {
+    "name": "me.subscriptions.list",
+    "operation_id": "listMeSubscriptions",
+    "kind": "collection"
+  },
+  {
+    "name": "me.subscriptions.pause",
+    "operation_id": "pauseMeSubscription",
+    "kind": "action"
+  },
+  {
+    "name": "me.subscriptions.payment-retries.create",
+    "operation_id": "createMeSubscriptionPaymentRetry",
+    "kind": "collection"
+  },
+  {
+    "name": "me.subscriptions.payment-retries.get",
+    "operation_id": "getMeSubscriptionPaymentRetry",
+    "kind": "item"
+  },
+  {
+    "name": "me.subscriptions.payment-retries.list",
+    "operation_id": "listMeSubscriptionPaymentRetries",
+    "kind": "collection"
+  },
+  {
+    "name": "me.subscriptions.renew",
+    "operation_id": "renewMeSubscription",
+    "kind": "action"
+  },
+  {
+    "name": "me.subscriptions.resume",
+    "operation_id": "resumeMeSubscription",
+    "kind": "action"
+  },
+  {
+    "name": "me.subscriptions.skip-cycle",
+    "operation_id": "skipMeSubscriptionCycle",
+    "kind": "action"
+  },
+  {
+    "name": "me.subscriptions.update",
+    "operation_id": "updateMeSubscription",
+    "kind": "item"
+  },
+  {
+    "name": "me.update",
+    "operation_id": "updateMe",
+    "kind": "singleton"
+  },
+  {
+    "name": "merchant-account-session-refreshes.create",
+    "operation_id": "refreshMerchantAccountSession",
+    "kind": "collection"
+  },
+  {
+    "name": "merchant-account-sessions.create",
+    "operation_id": "createMerchantAccountSession",
+    "kind": "collection"
+  },
+  {
+    "name": "merchant-billing-balances.get",
+    "operation_id": "getMerchantBillingBalance",
+    "kind": "item"
+  },
+  {
+    "name": "merchant-billing-balances.list",
+    "operation_id": "listMerchantBillingBalances",
+    "kind": "collection"
+  },
+  {
+    "name": "merchant-billing-entries.list",
+    "operation_id": "listMerchantBillingEntries",
+    "kind": "collection"
+  },
+  {
+    "name": "merchant-billing-invoices.get",
+    "operation_id": "getMerchantBillingInvoice",
+    "kind": "item"
+  },
+  {
+    "name": "merchant-billing-invoices.list",
+    "operation_id": "listMerchantBillingInvoices",
+    "kind": "collection"
+  },
+  {
+    "name": "merchant.get",
+    "operation_id": "getMerchant",
+    "kind": "singleton"
+  },
+  {
+    "name": "merchant.update",
+    "operation_id": "updateMerchant",
+    "kind": "singleton"
+  },
+  {
+    "name": "modifier-groups.create",
+    "operation_id": "createModifierGroup",
+    "kind": "collection"
+  },
+  {
+    "name": "modifier-groups.delete",
+    "operation_id": "deleteModifierGroup",
+    "kind": "item"
+  },
+  {
+    "name": "modifier-groups.get",
+    "operation_id": "getModifierGroup",
+    "kind": "item"
+  },
+  {
+    "name": "modifier-groups.list",
+    "operation_id": "listModifierGroups",
+    "kind": "collection"
+  },
+  {
+    "name": "modifier-groups.update",
+    "operation_id": "updateModifierGroup",
+    "kind": "item"
+  },
+  {
+    "name": "modifier-sets.create",
+    "operation_id": "createModifierSet",
+    "kind": "collection"
+  },
+  {
+    "name": "modifier-sets.delete",
+    "operation_id": "deleteModifierSet",
+    "kind": "item"
+  },
+  {
+    "name": "modifier-sets.get",
+    "operation_id": "getModifierSet",
+    "kind": "item"
+  },
+  {
+    "name": "modifier-sets.list",
+    "operation_id": "listModifierSets",
+    "kind": "collection"
+  },
+  {
+    "name": "modifier-sets.update",
+    "operation_id": "updateModifierSet",
+    "kind": "item"
+  },
+  {
+    "name": "onboarding.advance",
+    "operation_id": "advanceOnboarding",
+    "kind": "action"
+  },
+  {
+    "name": "onboarding.api-key.create",
+    "operation_id": "createOnboardingAPIKey",
+    "kind": "collection"
+  },
+  {
+    "name": "onboarding.start",
+    "operation_id": "startOnboarding",
+    "kind": "action"
+  },
+  {
+    "name": "onboarding.state.get",
+    "operation_id": "getOnboardingState",
+    "kind": "singleton"
+  },
+  {
+    "name": "onboarding.verify-email",
+    "operation_id": "verifyOnboardingEmail",
+    "kind": "action"
+  },
+  {
+    "name": "openapi.get",
+    "operation_id": "getOpenAPISpec",
+    "kind": "singleton"
+  },
+  {
+    "name": "orders.access-links.create",
+    "operation_id": "createOrderAccessLink",
+    "kind": "collection"
+  },
+  {
+    "name": "orders.activities.list",
+    "operation_id": "listOrderActivities",
+    "kind": "collection"
+  },
+  {
+    "name": "orders.charges.create",
+    "operation_id": "createOrderCharge",
+    "kind": "collection"
+  },
+  {
+    "name": "orders.charges.delete",
+    "operation_id": "deleteOrderCharge",
+    "kind": "item"
+  },
+  {
+    "name": "orders.charges.update",
+    "operation_id": "updateOrderCharge",
+    "kind": "item"
+  },
+  {
+    "name": "orders.close",
+    "operation_id": "closeOrder",
+    "kind": "action"
+  },
+  {
+    "name": "orders.create",
+    "operation_id": "createOrder",
+    "kind": "collection"
+  },
+  {
+    "name": "orders.delivery-selections.current.get",
+    "operation_id": "getOrderCurrentDeliverySelection",
+    "kind": "singleton"
+  },
+  {
+    "name": "orders.discounts.create",
+    "operation_id": "applyOrderDiscount",
+    "kind": "collection"
+  },
+  {
+    "name": "orders.discounts.remove",
+    "operation_id": "removeOrderDiscounts",
+    "kind": "action"
+  },
+  {
+    "name": "orders.discounts.reprice",
+    "operation_id": "repriceOrderDiscounts",
+    "kind": "action"
+  },
+  {
+    "name": "orders.fulfillments.create",
+    "operation_id": "createFulfillment",
+    "kind": "collection"
+  },
+  {
+    "name": "orders.get",
+    "operation_id": "getOrder",
+    "kind": "item"
+  },
+  {
+    "name": "orders.gift-cards.create",
+    "operation_id": "applyOrderGiftCard",
+    "kind": "collection"
+  },
+  {
+    "name": "orders.gift-cards.delete",
+    "operation_id": "removeOrderGiftCard",
+    "kind": "item"
+  },
+  {
+    "name": "orders.inventory-exception.resolve",
+    "operation_id": "resolveOrderInventoryException",
+    "kind": "action"
+  },
+  {
+    "name": "orders.line-items.create",
+    "operation_id": "createOrderLineItems",
+    "kind": "collection"
+  },
+  {
+    "name": "orders.line-items.delete",
+    "operation_id": "deleteOrderLineItem",
+    "kind": "item"
+  },
+  {
+    "name": "orders.line-items.update",
+    "operation_id": "updateOrderLineItem",
+    "kind": "item"
+  },
+  {
+    "name": "orders.list",
+    "operation_id": "listOrders",
+    "kind": "collection"
+  },
+  {
+    "name": "orders.pay",
+    "operation_id": "payOrder",
+    "kind": "action"
+  },
+  {
+    "name": "orders.payment-attempts.cancel",
+    "operation_id": "cancelOrderPaymentAttempt",
+    "kind": "action"
+  },
+  {
+    "name": "orders.payment-attempts.get",
+    "operation_id": "getOrderPaymentAttempt",
+    "kind": "item"
+  },
+  {
+    "name": "orders.payment-attempts.list",
+    "operation_id": "listOrderPaymentAttempts",
+    "kind": "collection"
+  },
+  {
+    "name": "orders.payment-intents.create",
+    "operation_id": "createOrderPaymentIntent",
+    "kind": "collection"
+  },
+  {
+    "name": "orders.send-receipt",
+    "operation_id": "sendOrderReceipt",
+    "kind": "action"
+  },
+  {
+    "name": "orders.update",
+    "operation_id": "updateOrder",
+    "kind": "item"
+  },
+  {
+    "name": "organizations.create",
+    "operation_id": "createOrganization",
+    "kind": "collection"
+  },
+  {
+    "name": "organizations.delete",
+    "operation_id": "deleteOrganization",
+    "kind": "item"
+  },
+  {
+    "name": "organizations.get",
+    "operation_id": "getOrganization",
+    "kind": "item"
+  },
+  {
+    "name": "organizations.list",
+    "operation_id": "listOrganizations",
+    "kind": "collection"
+  },
+  {
+    "name": "organizations.memberships.create",
+    "operation_id": "grantOrganizationMembership",
+    "kind": "collection"
+  },
+  {
+    "name": "organizations.memberships.delete",
+    "operation_id": "removeOrganizationMembership",
+    "kind": "item"
+  },
+  {
+    "name": "organizations.memberships.list",
+    "operation_id": "listOrganizationMemberships",
+    "kind": "collection"
+  },
+  {
+    "name": "organizations.update",
+    "operation_id": "updateOrganization",
+    "kind": "item"
+  },
+  {
+    "name": "packages.get",
+    "operation_id": "getPackage",
+    "kind": "item"
+  },
+  {
+    "name": "packages.items.create",
+    "operation_id": "createPackageItem",
+    "kind": "collection"
+  },
+  {
+    "name": "packages.items.delete",
+    "operation_id": "deletePackageItem",
+    "kind": "item"
+  },
+  {
+    "name": "packages.items.get",
+    "operation_id": "getPackageItem",
+    "kind": "item"
+  },
+  {
+    "name": "packages.items.list",
+    "operation_id": "listPackageItems",
+    "kind": "collection"
+  },
+  {
+    "name": "packages.items.update",
+    "operation_id": "updatePackageItem",
+    "kind": "item"
+  },
+  {
+    "name": "packages.list",
+    "operation_id": "listPackages",
+    "kind": "collection"
+  },
+  {
+    "name": "packages.transitions.create",
+    "operation_id": "transitionPackage",
+    "kind": "collection"
+  },
+  {
+    "name": "packages.update",
+    "operation_id": "updatePackage",
+    "kind": "item"
+  },
+  {
+    "name": "packages.void",
+    "operation_id": "voidPackage",
+    "kind": "action"
+  },
+  {
+    "name": "partner-app-installs.list",
+    "operation_id": "listMerchantPartnerAppInstalls",
+    "kind": "collection"
+  },
+  {
+    "name": "partner-app-installs.revoke",
+    "operation_id": "revokeMerchantPartnerAppInstall",
+    "kind": "action"
+  },
+  {
+    "name": "partner-apps.create",
+    "operation_id": "createPartnerApp",
+    "kind": "collection"
+  },
+  {
+    "name": "partner-apps.credentials.create",
+    "operation_id": "createPartnerAppCredential",
+    "kind": "collection"
+  },
+  {
+    "name": "partner-apps.credentials.delete",
+    "operation_id": "deletePartnerAppCredential",
+    "kind": "item"
+  },
+  {
+    "name": "partner-apps.credentials.get",
+    "operation_id": "getPartnerAppCredential",
+    "kind": "item"
+  },
+  {
+    "name": "partner-apps.credentials.list",
+    "operation_id": "listPartnerAppCredentials",
+    "kind": "collection"
+  },
+  {
+    "name": "partner-apps.delete",
+    "operation_id": "deletePartnerApp",
+    "kind": "item"
+  },
+  {
+    "name": "partner-apps.get",
+    "operation_id": "getPartnerApp",
+    "kind": "item"
+  },
+  {
+    "name": "partner-apps.installs.environment-grants.revoke",
+    "operation_id": "revokePartnerAppEnvironmentGrant",
+    "kind": "action"
+  },
+  {
+    "name": "partner-apps.installs.get",
+    "operation_id": "getPartnerAppInstall",
+    "kind": "item"
+  },
+  {
+    "name": "partner-apps.installs.list",
+    "operation_id": "listPartnerAppInstalls",
+    "kind": "collection"
+  },
+  {
+    "name": "partner-apps.installs.revoke",
+    "operation_id": "revokePartnerAppInstall",
+    "kind": "action"
+  },
+  {
+    "name": "partner-apps.list",
+    "operation_id": "listPartnerApps",
+    "kind": "collection"
+  },
+  {
+    "name": "partner-apps.rotate-secret",
+    "operation_id": "rotatePartnerAppSecret",
+    "kind": "action"
+  },
+  {
+    "name": "partner-apps.update",
+    "operation_id": "updatePartnerApp",
+    "kind": "item"
+  },
+  {
+    "name": "payment-intents.activities.list",
+    "operation_id": "listPaymentIntentActivities",
+    "kind": "collection"
+  },
+  {
+    "name": "payment-intents.cancel",
+    "operation_id": "cancelPaymentIntent",
+    "kind": "action"
+  },
+  {
+    "name": "payment-intents.capture",
+    "operation_id": "capturePaymentIntent",
+    "kind": "action"
+  },
+  {
+    "name": "payment-intents.confirm",
+    "operation_id": "confirmPaymentIntent",
+    "kind": "action"
+  },
+  {
+    "name": "payment-intents.create",
+    "operation_id": "createPaymentIntent",
+    "kind": "collection"
+  },
+  {
+    "name": "payment-intents.get",
+    "operation_id": "getPaymentIntent",
+    "kind": "item"
+  },
+  {
+    "name": "payment-intents.list",
+    "operation_id": "listPaymentIntents",
+    "kind": "collection"
+  },
+  {
+    "name": "payment-intents.send-receipt",
+    "operation_id": "sendPaymentIntentReceipt",
+    "kind": "action"
+  },
+  {
+    "name": "payment-intents.update",
+    "operation_id": "updatePaymentIntent",
+    "kind": "item"
+  },
+  {
+    "name": "payment-links.create",
+    "operation_id": "createPaymentLink",
+    "kind": "collection"
+  },
+  {
+    "name": "payment-links.get",
+    "operation_id": "getPaymentLink",
+    "kind": "item"
+  },
+  {
+    "name": "payment-links.list",
+    "operation_id": "listPaymentLinks",
+    "kind": "collection"
+  },
+  {
+    "name": "payment-links.public.get",
+    "operation_id": "getPaymentLinkPublic",
+    "kind": "singleton"
+  },
+  {
+    "name": "payment-links.resolve",
+    "operation_id": "resolvePaymentLink",
+    "kind": "action"
+  },
+  {
+    "name": "payment-links.update",
+    "operation_id": "updatePaymentLink",
+    "kind": "item"
+  },
+  {
+    "name": "payment-method-domains.create",
+    "operation_id": "createPaymentMethodDomain",
+    "kind": "collection"
+  },
+  {
+    "name": "payment-method-domains.get",
+    "operation_id": "getPaymentMethodDomain",
+    "kind": "item"
+  },
+  {
+    "name": "payment-method-domains.list",
+    "operation_id": "listPaymentMethodDomains",
+    "kind": "collection"
+  },
+  {
+    "name": "payment-method-domains.update",
+    "operation_id": "updatePaymentMethodDomain",
+    "kind": "item"
+  },
+  {
+    "name": "payment-methods.create",
+    "operation_id": "createPaymentMethod",
+    "kind": "collection"
+  },
+  {
+    "name": "payment-methods.delete",
+    "operation_id": "deletePaymentMethod",
+    "kind": "item"
+  },
+  {
+    "name": "payment-methods.get",
+    "operation_id": "getPaymentMethod",
+    "kind": "item"
+  },
+  {
+    "name": "payment-methods.list",
+    "operation_id": "listPaymentMethods",
+    "kind": "collection"
+  },
+  {
+    "name": "payment-reviews.approve",
+    "operation_id": "approvePaymentReview",
+    "kind": "action"
+  },
+  {
+    "name": "payment-reviews.decline",
+    "operation_id": "declinePaymentReview",
+    "kind": "action"
+  },
+  {
+    "name": "payment-reviews.get",
+    "operation_id": "getPaymentReview",
+    "kind": "item"
+  },
+  {
+    "name": "payment-reviews.list",
+    "operation_id": "listPaymentReviews",
+    "kind": "collection"
+  },
+  {
+    "name": "payout-destinations.delete",
+    "operation_id": "deletePayoutDestination",
+    "kind": "item"
+  },
+  {
+    "name": "payout-destinations.get",
+    "operation_id": "getPayoutDestination",
+    "kind": "item"
+  },
+  {
+    "name": "payout-destinations.list",
+    "operation_id": "listPayoutDestinations",
+    "kind": "collection"
+  },
+  {
+    "name": "payout-destinations.update",
+    "operation_id": "updatePayoutDestination",
+    "kind": "item"
+  },
+  {
+    "name": "payout-settings.get",
+    "operation_id": "getPayoutSettings",
+    "kind": "singleton"
+  },
+  {
+    "name": "payout-settings.update",
+    "operation_id": "updatePayoutSettings",
+    "kind": "singleton"
+  },
+  {
+    "name": "payouts.cancel",
+    "operation_id": "cancelPayout",
+    "kind": "action"
+  },
+  {
+    "name": "payouts.create",
+    "operation_id": "createPayout",
+    "kind": "collection"
+  },
+  {
+    "name": "payouts.get",
+    "operation_id": "getPayout",
+    "kind": "item"
+  },
+  {
+    "name": "payouts.list",
+    "operation_id": "listPayouts",
+    "kind": "collection"
+  },
+  {
+    "name": "products.create",
+    "operation_id": "createProduct",
+    "kind": "collection"
+  },
+  {
+    "name": "products.delete",
+    "operation_id": "deleteProduct",
+    "kind": "item"
+  },
+  {
+    "name": "products.get",
+    "operation_id": "getProduct",
+    "kind": "item"
+  },
+  {
+    "name": "products.list",
+    "operation_id": "listProducts",
+    "kind": "collection"
+  },
+  {
+    "name": "products.options.get",
+    "operation_id": "getProductOption",
+    "kind": "item"
+  },
+  {
+    "name": "products.options.list",
+    "operation_id": "listProductOptions",
+    "kind": "collection"
+  },
+  {
+    "name": "products.update",
+    "operation_id": "updateProduct",
+    "kind": "item"
+  },
+  {
+    "name": "products.variants.create",
+    "operation_id": "createProductVariant",
+    "kind": "collection"
+  },
+  {
+    "name": "products.variants.delete",
+    "operation_id": "deleteProductVariant",
+    "kind": "item"
+  },
+  {
+    "name": "products.variants.get",
+    "operation_id": "getProductVariant",
+    "kind": "item"
+  },
+  {
+    "name": "products.variants.list",
+    "operation_id": "listProductVariants",
+    "kind": "collection"
+  },
+  {
+    "name": "products.variants.update",
+    "operation_id": "updateProductVariant",
+    "kind": "item"
+  },
+  {
+    "name": "promotion-codes.list",
+    "operation_id": "listPromotionCodes",
+    "kind": "collection"
+  },
+  {
+    "name": "promotions.codes.create",
+    "operation_id": "createPromotionCode",
+    "kind": "collection"
+  },
+  {
+    "name": "promotions.codes.delete",
+    "operation_id": "deletePromotionCode",
+    "kind": "item"
+  },
+  {
+    "name": "promotions.codes.get",
+    "operation_id": "getPromotionCode",
+    "kind": "item"
+  },
+  {
+    "name": "promotions.codes.update",
+    "operation_id": "updatePromotionCode",
+    "kind": "item"
+  },
+  {
+    "name": "promotions.create",
+    "operation_id": "createPromotion",
+    "kind": "collection"
+  },
+  {
+    "name": "promotions.delete",
+    "operation_id": "deletePromotion",
+    "kind": "item"
+  },
+  {
+    "name": "promotions.get",
+    "operation_id": "getPromotion",
+    "kind": "item"
+  },
+  {
+    "name": "promotions.list",
+    "operation_id": "listPromotions",
+    "kind": "collection"
+  },
+  {
+    "name": "promotions.update",
+    "operation_id": "updatePromotion",
+    "kind": "item"
+  },
+  {
+    "name": "refunds.create",
+    "operation_id": "createRefund",
+    "kind": "collection"
+  },
+  {
+    "name": "refunds.get",
+    "operation_id": "getRefund",
+    "kind": "item"
+  },
+  {
+    "name": "refunds.list",
+    "operation_id": "listRefunds",
+    "kind": "collection"
+  },
+  {
+    "name": "refunds.update",
+    "operation_id": "updateRefund",
+    "kind": "item"
+  },
+  {
+    "name": "report-downloads.get",
+    "operation_id": "getReportDownload",
+    "kind": "item"
+  },
+  {
+    "name": "reports.create",
+    "operation_id": "createReport",
+    "kind": "collection"
+  },
+  {
+    "name": "reports.get",
+    "operation_id": "getReport",
+    "kind": "item"
+  },
+  {
+    "name": "reports.list",
+    "operation_id": "listReports",
+    "kind": "collection"
+  },
+  {
+    "name": "resource-timelines.get",
+    "operation_id": "getResourceTimeline",
+    "kind": "item"
+  },
+  {
+    "name": "return-dispositions.cancel",
+    "operation_id": "cancelReturnDisposition",
+    "kind": "action"
+  },
+  {
+    "name": "return-dispositions.get",
+    "operation_id": "getReturnDisposition",
+    "kind": "item"
+  },
+  {
+    "name": "return-dispositions.list",
+    "operation_id": "listReturnDispositions",
+    "kind": "collection"
+  },
+  {
+    "name": "return-dispositions.retry",
+    "operation_id": "retryReturnDisposition",
+    "kind": "action"
+  },
+  {
+    "name": "return-inspections.get",
+    "operation_id": "getReturnInspection",
+    "kind": "item"
+  },
+  {
+    "name": "return-inspections.line-items.decide",
+    "operation_id": "decideReturnInspectionLineItem",
+    "kind": "action"
+  },
+  {
+    "name": "return-inspections.list",
+    "operation_id": "listReturnInspections",
+    "kind": "collection"
+  },
+  {
+    "name": "return-policies.create",
+    "operation_id": "createReturnPolicy",
+    "kind": "collection"
+  },
+  {
+    "name": "return-policies.delete",
+    "operation_id": "deleteReturnPolicy",
+    "kind": "item"
+  },
+  {
+    "name": "return-policies.get",
+    "operation_id": "getReturnPolicy",
+    "kind": "item"
+  },
+  {
+    "name": "return-policies.list",
+    "operation_id": "listReturnPolicies",
+    "kind": "collection"
+  },
+  {
+    "name": "return-policies.revisions.create",
+    "operation_id": "createReturnPolicyRevision",
+    "kind": "collection"
+  },
+  {
+    "name": "return-policies.revisions.get",
+    "operation_id": "getReturnPolicyRevision",
+    "kind": "item"
+  },
+  {
+    "name": "return-policies.revisions.list",
+    "operation_id": "listReturnPolicyRevisions",
+    "kind": "collection"
+  },
+  {
+    "name": "return-policies.update",
+    "operation_id": "updateReturnPolicy",
+    "kind": "item"
+  },
+  {
+    "name": "return-previews.create",
+    "operation_id": "createReturnPreview",
+    "kind": "collection"
+  },
+  {
+    "name": "return-reasons.create",
+    "operation_id": "createReturnReason",
+    "kind": "collection"
+  },
+  {
+    "name": "return-reasons.delete",
+    "operation_id": "deleteReturnReason",
+    "kind": "item"
+  },
+  {
+    "name": "return-reasons.get",
+    "operation_id": "getReturnReason",
+    "kind": "item"
+  },
+  {
+    "name": "return-reasons.list",
+    "operation_id": "listReturnReasons",
+    "kind": "collection"
+  },
+  {
+    "name": "return-reasons.update",
+    "operation_id": "updateReturnReason",
+    "kind": "item"
+  },
+  {
+    "name": "return-receipts.get",
+    "operation_id": "getReturnReceipt",
+    "kind": "item"
+  },
+  {
+    "name": "return-receipts.line-items.verify",
+    "operation_id": "verifyReturnReceiptLineItem",
+    "kind": "action"
+  },
+  {
+    "name": "return-receipts.list",
+    "operation_id": "listReturnReceipts",
+    "kind": "collection"
+  },
+  {
+    "name": "return-resolutions.cancel",
+    "operation_id": "cancelReturnResolution",
+    "kind": "action"
+  },
+  {
+    "name": "return-resolutions.checkout-sessions.create",
+    "operation_id": "createReturnResolutionCheckoutSession",
+    "kind": "collection"
+  },
+  {
+    "name": "return-resolutions.confirm",
+    "operation_id": "confirmReturnResolution",
+    "kind": "action"
+  },
+  {
+    "name": "return-resolutions.get",
+    "operation_id": "getReturnResolution",
+    "kind": "item"
+  },
+  {
+    "name": "return-resolutions.list",
+    "operation_id": "listReturnResolutions",
+    "kind": "collection"
+  },
+  {
+    "name": "return-resolutions.release",
+    "operation_id": "releaseReturnResolution",
+    "kind": "action"
+  },
+  {
+    "name": "return-resolutions.retry",
+    "operation_id": "retryReturnResolution",
+    "kind": "action"
+  },
+  {
+    "name": "return-resolutions.update",
+    "operation_id": "updateReturnResolution",
+    "kind": "item"
+  },
+  {
+    "name": "returns.access-links.create",
+    "operation_id": "createReturnAccessLink",
+    "kind": "collection"
+  },
+  {
+    "name": "returns.activities.list",
+    "operation_id": "listReturnActivities",
+    "kind": "collection"
+  },
+  {
+    "name": "returns.cancel",
+    "operation_id": "cancelReturn",
+    "kind": "action"
+  },
+  {
+    "name": "returns.complete",
+    "operation_id": "completeReturn",
+    "kind": "action"
+  },
+  {
+    "name": "returns.create",
+    "operation_id": "createReturn",
+    "kind": "collection"
+  },
+  {
+    "name": "returns.decide",
+    "operation_id": "decideReturn",
+    "kind": "action"
+  },
+  {
+    "name": "returns.dispositions.create",
+    "operation_id": "createReturnDisposition",
+    "kind": "collection"
+  },
+  {
+    "name": "returns.get",
+    "operation_id": "getReturn",
+    "kind": "item"
+  },
+  {
+    "name": "returns.inspections.create",
+    "operation_id": "createReturnInspection",
+    "kind": "collection"
+  },
+  {
+    "name": "returns.line-items.cancel",
+    "operation_id": "cancelReturnLineItem",
+    "kind": "action"
+  },
+  {
+    "name": "returns.line-items.create",
+    "operation_id": "createReturnLineItem",
+    "kind": "collection"
+  },
+  {
+    "name": "returns.line-items.delete",
+    "operation_id": "deleteReturnLineItem",
+    "kind": "item"
+  },
+  {
+    "name": "returns.line-items.get",
+    "operation_id": "getReturnLineItem",
+    "kind": "item"
+  },
+  {
+    "name": "returns.line-items.list",
+    "operation_id": "listReturnLineItems",
+    "kind": "collection"
+  },
+  {
+    "name": "returns.line-items.update",
+    "operation_id": "updateReturnLineItem",
+    "kind": "item"
+  },
+  {
+    "name": "returns.line-items.waive-inspection",
+    "operation_id": "waiveReturnLineItemInspection",
+    "kind": "action"
+  },
+  {
+    "name": "returns.list",
+    "operation_id": "listReturns",
+    "kind": "collection"
+  },
+  {
+    "name": "returns.process",
+    "operation_id": "processReturn",
+    "kind": "action"
+  },
+  {
+    "name": "returns.receipts.create",
+    "operation_id": "createReturnReceipt",
+    "kind": "collection"
+  },
+  {
+    "name": "returns.reopen",
+    "operation_id": "reopenReturn",
+    "kind": "action"
+  },
+  {
+    "name": "returns.resolutions.create",
+    "operation_id": "createReturnResolution",
+    "kind": "collection"
+  },
+  {
+    "name": "returns.update",
+    "operation_id": "updateReturn",
+    "kind": "item"
+  },
+  {
+    "name": "risk-lists.create",
+    "operation_id": "createRiskList",
+    "kind": "collection"
+  },
+  {
+    "name": "risk-lists.delete",
+    "operation_id": "deleteRiskList",
+    "kind": "item"
+  },
+  {
+    "name": "risk-lists.get",
+    "operation_id": "getRiskList",
+    "kind": "item"
+  },
+  {
+    "name": "risk-lists.items.create",
+    "operation_id": "createRiskListItems",
+    "kind": "collection"
+  },
+  {
+    "name": "risk-lists.items.delete",
+    "operation_id": "deleteRiskListItem",
+    "kind": "item"
+  },
+  {
+    "name": "risk-lists.items.get",
+    "operation_id": "getRiskListItem",
+    "kind": "item"
+  },
+  {
+    "name": "risk-lists.items.list",
+    "operation_id": "listRiskListItems",
+    "kind": "collection"
+  },
+  {
+    "name": "risk-lists.list",
+    "operation_id": "listRiskLists",
+    "kind": "collection"
+  },
+  {
+    "name": "risk-lists.update",
+    "operation_id": "updateRiskList",
+    "kind": "item"
+  },
+  {
+    "name": "risk-previews.create",
+    "operation_id": "createRiskPreview",
+    "kind": "collection"
+  },
+  {
+    "name": "risk-rules.attributes.get",
+    "operation_id": "getRiskRuleAttributes",
+    "kind": "singleton"
+  },
+  {
+    "name": "risk-rules.create",
+    "operation_id": "createRiskRule",
+    "kind": "collection"
+  },
+  {
+    "name": "risk-rules.delete",
+    "operation_id": "deleteRiskRule",
+    "kind": "item"
+  },
+  {
+    "name": "risk-rules.get",
+    "operation_id": "getRiskRule",
+    "kind": "item"
+  },
+  {
+    "name": "risk-rules.list",
+    "operation_id": "listRiskRules",
+    "kind": "collection"
+  },
+  {
+    "name": "risk-rules.update",
+    "operation_id": "updateRiskRule",
+    "kind": "item"
+  },
+  {
+    "name": "sandboxes.api-keys.create",
+    "operation_id": "createSandboxAPIKey",
+    "kind": "collection"
+  },
+  {
+    "name": "sandboxes.create",
+    "operation_id": "createSandbox",
+    "kind": "collection"
+  },
+  {
+    "name": "sandboxes.delete",
+    "operation_id": "deleteSandbox",
+    "kind": "item"
+  },
+  {
+    "name": "sandboxes.get",
+    "operation_id": "getSandbox",
+    "kind": "item"
+  },
+  {
+    "name": "sandboxes.list",
+    "operation_id": "listSandboxes",
+    "kind": "collection"
+  },
+  {
+    "name": "sandboxes.reset",
+    "operation_id": "resetSandbox",
+    "kind": "action"
+  },
+  {
+    "name": "schema.command",
+    "kind": "cli"
+  },
+  {
+    "name": "schema.commands",
+    "kind": "cli"
+  },
+  {
+    "name": "schema.errors",
+    "kind": "cli"
+  },
+  {
+    "name": "schema.events",
+    "kind": "cli"
+  },
+  {
+    "name": "schema.input",
+    "kind": "cli"
+  },
+  {
+    "name": "schema.output",
+    "kind": "cli"
+  },
+  {
+    "name": "settings.effective.get",
+    "operation_id": "getEffectiveSettings",
+    "kind": "singleton"
+  },
+  {
+    "name": "settings.get",
+    "operation_id": "getSettings",
+    "kind": "singleton"
+  },
+  {
+    "name": "settings.update",
+    "operation_id": "updateSettings",
+    "kind": "singleton"
+  },
+  {
+    "name": "shipments.get",
+    "operation_id": "getShipment",
+    "kind": "item"
+  },
+  {
+    "name": "shipments.list",
+    "operation_id": "listShipments",
+    "kind": "collection"
+  },
+  {
+    "name": "shipments.packages.create",
+    "operation_id": "createPackage",
+    "kind": "collection"
+  },
+  {
+    "name": "shipments.update",
+    "operation_id": "updateShipment",
+    "kind": "item"
+  },
+  {
+    "name": "shipments.void",
+    "operation_id": "voidShipment",
+    "kind": "action"
+  },
+  {
+    "name": "signup",
+    "kind": "cli"
+  },
+  {
+    "name": "subscription-delivery-migrations.create",
+    "operation_id": "createSubscriptionDeliveryMigration",
+    "kind": "collection"
+  },
+  {
+    "name": "subscription-delivery-migrations.failures.list",
+    "operation_id": "listSubscriptionDeliveryMigrationFailures",
+    "kind": "collection"
+  },
+  {
+    "name": "subscription-delivery-migrations.get",
+    "operation_id": "getSubscriptionDeliveryMigration",
+    "kind": "item"
+  },
+  {
+    "name": "subscription-delivery-migrations.list",
+    "operation_id": "listSubscriptionDeliveryMigrations",
+    "kind": "collection"
+  },
+  {
+    "name": "subscription-offers.create",
+    "operation_id": "createSubscriptionOffer",
+    "kind": "collection"
+  },
+  {
+    "name": "subscription-offers.delete",
+    "operation_id": "deleteSubscriptionOffer",
+    "kind": "item"
+  },
+  {
+    "name": "subscription-offers.get",
+    "operation_id": "getSubscriptionOffer",
+    "kind": "item"
+  },
+  {
+    "name": "subscription-offers.list",
+    "operation_id": "listSubscriptionOffers",
+    "kind": "collection"
+  },
+  {
+    "name": "subscription-offers.update",
+    "operation_id": "updateSubscriptionOffer",
+    "kind": "item"
+  },
+  {
+    "name": "subscription-plans.create",
+    "operation_id": "createSubscriptionPlan",
+    "kind": "collection"
+  },
+  {
+    "name": "subscription-plans.delete",
+    "operation_id": "deleteSubscriptionPlan",
+    "kind": "item"
+  },
+  {
+    "name": "subscription-plans.get",
+    "operation_id": "getSubscriptionPlan",
+    "kind": "item"
+  },
+  {
+    "name": "subscription-plans.list",
+    "operation_id": "listSubscriptionPlans",
+    "kind": "collection"
+  },
+  {
+    "name": "subscription-plans.update",
+    "operation_id": "updateSubscriptionPlan",
+    "kind": "item"
+  },
+  {
+    "name": "subscription-previews.create",
+    "operation_id": "createSubscriptionPreview",
+    "kind": "collection"
+  },
+  {
+    "name": "subscriptions.access-links.create",
+    "operation_id": "createSubscriptionAccessLink",
+    "kind": "collection"
+  },
+  {
+    "name": "subscriptions.cancel",
+    "operation_id": "cancelSubscription",
+    "kind": "action"
+  },
+  {
+    "name": "subscriptions.change-plan",
+    "operation_id": "changeSubscriptionPlan",
+    "kind": "action"
+  },
+  {
+    "name": "subscriptions.create",
+    "operation_id": "createSubscription",
+    "kind": "collection"
+  },
+  {
+    "name": "subscriptions.get",
+    "operation_id": "getSubscription",
+    "kind": "item"
+  },
+  {
+    "name": "subscriptions.line-items.create",
+    "operation_id": "createSubscriptionLineItem",
+    "kind": "collection"
+  },
+  {
+    "name": "subscriptions.line-items.delete",
+    "operation_id": "deleteSubscriptionLineItem",
+    "kind": "item"
+  },
+  {
+    "name": "subscriptions.line-items.update",
+    "operation_id": "updateSubscriptionLineItem",
+    "kind": "item"
+  },
+  {
+    "name": "subscriptions.list",
+    "operation_id": "listSubscriptions",
+    "kind": "collection"
+  },
+  {
+    "name": "subscriptions.pause",
+    "operation_id": "pauseSubscription",
+    "kind": "action"
+  },
+  {
+    "name": "subscriptions.payment-retries.create",
+    "operation_id": "createSubscriptionPaymentRetry",
+    "kind": "collection"
+  },
+  {
+    "name": "subscriptions.payment-retries.get",
+    "operation_id": "getSubscriptionPaymentRetry",
+    "kind": "item"
+  },
+  {
+    "name": "subscriptions.payment-retries.list",
+    "operation_id": "listSubscriptionPaymentRetries",
+    "kind": "collection"
+  },
+  {
+    "name": "subscriptions.renew",
+    "operation_id": "renewSubscription",
+    "kind": "action"
+  },
+  {
+    "name": "subscriptions.resume",
+    "operation_id": "resumeSubscription",
+    "kind": "action"
+  },
+  {
+    "name": "subscriptions.skip-cycle",
+    "operation_id": "skipSubscriptionCycle",
+    "kind": "action"
+  },
+  {
+    "name": "subscriptions.update",
+    "operation_id": "updateSubscription",
+    "kind": "item"
+  },
+  {
+    "name": "support.open",
+    "kind": "cli"
+  },
+  {
+    "name": "tax-connection.connect",
+    "operation_id": "connectTaxConnection",
+    "kind": "action"
+  },
+  {
+    "name": "tax-connection.disconnect",
+    "operation_id": "disconnectTaxConnection",
+    "kind": "action"
+  },
+  {
+    "name": "tax-connection.get",
+    "operation_id": "getTaxConnection",
+    "kind": "singleton"
+  },
+  {
+    "name": "tax-connection.registrations.create",
+    "operation_id": "createTaxRegistration",
+    "kind": "collection"
+  },
+  {
+    "name": "tax-connection.registrations.delete",
+    "operation_id": "deleteTaxRegistration",
+    "kind": "item"
+  },
+  {
+    "name": "tax-connection.registrations.get",
+    "operation_id": "getTaxRegistration",
+    "kind": "item"
+  },
+  {
+    "name": "tax-connection.registrations.list",
+    "operation_id": "listTaxRegistrations",
+    "kind": "collection"
+  },
+  {
+    "name": "tax-connection.registrations.update",
+    "operation_id": "updateTaxRegistration",
+    "kind": "item"
+  },
+  {
+    "name": "test-clocks.advance",
+    "operation_id": "advanceTestClock",
+    "kind": "action"
+  },
+  {
+    "name": "test-clocks.create",
+    "operation_id": "createTestClock",
+    "kind": "collection"
+  },
+  {
+    "name": "test-clocks.delete",
+    "operation_id": "deleteTestClock",
+    "kind": "item"
+  },
+  {
+    "name": "test-clocks.get",
+    "operation_id": "getTestClock",
+    "kind": "item"
+  },
+  {
+    "name": "test-clocks.list",
+    "operation_id": "listTestClocks",
+    "kind": "collection"
+  },
+  {
+    "name": "trigger",
+    "kind": "cli"
+  },
+  {
+    "name": "upgrade",
+    "kind": "cli"
+  },
+  {
+    "name": "version",
+    "kind": "cli"
+  },
+  {
+    "name": "webhook-deliveries.attempts.list",
+    "operation_id": "listWebhookDeliveryAttempts",
+    "kind": "collection"
+  },
+  {
+    "name": "webhook-deliveries.create",
+    "operation_id": "createWebhookDelivery",
+    "kind": "collection"
+  },
+  {
+    "name": "webhook-deliveries.get",
+    "operation_id": "getWebhookDelivery",
+    "kind": "item"
+  },
+  {
+    "name": "webhook-deliveries.list",
+    "operation_id": "listWebhookDeliveries",
+    "kind": "collection"
+  },
+  {
+    "name": "webhook-deliveries.resend",
+    "operation_id": "resendWebhookDelivery",
+    "kind": "action"
+  },
+  {
+    "name": "webhook-endpoints.create",
+    "operation_id": "createWebhookEndpoint",
+    "kind": "collection"
+  },
+  {
+    "name": "webhook-endpoints.delete",
+    "operation_id": "deleteWebhookEndpoint",
+    "kind": "item"
+  },
+  {
+    "name": "webhook-endpoints.get",
+    "operation_id": "getWebhookEndpoint",
+    "kind": "item"
+  },
+  {
+    "name": "webhook-endpoints.list",
+    "operation_id": "listWebhookEndpoints",
+    "kind": "collection"
+  },
+  {
+    "name": "webhook-endpoints.rotate-secret",
+    "operation_id": "rotateWebhookEndpointSecret",
+    "kind": "action"
+  },
+  {
+    "name": "webhook-endpoints.test-events.create",
+    "operation_id": "createWebhookTestEvent",
+    "kind": "collection"
+  },
+  {
+    "name": "webhook-endpoints.update",
+    "operation_id": "updateWebhookEndpoint",
+    "kind": "item"
+  },
+  {
+    "name": "webhook-event-types.list",
+    "operation_id": "listWebhookEventTypes",
+    "kind": "collection"
+  },
+  {
+    "name": "webhook-events.get",
+    "operation_id": "getWebhookEvent",
+    "kind": "item"
+  },
+  {
+    "name": "webhook-events.list",
+    "operation_id": "listWebhookEvents",
+    "kind": "collection"
+  },
+  {
+    "name": "workload-identities.create",
+    "operation_id": "createWorkloadIdentity",
+    "kind": "collection"
+  },
+  {
+    "name": "workload-identities.delete",
+    "operation_id": "deleteWorkloadIdentity",
+    "kind": "item"
+  },
+  {
+    "name": "workload-identities.get",
+    "operation_id": "getWorkloadIdentity",
+    "kind": "item"
+  },
+  {
+    "name": "workload-identities.list",
+    "operation_id": "listWorkloadIdentities",
+    "kind": "collection"
+  },
+  {
+    "name": "workload-identities.update",
+    "operation_id": "updateWorkloadIdentity",
+    "kind": "item"
+  }
+]

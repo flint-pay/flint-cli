@@ -1255,7 +1255,7 @@ func TestEveryPaginatedCommandExecutesAllPages(t *testing.T) {
 					t.Errorf("second page token = %q", token)
 				}
 				var data any = []any{map[string]any{"resource_id": fmt.Sprintf("res_%d", resourceCalls)}}
-				if command.CanonicalName == "timeline" {
+				if command.CanonicalName == "resource-timelines.get" {
 					// The public timeline contract nests its collection beside
 					// resource metadata instead of returning a data array.
 					data = map[string]any{
@@ -1288,7 +1288,7 @@ func TestEveryPaginatedCommandExecutesAllPages(t *testing.T) {
 				t.Fatal(err)
 			}
 			collection := envelope["data"]
-			if command.CanonicalName == "timeline" {
+			if command.CanonicalName == "resource-timelines.get" {
 				collection, _ = lookupPath(envelope, "data.entries")
 			}
 			data, _ := collection.([]any)

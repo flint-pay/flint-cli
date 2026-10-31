@@ -19,7 +19,7 @@ func TestRequiredIdempotencyKeyFailsBeforeAnyRequest(t *testing.T) {
 		{"refunds", "create", "--payment-intent", "pi_test", "--refund-type", "full"},
 		{"orders", "pay", "ord_test", "--input", `{"action":"pay"}`},
 		{"payment-intents", "create", "--amount", "2500", "--currency", "USD", "--payment-option", "card"},
-		{"payment-intents", "create", "--order", "ord_test"},
+		{"orders", "payment-intents", "create", "ord_test"},
 		{"api", "POST", "/v1/refunds", "--input", `{}`},
 	} {
 		for _, dryRun := range []bool{false, true} {
@@ -47,7 +47,7 @@ func TestRequiredIdempotencyKeyFailsBeforeAnyRequest(t *testing.T) {
 
 func TestPreparedRequestIdempotencyClasses(t *testing.T) {
 	for _, tc := range []struct{ name, class string }{
-		{"customers.create", "optional"}, {"refunds.create", "required"}, {"oauth.token", "none"}, {"discount-previews.create", "none"}, {"customers.get", "none"},
+		{"customers.create", "optional"}, {"refunds.create", "required"}, {"discount-previews.create", "none"}, {"customers.get", "none"},
 	} {
 		for _, key := range []string{"", "saved-action-1"} {
 			t.Run(tc.name+"/"+key, func(t *testing.T) {

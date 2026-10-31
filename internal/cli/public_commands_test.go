@@ -268,6 +268,12 @@ func TestEveryPublicOperationHasCompleteCommandContract(t *testing.T) {
 				continue
 			}
 			command := byOperation[operation.OperationID]
+			if reason := commandExclusion(&doc, path, operation); reason != "" && boundOperations[operation.OperationID] == "" {
+				if command != nil {
+					t.Errorf("excluded operation %s has command %s", operation.OperationID, command.Name)
+				}
+				continue
+			}
 			if command == nil {
 				t.Errorf("%s %s has no command", method, path)
 				continue
@@ -572,14 +578,14 @@ func TestCheckoutSessionBearerSkipsAPIKeyAuthentication(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if exit := app.Run([]string{"checkout", "get", "cs_test", "--output", "json"}); exit != 0 {
+	if exit := app.Run([]string{"checkout-sessions", "get", "cs_test", "--output", "json"}); exit != 0 {
 		t.Fatalf("exit=%d: %s", exit, out)
 	}
 	if calls != 1 {
 		t.Errorf("made %d requests", calls)
 	}
 	out.Reset()
-	if exit := app.Run([]string{"checkout", "get", "cs_test", "--context", "ctx_explicit", "--output", "json"}); exit != ExitAuth || !strings.Contains(out.String(), "CONTEXT_SESSION_REQUIRED") {
+	if exit := app.Run([]string{"checkout-sessions", "get", "cs_test", "--context", "ctx_explicit", "--output", "json"}); exit != ExitAuth || !strings.Contains(out.String(), "CONTEXT_SESSION_REQUIRED") {
 		t.Fatalf("explicit context accepted: exit=%d: %s", exit, out)
 	}
 }
@@ -596,7 +602,7 @@ func TestOAuthTokenErrorPreservesProtocolDetails(t *testing.T) {
 	defer server.Close()
 	app, out, _ := testApp(t, server.URL)
 	app.Stdin = strings.NewReader(`{"grant_type":"refresh_token","client_id":"client_test","client_secret":"secret_test","refresh_token":"refresh_test"}`)
-	if exit := app.Run([]string{"oauth", "token", "--input", "-", "--output", "json"}); exit != ExitAuth {
+	if exit := app.Run([]string{"api", "post", "/v1/oauth/token", "--input", "-", "--output", "json"}); exit != ExitAuth {
 		t.Fatalf("exit=%d: %s", exit, out)
 	}
 	for _, value := range []string{"invalid_client", "Client authentication failed.", "req_oauth"} {
