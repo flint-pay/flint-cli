@@ -81,7 +81,7 @@ func resolveAPICommand(command *Command, opts Options) *Command {
 		applyPublicOperationMetadata(metadata)
 		resolved.ResponseMediaType = metadata.ResponseMediaType
 	}
-	// Raw writes retain their conservative confirmation policy.
+	// Raw request metadata is conservative; confirmation uses opindex safety.
 	resolved.Sensitive = resolved.Mutation
 	return &resolved
 }

@@ -43,7 +43,7 @@ func TestCachedScopeDenialRevalidatesOnce(t *testing.T) {
 		{name: "mode mismatch", args: []string{"--live"}, wantExit: ExitAuth, wantCode: "CREDENTIAL_MODE_MISMATCH"},
 		{name: "merchant guard", args: []string{"--merchant", "mer_123"}, change: func(auth *AuthContext) { auth.MerchantID = "mer_other" }, wantExit: ExitAuth, wantCode: "MERCHANT_GUARD_MISMATCH"},
 		{name: "sandbox guard", sandbox: "test_123", change: func(auth *AuthContext) { auth.SandboxID = "test_other" }, wantExit: ExitAuth, wantCode: "SANDBOX_GUARD_MISMATCH"},
-		{name: "live confirmation", args: []string{"--live"}, change: func(auth *AuthContext) { auth.Environment = "live" }, wantExit: ExitConfirmation, wantCode: "PRODUCTION_CONFIRMATION_REQUIRED"},
+		{name: "live raw ordinary write", args: []string{"--live"}, change: func(auth *AuthContext) { auth.Environment = "live" }, wantExit: ExitOK},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			auth := AuthContext{AuthType: "api_key", APIKeyID: "key_123", Environment: "sandbox", MerchantID: "mer_123", SandboxID: "test_123"}
@@ -95,8 +95,8 @@ func TestCachedScopeDenialRevalidatesOnce(t *testing.T) {
 				}
 			}
 			refresh = true
-			if scenario.name == "live confirmation" {
-				// Raw writes require confirmation in live mode.
+			if scenario.name == "live raw ordinary write" {
+				// Known ordinary raw writes follow the shared ungated classification.
 				args = []string{"api", "POST", "/v1/customers", "--input", `{"name":"Cache test"}`, "--output", "json"}
 			}
 			exit := second.Run(append(args, scenario.args...))

@@ -288,25 +288,22 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 		return nil
 	}
 	environment := normalizeEnvironment(authContext.Environment)
-	needs := cmd.Destructive || (cmd.Sensitive && (environment == "live" || environment == environmentUnverified))
-	addedGate := false
-	if !needs && cmd.Mutation {
-		index, err := a.operationIndex()
-		if err != nil {
-			return cliError(ExitSoftware, errorTypeInternal, "SCHEMA_SNAPSHOT_INVALID", "The operation's confirmation rule could not be read: "+err.Error())
-		}
-		entry, found := index.Lookup(cmd.CanonicalName)
-		if cmd.CanonicalName == "api" && cmd.OperationID != "" {
-			for _, candidate := range index.Entries {
-				if candidate.Type == "operation" && candidate.OperationID == cmd.OperationID {
-					entry, found = candidate, true
-					break
-				}
-			}
-		}
-		addedGate = found && entry.Irreversible
-		needs = addedGate
+	index, err := a.operationIndex()
+	if err != nil {
+		return cliError(ExitSoftware, errorTypeInternal, "SCHEMA_SNAPSHOT_INVALID", "The operation's confirmation rule could not be read: "+err.Error())
 	}
+	entry, found := index.Lookup(cmd.CanonicalName)
+	if cmd.OperationID != "" && !cmd.Local {
+		entry, found = index.OperationSafety(cmd.OperationID)
+	}
+	needs := found && terminalConfirmationRequired(entry, environment)
+	if unknownRawOperation(cmd) {
+		// No contract classification exists for forward-compatible raw routes.
+		needs = cmd.Method == "DELETE" || cmd.Mutation && (environment == "live" || environment == environmentUnverified)
+	}
+	// Keep the earlier irreversible bridge's error code stable. Legacy hints
+	// affect only this diagnostic, never whether confirmation is required.
+	bridgeCode := entry.Irreversible && !cmd.Destructive && !cmd.Sensitive
 	if !needs || opts.Confirm || opts.Preview {
 		return nil
 	}
@@ -315,12 +312,12 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 	switch environment {
 	case "live":
 		message = "This operation affects live production data and requires confirmation."
-		if !addedGate {
+		if !bridgeCode {
 			code = "PRODUCTION_CONFIRMATION_REQUIRED"
 		}
 	case environmentUnverified:
 		message = "Flint cannot verify whether FLINT_ACCESS_TOKEN is a live credential, so this operation requires confirmation."
-		if !addedGate {
+		if !bridgeCode {
 			code = "UNVERIFIED_ENVIRONMENT_CONFIRMATION_REQUIRED"
 		}
 	}

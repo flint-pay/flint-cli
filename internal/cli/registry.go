@@ -77,9 +77,8 @@ func newRegistry(includeAPI bool) *Registry {
 		}
 
 		if operation, ok := registryOperation(c); ok && operation.FlintRouteClass != "" {
-			// Safety classification belongs to the public API contract. Keeping the
-			// CLI confirmation gate derived from it prevents a new sensitive route
-			// from silently behaving like an ordinary write.
+			// Help metadata describes the contract's sensitive operations. The
+			// confirmation gate reads the shared operation index directly.
 			c.Sensitive = operation.FlintRouteClass == "sensitive_write" || operation.FlintRouteClass == "external_provider_action" || operation.FlintRouteClass == "payment"
 		}
 		c.Supports.JSONOutput = true
@@ -133,6 +132,30 @@ func newRegistry(includeAPI bool) *Registry {
 		r.add(c)
 	}
 	sort.Slice(r.Commands, func(i, j int) bool { return r.Commands[i].Name < r.Commands[j].Name })
+	if includeAPI {
+		index, err := (&App{Registry: r}).operationIndex()
+		if err != nil {
+			panic(err)
+		}
+		for _, c := range r.Commands {
+			entry, _ := index.Lookup(c.CanonicalName)
+			if entry.Kind != "write" {
+				continue
+			}
+			for i, example := range c.Examples {
+				environment := "sandbox"
+				if strings.Contains(example, "--live") {
+					environment = "live"
+				}
+				if !terminalConfirmationRequired(entry, environment) {
+					continue
+				}
+				if !strings.Contains(example, "--confirm") && !strings.Contains(example, "--preview") && !strings.Contains(example, "--dry-run") {
+					c.Examples[i] = example + " --confirm"
+				}
+			}
+		}
+	}
 	// Populate command metadata before MCP readers can copy the registry.
 	r.treeSnapshot()
 	return r

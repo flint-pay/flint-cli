@@ -199,7 +199,8 @@ func TestContextSwitchLiveRequiresExplicitChoice(t *testing.T) {
 	// Existing destructive confirmations still apply to a selected live context.
 	auth := contextTestAuth("ctx_live")
 	auth.SelectedContext = true
-	if e := app.confirmCommand(&Command{Destructive: true}, auth, Options{NoInput: true}); e == nil || e.Code != "PRODUCTION_CONFIRMATION_REQUIRED" {
+	command, _ := app.Registry.ByName("api-keys.revoke")
+	if e := app.confirmCommand(command, auth, Options{NoInput: true}); e == nil || e.Code != "PRODUCTION_CONFIRMATION_REQUIRED" {
 		t.Fatalf("confirmation=%v", e)
 	}
 }

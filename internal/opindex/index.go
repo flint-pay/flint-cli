@@ -60,7 +60,13 @@ func New(commands []Command, document []byte) (*Index, error) {
 	ix := &Index{byID: map[string]Entry{}, names: map[string]string{}, impliedBy: map[string][]string{}, credentialPolicies: map[string]Entry{}}
 	for id, route := range routes {
 		schemes := securitySchemes(route.Security)
-		ix.credentialPolicies[id] = Entry{OperationID: id, Schemes: schemes, Audience: audience(schemes), PartnerAccess: route.PartnerAccess == "install_scoped"}
+		kind := "write"
+		if route.Method == "GET" && id != "authorizePartnerInstall" {
+			kind = "read"
+		}
+		ix.credentialPolicies[id] = Entry{OperationID: id, Kind: kind, Schemes: schemes, Audience: audience(schemes), PartnerAccess: route.PartnerAccess == "install_scoped",
+			Sensitive:    route.RouteClass == "payment" || route.RouteClass == "sensitive_write" || route.RouteClass == "external_provider_action",
+			Irreversible: route.Destructive || derivedDestructive(route.Method, route.Path)}
 	}
 	for _, scope := range doc.Scopes {
 		ix.impliedBy[scope.Name] = append([]string(nil), scope.ImpliedBy...)
@@ -94,9 +100,9 @@ func New(commands []Command, document []byte) (*Index, error) {
 			policy := ix.credentialPolicies[cmd.OperationID]
 			entry.Schemes, entry.Audience, entry.PartnerAccess = policy.Schemes, policy.Audience, policy.PartnerAccess
 			entry.Overwrites = route.Method == "PUT" || route.Method == "PATCH"
-			entry.Sensitive = route.RouteClass == "payment" || route.RouteClass == "sensitive_write" || route.RouteClass == "external_provider_action"
+			entry.Sensitive = policy.Sensitive
 			derived := derivedDestructive(route.Method, route.Path)
-			entry.Irreversible = route.Destructive || derived
+			entry.Irreversible = policy.Irreversible
 			if derived {
 				ix.DerivedDestructive++
 				if route.Destructive {
@@ -226,6 +232,11 @@ func derivedDestructive(method, path string) bool {
 	}
 	if method != "POST" {
 		return false
+	}
+	// Money-out creates remain irreversible until FLI-879 publishes these marks.
+	switch path {
+	case "/v1/refunds", "/v1/payouts", "/v1/credit-notes/{credit_note_id}/refunds":
+		return true
 	}
 	last := path[strings.LastIndex(path, "/")+1:]
 	switch last {

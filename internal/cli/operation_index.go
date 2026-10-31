@@ -35,3 +35,15 @@ func (a *App) operationIndex() (*opindex.Index, error) {
 func credentialSchemes(source, token string) []string {
 	return opindex.CredentialSchemes(source, token)
 }
+
+// The terminal shares classifications with MCP, with less ceremony for
+// reversible sandbox writes. MCP keeps its own agent confirmation policy.
+func terminalConfirmationRequired(entry opindex.Entry, environment string) bool {
+	if entry.Kind != "write" {
+		return false
+	}
+	if normalizeEnvironment(environment) == "sandbox" {
+		return entry.Irreversible
+	}
+	return entry.ConfirmRequired()
+}
