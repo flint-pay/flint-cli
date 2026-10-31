@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestArrayEditsMergeNoopAndConflict(t *testing.T) {
@@ -24,6 +26,7 @@ func TestArrayEditsMergeNoopAndConflict(t *testing.T) {
 		{"remove preserves", []string{"--remove-enabled-events", "refund.succeeded"}, []string{"payment_intent.succeeded", "refund.succeeded"}, 0, []string{"payment_intent.succeeded"}, 1, 1},
 		{"add existing noop", []string{"--add-enabled-events", "payment_intent.succeeded"}, []string{"payment_intent.succeeded"}, 0, nil, 1, 0},
 		{"remove missing noop", []string{"--remove-enabled-events", "refund.succeeded"}, []string{"payment_intent.succeeded"}, 0, nil, 1, 0},
+		{"noop with scalar change", []string{"--add-enabled-events", "payment_intent.succeeded", "--status", "active"}, []string{"payment_intent.succeeded"}, 0, []string{"payment_intent.succeeded"}, 1, 1},
 		{"mixed", []string{"--remove-enabled-events", "payment_intent.succeeded", "--add-enabled-events", "refund.succeeded"}, []string{"payment_intent.succeeded"}, 0, []string{"refund.succeeded"}, 1, 1},
 		{"version conflict once", []string{"--add-enabled-events", "refund.succeeded"}, []string{"payment_intent.succeeded"}, 1, []string{"payment_intent.succeeded", "order.created", "refund.succeeded"}, 2, 2},
 	} {
@@ -174,5 +177,52 @@ func TestArrayEditsInventoryAndReplacementHelp(t *testing.T) {
 	t.Logf("%d add/remove flags", count)
 	if !arrayContains([]any{json.Number("1.0")}, int64(1)) {
 		t.Fatal("numeric item identity differs")
+	}
+}
+
+func TestArrayEditsResolveIDHistory(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" || r.URL.Path != "/v1/payment-links/pl_test" {
+			t.Errorf("unexpected read %s %s", r.Method, r.URL.Path)
+		}
+		fmt.Fprint(w, `{"data":{"version":3,"delivery_method_ids":["dmet_existing"]}}`)
+	}))
+	defer server.Close()
+	app, _, _ := testApp(t, server.URL)
+	resolved := ResolvedConfig{ProfileName: "default", Environment: "sandbox"}
+	if err := app.saveHistory(History{Entries: []HistoryEntry{{ID: "dmet_history", ResourceType: "delivery_method", Profile: "default", Environment: "sandbox", CreatedAt: time.Now()}}}); err != nil {
+		t.Fatal(err)
+	}
+	cmd, opts, _, e := parseInvocation(app.Registry, []string{"payment-links", "update", "pl_test", "--add-delivery-method-ids", "@last.dmet"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	req, e := app.prepareRequest(context.Background(), cmd, opts, resolved, "", server.URL)
+	if e != nil {
+		t.Fatal(e)
+	}
+	got := req.BodyValue["delivery_method_ids"]
+	if !reflect.DeepEqual(got, []any{"dmet_existing", "dmet_history"}) {
+		t.Fatal(got)
+	}
+}
+
+func TestArrayEditsRefuseIncompleteRead(t *testing.T) {
+	patches := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			patches++
+		}
+		fmt.Fprint(w, `{"data":{"version":3}}`)
+	}))
+	defer server.Close()
+	app, _, _ := testApp(t, server.URL)
+	cmd, opts, _, e := parseInvocation(app.Registry, []string{"webhook-endpoints", "update", "whep_test", "--add-enabled-events", "refund.succeeded"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	_, e = app.prepareRequest(context.Background(), cmd, opts, ResolvedConfig{}, "", server.URL)
+	if e == nil || e.Code != "ARRAY_EDIT_READ_INVALID" || patches != 0 {
+		t.Fatal(e, patches)
 	}
 }
