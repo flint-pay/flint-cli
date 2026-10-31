@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+const completionBooleanType = "boolean"
+
 func completionCommand() *Command {
 	return &Command{Name: "completion", Path: pathWithFlint("completion"), Description: "Print an offline bash, zsh, or fish completion script", Local: true, MCPHidden: true, Arguments: []Arg{{Name: "shell", Type: "string", Positional: 1, Required: true, Enum: []string{"bash", "zsh", "fish"}, Description: "Shell to configure"}}, Examples: ex("flint completion bash", "flint completion zsh", "flint completion fish")}
 }
@@ -203,7 +205,7 @@ func completionArgument(cmd *Command, flag string) (Arg, bool) {
 	if globalFlags[key] {
 		arg := Arg{Flag: flag}
 		if boolFlags[key] {
-			arg.Type = "boolean"
+			arg.Type = completionBooleanType
 		}
 		return arg, true
 	}
@@ -269,7 +271,7 @@ func completionFlagArguments(cmd *Command) []Arg {
 	// Global booleans have no value to consume while walking shell words.
 	for i := range args {
 		if boolFlags[strings.TrimPrefix(args[i].Flag, "--")] {
-			args[i].Type = "boolean"
+			args[i].Type = completionBooleanType
 		}
 	}
 	return args

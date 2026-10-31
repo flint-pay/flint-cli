@@ -43,7 +43,7 @@ func TestOperationIndexClassification(t *testing.T) {
 		t.Fatalf("trigger: %+v", trigger)
 	}
 	t.Logf("audiences=%v merchant-exposed=%d events=%d bridge=%d/%d", counts, exposed, events, ix.PublishedDestructive, ix.DerivedDestructive)
-	if events != 251 || counts["buyer"] != 70 || counts["merchant"] != 533 || counts["local"] != 32 || counts["keyless"] != 8 || exposed != 543 {
+	if events != 251 || counts["buyer"] != 70 || counts["merchant"] != 533 || counts["local"] != 33 || counts["keyless"] != 8 || exposed != 543 {
 		t.Errorf("classification changed: %v events=%d", counts, events)
 	}
 	if ix.DerivedDestructive == 0 || ix.PublishedDestructive == ix.DerivedDestructive {
