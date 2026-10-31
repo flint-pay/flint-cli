@@ -223,6 +223,7 @@ func TestWebhookCreateOutputSchemaAllowsAbsentSecret(t *testing.T) {
 	for _, withSecret := range []bool{false, true} {
 		body := map[string]any{"data": map[string]any{
 			"webhook_endpoint_id": "whep_test", "api_version": "default", "enabled_events": []any{"payment_intent.succeeded"},
+			"created_at": "2026-10-28T00:00:00Z", "updated_at": "2026-10-28T00:00:00Z",
 			"signing_methods": []any{"jwt"}, "status": "active", "url": "https://example.com/webhooks/flint", "version": float64(1),
 		}, "request_id": "req_01J0000000000000000000000A"}
 		if withSecret {
