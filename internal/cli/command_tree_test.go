@@ -248,3 +248,19 @@ func TestCommandTreeConcurrentResolution(t *testing.T) {
 	}
 	workers.Wait()
 }
+
+func TestCommandTreeConcurrentMCPReaders(t *testing.T) {
+	for n := 0; n < 8; n++ {
+		a := &App{Registry: NewRegistry()}
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() { defer wg.Done(); a.Registry.commandTree() }()
+		go func() {
+			defer wg.Done()
+			for i := 0; i < 20; i++ {
+				a.mcpAllTools()
+			}
+		}()
+		wg.Wait()
+	}
+}

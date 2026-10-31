@@ -135,6 +135,8 @@ func newRegistry(includeAPI bool) *Registry {
 		r.add(c)
 	}
 	sort.Slice(r.Commands, func(i, j int) bool { return r.Commands[i].Name < r.Commands[j].Name })
+	// Populate command metadata before MCP readers can copy the registry.
+	r.treeSnapshot()
 	return r
 }
 

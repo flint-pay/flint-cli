@@ -145,7 +145,7 @@ func TestCommandNameCollisions(t *testing.T) {
 func TestCommandTreeInvariants(t *testing.T) {
 	var commands []*Command
 	for _, c := range NewRegistry().Commands {
-		if c.Kind != "" {
+		if !commandOwned(c) {
 			commands = append(commands, c)
 		}
 		for _, a := range c.Arguments {
@@ -211,7 +211,7 @@ func TestShortcutsClosed(t *testing.T) {
 func TestNoGeneratedNamesInCode(t *testing.T) {
 	names := map[string]bool{}
 	for _, c := range NewRegistry().Commands {
-		if c.Kind != "" {
+		if !commandOwned(c) {
 			names[c.Name] = true
 		}
 	}
@@ -377,7 +377,7 @@ func TestCompatibilityBodyFlagsUnchanged(t *testing.T) {
 	}
 	got := map[string][]string{}
 	for _, command := range NewRegistry().Commands {
-		if command.Kind == "" {
+		if commandOwned(command) {
 			continue
 		}
 		for _, arg := range command.Arguments {
