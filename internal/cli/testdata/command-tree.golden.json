@@ -589,6 +589,13 @@
     "audience": "merchant"
   },
   {
+    "name": "customers.email-preferences.get",
+    "operation_id": "getCustomerEmailPreferences",
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "customers.get",
     "operation_id": "getCustomer",
     "kind": "item",
@@ -980,6 +987,13 @@
     "audience": "merchant"
   },
   {
+    "name": "email-preferences.lookup",
+    "operation_id": "lookupEmailPreferences",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "files.complete",
     "operation_id": "completeFile",
     "kind": "action",
@@ -1101,6 +1115,13 @@
   {
     "name": "gift-card-funding-dispositions.list",
     "operation_id": "listGiftCardFundingDispositions",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "gift-card-loads.create",
+    "operation_id": "createGiftCardLoad",
     "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
@@ -1234,13 +1255,6 @@
   {
     "name": "gift-cards.list",
     "operation_id": "listGiftCards",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "gift-cards.loads.create",
-    "operation_id": "createGiftCardLoad",
     "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
@@ -1892,20 +1906,6 @@
     "audience": "buyer"
   },
   {
-    "name": "me.flint-wallet.cards.list",
-    "operation_id": "listMeFlintWalletCards",
-    "kind": "collection",
-    "section": "buyer_session",
-    "audience": "buyer"
-  },
-  {
-    "name": "me.flint-wallet.cards.store-setups.create",
-    "operation_id": "createMeFlintWalletStoreSetup",
-    "kind": "collection",
-    "section": "buyer_session",
-    "audience": "buyer"
-  },
-  {
     "name": "me.fulfillment-events.list",
     "operation_id": "listMeFulfillmentEvents",
     "kind": "collection",
@@ -1934,6 +1934,13 @@
     "audience": "buyer"
   },
   {
+    "name": "me.gift-card-transactions.list",
+    "operation_id": "listMeGiftCardTransactions",
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
     "name": "me.gift-cards.create",
     "operation_id": "saveMeGiftCard",
     "kind": "collection",
@@ -1957,13 +1964,6 @@
   {
     "name": "me.gift-cards.list",
     "operation_id": "listMeGiftCards",
-    "kind": "collection",
-    "section": "buyer_session",
-    "audience": "buyer"
-  },
-  {
-    "name": "me.gift-cards.transactions.list",
-    "operation_id": "listMeGiftCardTransactions",
     "kind": "collection",
     "section": "buyer_session",
     "audience": "buyer"
@@ -3229,6 +3229,27 @@
     "audience": "merchant"
   },
   {
+    "name": "promotion-codes.create",
+    "operation_id": "createPromotionCode",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "promotion-codes.delete",
+    "operation_id": "deletePromotionCode",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "promotion-codes.get",
+    "operation_id": "getPromotionCode",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "promotion-codes.list",
     "operation_id": "listPromotionCodes",
     "kind": "collection",
@@ -3236,28 +3257,7 @@
     "audience": "merchant"
   },
   {
-    "name": "promotions.codes.create",
-    "operation_id": "createPromotionCode",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "promotions.codes.delete",
-    "operation_id": "deletePromotionCode",
-    "kind": "item",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "promotions.codes.get",
-    "operation_id": "getPromotionCode",
-    "kind": "item",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "promotions.codes.update",
+    "name": "promotion-codes.update",
     "operation_id": "updatePromotionCode",
     "kind": "item",
     "section": "merchant_resources",

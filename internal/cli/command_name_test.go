@@ -176,7 +176,6 @@ func TestRefreshedUnpaginatedListsKeepNames(t *testing.T) {
 	for id, want := range map[string]string{
 		"listBalances":                "balances.list",
 		"listMerchantBillingBalances": "merchant-billing-balances.list",
-		"listMeFlintWalletCards":      "me.flint-wallet.cards.list",
 	} {
 		command, ok := registry.ByName(want)
 		if !ok || command.OperationID != id || command.Kind != "collection" {
