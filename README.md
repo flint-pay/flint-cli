@@ -305,7 +305,7 @@ Cursor and other clients that use `mcpServers`:
 ```
 
 - `--read-only` removes the write tool and refuses writes, including direct calls.
-- `--tools orders,refunds` opts into one typed tool per operation in those groups, plus search, describe, and help restricted to that scope. `--tools all` selects every available operation. `--tools default` is removed. Typed names use underscores for both dots and hyphens, such as `payment_intents_create`.
+- `--tools orders,refunds` opts into one typed tool per operation in those groups, plus search, describe, and help restricted to that scope. `--tools all` selects every available operation. `--tools default` is removed. Typed names use lowercase letters, digits, and underscores for both dots and hyphens, such as `payment_intents_create`; old dotted or hyphenated tool names are rejected. Keep the client server name at most five characters (for example, `flint`) so prefixed names fit 64 characters. Typed mode has no `flint_read` or `flint_write` tools. Its compact schemas show two levels of fields; use `flint_describe` to open deeper objects. Calls still validate the full schema, including variant requirements. Execution controls are top-level properties, with required idempotency keys and confirmation rules shown per operation.
 - Credential class restricts discovery and calls. A merchant API key cannot reach buyer-session operations; a partner access token reaches only install-scoped operations. Raw `api`, `help_search`, and `schema_*` tools are removed.
 - `--allow-live` permits live credentials; each live call must also carry `live: true`. The server's profile, merchant guard, context, and timeout are fixed at startup.
 

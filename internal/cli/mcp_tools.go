@@ -526,6 +526,7 @@ func schemaForMCPTool(cmd *Command, policy mcpPolicy) (map[string]any, *CLIError
 	if err != nil {
 		return nil, mcpDiscoverySnapshotError(err)
 	}
+	delete(schema, "description")
 	properties, _ := schema["properties"].(map[string]any)
 	if public.Local {
 		delete(properties, "for")
@@ -563,10 +564,12 @@ func schemaForMCPTool(cmd *Command, policy mcpPolicy) (map[string]any, *CLIError
 		}
 		controls := tool["inputSchema"].(map[string]any)["properties"].(map[string]any)
 		for name, control := range controls {
-			if name == "operation" || name == "arguments" || name == "all" && !paginated || (name == "wait_for" || name == "wait_seconds") && !get || name == "idempotency_key" && idempotency == "none" || name == "confirm" && !gated {
+			if name == "operation" || name == "arguments" || name == "all" && !paginated || (name == "wait_for" || name == "wait_seconds") && !get || name == "confirm" && !gated {
 				continue
 			}
-			properties[name] = control
+			compact := maps.Clone(control.(map[string]any))
+			delete(compact, "description")
+			properties[name] = compact
 		}
 	}
 	if paginated {
@@ -745,6 +748,7 @@ var mcpLocalTools = map[string]struct{ title, description string }{
 	"schema.commands": {"List commands", "List Flint CLI commands, optionally only those in a group such as customers, with their API routes."},
 	"schema.errors":   {"Error catalog", "Flint exit codes and error types."},
 	"schema.events":   {"Webhook event catalog", "List webhook event types with one-line descriptions. Pass event_type (an exact type, or a prefix such as payment_intent) for their payload schemas."},
+	"trigger":         {"Run a sandbox recipe", "Create sandbox fixtures and run the selected payment or webhook recipe, waiting at most 60 seconds."},
 	"history":         {"Recent resource IDs", "List Flint resource IDs this CLI recently created or changed with the active credential."},
 	"history.clear":   {"Clear resource history", "Delete this CLI's saved list of recent resource IDs. Needs confirm: true."},
 	"version":         {"CLI version", "Flint CLI version and build, and the public API version and schema hash it targets."},

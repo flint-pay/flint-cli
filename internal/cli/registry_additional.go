@@ -61,7 +61,7 @@ func additionalCommands(page []Arg, input Arg) []*Command {
 			Local:       true,
 			Arguments: []Arg{
 				{Name: "read_only", Flag: "--read-only", Type: "boolean", Description: "Expose read operations only and refuse every write"},
-				{Name: "tools", Flag: "--tools", Type: "string", Repeat: true, Description: "Opt into typed tools for operation IDs or dotted resource prefixes, comma-separated or repeated; all selects every available operation. Search, describe, and help use the same scope"},
+				{Name: "tools", Flag: "--tools", Type: "string", Repeat: true, Description: "Opt into typed tools for operation IDs or dotted resource prefixes, comma-separated or repeated; all selects every available operation. Names use underscores for dots and hyphens. Search, describe, and help use the same scope; no generic read/write tools"},
 				{Name: "allow_live", Flag: "--allow-live", Type: "boolean", Description: "Let tools act on live (production) credentials and contexts; each live call must pass live: true"},
 				{Name: "allow_destructive", Flag: "--allow-destructive", Type: "boolean", Description: "Let agents confirm gated live operations with confirm: true"},
 			},

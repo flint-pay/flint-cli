@@ -111,6 +111,10 @@ func (r *Reader) flattenNode(schema map[string]any, depth, budget int, path stri
 		if err != nil {
 			return nil, err
 		}
+		// Scalar item prose repeats the containing field; object hints must remain.
+		if items["type"] != "object" && items["properties"] == nil {
+			delete(items, "description")
+		}
 		out["items"] = items
 	}
 	return out, nil
