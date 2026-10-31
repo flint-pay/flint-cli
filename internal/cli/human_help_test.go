@@ -28,3 +28,17 @@ func TestHumanHelpTopicTables(t *testing.T) {
 		})
 	}
 }
+
+func TestHumanEventDetailRetainsSchema(t *testing.T) {
+	value, err := eventHelpDetail("payment_intent.succeeded")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	renderHelpTopicHuman(&out, "events", value)
+	for _, want := range []string{"payment_intent.succeeded", `"webhook"`, `"components"`} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("missing event detail %q: %s", want, &out)
+		}
+	}
+}

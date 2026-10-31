@@ -25,6 +25,7 @@ func renderInitHuman(w io.Writer, value any, now time.Time) bool {
 		}
 		checks = append(checks, check)
 	}
+	fmt.Fprintln(w, "Checks")
 	renderDoctorHuman(w, map[string]any{"data": checks})
 	remaining := make(map[string]any, len(data))
 	for key, value := range data {

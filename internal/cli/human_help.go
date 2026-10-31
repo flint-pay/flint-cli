@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
@@ -53,6 +54,12 @@ func renderHelpTopicHuman(w io.Writer, topic string, value map[string]any) {
 		}
 		table("Listener error codes", "listen_codes", "code", "exit_code")
 	case "events":
+		if _, ok := data["events"]; !ok {
+			// An individual event exposes its complete OpenAPI payload schema.
+			body, _ := json.MarshalIndent(data, "", "  ")
+			fmt.Fprintln(w, string(body))
+			return
+		}
 		table("Webhook event types", "events", "type", "description")
 	case "errors":
 		fmt.Fprintln(w, "\nEnvelope: "+fmt.Sprint(data["envelope"]))
