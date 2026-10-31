@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/flint-pay/flint-cli/internal/opindex"
@@ -160,5 +161,96 @@ func TestStartupLazyInvocation(t *testing.T) {
 	}
 	if fullSnapshotLoaded.Load() {
 		t.Fatal("variant schema decoded full snapshot")
+	}
+}
+
+func TestStartupCommandCloneIsolation(t *testing.T) {
+	fixture := func() *Command {
+		explode := true
+		return &Command{
+			Name: "fixture", Path: []string{"flint", "fixture"}, CanonicalPath: []string{"flint", "fixture"},
+			Aliases: []string{"alias"}, AliasPaths: [][]string{{"flint", "alias"}}, Examples: []string{"flint fixture"},
+			Security:  []map[string][]string{{"BearerAuth": {"customers.read"}}, nil},
+			Arguments: []Arg{{Name: "choice", Enum: []string{"a"}, Variants: []string{"a"}, RequiredFor: []string{"a"}, Explode: &explode, bodyGenerated: true}},
+			Render:    "fixture", MCPHidden: true,
+		}
+	}
+	source := fixture()
+	clone := cloneStartupCommand(source)
+	if !reflect.DeepEqual(clone, source) {
+		t.Fatal("clone lost metadata")
+	}
+	mutateStartupValue(reflect.ValueOf(clone))
+	if !reflect.DeepEqual(source, fixture()) {
+		t.Fatal("nested command mutation reached its source")
+	}
+	for _, empty := range []*Command{{}, {Arguments: []Arg{}, Aliases: []string{}, Security: []map[string][]string{}}} {
+		if !reflect.DeepEqual(cloneStartupCommand(empty), empty) {
+			t.Fatal("clone changed nil/empty fields")
+		}
+	}
+}
+
+func TestStartupCatalogConcurrentIsolation(t *testing.T) {
+	fullBefore, _ := json.Marshal(startupCommands())
+	localBefore, _ := json.Marshal(startupLocalCommands())
+	var workers sync.WaitGroup
+	for worker := range 8 {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			registry := indexedRegistry(worker%2 == 0)
+			for _, cmd := range registry.Commands {
+				mutateStartupValue(reflect.ValueOf(cmd))
+			}
+		}()
+	}
+	workers.Wait()
+	fullAfter, _ := json.Marshal(startupCommands())
+	localAfter, _ := json.Marshal(startupLocalCommands())
+	if !bytes.Equal(fullBefore, fullAfter) || !bytes.Equal(localBefore, localAfter) {
+		t.Fatal("registry mutation changed cached catalog")
+	}
+	fresh, _ := json.Marshal(indexedRegistry(true).Commands)
+	if !bytes.Equal(fullBefore, fresh) {
+		t.Fatal("registry mutation changed subsequent App")
+	}
+}
+
+// Mutate every exported nested value, rather than just checking top-level
+// pointers. Map insertion also detects shared maps whose values are empty.
+func mutateStartupValue(value reflect.Value) {
+	switch value.Kind() {
+	case reflect.Pointer:
+		if !value.IsNil() {
+			mutateStartupValue(value.Elem())
+		}
+	case reflect.Struct:
+		for i := 0; i < value.NumField(); i++ {
+			mutateStartupValue(value.Field(i))
+		}
+	case reflect.Slice:
+		for i := 0; i < value.Len(); i++ {
+			mutateStartupValue(value.Index(i))
+		}
+	case reflect.Map:
+		if value.IsNil() {
+			return
+		}
+		for _, key := range value.MapKeys() {
+			item := reflect.New(value.Type().Elem()).Elem()
+			item.Set(value.MapIndex(key))
+			mutateStartupValue(item)
+			value.SetMapIndex(key, item)
+		}
+		value.SetMapIndex(reflect.ValueOf("mutated").Convert(value.Type().Key()), reflect.Zero(value.Type().Elem()))
+	case reflect.String:
+		if value.CanSet() {
+			value.SetString("mutated")
+		}
+	case reflect.Bool:
+		if value.CanSet() {
+			value.SetBool(!value.Bool())
+		}
 	}
 }

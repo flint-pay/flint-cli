@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 
@@ -53,29 +54,79 @@ func GenerateStartupIndex(path string) error {
 
 func newRegistry(includeAPI bool) *Registry { return indexedRegistry(includeAPI) }
 
-func indexedRegistry(includeAPI bool) *Registry {
-	var commands []startupCommand
-	raw := apispec.Startup().Commands
-	if !includeAPI {
-		raw = apispec.Startup().LocalCommands
-	}
-	if err := json.Unmarshal(raw, &commands); err != nil {
+// The parsed catalogs are immutable. Every registry receives an isolated copy,
+// so App/test mutations never reach another caller or the cached catalog.
+var startupCommands = sync.OnceValue(func() []*Command {
+	return decodeStartupCommands(apispec.Startup().Commands)
+})
+var startupLocalCommands = sync.OnceValue(func() []*Command {
+	return decodeStartupCommands(apispec.Startup().LocalCommands)
+})
+
+func decodeStartupCommands(raw json.RawMessage) []*Command {
+	var stored []startupCommand
+	if err := json.Unmarshal(raw, &stored); err != nil {
 		panic(err)
 	}
-	registry := &Registry{treeBuild: &sync.Once{}, localOnly: !includeAPI, byName: map[string]*Command{}, byPath: map[string]*Command{}}
-	for _, stored := range commands {
-		cmd := stored.Command
-		if !includeAPI && !cmd.Local {
-			continue
+	commands := make([]*Command, len(stored))
+	for i, entry := range stored {
+		cmd := entry.Command
+		cmd.Render, cmd.MCPHidden = entry.Render, entry.MCPHidden
+		for n, generated := range entry.Generated {
+			cmd.Arguments[n].bodyGenerated = generated
 		}
-		cmd.Render, cmd.MCPHidden = stored.Render, stored.MCPHidden
-		for i, generated := range stored.Generated {
-			cmd.Arguments[i].bodyGenerated = generated
-		}
-		registry.add(cmd)
+		commands[i] = cmd
+	}
+	return commands
+}
+
+func indexedRegistry(includeAPI bool) *Registry {
+	var commands []*Command
+	if includeAPI {
+		commands = startupCommands()
+	} else {
+		commands = startupLocalCommands()
+	}
+	registry := &Registry{Commands: make([]*Command, 0, len(commands)), treeBuild: &sync.Once{}, localOnly: !includeAPI, byName: make(map[string]*Command, len(commands)), byPath: make(map[string]*Command, len(commands))}
+	for _, cmd := range commands {
+		registry.add(cloneStartupCommand(cmd))
 	}
 	registry.treeSnapshot()
 	return registry
+}
+
+func cloneStartupCommand(source *Command) *Command {
+	clone := *source
+	clone.Path = slices.Clone(source.Path)
+	clone.CanonicalPath = slices.Clone(source.CanonicalPath)
+	clone.Aliases = slices.Clone(source.Aliases)
+	clone.AliasPaths = slices.Clone(source.AliasPaths)
+	for i, path := range clone.AliasPaths {
+		clone.AliasPaths[i] = slices.Clone(path)
+	}
+	clone.Examples = slices.Clone(source.Examples)
+	clone.Security = slices.Clone(source.Security)
+	for i, requirement := range source.Security {
+		if requirement == nil {
+			continue
+		}
+		clone.Security[i] = make(map[string][]string, len(requirement))
+		for scheme, scopes := range requirement {
+			clone.Security[i][scheme] = slices.Clone(scopes)
+		}
+	}
+	clone.Arguments = slices.Clone(source.Arguments)
+	for i := range clone.Arguments {
+		arg := &clone.Arguments[i]
+		arg.Enum = slices.Clone(arg.Enum)
+		arg.Variants = slices.Clone(arg.Variants)
+		arg.RequiredFor = slices.Clone(arg.RequiredFor)
+		if arg.Explode != nil {
+			value := *arg.Explode
+			arg.Explode = &value
+		}
+	}
+	return &clone
 }
 
 var metadataDocument = sync.OnceValue(func() openAPIDocument {
