@@ -26,7 +26,7 @@ Developer tools:
   doctor                           Check credential, connectivity, scopes, and API compatibility; explain scopes that need a live key
   help                             Command help, reference topics, and offline search
   history                          List or clear recent Flint resource IDs
-  init                             Initialize Flint CLI context
+  init                             Write or validate .flint/config.json project guards; commit this file with your project
   listen                           Forward Flint webhook events to a local endpoint using the local HMAC listen secret, regardless of endpoint signing methods. Delivery is at-least-once and uses the caller's API version. To test JWT, use a tunnel and a registered sandbox endpoint
   mcp                              Serve Flint operations to AI agents over MCP
   openapi                          API metadata.

@@ -607,6 +607,9 @@ func TestTriggerRecoverySelection(t *testing.T) {
 				defer server.Close()
 				app, out, stderr := testApp(t, server.URL)
 				// Resolve the profile from the environment, not just the original flags.
+				if err := app.updateConfig(func(cfg *Config) error { cfg.Profiles["secondary profile"] = profileWithoutCredential(); return nil }); err != nil {
+					t.Fatal(err)
+				}
 				t.Setenv("FLINT_PROFILE", "secondary profile")
 				if oauth {
 					t.Setenv("FLINT_API_KEY", "")

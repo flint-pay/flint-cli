@@ -129,7 +129,7 @@ func TestRetiredFeedbackConfigIsDiscarded(t *testing.T) {
 	if strings.Contains(string(raw), "feedback") {
 		t.Fatalf("retired setting persisted: %s", raw)
 	}
-	if err := lenientConfigJSON([]byte(`{"profiles":{"default":{"unknown_setting":true}}}`), &cfg); err != nil {
-		t.Fatal("unknown profile settings should be ignored:", err)
+	if err := configJSON([]byte(`{"profiles":{"default":{"unknown_setting":true}}}`), &cfg); err == nil {
+		t.Fatal("unknown profile settings should fail closed")
 	}
 }

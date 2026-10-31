@@ -1400,6 +1400,9 @@ func TestEveryLocalCommandExecutes(t *testing.T) {
 			case "completion":
 				argv = append(argv, "bash")
 			case "config.set":
+				if err := app.updateConfig(func(cfg *Config) error { cfg.Profiles["exhaustive"] = profileWithoutCredential(); return nil }); err != nil {
+					t.Fatal(err)
+				}
 				argv = append(argv, "profile", "exhaustive")
 			case "config.unset":
 				argv = append(argv, "merchant")

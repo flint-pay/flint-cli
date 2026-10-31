@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -41,7 +42,7 @@ func (p *Profile) UnmarshalJSON(data []byte) error {
 		profileFields
 		LegacyFeedback json.RawMessage `json:"agent_feedback_submission"`
 	}
-	if err := json.Unmarshal(data, &decoded); err != nil {
+	if err := strictJSON(data, &decoded); err != nil {
 		return err
 	}
 	*p = Profile(decoded.profileFields)
@@ -49,10 +50,10 @@ func (p *Profile) UnmarshalJSON(data []byte) error {
 }
 
 type ProjectConfig struct {
-	ContextID string `json:"context,omitempty"`
+	ContextID string `json:"context_id,omitempty"`
 	Profile   string `json:"profile,omitempty"`
-	Merchant  string `json:"merchant,omitempty"`
-	Sandbox   string `json:"sandbox,omitempty"`
+	Merchant  string `json:"merchant_id,omitempty"`
+	Sandbox   string `json:"sandbox_id,omitempty"`
 }
 
 type ResolvedConfig struct {
@@ -69,6 +70,7 @@ type ResolvedConfig struct {
 	ProjectConfigPath string            `json:"project_config_path,omitempty"`
 	GlobalConfigPath  string            `json:"global_config_path"`
 	Sources           map[string]string `json:"sources"`
+	Profiles          []map[string]any  `json:"profiles"`
 }
 
 func (a *App) configDirectory() (string, error) {
@@ -103,7 +105,7 @@ func (a *App) loadConfig() (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
-	if err := lenientConfigJSON(b, &cfg); err != nil {
+	if err := configJSON(b, &cfg); err != nil {
 		return cfg, fmt.Errorf("parse %s: %w", path, err)
 	}
 	if cfg.DefaultProfile == "" {
@@ -115,11 +117,48 @@ func (a *App) loadConfig() (Config, error) {
 	return cfg, nil
 }
 
-func lenientConfigJSON(data []byte, target any) error {
+func configJSON(data []byte, target any) error {
 	if strings.TrimSpace(string(data)) == "" {
 		return nil
 	}
-	return json.Unmarshal(data, target)
+	if !strings.HasPrefix(strings.TrimSpace(string(data)), "{") {
+		return errors.New("config must be a JSON object")
+	}
+	err := strictJSON(data, target)
+	if err == nil {
+		return nil
+	}
+	if _, project := target.(*ProjectConfig); project {
+		for old, current := range map[string]string{"merchant": "merchant_id", "sandbox": "sandbox_id", "context": "context_id"} {
+			if err.Error() == fmt.Sprintf("json: unknown field %q", old) {
+				return fmt.Errorf("project field %q was renamed to %q", old, current)
+			}
+		}
+		const prefix = "json: unknown field "
+		if strings.HasPrefix(err.Error(), prefix) {
+			field := strings.Trim(strings.TrimPrefix(err.Error(), prefix), "\"")
+			candidates := []string{"merchant_id", "sandbox_id", "context_id", "profile"}
+			sortStringsByDistance(candidates, field)
+			if editDistance(field, candidates[0]) <= 3 {
+				return fmt.Errorf("%w; did you mean %q?", err, candidates[0])
+			}
+		}
+	}
+	return err
+}
+
+func profileList(cfg Config) []map[string]any {
+	names := make([]string, 0, len(cfg.Profiles))
+	for name := range cfg.Profiles {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	profiles := make([]map[string]any, 0, len(names))
+	for _, name := range names {
+		p := cfg.Profiles[name]
+		profiles = append(profiles, map[string]any{"name": name, "default": name == cfg.DefaultProfile, "environment": p.Environment, "merchant_id": p.MerchantID})
+	}
+	return profiles
 }
 
 func strictJSON(data []byte, target any) error {
@@ -224,7 +263,7 @@ func (a *App) findProjectConfig() (ProjectConfig, string, error) {
 		b, err := os.ReadFile(path)
 		if err == nil {
 			var cfg ProjectConfig
-			if err := lenientConfigJSON(b, &cfg); err != nil {
+			if err := configJSON(b, &cfg); err != nil {
 				return cfg, path, fmt.Errorf("parse %s: %w", path, err)
 			}
 			return cfg, path, nil
@@ -241,11 +280,15 @@ func (a *App) findProjectConfig() (ProjectConfig, string, error) {
 }
 
 func (a *App) resolveConfig(opts Options) (ResolvedConfig, Config, error) {
-	cfg, err := a.loadConfig()
-	if err != nil {
-		return ResolvedConfig{}, cfg, err
-	}
 	project, projectPath, err := a.findProjectConfig()
+	if err != nil {
+		return ResolvedConfig{}, Config{}, err
+	}
+	return a.resolveProjectConfig(opts, project, projectPath)
+}
+
+func (a *App) resolveProjectConfig(opts Options, project ProjectConfig, projectPath string) (ResolvedConfig, Config, error) {
+	cfg, err := a.loadConfig()
 	if err != nil {
 		return ResolvedConfig{}, cfg, err
 	}
@@ -267,7 +310,7 @@ func (a *App) resolveConfig(opts Options) (ResolvedConfig, Config, error) {
 		profile = "default"
 	}
 	p, ok := cfg.Profiles[profile]
-	if !ok && profile != "default" && !opts.allowMissingProfile && credentialFromEnvironment() == "" && strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) == "" && workloadIdentityID() == "" {
+	if !ok && profile != "default" && !opts.allowMissingProfile {
 		source := configSource("profile", sources["profile"], projectPath)
 		return ResolvedConfig{}, cfg, fmt.Errorf("unknown profile %q from %s; create it with flint login --profile %s, flint auth import --profile %s, or flint signup --profile %s", profile, source, profile, profile, profile)
 	}
@@ -317,7 +360,7 @@ func (a *App) resolveConfig(opts Options) (ResolvedConfig, Config, error) {
 		sources["context"] = "flag"
 	}
 	path, _ := a.configPath()
-	return ResolvedConfig{ProfileContextID: p.ContextID, ContextID: contextID, ProfileName: profile, MerchantGuard: merchant, SandboxGuard: sandboxGuard, Environment: p.Environment, APIKeyID: p.APIKeyID, MerchantID: p.MerchantID, SandboxID: p.SandboxID, ProjectConfigPath: projectPath, GlobalConfigPath: path, Sources: sources}, cfg, nil
+	return ResolvedConfig{ProfileContextID: p.ContextID, ContextID: contextID, ProfileName: profile, MerchantGuard: merchant, SandboxGuard: sandboxGuard, Environment: p.Environment, APIKeyID: p.APIKeyID, MerchantID: p.MerchantID, SandboxID: p.SandboxID, ProjectConfigPath: projectPath, GlobalConfigPath: path, Sources: sources, Profiles: profileList(cfg)}, cfg, nil
 }
 
 func credentialFromEnvironment() string { return strings.TrimSpace(os.Getenv("FLINT_API_KEY")) }

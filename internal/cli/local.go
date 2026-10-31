@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -93,13 +94,10 @@ func (a *App) localConfigSet(cmd *Command, opts Options) int {
 			return a.fail(usageError("INVALID_PROFILE", "Profile name must not contain whitespace, slashes, or backslashes.", "value"), opts)
 		}
 		if err := a.updateConfig(func(cfg *Config) error {
-			cfg.DefaultProfile = value
-			if cfg.Profiles == nil {
-				cfg.Profiles = map[string]Profile{}
-			}
 			if _, ok := cfg.Profiles[value]; !ok {
-				cfg.Profiles[value] = profileWithoutCredential()
+				return fmt.Errorf("unknown profile %q; create it with flint login --profile %s, flint auth import --profile %s, or flint signup --profile %s", value, value, value, value)
 			}
+			cfg.DefaultProfile = value
 			return nil
 		}); err != nil {
 			return a.fail(configError("CONFIG_WRITE_FAILED", err.Error(), err), opts)
@@ -134,8 +132,14 @@ func (a *App) localConfigSet(cmd *Command, opts Options) int {
 
 func (a *App) localConfigUnset(cmd *Command, opts Options) int {
 	key := opts.Positionals[0]
+	if key == "profile" {
+		if err := a.updateConfig(func(cfg *Config) error { cfg.DefaultProfile = "default"; return nil }); err != nil {
+			return a.fail(configError("CONFIG_WRITE_FAILED", err.Error(), err), opts)
+		}
+		return a.outputLocal(map[string]any{"data": map[string]any{"key": key, "value": nil}}, cmd, opts)
+	}
 	if key != "merchant" {
-		return a.fail(usageError("INVALID_CONFIG_KEY", "Config key must be merchant.", "key"), opts)
+		return a.fail(usageError("INVALID_CONFIG_KEY", "Config key must be profile or merchant.", "key"), opts)
 	}
 	resolved, _, err := a.resolveConfig(opts)
 	if err != nil {
@@ -158,7 +162,6 @@ func (a *App) localConfigValidate(cmd *Command, opts Options) int {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
 	}
 	checks := []map[string]any{{"name": "global_config", "status": "pass", "path": resolved.GlobalConfigPath}, {"name": "project_config", "status": "pass", "path": resolved.ProjectConfigPath}, {"name": "profile", "status": "pass", "value": resolved.ProfileName}}
-	checks = append(checks, configUnknownFieldWarnings(resolved)...)
 	key, source, credentialErr := a.resolveCheckCredential(resolved.ProfileName)
 	if credentialErr != nil {
 		return a.fail(configError("CREDENTIAL_LOOKUP_FAILED", credentialErr.Error(), credentialErr), opts)
@@ -404,7 +407,7 @@ func (a *App) localLogout(cmd *Command, opts Options) int {
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
 	}
-	if e := a.confirmLocal("Sign out and remove the active credential (revokes OAuth sessions)?", opts); e != nil {
+	if e := a.confirmLocal("Sign out and delete the active profile (revokes OAuth sessions)?", opts); e != nil {
 		return a.fail(e, opts)
 	}
 	var persistenceErr *CLIError
@@ -454,18 +457,19 @@ func (a *App) localLogout(cmd *Command, opts Options) int {
 			cfg.Profiles = map[string]Profile{}
 		}
 		previousProfile := cfg.Profiles[resolved.ProfileName]
-		p := previousProfile
-		p.ContextID = ""
-		p.Environment = ""
-		p.APIKeyID = ""
-		p.MerchantID = ""
-		p.SandboxID = ""
-		cfg.Profiles[resolved.ProfileName] = a.profileWithCredential(resolved.ProfileName, p, false)
+		previousDefault := cfg.DefaultProfile
+		delete(cfg.Profiles, resolved.ProfileName)
+		if cfg.DefaultProfile == resolved.ProfileName {
+			cfg.DefaultProfile = "default"
+		}
+		persistence := *a
+		persistence.credentialStore = a.selectedCredentialStore(resolved.ProfileName, previousProfile)
 		if saveErr := a.saveConfigUnlocked(cfg); saveErr != nil {
 			persistenceErr = configError("CONFIG_WRITE_FAILED", saveErr.Error(), saveErr)
 			return saveErr
 		}
-		if deleteErr := a.deleteSavedCredential(resolved.ProfileName); deleteErr != nil {
+		if deleteErr := persistence.deleteSavedCredential(resolved.ProfileName); deleteErr != nil {
+			cfg.DefaultProfile = previousDefault
 			cfg.Profiles[resolved.ProfileName] = previousProfile
 			if restoreErr := a.saveConfigUnlocked(cfg); restoreErr != nil {
 				persistenceErr = credentialStoreError("KEYCHAIN_DELETE_FAILED", "Could not remove the credential; profile metadata rollback also failed: "+restoreErr.Error(), deleteErr)
@@ -668,9 +672,31 @@ func (a *App) localHelp(cmd *Command, opts Options) int {
 }
 
 func (a *App) localInit(cmd *Command, opts Options) int {
-	resolved, _, err := a.resolveConfig(opts)
+	start := a.WorkingDir
+	if start == "" {
+		var err error
+		start, err = os.Getwd()
+		if err != nil {
+			return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
+		}
+	}
+	target := filepath.Join(start, ".flint", "config.json")
+	force := len(opts.Raw["force"]) > 0 && opts.Raw["force"][len(opts.Raw["force"])-1] == "true"
+	if force && a.mcpSkipScopeCheck {
+		return a.fail(usageError("OPERATION_NOT_AVAILABLE", "Project guard replacement is available only in a terminal. Run flint init --force there.", "force"), opts)
+	}
+	var resolved ResolvedConfig
+	var err error
+	if force {
+		resolved, _, err = a.resolveProjectConfig(opts, ProjectConfig{}, "")
+	} else {
+		resolved, _, err = a.resolveConfig(opts)
+	}
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
+	}
+	if opts.DryRunClient() {
+		return a.outputLocal(map[string]any{"data": map[string]any{"dry_run": true, "persistent_side_effects": false, "operation": "init", "project_config_path": target, "force": force, "verification_required": true}}, cmd, opts)
 	}
 	key, _, err := a.resolveCheckCredential(resolved.ProfileName)
 	if err != nil {
@@ -679,7 +705,36 @@ func (a *App) localInit(cmd *Command, opts Options) int {
 	if key == "" {
 		return a.outputLocal(map[string]any{"data": map[string]any{"authenticated": false, "recommended_auth": "flint login", "existing_account": "flint login", "manual_api_key": "flint auth import", "headless_api_key": "Set FLINT_API_KEY", "new_account": "flint signup", "dashboard_api_keys_url": dashboardAPIKeysURL}}, cmd, opts)
 	}
-	checks, exit := a.doctorChecks(opts)
+	ctx := withOAuthContext(a.commandContext(), resolved.ContextID)
+	_, _, envelope, authErr := a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, key, opts.Debug)
+	if authErr != nil {
+		return a.fail(authErr, opts)
+	}
+	auth := envelope.Data
+	if a.mcpGate != nil {
+		if e := a.mcpGate.afterAuth(auth); e != nil {
+			return a.fail(e, opts)
+		}
+	}
+	if e := validateResolvedCredentialIntent(auth, opts, resolved, EnvironmentAffinityMerchant); e != nil {
+		return a.fail(e, opts)
+	}
+	if auth.MerchantID == "" || (normalizeEnvironment(auth.Environment) != "live" && normalizeEnvironment(auth.Environment) != "sandbox") || (normalizeEnvironment(auth.Environment) == "sandbox" && auth.SandboxID == "") {
+		return a.fail(configError("CONFIG_INVALID", "The credential's merchant and environment must be verified before initializing a project.", nil), opts)
+	}
+	project := ProjectConfig{Merchant: auth.MerchantID, ContextID: resolved.ContextID}
+	if normalizeEnvironment(auth.Environment) == "sandbox" {
+		project.Sandbox = auth.SandboxID
+	}
+	if resolved.Sources["profile"] != "global" || resolved.ProfileName != "default" {
+		project.Profile = resolved.ProfileName
+	}
+	written, writeErr := a.writeProjectConfig(target, project, resolved, force)
+	if writeErr != nil {
+		return a.fail(configError("CONFIG_WRITE_FAILED", writeErr.Error(), writeErr), opts)
+	}
+	checks := []map[string]any{{"name": "authentication", "status": "pass", "message": "API accepted the credential."}, {"name": "project_config", "status": "pass", "path": target, "written": written}}
+	exit := ExitOK
 	value := map[string]any{"data": map[string]any{
 		"checks": checks,
 		"next_steps": []map[string]string{
