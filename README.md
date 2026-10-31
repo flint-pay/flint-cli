@@ -467,3 +467,21 @@ It does not suggest resource IDs or history values. Reload after upgrading Flint
 - Bash: add `source <(flint completion bash)` to `~/.bashrc`.
 - Zsh: run `autoload -Uz compinit; compinit`, then add `source <(flint completion zsh)` to `~/.zshrc`.
 - Fish: run `flint completion fish > ~/.config/fish/completions/flint.fish`.
+
+## Follow API requests
+
+Run `flint api-request-logs list --follow` to show requests Flint recorded as they arrive.
+The first poll starts at server time. Add `--created-after 10m` to backfill first.
+All generated request-log filters work in follow mode, for example
+`--status-bucket client_error,server_error` or `--client-request-id checkout-1842`.
+A key with only `developer.request_logs.self.read` sees only its own requests.
+
+Follow polls every 2 seconds with a 90-second overlap and deduplicates log IDs.
+Late records print when they arrive. Rate limits and transient connection errors pause
+and retry from the same cursor. Ctrl-C exits successfully.
+
+Use `--output ndjson` for one unchanged log per line and a final end marker with the
+count and cursor. JSON requires `--max-events N` or `--for DURATION` and returns
+`{"data":[...],"cursor":"..."}`. Both bounds also work with human and NDJSON output.
+`--created-before`, `--all`, `--limit`, `--page-token`, and output transforms do not
+apply to follow mode. Normal list behavior stays available without `--follow`.

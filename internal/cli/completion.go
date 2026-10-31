@@ -246,11 +246,11 @@ func completionFlagArguments(cmd *Command) []Arg {
 		add("--wait-for")
 		add("--for")
 	}
-	if cmd.Stream {
+	if cmd.Stream || cmd.Follow {
 		add("--max-events")
 		add("--for")
 	}
-	if cmd.Stream || cmd.Supports.Pagination || cmd.Supports.WaitFor {
+	if cmd.Stream || cmd.Follow || cmd.Supports.Pagination || cmd.Supports.WaitFor {
 		add("--progress", "auto", "plain", "json", "quiet")
 	}
 	if cmd.Supports.Field {

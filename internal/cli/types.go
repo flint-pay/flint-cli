@@ -77,6 +77,7 @@ type Command struct {
 	Mutation            bool                  `json:"mutation"`
 	Sensitive           bool                  `json:"sensitive"`
 	Destructive         bool                  `json:"destructive"`
+	Follow              bool                  `json:"follow,omitempty"`
 	Stream              bool                  `json:"stream"`
 	Get                 bool                  `json:"get"`
 	Local               bool                  `json:"local"`
@@ -164,6 +165,7 @@ type App struct {
 	Stderr                    io.Writer
 	Stdin                     io.Reader
 	IsTTY                     func() bool
+	followSleep               func(context.Context, time.Duration) bool
 	Now                       func() time.Time
 	OpenBrowser               func(string) error
 	HTTPClient                *http.Client

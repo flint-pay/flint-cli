@@ -34,6 +34,10 @@ func publicAPICommands() []*Command {
 			arguments = appendArrayEditArguments(&doc, path, upper, operation, arguments)
 			destructive := operation.FlintDestructive || upper == "DELETE" || overlay.Destructive
 			command := apiCommand(name, strings.TrimSpace(operation.Summary), upper, path, operation.OperationID, requestSchemaName(operation.RequestBody), responseSchemaName(operation.Responses), arguments, upper != "GET", false, destructive, upper == "GET" && kind != "collection")
+			command.Follow = overlay.Follow
+			if command.Follow {
+				command.Arguments = append(command.Arguments, flag("follow", followBooleanType, "", "", "Follow recorded requests every 2 seconds. Self-read scopes show only this key's requests. With --created-after, backfill before following.", false))
+			}
 			command.Kind = kind
 			command.Render, command.Supports.Open = overlay.Render, overlay.Open
 			command.Examples = append([]string(nil), overlay.Examples...)

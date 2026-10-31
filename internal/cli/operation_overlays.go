@@ -9,6 +9,7 @@ type operationOverlay struct {
 	Arguments      []Arg
 	Examples       []string
 	Render         string
+	Follow         bool
 	Open           bool
 	Destructive    bool
 	ReadOnly       bool
@@ -75,7 +76,7 @@ func operationOverlays() map[string]operationOverlay {
 		"listWebhookDeliveryAttempts":          {Examples: ex("flint webhook-deliveries attempts list wdel_123")},
 		"resendWebhookDelivery":                {Examples: ex("flint webhook-deliveries resend wdel_123")},
 		"getAPIRequestLog":                     {Examples: ex("flint api-request-logs get rlog_123"), Render: "request_log"},
-		"listAPIRequestLogs":                   {Examples: ex("flint api-request-logs list --status-bucket server_error"), Render: "request_log"},
+		"listAPIRequestLogs":                   {Examples: ex("flint api-request-logs list --status-bucket server_error", "flint api-request-logs list --follow --status-bucket client_error,server_error"), Render: "request_log", Follow: true},
 		"getResourceTimeline":                  {Examples: ex("flint resource-timelines get pi_123", "flint resource-timelines get @last.pi")},
 		"listSandboxes":                        {Examples: ex("flint sandboxes list --live")},
 		"createSandbox":                        {Arguments: []Arg{flag("name", "string", "name", "", "Sandbox name", true), apiKeyAccessFlag, apiKeyScopeFlag, flag("test_key_name", "string", "test_key_name", "", "Name for the sandbox's test key; with --access or --scope, the sandbox issues one", false)}, Examples: ex("flint sandboxes create --name qa-scenarios --live", "flint sandboxes create --name qa-scenarios --issue-test-key true --access restricted --scope customers.read --live")},

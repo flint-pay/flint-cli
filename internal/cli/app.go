@@ -447,7 +447,7 @@ func (a *App) printCommandHelp(cmd *Command) {
 	if cmd.Supports.WaitFor {
 		capabilities = append(capabilities, "--wait-for FIELD=VALUE (inside the resource)", "--for DURATION")
 	}
-	if cmd.Stream {
+	if cmd.Stream || cmd.Follow {
 		capabilities = append(capabilities, "--max-events N", "--for DURATION")
 	}
 	if cmd.Supports.Open {
