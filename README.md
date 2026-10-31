@@ -13,7 +13,7 @@ npm install -g @flintpay/cli      # resolves a prebuilt binary for your platform
 brew install flint-pay/tap/flint   # macOS and Linux
 ```
 
-After installation, `flint upgrade` checks for the latest stable release using GitHub's `releases/latest` web redirect. If that lookup fails, it falls back to the GitHub REST API and uses `GITHUB_TOKEN` when set. Run `flint upgrade --check` to see the current and latest stable versions without changing anything; it exits 0 whether or not an update is available, and `--output json` reports `update_available`. On macOS and Linux it uses npm or Homebrew when they own the installation, or securely replaces a standalone binary after verifying the release checksum. On Windows it prints the exact npm or manual update step to run after closing the CLI. Progress appears on stderr, with an elapsed-time update every 10 seconds during longer steps. Use `--quiet` to hide it, or `--output json --progress json` for structured results and progress on separate streams.
+After installation, `flint upgrade` checks for the latest stable release using GitHub's `releases/latest` web redirect. If that lookup fails, it falls back to the GitHub REST API and uses `GITHUB_TOKEN` when set. Run `flint upgrade --check` to see the current and latest stable versions without changing anything; it exits 0 whether or not an update is available, and `--output json` reports `update_available`. On macOS and Linux it uses npm or Homebrew when they own the installation, or securely replaces a standalone binary after verifying the release checksum. On Windows it prints the exact npm or manual update step to run after closing the CLI. Progress appears on stderr, with an elapsed-time update every 10 seconds during longer steps. Use `--quiet` to hide it, or `--output json --progress json` for structured results and progress on separate streams. If `flint upgrade` fails on a 0.14.x installation, update with `npm install -g @flintpay/cli@latest` or `brew upgrade flint`; the [0.15.0 migration notes](docs/migrating-0.15.md#upgrading-from-014x) explain why.
 
 Prebuilt archives for macOS, Linux, and Windows are attached to each `cli/v*` [release](https://github.com/flint-pay/flint-cli/releases) with a `checksums.txt`. [`scripts/install.sh`](scripts/install.sh) downloads and verifies the right one. The release workflow also publishes a container image to `ghcr.io/flint-pay/flint-cli`.
 
@@ -115,13 +115,15 @@ Environment access tokens take precedence over API keys, with a warning when bot
 
 If your platform cannot provide a Flint audience OIDC token, supply `FLINT_API_KEY` through your secret store as a fallback. For manual setup, create a key in the [Flint dashboard](https://app.withflintpay.com/developers/api-keys) and run `flint auth import`. Unset environment credentials before signup or browser login.
 
-The OS keyring is the default credential store. To save API keys or OAuth sessions without a keyring, explicitly choose `--credential-store file` on `flint login`, `flint auth import`, or `flint signup`, or set `FLINT_CREDENTIAL_STORE=file`. A flag takes precedence over the environment, then the profile's saved choice, then `keyring`. Successful authentication persists the selected backend per profile. File credentials are separate from `config.json`, under `credentials/store.json` in the Flint config directory, with owner-only directory and file permissions (0700 and 0600 on Unix). File updates are locked and atomic. The file is not encrypted by the OS keyring; each committed save prints that notice. There is no automatic plaintext fallback.
+### Credential storage and configuration
+
+The OS keyring is the default credential store. To save API keys or OAuth sessions without a keyring, explicitly choose `--credential-store file` on `flint login`, `flint auth import`, or `flint signup`, or set `FLINT_CREDENTIAL_STORE=file`. A flag takes precedence over the environment, then the profile's saved choice, then `keyring`. Successful authentication persists the selected backend per profile. File credentials are separate from `config.json`, under `credentials/store.json` in the Flint config directory, with owner-only directory and file permissions (0700 and 0600 on Unix). File updates are locked and atomic. The file is not encrypted by the OS keyring; each committed save prints that notice. There is no automatic plaintext fallback. `--credential-store` is accepted by every command, including `flint mcp serve`.
 
 Fresh profiles skip keyring lookup. Existing profiles without a presence marker receive one bounded legacy lookup; a configured but unavailable store reports its failure. Doctor continues public connectivity, API-version and CLI-version checks when credentials are absent or unavailable. A locked or unavailable keyring names `--credential-store file` and `FLINT_API_KEY` as alternatives. `flint auth import --profile NAME`, `flint login --profile NAME`, and `flint signup --profile NAME` create missing profiles without changing the default profile.
 
 API-key auth-context metadata is cached in memory and in a separate 0600 file for five minutes, keyed by a SHA-256 hash of the key and API base URL. The cache contains no API key. Commands whose scope checks pass use the cached metadata. Before refusing a command for missing scopes in cached metadata, the CLI fetches the current context once and checks it again, including environment, merchant, sandbox, and confirmation requirements. A failed refresh stops the command before its target request. `flint auth status` (also `flint whoami`) always fetches the current context, so scope, expiry, and revocation changes are visible immediately. A later HTTP 401 or 403 invalidates the cache; OAuth credential handling is unchanged.
 
-Configuration selection uses `--profile`, `FLINT_PROFILE`, a project pin in `.flint/config.json`, then the default profile. An unknown selected profile is an error, including with environment credentials. Create profiles with `login`, `auth import`, or `signup`; `config set profile NAME` selects an existing profile, and `config unset profile` resets the default to `default`. `config get` lists saved profiles. Logout deletes the selected profile after removing its credential. Unknown config fields are errors, including inside saved profiles. Project keys are `merchant_id`, `sandbox_id`, `context_id`, and `profile`; the old `merchant`, `sandbox`, and `context` keys must be renamed. Run `flint init` with a configured credential to write `.flint/config.json` in the current directory, pinning its verified merchant and sandbox. Commit this file with your project. An existing file is validated and preserved; `flint init --force` replaces it using the active credential. Use `flint config unset merchant` to clear the selected profile's saved merchant guard. Project and environment guards still apply, and mismatch errors identify their source.
+Configuration selection uses `--profile`, `FLINT_PROFILE`, a project pin in `.flint/config.json`, then the default profile. An unknown selected profile is an error, including with environment credentials. Create profiles with `login`, `auth import`, or `signup`; `config set profile NAME` selects an existing profile, and `config unset profile` resets the default to `default`. `config get` lists saved profiles. Logout deletes the selected profile after removing its credential. Unknown config fields are errors, including inside saved profiles. Project keys are `merchant_id`, `sandbox_id`, `context_id`, and `profile`; the old `merchant`, `sandbox`, and `context` keys must be renamed. Run `flint init` with a configured credential to write `.flint/config.json` in the current directory, pinning its verified merchant and sandbox. Commit this file with your project. An existing file is validated and preserved; `flint init --force` replaces it using the active credential. Use `flint config unset merchant` to clear the selected profile's saved merchant guard. Project and environment guards still apply, and mismatch errors identify their source. `flint init --dry-run=client` previews the project config path without network requests or file changes; execution verifies the credential first. MCP `init` can create or validate guards, but replacing project guards with `--force` requires a terminal.
 
 ## Command names
 
@@ -141,10 +143,18 @@ Only `login`, `logout`, `reauth`, and `whoami` remain shortcuts. Use
 `checkout-sessions create|get|list`, `payment-intents create`,
 `sandboxes api-keys create`, `invoices late-fees create`, and `upgrade` in scripts.
 OAuth protocol routes are available through `flint api`; sign-in commands handle
-the browser protocol for you.
+the browser protocol for you. Flint-hosted account operations need Flint's hosted
+account sign-in and are excluded from the CLI and from MCP discovery. `trigger`
+and `completion` are CLI-owned commands; each generated command calls one route.
+
+MCP operation IDs use these same dotted command names; typed tool names replace
+every dot and hyphen with an underscore.
 
 `payment-intents create --order` is removed. Use
 `orders payment-intents create ORDER_ID` for the order-scoped operation.
+
+## Request flags
+
 Query filters use their field names, such as `orders list --customer-id` and
 `refunds list --order-id` or `--payment-intent-id`. Body flags use the schema field names: `--customer-id`, `--scopes`,
 `--payment-options`, `--enabled-events`, `--signing-methods`, `--order-id`,
@@ -173,15 +183,17 @@ Variant-only flags infer an explicit schema discriminator: `api-keys create
 --scopes X` needs both `--access restricted` and `--issue-test-key true`.
 `payment-intents confirm` with no credential flag needs `--credential-type attached`.
 
-MCP operation IDs use these same dotted command names; typed tool names replace
-every dot and hyphen with an underscore.
-
 For readable, version-guarded PATCH routes, scalar arrays also have `--add-FIELD`
 and `--remove-FIELD`, for example `webhook-endpoints update ID --add-enabled-events
 refund.succeeded`. They read the current list and version, merge values, and PATCH;
 a version conflict is retried once after a fresh read. Adding an existing value or
 removing an absent one sends no PATCH when nothing else changes. Omit
 `--expected-version` with these flags. Use replacement flags for client dry runs.
+
+```sh
+flint webhook-endpoints update whep_123 --add-enabled-events refund.succeeded
+flint webhook-endpoints update whep_123 --remove-enabled-events payment_intent.created
+```
 
 `--enabled-events` and other plain array flags replace the whole list. Object
 arrays remain `--input` replacements. Add/remove flags are absent when the PATCH
@@ -197,6 +209,10 @@ flint listen --forward-to http://localhost:8080/webhooks/flint
 ```
 
 `flint listen --forward-to` always signs forwarded events locally with HMAC using its listen secret, regardless of the registered endpoint's signing methods. Handlers written for JWT need an HMAC verification path or a local test bypass when using `listen`. The CLI saves and reuses the listen secret across runs; print it with `flint listen --print-secret`, or pin your own with `--webhook-secret` or `FLINT_WEBHOOK_SECRET`. Without `--forward-to` it prints events instead. `--forward-to` accepts localhost, loopback IPs, and `host.docker.internal`. With `--max-events` or `--for`, it exits 1 if any delivery failed, 5 if it never connected, and 6 if fewer than `--max-events` events arrived before `--for` ended; the checkpoint's `replay_cursor` resumes from the first failure with `--cursor`. `--save-to -` writes a downloaded file to stdout.
+
+`listen --event-type` accepts repeated flags and comma-separated values, including newer server event names. The listener record returns `event_type` as an array. Forwarded bodies use the merchant webhook envelope published in the embedded spec, at the caller's API version. `--webhook-endpoint-id` sets the `Flint-Webhook-Endpoint-Id` header (default `whep_cli_listen`).
+
+Local delivery is at-least-once, signed with HMAC (Standard Webhooks). Transport errors, timeouts, 429 and 5xx receive up to three attempts, with 1-second and 2-second delays. Other HTTP failures are not retried. Handlers should deduplicate by webhook event ID. Secrets supplied by `--webhook-secret` or `FLINT_WEBHOOK_SECRET` are omitted from the listener record and human banner. The explicit `--print-secret` command prints the selected secret. To test JWT verification, use a tunnel and a registered sandbox endpoint.
 
 Create a webhook endpoint with JWT signing (the default):
 
@@ -318,9 +334,47 @@ one minute to include due work. That target stays the same when the run is resum
 result; `--output ndjson` streams finished steps and bounded wait observations. Trigger creates new
 test resources and does not delete them. Reset the sandbox when finished.
 
-`listen --event-type` accepts repeated flags and comma-separated values, including newer server event names. The listener record returns `event_type` as an array. Forwarded bodies use the merchant webhook envelope published in the embedded spec, at the caller's API version. `--webhook-endpoint-id` sets the `Flint-Webhook-Endpoint-Id` header (default `whep_cli_listen`).
+Use `--for DURATION` to change how long `trigger` waits for background work. The default is 2 minutes, or 5 minutes for subscription and test clock recipes. A wait that runs out exits 6.
 
-Local delivery is at-least-once, signed with HMAC (Standard Webhooks). Transport errors, timeouts, 429 and 5xx receive up to three attempts, with 1-second and 2-second delays. Other HTTP failures are not retried. Handlers should deduplicate by webhook event ID. Secrets supplied by `--webhook-secret` or `FLINT_WEBHOOK_SECRET` are omitted from the listener record and human banner. The explicit `--print-secret` command prints the selected secret. To test JWT verification, use a tunnel and a registered sandbox endpoint.
+### Test clocks and dispute simulation
+
+Test clocks and dispute simulation exist only in sandboxes. A test clock holds a frozen time for the customers and subscriptions attached to it; advance it to run renewals and billing without waiting. `disputes simulate` moves a sandbox dispute to an outcome.
+
+```sh
+flint test-clocks create --name "Annual renewal test" --frozen-at 2026-11-01T00:00:00Z
+flint test-clocks advance TEST_CLOCK_ID --frozen-at 2026-12-01T00:00:00Z --expected-version 1 --confirm
+flint test-clocks get TEST_CLOCK_ID
+flint disputes simulate DISPUTE_ID --outcome won
+```
+
+`--outcome` accepts `won`, `lost`, `inquiry_closed`, or `escalated`. A clock only moves forward, and the API limits how far one advance can go; `flint test-clocks advance --help` lists the limits. Advancing asks for confirmation in a sandbox. `flint trigger` uses these routes for its subscription, test clock, and dispute recipes.
+
+### Follow API requests
+
+Run `flint api-request-logs list --follow` to show requests Flint recorded as they arrive.
+The first poll starts at server time. Add `--created-after 10m` to backfill first.
+All generated request-log filters work in follow mode, for example
+`--status-bucket client_error,server_error` or `--client-request-id checkout-1842`.
+A key with only `developer.request_logs.self.read` sees only its own requests.
+
+Follow polls every 2 seconds with a 90-second overlap and deduplicates log IDs.
+Late records print when they arrive. Rate limits and transient connection errors pause
+and retry from the same cursor. Ctrl-C exits successfully.
+
+Use `--output ndjson` for one unchanged log per line and a final end marker with the
+count and cursor. JSON requires `--max-events N` or `--for DURATION` and returns
+`{"data":[...],"cursor":"..."}`. Both bounds also work with human and NDJSON output.
+`--created-before`, `--all`, `--limit`, `--page-token`, and output transforms do not
+apply to follow mode. Normal list behavior stays available without `--follow`.
+
+### Shell completion
+
+Completion is offline and uses the embedded command tree, flags, and enum values.
+It does not suggest resource IDs or history values. Reload after upgrading Flint.
+
+- Bash: add `source <(flint completion bash)` to `~/.bashrc`.
+- Zsh: run `autoload -Uz compinit; compinit`, then add `source <(flint completion zsh)` to `~/.zshrc`.
+- Fish: run `flint completion fish > ~/.config/fish/completions/flint.fish`.
 
 ## Scripts and agents
 
@@ -328,7 +382,7 @@ Lists return one page. Check `next_page_token`; it is omitted when no more pages
 
 Use `--output ndjson` on paginated list commands to print one resource per line as each page arrives, without an envelope or collection array. Timeline output prints individual `data.entries`. It fetches one page by default; add `--all` or `--limit N` to fetch more. Continuation tokens are never printed in this mode. `--select` chooses resource fields on each page; `--jq`, `--field`, and `--wait-for` are rejected. Errors use the normal JSON error shape on stderr and a nonzero exit code; resources already printed remain on stdout if a later page fails.
 
-Use `--expand a,b` for documented relationships; command help lists valid expansions, and `flint schema command <name> --output json` includes an `expansions` array. Time filters accept RFC 3339 instants, dates, rolling durations, and calendar words such as `today` in the reporting timezone.
+Use `--expand a,b` for documented relationships; command help lists valid expansions, and `flint schema command <name> --output json` includes an `expansions` array.
 
 `@last` and `@last.<prefix>` (for example `@last.pi`) refer to the most recent matching resource this profile created or changed. Reads do not update history. History is shared by every process using the profile; use explicit IDs when running commands in parallel. `--field`, `--select`, and `--wait-for` paths start inside the resource: use `--field email`, not `--field data.email`. On lists, paths apply to each element. Timeline NDJSON paths refer to each emitted entry. Numeric indexes (`line_items.0.name`) and metadata keys are supported. The CLI checks paths against the output schema before sending a request; an unknown field exits 2 with `UNKNOWN_OUTPUT_FIELD` and a suggestion. A mistaken `data.` prefix returns `OUTPUT_FIELD_ROOT`; webhook resources that declare their own `data` field keep it. Declared but absent or null fields render as `null`. `--select` preserves the envelope, including `next_page_token`, `request_id`, and `meta`. `--field` prints strings raw and other values as compact JSON, with one line per resource on lists. Use `--jq` to read the envelope, for example `--jq .next_page_token`.
 
@@ -343,7 +397,7 @@ CLI-local timeout and cancellation codes are `CLIENT_TIMEOUT` and `CLIENT_CANCEL
 Failures after a keyed write is dispatched include `details.idempotency_key` as recovery information. Follow `remediation.retry`: `same_request` means back off and resend the identical request with the same key; `after_refresh` means read current state, rebuild, and use a new key; `none` means follow the supplied step without retry advice. Human output includes the server's `next_steps`. Local validation, confirmation, and scope failures do not add key or retry advice. `Retry-After` is also reported as `retry_after_ms` on JSON errors. `--confirm` is accepted on every mutation, so scripts can pass it defensively. The terminal uses the shared operation index classification. In live or unverified environments, sensitive or irreversible operations require confirmation; in sandbox, irreversible operations require it except payment collection (pay, confirm, capture, collect): an interactive terminal asks "Continue? [y/N]"; scripts need `--confirm`. Ordinary writes and reversible overwrites do not require confirmation. Known raw `api` calls use the same operation classification. For routes absent from the snapshot, raw DELETE requires confirmation in every environment; other unknown writes require it in live or unverified environments. Before merchant-route mutations, `FLINT_ACCESS_TOKEN` is introspected for environment and guard checks. If introspection cannot verify the environment, sensitive operations require `--confirm` with `UNVERIFIED_ENVIRONMENT_CONFIRMATION_REQUIRED`; network failures stop the command.
 
 
-Time filters accept RFC 3339 instants, dates (`YYYY-MM-DD`), `today`, `yesterday`, `this_week`, and rolling durations such as `2h`, `7d`, or `2w`. Dates and calendar words start at midnight in the merchant's reporting timezone; weeks start on Monday. The CLI caches the timezone from `GET /v1/merchant` for one hour. Without `merchants.profile.read`, or during an offline dry run without a cached value, it uses UTC and prints a note. Resolved values appear on stderr and in MCP notes. Body timestamps still require RFC 3339. Enum arguments show their allowed values in help and the command catalog. An unknown value fails locally with an upgrade hint; `listen --event-type` passes newer names to the server. Array filter help shows repeat or comma syntax from the API contract. `--help` and `-h` before `--` show help even when other arguments are incomplete or invalid.
+Time filters accept RFC 3339 instants, dates (`YYYY-MM-DD`), `today`, `yesterday`, `this_week`, and rolling durations such as `2h`, `7d`, or `2w`. Dates and calendar words start at midnight in the merchant's reporting timezone; weeks start on Monday. The CLI caches the timezone from `GET /v1/merchant` for one hour. Without `merchants.profile.read`, or during an offline dry run without a cached value, it uses UTC and prints a note. Resolved values appear on stderr and in MCP notes. Body time flags take RFC 3339, reporting-timezone dates, `now`, and signed relative times such as `+14d` or `-2h`; times inside `--input` bodies are sent as written, so use RFC 3339 there. Enum arguments show their allowed values in help and the command catalog. An unknown value fails locally with an upgrade hint; `listen --event-type` passes newer names to the server. Array filter help shows repeat or comma syntax from the API contract. `--help` and `-h` before `--` show help even when other arguments are incomplete or invalid.
 
 ## MCP server
 
@@ -357,7 +411,7 @@ Find an operation, inspect its public arguments, then call it:
 {"name":"flint_write","arguments":{"operation":"refunds.create","arguments":{"order_id":"ord_123","refund_type":"full"},"idempotency_key":"refund-ord-123-1","dry_run":true}}
 ```
 
-Operation IDs follow CLI commands, such as `orders.list` and `checkout-sessions.delivery-quotes.create`. Read and write calls also accept space-separated command names and typed tool names. Use public JSON argument names from `flint_describe`; CLI convenience flags are unavailable over MCP. Pass execution controls such as `select`, `idempotency_key`, and `dry_run` alongside `operation`, outside `arguments`. The former `_flint` object is removed.
+The default `tools/list` result is about 6 KB, compared with about 226 KB for the 0.14 default set. Operation IDs follow CLI commands, such as `orders.list` and `checkout-sessions.delivery-quotes.create`. Read and write calls also accept space-separated command names and typed tool names. Use public JSON argument names from `flint_describe`; CLI convenience flags are unavailable over MCP. Pass execution controls such as `select`, `idempotency_key`, and `dry_run` alongside `operation`, outside `arguments`. The former `_flint` object is removed.
 
 Successful results contain one compact JSON text block and, when needed, one notes block with the environment, notes, and warnings. No result is duplicated in `structuredContent`. Reads have a 49,152-byte cap; narrow larger results with `select`, filters, or a smaller `page_size`. MCP lists default to 10 items per page. `all: true` stops fetching as soon as the projected result exceeds the limit. Completed writes return their full result with a warning if oversized.
 
@@ -389,7 +443,7 @@ Cursor and other clients that use `mcpServers`:
 ```
 
 - `--read-only` removes the write tool and refuses writes, including direct calls.
-- `--tools orders,refunds` opts into one typed tool per operation in those groups, plus search, describe, and help restricted to that scope. `--tools all` selects every available operation. `--tools default` is removed. Typed names use lowercase letters, digits, and underscores for both dots and hyphens, such as `payment_intents_create`; old dotted or hyphenated tool names are rejected. Keep the client server name at most five characters (for example, `flint`) so prefixed names fit 64 characters. Typed mode has no `flint_read` or `flint_write` tools. Its compact schemas show two levels of fields; use `flint_describe` to open deeper objects. Calls still validate the full schema, including variant requirements. Execution controls are top-level properties, with required idempotency keys and confirmation rules shown per operation.
+- `--tools orders,refunds` opts into one typed tool per operation in those groups, plus search, describe, and help restricted to that scope. `--tools all` selects every available operation. `--tools default` is removed. Typed `tools/list` results stay under 50,000 bytes for `orders`, under 780,000 bytes for `all`, and under 10,000 bytes for any one tool. Typed names use lowercase letters, digits, and underscores for both dots and hyphens, such as `payment_intents_create`; old dotted or hyphenated tool names are rejected. Keep the client server name at most five characters (for example, `flint`) so prefixed names fit 64 characters. Typed mode has no `flint_read` or `flint_write` tools. Its compact schemas show two levels of fields; use `flint_describe` to open deeper objects. Calls still validate the full schema, including variant requirements. Execution controls are top-level properties, with required idempotency keys and confirmation rules shown per operation.
 - Credential class restricts discovery and calls. A merchant API key cannot reach buyer-session operations; a partner access token reaches only install-scoped operations. Raw `api`, `help_search`, and `schema_*` tools are removed.
 - `--allow-live` permits live credentials; each live call must also carry `live: true`. The server's profile, merchant guard, context, and timeout are fixed at startup.
 
@@ -406,6 +460,10 @@ Use `dry_run: true` to validate a write without sending it. The prepared request
 Unverified credentials follow live confirmation rules, without the verified-live access checks. Local operations such as `history.clear` count as sandbox. Typed tools include the canonical operation ID in `_meta["com.withflintpay/operation"]` and mark sensitive operations separately. `destructiveHint` follows the contract's `x-flint-destructive` flag; the confirmation gate covers sensitive or irreversible operations.
 
 Local commands are operations reached through read or write, including `version`, read-only `doctor`, `history`, `history.clear`, and sandbox-only `trigger`. Trigger waits are capped at 60 seconds. Agents cannot change credential stores, update config, or log out through MCP.
+
+## Migrating from 0.14.x
+
+0.15.0 has two breaking redesigns. API commands and request flags now follow the API contract: 22 commands are renamed, seven aliases and the OAuth protocol commands are gone, 26 flags are renamed or removed to match their field names, and `--field`, `--select`, and `--wait-for` resolve inside the resource. Dates and calendar words such as `today` use the reporting timezone, and the terminal asks for confirmation by environment, so some sandbox commands now ask and some live commands no longer do. `flint mcp serve` exposes five discovery tools by default, with typed tools behind `--tools` and a new `--read-only` option. Project config keys are `merchant_id`, `sandbox_id`, and `context_id`, unknown config keys are errors, `flint doctor --output json` returns `data.checks`, and `flint listen` records `event_type` as an array. If `flint upgrade` fails on 0.14.x, run `npm install -g @flintpay/cli@latest` or `brew upgrade flint`. See [the 0.15.0 migration notes](docs/migrating-0.15.md) for each change with before and after forms.
 
 ## Migrating from 0.13.0
 
@@ -454,7 +512,7 @@ Sandbox and live requests both use `https://api.withflintpay.com`. Browser login
 
 `internal/spec/openapi.json` is the public API snapshot used to build the command catalog. The reviewed source commit, export path, SHA-256, operation count, and operation-set SHA-256 are pinned in `internal/spec/provenance.json` and checked offline by `TestSnapshot`. Intentional lag is recorded there; startup and tests never fetch a newer export. API commands load their generated command metadata at startup and decode only the schemas they need. Full schema and event inspection retain the complete snapshot. After changing the snapshot, command definitions, examples, or help metadata, run `go generate ./internal/cli`; parity tests check the generated index against the full snapshot and command generators.
 
-When updating it, use `git show <reviewed-commit>:web/apps/developers/src/generated/openapi.json` from a local Flint repository, update the provenance pin and coverage classifications, run `make coverage`, and run `make contract`. Set `FLINT_SPEC_REPO` to that local repository when running `go test ./internal/spec` to also compare the pinned source bytes and operation set. The coverage report checks that every public operation has a dedicated command or an explicit exclusion with a reason. Feedback commands are retired; use `flint support open` to start a thread on Flint Help.
+When updating it, use `git show <reviewed-commit>:web/apps/developers/src/generated/openapi.json` from a local Flint repository, update the provenance pin and coverage classifications, run `make coverage`, and run `make contract`. Set `FLINT_SPEC_REPO` to that local repository when running `go test ./internal/spec` to also compare the pinned source bytes and operation set. The coverage report checks that every public operation has a dedicated command or an explicit exclusion with a reason. Feedback commands are retired; use `flint support open` to start a thread on Flint Help. `x-flint-destructive` alone determines irreversible operations, and `x-flint-secret` marks secret fields.
 
 Tests use local HTTP servers and synthetic credentials. They do not require an API key or write to a Flint account.
 
@@ -473,34 +531,3 @@ The npm trusted publisher must name the `npm` GitHub environment and the `cli-re
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
-
-## Shell completion
-
-Completion is offline and uses the embedded command tree, flags, and enum values.
-It does not suggest resource IDs or history values. Reload after upgrading Flint.
-
-- Bash: add `source <(flint completion bash)` to `~/.bashrc`.
-- Zsh: run `autoload -Uz compinit; compinit`, then add `source <(flint completion zsh)` to `~/.zshrc`.
-- Fish: run `flint completion fish > ~/.config/fish/completions/flint.fish`.
-
-## Follow API requests
-
-Run `flint api-request-logs list --follow` to show requests Flint recorded as they arrive.
-The first poll starts at server time. Add `--created-after 10m` to backfill first.
-All generated request-log filters work in follow mode, for example
-`--status-bucket client_error,server_error` or `--client-request-id checkout-1842`.
-A key with only `developer.request_logs.self.read` sees only its own requests.
-
-Follow polls every 2 seconds with a 90-second overlap and deduplicates log IDs.
-Late records print when they arrive. Rate limits and transient connection errors pause
-and retry from the same cursor. Ctrl-C exits successfully.
-
-Use `--output ndjson` for one unchanged log per line and a final end marker with the
-count and cursor. JSON requires `--max-events N` or `--for DURATION` and returns
-`{"data":[...],"cursor":"..."}`. Both bounds also work with human and NDJSON output.
-`--created-before`, `--all`, `--limit`, `--page-token`, and output transforms do not
-apply to follow mode. Normal list behavior stays available without `--follow`.
-
-The embedded contract is pinned to Flint `ae5e845faceaa24aad8408cbcc6a64e0b2cfc17e`. `x-flint-destructive` alone determines irreversible operations; `x-flint-secret` marks secret fields. Flint-hosted account operations are excluded from CLI and MCP discovery because they require Flint's hosted account sign-in.
-
-`init --dry-run=client` previews the project config path without network requests or file changes; execution verifies the credential first. MCP init can create or validate guards, but replacing project guards with `--force` requires a terminal.
