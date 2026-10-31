@@ -155,7 +155,7 @@ func (a *App) mcpErrorEnvelope(cmd *Command, args map[string]any, opts Options, 
 		case "PRODUCTION_CONFIRMATION_REQUIRED", "UNVERIFIED_ENVIRONMENT_CONFIRMATION_REQUIRED":
 			e.Code = "CONFIRMATION_REQUIRED"
 		case "INVALID_REQUEST":
-			e.Type = "validation_error"
+			e.Type = errorTypeValidation
 		case "CLIENT_TIMEOUT":
 			e.Type = errorTypeTimeout
 		}

@@ -808,5 +808,5 @@ func mcpInputError(problems []mcpInputProblem) *CLIError {
 	if len(problems) > 1 {
 		message = fmt.Sprintf("%d arguments are invalid.", len(problems))
 	}
-	return &CLIError{ExitCode: ExitUsage, Type: "validation_error", Code: "INVALID_REQUEST", Param: problems[0].param, Message: message, Details: details}
+	return &CLIError{ExitCode: ExitUsage, Type: errorTypeValidation, Code: "INVALID_REQUEST", Param: problems[0].param, Message: message, Details: details}
 }
