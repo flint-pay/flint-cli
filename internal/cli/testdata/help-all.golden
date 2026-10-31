@@ -131,6 +131,7 @@ Merchant resources:
   flint customers addresses list <customer_id>                      List customer addresses
   flint customers addresses update <customer_id> <customer_address_id> Update a customer address
   flint customers create                                            Create customer
+  flint customers email-preferences get <customer_id>               Get a customer's email preferences
   flint customers get <customer_id>                                 Get customer
   flint customers link-guest-purchases <customer_id>                Link guest purchases to a customer
   flint customers list                                              List customers
@@ -184,6 +185,7 @@ Merchant resources:
   flint disputes simulate <dispute_id>                              Simulate a dispute outcome
   flint email-preference-links lookup                               Look up an email preference link
   flint email-preference-links unsubscribe                          Unsubscribe an email preference link
+  flint email-preferences lookup                                    Look up email preferences
   flint files complete <file_id>                                    Complete a file
   flint files create                                                Create a file
   flint files get <file_id>                                         Get a file
@@ -202,6 +204,7 @@ Merchant resources:
   flint gift-card-funding-dispositions create                       Create a gift card funding disposition
   flint gift-card-funding-dispositions get <gift_card_funding_disposition_id> Get a gift card funding disposition
   flint gift-card-funding-dispositions list                         List gift card funding dispositions
+  flint gift-card-loads create                                      Load a gift card
   flint gift-card-loads get <gift_card_load_id>                     Get a gift card load
   flint gift-card-loads list                                        List gift card loads
   flint gift-card-notifications cancel <gift_card_notification_id>  Cancel a gift card notification
@@ -221,7 +224,6 @@ Merchant resources:
   flint gift-cards freeze <gift_card_id>                            Freeze a gift card
   flint gift-cards get <gift_card_id>                               Get a gift card
   flint gift-cards list                                             List gift cards
-  flint gift-cards loads create <gift_card_id>                      Load a gift card
   flint gift-cards lookup                                           Look up a gift card code
   flint gift-cards rotate-code <gift_card_id>                       Replace a gift card code
   flint gift-cards unfreeze <gift_card_id>                          Unfreeze a gift card
@@ -415,11 +417,11 @@ Merchant resources:
   flint products variants get <product_id> <variant_id>             Get product variant
   flint products variants list <product_id>                         List product variants
   flint products variants update <product_id> <variant_id>          Update product variant
+  flint promotion-codes create                                      Create promotion code
+  flint promotion-codes delete <promotion_code_id>                  Archive promotion code
+  flint promotion-codes get <promotion_code_id>                     Get promotion code
   flint promotion-codes list                                        List promotion codes
-  flint promotions codes create <promotion_id>                      Create promotion code
-  flint promotions codes delete <promotion_id> <promotion_code_id>  Archive promotion code
-  flint promotions codes get <promotion_id> <promotion_code_id>     Get promotion code
-  flint promotions codes update <promotion_id> <promotion_code_id>  Update promotion code
+  flint promotion-codes update <promotion_code_id>                  Update promotion code
   flint promotions create                                           Create promotion
   flint promotions delete <promotion_id>                            Delete promotion
   flint promotions get <promotion_id>                               Get promotion
@@ -505,7 +507,7 @@ Merchant resources:
   flint risk-rules update <risk_rule_id>                            Update a risk rule
   flint sandboxes api-keys create <sandbox_id>                      Issue sandbox test key
   flint sandboxes create                                            Create sandbox
-  flint sandboxes delete <sandbox_id>                               Retire sandbox
+  flint sandboxes delete <sandbox_id>                               Archive sandbox
   flint sandboxes get <sandbox_id>                                  Get sandbox
   flint sandboxes list                                              List sandboxes
   flint sandboxes reset <sandbox_id>                                Reset sandbox
@@ -591,17 +593,15 @@ Buyer session (set FLINT_ACCESS_TOKEN to a customer session secret, flint_cses_.
   flint me email-change-requests create                             Request an email change
   flint me email-preferences get                                    Get the current buyer's email preferences
   flint me email-preferences update                                 Update the current buyer's email preferences
-  flint me flint-wallet cards list                                  List cards saved with Flint for this store
-  flint me flint-wallet cards store-setups create <flint_wallet_card_id> Set up a Flint wallet card at this store
   flint me fulfillment-events list                                  List the current buyer's fulfillment events
   flint me fulfillments get <fulfillment_id>                        Get one of the current buyer's fulfillments
   flint me fulfillments list                                        List the current buyer's fulfillments
   flint me get                                                      Get the current buyer profile
+  flint me gift-card-transactions list                              List a saved gift card's balance history
   flint me gift-cards create                                        Save a gift card to your account
   flint me gift-cards delete <gift_card_id>                         Remove a saved gift card
   flint me gift-cards get <gift_card_id>                            Get a saved gift card
   flint me gift-cards list                                          List your saved gift cards
-  flint me gift-cards transactions list <gift_card_id>              List a saved gift card's balance history
   flint me invoices checkout-sessions create <invoice_id>           Create an invoice checkout session for the current buyer
   flint me invoices credit-notes get <invoice_id> <credit_note_id>  Get a credit note for one of the current buyer's invoices
   flint me invoices credit-notes list <invoice_id>                  List credit notes for one of the current buyer's invoices

@@ -33,7 +33,9 @@ func TestTerminalConfirmationMatchesSharedIndex(t *testing.T) {
 					candidate.CanonicalName = "api"
 				}
 				e := app.confirmCommand(&candidate, AuthContext{Environment: environment}, Options{NoInput: true})
-				want := entry.Kind == "write" && (entry.Irreversible || environment != "sandbox" && entry.Sensitive)
+				collectionRoute := strings.HasPrefix(entry.Path, "/v1/orders/") || strings.HasPrefix(entry.Path, "/v1/payment-intents/") || strings.HasPrefix(entry.Path, "/v1/invoices/") || strings.HasPrefix(entry.Path, "/v1/gift-card-redemptions/")
+				collection := collectionRoute && (strings.HasSuffix(entry.Path, "/pay") || strings.HasSuffix(entry.Path, "/confirm") || strings.HasSuffix(entry.Path, "/capture") || strings.HasSuffix(entry.Path, "/collect"))
+				want := entry.Kind == "write" && (environment == "sandbox" && entry.Irreversible && !collection || environment != "sandbox" && entry.ConfirmRequired())
 				if (e != nil) != want || e != nil && e.ExitCode != ExitConfirmation {
 					t.Fatalf("%s env=%s raw=%v entry=%+v error=%v", cmd.Name, environment, raw, entry, e)
 				}
@@ -57,7 +59,7 @@ func TestTerminalConfirmationParityDispatch(t *testing.T) {
 		{name: "sandbox reversible create", environment: "sandbox", args: []string{"payment-intents", "create", "--input", `{"amount_money":{"amount":500,"currency":"USD"},"payment_options":["card"]}`, "--idempotency-key", "parity-test"}, wantWrites: 1},
 		{name: "live sensitive accepted", environment: "live", args: []string{"payment-intents", "create", "--input", `{"amount_money":{"amount":500,"currency":"USD"},"payment_options":["card"]}`, "--idempotency-key", "parity-test", "--live"}, tty: true, input: "yes\n", wantWrites: 1},
 		{name: "sandbox irreversible", environment: "sandbox", args: []string{"invoices", "void", "inv_test"}, wantExit: ExitConfirmation},
-		{name: "close is reversible in sandbox", environment: "sandbox", args: []string{"orders", "close", "ord_test"}, wantWrites: 1},
+		{name: "close is destructive in sandbox", environment: "sandbox", args: []string{"orders", "close", "ord_test"}, wantExit: ExitConfirmation},
 		{name: "ordinary raw live create", environment: "live", args: []string{"api", "post", "/v1/customers", "--input", `{"name":"Parity"}`, "--live"}, wantWrites: 1},
 		{name: "ordinary raw live overwrite", environment: "live", args: []string{"api", "patch", "/v1/customers/cus_test", "--input", `{"name":"Parity"}`, "--live"}, wantWrites: 1},
 		{name: "raw irreversible", environment: "sandbox", args: []string{"api", "post", "/v1/invoices/inv_test/void"}, wantExit: ExitConfirmation},
@@ -162,7 +164,7 @@ func TestRawLiveConfirmationRemovalsAreUngated(t *testing.T) {
 	}
 }
 
-func TestMoneyOutIrreversibleBridgePinned(t *testing.T) {
+func TestMoneyOutPublishedIrreversiblePinned(t *testing.T) {
 	app, _, _ := testApp(t, "http://127.0.0.1:9")
 	index, err := app.operationIndex()
 	if err != nil {

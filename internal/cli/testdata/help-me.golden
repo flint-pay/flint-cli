@@ -16,17 +16,15 @@ Commands:
   email-change-requests create                 Request an email change (customer session secret) POST /v1/me/email-change-requests
   email-preferences get                        Get the current buyer's email preferences (customer session secret) GET /v1/me/email-preferences
   email-preferences update                     Update the current buyer's email preferences (customer session secret) PATCH /v1/me/email-preferences
-  flint-wallet cards list                      List cards saved with Flint for this store (customer session secret) GET /v1/me/flint-wallet/cards
-  flint-wallet cards store-setups create <flint_wallet_card_id> Set up a Flint wallet card at this store (customer session secret) POST /v1/me/flint-wallet/cards/{flint_wallet_card_id}/store-setups
   fulfillment-events list                      List the current buyer's fulfillment events (customer session secret) GET /v1/me/fulfillment-events
   fulfillments get <fulfillment_id>            Get one of the current buyer's fulfillments (customer session secret) GET /v1/me/fulfillments/{fulfillment_id}
   fulfillments list                            List the current buyer's fulfillments (customer session secret) GET /v1/me/fulfillments
   get                                          Get the current buyer profile (customer session secret) GET /v1/me
+  gift-card-transactions list                  List a saved gift card's balance history (customer session secret) GET /v1/me/gift-card-transactions
   gift-cards create                            Save a gift card to your account (customer session secret) POST /v1/me/gift-cards
   gift-cards delete <gift_card_id>             Remove a saved gift card (customer session secret) DELETE /v1/me/gift-cards/{gift_card_id}
   gift-cards get <gift_card_id>                Get a saved gift card (customer session secret) GET /v1/me/gift-cards/{gift_card_id}
   gift-cards list                              List your saved gift cards (customer session secret) GET /v1/me/gift-cards
-  gift-cards transactions list <gift_card_id>  List a saved gift card's balance history (customer session secret) GET /v1/me/gift-cards/{gift_card_id}/transactions
   invoices checkout-sessions create <invoice_id> Create an invoice checkout session for the current buyer (invoice access token) POST /v1/me/invoices/{invoice_id}/checkout-sessions
   invoices credit-notes get <invoice_id> <credit_note_id> Get a credit note for one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}/credit-notes/{credit_note_id}
   invoices credit-notes list <invoice_id>      List credit notes for one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}/credit-notes

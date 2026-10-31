@@ -66,7 +66,7 @@ func TestCommandNamesFollowPathRule(t *testing.T) {
 			}
 		}
 	}
-	if generated != 611 || excluded != 12 || len(registry.Commands) != 643 {
+	if generated != 611 || excluded != 14 || len(registry.Commands) != 643 {
 		t.Fatalf("generated=%d excluded=%d total=%d", generated, excluded, len(registry.Commands))
 	}
 	for _, command := range curatedCommandDefinitions() {
@@ -176,7 +176,6 @@ func TestRefreshedUnpaginatedListsKeepNames(t *testing.T) {
 	for id, want := range map[string]string{
 		"listBalances":                "balances.list",
 		"listMerchantBillingBalances": "merchant-billing-balances.list",
-		"listMeFlintWalletCards":      "me.flint-wallet.cards.list",
 	} {
 		command, ok := registry.ByName(want)
 		if !ok || command.OperationID != id || command.Kind != "collection" {

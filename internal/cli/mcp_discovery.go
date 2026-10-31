@@ -313,7 +313,7 @@ func (a *App) mcpAdvertisedTools(policy mcpPolicy, version string) ([]map[string
 			hints := mcpToolAnnotations(cmd)
 			hints["title"] = entry.Title
 			hints["readOnlyHint"] = entry.Kind == "read"
-			hints["destructiveHint"] = entry.Kind == "write" && (entry.Irreversible || entry.Overwrites)
+			hints["destructiveHint"] = entry.Kind == "write" && entry.Irreversible
 			hints["idempotentHint"] = entry.Kind == "read" || entry.Method == "PUT" || entry.Method == "DELETE" || entry.Idempotency == "required"
 			tool["annotations"] = hints
 		}

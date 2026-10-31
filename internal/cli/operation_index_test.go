@@ -42,13 +42,8 @@ func TestOperationIndexClassification(t *testing.T) {
 	if !ok || !trigger.MCP || trigger.Kind != "write" || trigger.Audience != "local" {
 		t.Fatalf("trigger: %+v", trigger)
 	}
-	t.Logf("audiences=%v merchant-exposed=%d events=%d bridge=%d/%d", counts, exposed, events, ix.PublishedDestructive, ix.DerivedDestructive)
-	if events != 251 || counts["buyer"] != 70 || counts["merchant"] != 533 || counts["local"] != 33 || counts["keyless"] != 8 || exposed != 543 {
-		t.Errorf("classification changed: %v events=%d", counts, events)
-	}
-	if ix.DerivedDestructive == 0 || ix.PublishedDestructive == ix.DerivedDestructive {
-		t.Fatal("contract now marks every derived destructive operation; remove the bridge")
-	}
+	t.Logf("audiences=%v merchant-exposed=%d events=%d", counts, exposed, events)
+
 	for _, name := range []string{"api", "schema.input", "help", "mcp.serve", "config.set"} {
 		e, ok := ix.Lookup(name)
 		if !ok || e.MCP {

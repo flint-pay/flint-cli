@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/flint-pay/flint-cli/internal/opindex"
 	apispec "github.com/flint-pay/flint-cli/internal/spec"
+	"strings"
 	"sync"
 )
 
@@ -43,6 +44,16 @@ func terminalConfirmationRequired(entry opindex.Entry, environment string) bool 
 		return false
 	}
 	if normalizeEnvironment(environment) == "sandbox" {
+		// Payment collection is the sandbox integration loop. MCP still gates it.
+		verb := entry.Path[strings.LastIndex(entry.Path, "/")+1:]
+		switch verb {
+		case "pay", "confirm", "capture", "collect":
+			for _, resource := range []string{"orders", "payment-intents", "invoices", "gift-card-redemptions"} {
+				if strings.HasPrefix(entry.Path, "/v1/"+resource+"/") {
+					return false
+				}
+			}
+		}
 		return entry.Irreversible
 	}
 	return entry.ConfirmRequired()

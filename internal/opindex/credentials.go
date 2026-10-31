@@ -44,6 +44,9 @@ func CredentialSchemes(source, token string) []string {
 
 // Allows is a credential-class check, not an authorization or scope grant.
 func (credential Credential) Allows(entry Entry) bool {
+	if entry.Audience == "flint_hosted" {
+		return false
+	}
 	if entry.Audience == "local" || credential.Schemes == nil {
 		return true
 	}
