@@ -1198,9 +1198,23 @@
     "audience": "merchant"
   },
   {
+    "name": "gift-cards.close",
+    "operation_id": "closeGiftCard",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "gift-cards.create",
     "operation_id": "createGiftCard",
     "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "gift-cards.freeze",
+    "operation_id": "freezeGiftCard",
+    "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -1240,9 +1254,9 @@
     "audience": "merchant"
   },
   {
-    "name": "gift-cards.transitions.create",
-    "operation_id": "transitionGiftCard",
-    "kind": "collection",
+    "name": "gift-cards.unfreeze",
+    "operation_id": "unfreezeGiftCard",
+    "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"
   },

@@ -67,7 +67,7 @@ func TestCommandNamesFollowPathRule(t *testing.T) {
 			}
 		}
 	}
-	if generated != 609 || excluded != 12 || len(registry.Commands) != 640 {
+	if generated != 611 || excluded != 12 || len(registry.Commands) != 642 {
 		t.Fatalf("generated=%d excluded=%d total=%d", generated, excluded, len(registry.Commands))
 	}
 	for _, command := range curatedCommandDefinitions() {
@@ -79,7 +79,7 @@ func TestCommandNamesFollowPathRule(t *testing.T) {
 
 func TestCommandNameRuleCases(t *testing.T) {
 	doc := &openAPIDocument{}
-	doc.Components.Schemas = map[string]map[string]any{"Page": {"allOf": []any{map[string]any{"properties": map[string]any{"next_page_token": map[string]any{"type": "string"}}}}}}
+	doc.Components.Schemas = map[string]map[string]any{"Page": {"allOf": []any{map[string]any{"properties": map[string]any{"data": map[string]any{"type": "array"}, "next_page_token": map[string]any{"type": "string"}}}}}}
 	for _, tc := range []struct {
 		path, method, id, want, kind string
 		page                         bool
@@ -126,6 +126,86 @@ func TestCommandNameRuleCases(t *testing.T) {
 	}
 }
 
+func TestCommandNameCollectionResponseShape(t *testing.T) {
+	array := map[string]any{"type": "array", "items": map[string]any{"type": "object"}}
+	data := func(schema map[string]any) map[string]any {
+		return map[string]any{"type": "object", "properties": map[string]any{"data": schema}}
+	}
+	page := data(array)
+	page["properties"].(map[string]any)["next_page_token"] = map[string]any{"type": "string"}
+	doc := &openAPIDocument{}
+	doc.Components.Schemas = map[string]map[string]any{
+		"Array":        array,
+		"List":         data(array),
+		"ComposedList": {"allOf": []any{map[string]any{"$ref": "#/components/schemas/List"}}},
+		"Loop":         {"$ref": "#/components/schemas/Loop"},
+	}
+	for _, tc := range []struct {
+		name   string
+		schema map[string]any
+		list   bool
+	}{
+		{"inline list without page token", data(array), true},
+		{"inline list with page token", page, true},
+		{"response reference", map[string]any{"$ref": "#/components/schemas/List"}, true},
+		{"response allOf reference", map[string]any{"$ref": "#/components/schemas/ComposedList"}, true},
+		{"data reference", data(map[string]any{"$ref": "#/components/schemas/Array"}), true},
+		{"data allOf reference", data(map[string]any{"allOf": []any{map[string]any{"$ref": "#/components/schemas/Array"}}}), true},
+		{"page token without array", map[string]any{"properties": map[string]any{"data": map[string]any{"type": "object"}, "next_page_token": map[string]any{"type": "string"}}}, false},
+		{"page token without data", map[string]any{"properties": map[string]any{"next_page_token": map[string]any{"type": "string"}}}, false},
+		{"nested array is not data", data(map[string]any{"properties": map[string]any{"items": array}}), false},
+		{"bare array is not data", array, false},
+		{"cyclic response reference", map[string]any{"$ref": "#/components/schemas/Loop"}, false},
+		{"cyclic data reference", data(map[string]any{"$ref": "#/components/schemas/Loop"}), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			op := openAPIOperation{OperationID: "fetchThings", Responses: map[string]map[string]any{"200": {"content": map[string]any{"application/json": map[string]any{"schema": tc.schema}}}}}
+			want, kind := "things.get", "singleton"
+			if tc.list {
+				want, kind = "things.list", "collection"
+			}
+			name, gotKind, err := commandName(doc, "/v1/things", "GET", op)
+			if err != nil || name != want || gotKind != kind {
+				t.Fatalf("name=%s kind=%s error=%v, want %s/%s", name, gotKind, err, want, kind)
+			}
+		})
+	}
+}
+
+func TestRefreshedUnpaginatedListsKeepNames(t *testing.T) {
+	registry := NewRegistry()
+	for id, want := range map[string]string{
+		"listBalances":                "balances.list",
+		"listMerchantBillingBalances": "merchant-billing-balances.list",
+		"listMeFlintWalletCards":      "me.flint-wallet.cards.list",
+	} {
+		command, ok := registry.ByName(want)
+		if !ok || command.OperationID != id || command.Kind != "collection" {
+			t.Fatalf("%s missing collection %s: %+v", id, want, command)
+		}
+		if command.Supports.Pagination {
+			t.Errorf("%s has no pagination parameters", id)
+		}
+		for _, arg := range command.Arguments {
+			if arg.Query == "page_size" || arg.Query == "page_token" {
+				t.Errorf("%s exposes unsupported query parameter %s", id, arg.Query)
+			}
+		}
+		_, opts, help, e := parseInvocation(registry, append(strings.Split(want, "."), "--all"))
+		if e == nil {
+			e = validateOptions(command, &opts, help)
+		}
+		if e == nil || e.Code != "UNSUPPORTED_FLAG" {
+			t.Errorf("%s accepted --all without pagination: %v", id, e)
+		}
+	}
+	// Pagination capability still comes from the actual page_size parameter.
+	command, ok := registry.ByName("orders.list")
+	if !ok || !command.Supports.Pagination {
+		t.Fatal("orders list lost its published pagination")
+	}
+}
+
 func TestCommandNameCollisions(t *testing.T) {
 	for _, commands := range [][]*Command{
 		{{Name: "a.b.list", OperationID: "first"}, {Name: "a.b.list", OperationID: "second"}},
@@ -166,7 +246,7 @@ func TestCommandTreeInvariants(t *testing.T) {
 		methods := doc.Paths[c.APIPath]
 		structural := false
 		if get, ok := methods["get"]; ok {
-			structural = operationIsPage(&doc, get)
+			structural = operationReturnsArray(&doc, get)
 		}
 		for path := range doc.Paths {
 			rest, ok := strings.CutPrefix(path, c.APIPath+"/")

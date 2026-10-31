@@ -10,7 +10,7 @@ import (
 
 func TestMCPTypedBudgetsAndContract(t *testing.T) {
 	app := discoveryFixture(t)
-	// 541 operations plus wait_for/wait_seconds controls and operation _meta,
+	// 543 operations plus wait_for/wait_seconds controls and operation _meta,
 	// which the prototype omitted. Other typed and discovery budgets stay fixed.
 	for _, scope := range []struct {
 		name   string
@@ -98,13 +98,8 @@ func assertTypedSchema(t *testing.T, name string, node map[string]any) {
 	}
 }
 
-// Spectext filled these descriptions in flint #2813. Delete each baseline entry
-// on the next vendored spec refresh; a no-longer-empty entry fails below.
-var mcpEmptyDescriptionBaseline = map[string]bool{
-	"createBundle": true, "getBundle": true, "getCategory": true, "updateCategory": true,
-	"getLocation": true, "createModifierGroup": true, "getModifierGroup": true,
-	"createModifierSet": true, "getModifierSet": true, "getProductOption": true, "getProductVariant": true,
-}
+// No operation descriptions may be empty after the vendored spec refresh.
+var mcpEmptyDescriptionBaseline = map[string]bool{}
 
 func TestMCPTypedDescriptions(t *testing.T) {
 	empty := map[string]bool{}
