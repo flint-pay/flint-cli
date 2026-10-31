@@ -32,7 +32,10 @@ func TestListenProjectsPublishedMerchantEnvelope(t *testing.T) {
 }
 
 func TestListenForwardsRetriesAndHeaders(t *testing.T) {
-	secret := "whsec_AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="
+	secret, err := webhooksigning.GenerateSecret()
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, scenario := range []struct {
 		name               string
 		status             int

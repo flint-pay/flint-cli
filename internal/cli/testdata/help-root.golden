@@ -27,7 +27,7 @@ Developer tools:
   help                             Command help, reference topics, and offline search
   history                          List or clear recent Flint resource IDs
   init                             Initialize Flint CLI context
-  listen                           Forward Flint webhook events to a local endpoint using the local HMAC listen secret, regardless of endpoint signing methods. JWT handlers need an HMAC path or a local test bypass
+  listen                           Forward Flint webhook events to a local endpoint using the local HMAC listen secret, regardless of endpoint signing methods. Delivery is at-least-once and uses the caller's API version. To test JWT, use a tunnel and a registered sandbox endpoint
   mcp                              Serve Flint operations to AI agents over MCP
   openapi                          API metadata.
   partner-app-installs             Partner apps installed on your account.
