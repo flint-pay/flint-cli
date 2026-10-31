@@ -273,13 +273,18 @@ func TestMCPQueryParametersKeepTheirContract(t *testing.T) {
 func TestMCPDescriptionsSayWhatTitlesDoNot(t *testing.T) {
 	app, _, _ := testApp(t, "")
 	tools, _ := mcpListedTools(t, app, mcpAllToolsOptions(t), latestMCPProtocolVersion)
+	index, err := app.operationIndex()
+	if err != nil {
+		t.Fatal(err)
+	}
 	sameAsTitle := 0
 	for _, tool := range tools {
 		description := tool["description"].(string)
 		if strings.TrimSuffix(description, ".") == tool["title"] {
 			sameAsTitle++
 		}
-		if description == "" || len(description) > 450 {
+		entry, _ := index.Lookup(tool["name"].(string))
+		if description == "" && !mcpEmptyDescriptionBaseline[entry.OperationID] || len(description) > 450 {
 			t.Errorf("%s description is %d bytes", tool["name"], len(description))
 		}
 		if strings.Contains(description, "_flint") {

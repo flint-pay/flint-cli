@@ -10,10 +10,12 @@ import (
 
 func TestMCPTypedBudgetsAndContract(t *testing.T) {
 	app := discoveryFixture(t)
+	// 541 operations plus wait_for/wait_seconds controls and operation _meta,
+	// which the prototype omitted. Other typed and discovery budgets stay fixed.
 	for _, scope := range []struct {
 		name   string
 		budget int
-	}{{"all", 720000}, {"orders", 50000}} {
+	}{{"all", 780000}, {"orders", 50000}} {
 		policy := app.mcpPolicy(mcpServeOptions(t, "--tools", scope.name))
 		tools, e := app.mcpAdvertisedTools(policy, latestMCPProtocolVersion)
 		if e != nil {
@@ -96,7 +98,16 @@ func assertTypedSchema(t *testing.T, name string, node map[string]any) {
 	}
 }
 
+// Spectext filled these descriptions in flint #2813. Delete each baseline entry
+// on the next vendored spec refresh; a no-longer-empty entry fails below.
+var mcpEmptyDescriptionBaseline = map[string]bool{
+	"createBundle": true, "getBundle": true, "getCategory": true, "updateCategory": true,
+	"getLocation": true, "createModifierGroup": true, "getModifierGroup": true,
+	"createModifierSet": true, "getModifierSet": true, "getProductOption": true, "getProductVariant": true,
+}
+
 func TestMCPTypedDescriptions(t *testing.T) {
+	empty := map[string]bool{}
 	app := discoveryFixture(t)
 	policy := app.mcpPolicy(mcpServeOptions(t, "--tools", "all"))
 	tools, e := app.mcpAdvertisedTools(policy, latestMCPProtocolVersion)
@@ -110,7 +121,10 @@ func TestMCPTypedDescriptions(t *testing.T) {
 		description := fmt.Sprint(tool["description"])
 		if description == "" {
 			entry, _ := policy.index.Lookup(fmt.Sprint(tool["name"]))
-			t.Errorf("empty description baseline is zero: %s (%s)", entry.ID, entry.OperationID)
+			empty[entry.OperationID] = true
+			if !mcpEmptyDescriptionBaseline[entry.OperationID] {
+				t.Errorf("new empty description: %s (%s)", entry.ID, entry.OperationID)
+			}
 		}
 		seen := map[string]bool{}
 		title := mcpDescriptionKey(fmt.Sprint(tool["title"]))
@@ -123,6 +137,11 @@ func TestMCPTypedDescriptions(t *testing.T) {
 		}
 		if strings.Contains(description, "--") {
 			t.Errorf("%s contains CLI flag text: %s", tool["name"], description)
+		}
+	}
+	for id := range mcpEmptyDescriptionBaseline {
+		if !empty[id] {
+			t.Errorf("%s description is no longer empty; remove it from the baseline", id)
 		}
 	}
 }
