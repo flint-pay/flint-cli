@@ -282,13 +282,13 @@ func TestEveryHelpExampleParsesAsItsDocumentedCommand(t *testing.T) {
 			example := example
 			t.Run(fmt.Sprintf("%s/%d", command.CanonicalName, index), func(t *testing.T) {
 				wantCanonicalName := command.CanonicalName
-				fields := strings.Fields(example)
+				fields := mcpFallbackWords(example)
 				if len(fields) == 0 || fields[0] != "flint" {
 					t.Fatalf("example is not a flint invocation: %q", example)
 				}
 				argv := make([]string, 0, len(fields)-1)
 				for i := 1; i < len(fields); i++ {
-					if fields[i] == "<" {
+					if fields[i] == "<" || fields[i] == ">" {
 						break
 					}
 					argv = append(argv, fields[i])

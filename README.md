@@ -218,6 +218,8 @@ Primitives use their resource names, such as `customers`, `products`, `orders`, 
 
 Commands with convenience flags can create a resource directly. Other commands take a JSON request body through `--input FILE.json`, `--input -` for stdin, or inline JSON such as `--input '{"email":"jane@example.com"}'`, which the CLI sends as the API request body. Use `flint schema input <resource>.create --output json` to see the JSON Schema of that body, prepare the file, then run the create command. Path arguments such as IDs and execution controls such as `--live` or `--idempotency-key` are not part of the body; pass them as arguments and flags. Convenience flags set their body fields on top of the file.
 
+Command help uses the API snapshot's request examples. It prefers flags when they can express the complete example body, and otherwise includes inline JSON. Run `flint schema input refunds.create --example > refund.json` to save a documented body, then replace its sample IDs and values before submitting it. Without `--example`, the command still prints the full schema. MCP `flint_describe` includes complete request examples within a 600-byte budget; larger bodies remain available through `schema input --example`.
+
 Writes that require an idempotency key, such as `flint refunds create` and `flint orders pay`, require `--idempotency-key KEY`, including with `--dry-run=client`. Save the key with the action before the first command and reuse it on retry. For writes with an optional key, the CLI generates a `flint-cli-…` key and reuses it across its own retries. Operations that take no key send none. The API never generates keys.
 
 ```sh

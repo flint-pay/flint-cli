@@ -143,3 +143,37 @@ func TestSpecRequestMCPDescribeExamples(t *testing.T) {
 		}
 	}
 }
+
+func TestSpecRequestSchemaInputExample(t *testing.T) {
+	for _, output := range []string{"human", "json"} {
+		t.Run(output, func(t *testing.T) {
+			app, out, _ := testApp(t, "http://127.0.0.1:9")
+			app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(*http.Request) (*http.Response, error) {
+				t.Fatal("schema example made a network request")
+				return nil, nil
+			})}
+			if exit := app.Run([]string{"schema", "input", "refunds", "create", "--example", "--output", output}); exit != ExitOK {
+				t.Fatal(exit, out)
+			}
+			var body map[string]any
+			if err := json.Unmarshal(out.Bytes(), &body); err != nil {
+				t.Fatal(err, out)
+			}
+			if body["refund_type"] != "amount" || body["$schema"] != nil || body["data"] != nil {
+				t.Fatalf("expected a raw request body: %v", body)
+			}
+			cmd, _ := app.Registry.ByName("refunds.create")
+			if _, e := validateRequestBody(cmd, cmd.Name, body); e != nil {
+				t.Fatal(e)
+			}
+			out.Reset()
+			if exit := app.Run([]string{"schema", "input", "customers.get", "--example", "--output", "json"}); exit != ExitUsage || !strings.Contains(out.String(), "REQUEST_EXAMPLE_NOT_FOUND") {
+				t.Fatal(exit, out)
+			}
+			out.Reset()
+			if exit := app.Run([]string{"schema", "input", "refunds.create", "--example=false"}); exit != ExitOK || !strings.Contains(out.String(), `"$schema"`) {
+				t.Fatal(exit, out)
+			}
+		})
+	}
+}

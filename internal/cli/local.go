@@ -609,7 +609,15 @@ func (a *App) localSchema(cmd *Command, opts Options) int {
 		case "schema.command":
 			value = map[string]any{"data": commandDocument(target, target.Name)}
 		case "schema.input":
-			value, e = requestBodySchema(target)
+			if values := opts.Raw["example"]; len(values) > 0 && values[len(values)-1] == "true" {
+				examples := commandRequestExamples(target)
+				if len(examples) == 0 {
+					return a.fail(usageError("REQUEST_EXAMPLE_NOT_FOUND", "The API snapshot has no JSON request example for "+target.Name+". Run flint schema input "+target.Name+" for its schema.", "command"), opts)
+				}
+				value = deepCopyMap(examples[0].Body)
+			} else {
+				value, e = requestBodySchema(target)
+			}
 		default:
 			value, e = schemaForCommand(target, false)
 		}
