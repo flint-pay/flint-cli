@@ -4,10 +4,12 @@ Usage:
   flint api-keys create [flags]
 
 Arguments and flags:
-  --name                       API key name (required)
-  --access                     Key access: full, read_only, or restricted; defaults to restricted with --scope
-  --scope                      Scope to grant; implies --access restricted and is not allowed with full or read_only
-  --input                      JSON body: FILE.json, - for stdin, or inline JSON
+  --name TEXT                            API key name (required)
+  --access full|read_only|restricted     Key access: full, read_only, or restricted; defaults to restricted with --scope
+  --scope TEXT                           Scope to grant; implies --access restricted and is not allowed with full or read_only
+    96 values: flint schema command api-keys.create --output json
+    Repeat this flag for multiple values.
+  --input TEXT                           JSON body: FILE.json, - for stdin, or inline JSON
 
 Request body:
   Required top-level fields: access, name

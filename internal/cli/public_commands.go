@@ -78,6 +78,7 @@ func publicAPIArguments(
 			argument.AcceptsHistoryRef = true
 		}
 		if location == "path" {
+			applyQueryArgumentContract(&argument, schema)
 			pathPosition++
 			argument.Required = true
 			argument.Positional = pathPosition
@@ -90,6 +91,17 @@ func publicAPIArguments(
 			argument.Query = name
 			argument.Required, _ = parameter["required"].(bool)
 			applyQueryArgumentContract(&argument, schema)
+			if argument.Repeat {
+				argument.Style, _ = parameter["style"].(string)
+				if argument.Style == "" {
+					argument.Style = "form"
+				}
+				explode, ok := parameter["explode"].(bool)
+				if !ok {
+					explode = argument.Style == "form"
+				}
+				argument.Explode = &explode
+			}
 		}
 		arguments = append(arguments, argument)
 	}
