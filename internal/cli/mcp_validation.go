@@ -54,7 +54,7 @@ func mcpValidateInputs(cmd *Command, entry opindex.Entry, args, controls map[str
 				typ = "string"
 			}
 			property := map[string]any{"type": typ}
-			if len(arg.Enum) > 0 {
+			if len(arg.Enum) > 0 && !(cmd.CanonicalName == "listen" && arg.Name == "event_type") {
 				property["enum"] = arg.Enum
 			}
 			if arg.Repeat {

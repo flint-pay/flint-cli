@@ -310,6 +310,10 @@ one minute to include due work. That target stays the same when the run is resum
 result; `--output ndjson` streams finished steps and bounded wait observations. Trigger creates new
 test resources and does not delete them. Reset the sandbox when finished.
 
+`listen --event-type` accepts repeated flags and comma-separated values, including newer server event names. The listener record returns `event_type` as an array. Forwarded bodies use the merchant webhook envelope published in the embedded spec, at the caller's API version. `--webhook-endpoint-id` sets the `Flint-Webhook-Endpoint-Id` header (default `whep_cli_listen`).
+
+Local delivery is at-least-once, signed with HMAC (Standard Webhooks). Transport errors, timeouts, 429 and 5xx receive up to three attempts, with 1-second and 2-second delays. Other HTTP failures are not retried. Handlers should deduplicate by webhook event ID. Secrets supplied by `--webhook-secret` or `FLINT_WEBHOOK_SECRET` are omitted from the listener record and human banner. The explicit `--print-secret` command prints the selected secret. To test JWT verification, use a tunnel and a registered sandbox endpoint.
+
 ## Scripts and agents
 
 Lists return one page. Check `next_page_token`; it is omitted when no more pages remain. Pass it with `--page-token TOKEN`, use `--all` for every page, or `--limit N` to collect up to N resources automatically. `--limit` requests `min(remaining, 100)` items on each page and preserves the exact continuation token. If a server returns more items than requested, the CLI truncates the result and omits the token to avoid skipping resources.

@@ -518,6 +518,9 @@ func schemaForMCPTool(cmd *Command, policy mcpPolicy) (map[string]any, *CLIError
 	}
 	delete(schema, "description")
 	properties, _ := schema["properties"].(map[string]any)
+	if public.CanonicalName == "listen" {
+		properties["event_type"] = map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Event types, including newer server values. Omit for all."}
+	}
 	if public.Local {
 		delete(properties, "for")
 		if public.Stream || public.CanonicalName == "trigger" {
@@ -748,7 +751,7 @@ var mcpLocalTools = map[string]struct{ title, description string }{
 	"config.validate": {"Validate configuration", "Validate the global and project Flint configuration and the credential they select."},
 	"signup":          {"Sign up for Flint", "Create a Flint account and sandbox API key in two calls: first email, first_name, and last_name (Flint emails a code), then verification_code. Only for a profile without a saved credential."},
 	"api":             {"Call a Flint API route", "Call any documented Flint public API route by method and /v1 path, with a JSON body for writes. Prefer a dedicated tool when one exists."},
-	"listen":          {"Stream webhook events", "Print Flint webhook events or forward them locally with the HMAC listen secret, regardless of endpoint signing methods. JWT handlers need an HMAC path or a local test bypass. Set max_events or max_seconds (up to 100 events or 120 seconds). print_secret returns the local secret without connecting."},
+	"listen":          {"Stream webhook events", "Print Flint webhook events or forward merchant envelopes locally with HMAC signing and at-least-once delivery. Set webhook_endpoint_id to match your handler (default whep_cli_listen). JWT testing needs a tunnel and a registered sandbox endpoint. Set max_events or max_seconds (up to 100 events or 120 seconds). print_secret returns the local secret without connecting."},
 }
 
 // mcpToolTitle prefers the description's first sentence when it is short and

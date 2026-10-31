@@ -222,6 +222,9 @@ func TestEveryHistoryReferenceArgumentResolvesAndMissingFails(t *testing.T) {
 						t.Fatalf("prepareRequest(%s): %v", reference, cliErr)
 					}
 					serialized := request.Path + string(request.Body)
+					if command.CanonicalName == "listen" && argument.Name == "webhook_endpoint_id" {
+						serialized += strings.Join(options.Raw["webhook-endpoint-id"], "")
+					}
 					if !strings.Contains(serialized, historyID) {
 						t.Errorf("prepared request does not contain resolved ID %q: %s", historyID, serialized)
 					}

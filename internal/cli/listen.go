@@ -56,8 +56,9 @@ type listenWebhookEvent struct {
 	// Payload is the delivery body. Flint servers before October 26, 2026 sent
 	// it under "payload"; current ones send the event itself, the same envelope
 	// a webhook delivery carries, with the resource under "data".
-	Payload json.RawMessage `json:"payload"`
-	Data    json.RawMessage `json:"data"`
+	Payload    json.RawMessage `json:"payload"`
+	Data       json.RawMessage `json:"data"`
+	EndpointID string          `json:"-"`
 }
 
 func listenRawPresent(raw json.RawMessage) bool {
@@ -151,7 +152,13 @@ func (a *App) executeListen(ctx context.Context, _ *Command, opts Options, req p
 	if e := validateListenEventType(opts.Raw["event-type"]); e != nil {
 		return nil, e
 	}
-	streamPath, initialCursor, e := listenStreamPath(req.Path)
+	parsedPath, _ := url.Parse(req.Path)
+	query := parsedPath.Query()
+	if types := listenSelectedTypes(opts); len(types) > 0 {
+		query.Set("event_type", strings.Join(types, ","))
+	}
+	parsedPath.RawQuery = query.Encode()
+	streamPath, initialCursor, e := listenStreamPath(parsedPath.String())
 	if e != nil {
 		return nil, e
 	}
@@ -401,12 +408,12 @@ func validateListenEventType(values []string) *CLIError {
 	if len(values) == 0 {
 		return nil
 	}
-	if len(values) > 1 || strings.Contains(values[0], ",") {
-		return usageError("MULTIPLE_EVENT_TYPES", "--event-type accepts one event type because the webhook stream filters on a single type. Omit it to receive every event, or run one flint listen per type.", "event_type")
-	}
-	value := values[0]
-	if strings.TrimSpace(value) == "" {
-		return usageError("INVALID_EVENT_TYPE", "--event-type must not be empty.", "event_type")
+	for _, value := range values {
+		for _, item := range strings.Split(value, ",") {
+			if strings.TrimSpace(item) == "" {
+				return usageError("INVALID_EVENT_TYPE", "--event-type must not be empty.", "event_type")
+			}
+		}
 	}
 	// A newer server may accept event types absent from this snapshot.
 	return nil
@@ -847,7 +854,11 @@ func (a *App) consumeListenWebhookEvent(ctx context.Context, frame listenSSEFram
 	}
 	eventLabel := terminalSafe(event.EventType) + " " + terminalSafe(event.WebhookEventID)
 	if !listenRawPresent(event.Payload) && listenRawPresent(event.Data) {
-		event.Payload = frame.Data
+		projected, err := projectListenEnvelope(frame.Data, event.EventType)
+		if err != nil {
+			return invalidResponseError("INVALID_STREAM_PAYLOAD", "Could not read the webhook delivery envelope.", err)
+		}
+		event.Payload = projected
 	}
 	if !listenRawPresent(event.Payload) {
 		// One event the key cannot read must not stop the listener.
@@ -870,6 +881,7 @@ func (a *App) consumeListenWebhookEvent(ctx context.Context, frame listenSSEFram
 	}
 	cursorBefore := state.cursor
 	state.forwarding.Store(true)
+	event.EndpointID = listenEndpointID(opts)
 	result := a.forwardListenPayload(ctx, opts.Timeout, forwardTo, secret, event)
 	state.forwardEnded.Store(time.Now().UnixNano())
 	state.forwarding.Store(false)
@@ -898,6 +910,7 @@ func (a *App) consumeListenWebhookEvent(ctx context.Context, frame listenSSEFram
 		"ok":               delivered,
 		"status_code":      result.statusCode,
 		"latency_ms":       result.latency.Milliseconds(),
+		"attempts":         result.attempts,
 	}
 	human := fmt.Sprintf("%s -> HTTP %d (%s)", eventLabel, result.statusCode, latency)
 	switch {
@@ -950,6 +963,7 @@ func listenPayloadSummary(payload json.RawMessage) string {
 
 type listenForwardResult struct {
 	statusCode    int
+	attempts      int
 	latency       time.Duration
 	err           error
 	body          string
@@ -961,6 +975,27 @@ func (r listenForwardResult) delivered() bool {
 }
 
 func (a *App) forwardListenPayload(ctx context.Context, timeout time.Duration, forwardTo, secret string, event listenWebhookEvent) listenForwardResult {
+	var result listenForwardResult
+	started := a.Now()
+	for attempt := 1; attempt <= 3; attempt++ {
+		result = a.forwardListenAttempt(ctx, timeout, forwardTo, secret, event)
+		result.attempts = attempt
+		result.latency = max(time.Duration(0), a.Now().Sub(started))
+		if result.delivered() || ctx.Err() != nil || result.err == nil && result.statusCode != 429 && result.statusCode < 500 {
+			return result
+		}
+		if attempt < 3 {
+			sleepContext(ctx, time.Duration(attempt)*time.Second)
+		}
+		if ctx.Err() != nil {
+			result.err = ctx.Err()
+			return result
+		}
+	}
+	return result
+}
+
+func (a *App) forwardListenAttempt(ctx context.Context, timeout time.Duration, forwardTo, secret string, event listenWebhookEvent) listenForwardResult {
 	requestCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	timestamp := a.Now().Unix()
@@ -969,6 +1004,11 @@ func (a *App) forwardListenPayload(ctx context.Context, timeout time.Duration, f
 		return listenForwardResult{err: err}
 	}
 	req.Header.Set("Content-Type", "application/json")
+	endpointID := event.EndpointID
+	if endpointID == "" {
+		endpointID = "whep_cli_listen"
+	}
+	req.Header.Set("Flint-Webhook-Endpoint-Id", endpointID)
 	req.Header.Set("User-Agent", listenUserAgent)
 	req.Header.Set("webhook-id", event.WebhookEventID)
 	req.Header.Set("webhook-timestamp", fmt.Sprintf("%d", timestamp))
@@ -1179,11 +1219,12 @@ func (a *App) writeListenStarted(opts Options, forwardTo string, secret listenSe
 	if opts.Output == "json" || opts.Output == "ndjson" {
 		record := map[string]any{"type": "listener", "mode": "print"}
 		if forwardTo != "" {
-			record = map[string]any{"type": "listener", "mode": "forward", "forward_to": forwardTo, "signing_secret": secret.value, "signing_secret_source": secret.source}
+			record = map[string]any{"type": "listener", "mode": "forward", "forward_to": forwardTo, "webhook_endpoint_id": listenEndpointID(opts), "signing_secret_source": secret.source}
 		}
-		if eventType := lastRawOption(opts, "event-type"); eventType != "" {
-			record["event_type"] = eventType
+		if forwardTo != "" && !secret.redacted() {
+			record["signing_secret"] = secret.value
 		}
+		record["event_type"] = listenSelectedTypes(opts)
 		if secret.warning != "" {
 			record["warning"] = secret.warning
 		}
@@ -1201,7 +1242,7 @@ func (a *App) writeListenStarted(opts Options, forwardTo string, secret listenSe
 // how the run stops, and the secret a handler must verify signatures with.
 func listenBanner(opts Options, forwardTo string, secret listenSecret) string {
 	events := "webhook events"
-	if eventType := lastRawOption(opts, "event-type"); eventType != "" {
+	if eventType := strings.Join(listenSelectedTypes(opts), ","); eventType != "" {
 		events = eventType + " events"
 	}
 	var banner strings.Builder
@@ -1232,7 +1273,12 @@ func listenBanner(opts Options, forwardTo string, secret listenSecret) string {
 			"generated":   "new; saved and reused by later runs",
 			"temporary":   "temporary; could not be saved",
 		}[secret.source]
-		fmt.Fprintf(&banner, "\nWebhook signing secret: %s (%s)", secret.value, source)
+		if secret.redacted() {
+			fmt.Fprintf(&banner, "\nWebhook signing secret: %s (not shown)", source)
+		} else {
+			fmt.Fprintf(&banner, "\nWebhook signing secret: %s (%s)", secret.value, source)
+		}
+		fmt.Fprintf(&banner, "\nEndpoint: %s. HMAC signed; delivery is at-least-once.", listenEndpointID(opts))
 	}
 	return banner.String()
 }
@@ -1304,7 +1350,10 @@ func (a *App) writeListenCheckpoint(opts Options, state *listenStreamState) *CLI
 		hint := listenReplayHint(state)
 		if state.replayCursor != "" {
 			replay := "flint listen --forward-to " + forwardTo + " --cursor " + state.replayCursor
-			if eventType := lastRawOption(opts, "event-type"); eventType != "" {
+			if lastRawOption(opts, "webhook-endpoint-id") != "" {
+				replay += " --webhook-endpoint-id " + quoteRemediationArgument(listenEndpointID(opts))
+			}
+			if eventType := strings.Join(listenSelectedTypes(opts), ","); eventType != "" {
 				replay += " --event-type " + eventType
 			}
 			hint = "After fixing the handler, replay from the first failure with: " + replay
