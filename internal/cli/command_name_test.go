@@ -247,14 +247,16 @@ func TestCommandTreeGolden(t *testing.T) {
 		Name        string `json:"name"`
 		OperationID string `json:"operation_id,omitempty"`
 		Kind        string `json:"kind"`
+		Section     string `json:"section"`
+		Audience    string `json:"audience"`
 	}
 	var entries []entry
-	for _, c := range NewRegistry().Commands {
+	for _, c := range NewRegistry().commandTree().Commands {
 		kind := c.Kind
 		if kind == "" {
 			kind = "cli"
 		}
-		entries = append(entries, entry{c.Name, c.OperationID, kind})
+		entries = append(entries, entry{c.Name, c.OperationID, kind, c.Section, c.Audience})
 	}
 	data, err := json.MarshalIndent(entries, "", "  ")
 	if err != nil {

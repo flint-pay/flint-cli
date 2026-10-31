@@ -115,7 +115,7 @@ func TestUnknownCommandWithoutCloseMatchPointsToHelp(t *testing.T) {
 	if exit := app.Run([]string{"foo"}); exit != ExitUsage {
 		t.Fatalf("exit=%d", exit)
 	}
-	if got := stderr.String(); !strings.Contains(got, "flint --help") || strings.Contains(got, "Did you mean") {
+	if got := stderr.String(); !strings.Contains(got, "flint help search foo") || strings.Contains(got, "Did you mean") {
 		t.Fatalf("stderr=%q", got)
 	}
 }
@@ -172,7 +172,7 @@ func TestHelpShowsPositionalsHistoryRefsAndTopics(t *testing.T) {
 		t.Fatalf("help=%s", stdout)
 	}
 	app, stdout, _ = testApp(t, "")
-	if exit := app.Run([]string{"help", "nope", "--output", "json"}); exit != ExitUsage || !strings.Contains(stdout.String(), "test-cards") {
+	if exit := app.Run([]string{"help", "nope", "--output", "json"}); exit != ExitUsage || !strings.Contains(stdout.String(), `"code":"UNKNOWN_COMMAND"`) || !strings.Contains(stdout.String(), `"suggestions":`) {
 		t.Fatalf("exit=%d stdout=%s", exit, stdout)
 	}
 	app, stdout, _ = testApp(t, "")

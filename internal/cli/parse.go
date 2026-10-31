@@ -50,42 +50,18 @@ func parseInvocation(r *Registry, argv []string) (*Command, Options, bool, *CLIE
 		}
 		return nil, opts, false, usageError("MISSING_COMMAND", "A command is required.", "")
 	}
-	var cmd *Command
-	consumed := 0
-	for n := min(8, len(remaining)); n >= 1; n-- {
-		candidate := append([]string{"flint"}, remaining[:n]...)
-		if c, ok := r.ByPath(candidate); ok {
-			cmd = c
-			consumed = n
-			break
-		}
-	}
+	resolution := r.resolveWords(remaining)
+	cmd, consumed := resolution.Command, resolution.Consumed
 	if cmd == nil {
-		groupPath := append([]string{"flint"}, remaining...)
-		if len(r.commandsUnder(groupPath)) > 0 {
-			name := strings.Join(remaining, ".")
-			return &Command{Name: name, CanonicalName: name, Path: groupPath, Local: true, Group: true}, opts, true, nil
+		if resolution.Group != nil {
+			return groupCommand(resolution.Group), opts, true, nil
 		}
-		input := remaining[0]
-		shown := 1
-		for shown < len(remaining) && len(r.commandsUnder(append([]string{"flint"}, remaining[:shown]...))) > 0 {
-			shown++
-		}
-		var suggestions []string
-		if shown > 1 {
-			suggestions = r.subcommandSuggestions(input, remaining[1:])
-			input = strings.Join(remaining[:shown], " ")
-		} else {
-			suggestions = r.NounSuggestions(input)
-		}
-		msg := "Unknown command: " + strings.Join(remaining[:max(shown, min(2, len(remaining)))], " ") + "."
-		if len(suggestions) == 0 {
-			msg += " Run flint --help to list commands."
-		}
-		e := usageError("UNKNOWN_COMMAND", msg, "")
-		e.Details = suggestionDetails(input, suggestions)
+		input := strings.Join(commandWords(remaining), " ")
+		e := usageError("UNKNOWN_COMMAND", "Unknown command: "+input+". Run flint help search "+input+" to find commands.", "")
+		e.Details = suggestionDetails(input, resolution.Suggestions)
 		return nil, opts, false, e
 	}
+
 	opts.streamCommand = cmd.Stream
 	commandFlags := map[string]bool{}
 	for k := range globalFlags {
@@ -431,7 +407,7 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	if used("open") && !cmd.Supports.Open {
 		return usageError("UNSUPPORTED_FLAG", "--open is not supported by this command.", "open")
 	}
-	if (used("limit") || used("all") || used("page-size") || used("page-token")) && !cmd.Supports.Pagination && !cmd.Stream && cmd.CanonicalName != "api" {
+	if (used("limit") || used("all") || used("page-size") || used("page-token")) && !cmd.Supports.Pagination && !cmd.Stream && cmd.CanonicalName != "api" && cmd.CanonicalName != "help" {
 		return usageError("UNSUPPORTED_FLAG", "Pagination flags are not supported by this command.", "page-size")
 	}
 	if used("paginate") && cmd.CanonicalName != "api" {
@@ -558,53 +534,11 @@ func suggestFlags(input string, allowed map[string]bool) []string {
 }
 
 func (r *Registry) NounSuggestions(input string) []string {
-	normalized := strings.ReplaceAll(input, "_", "-")
-	if normalized == "payments" {
-		return []string{"payment-intents"}
-	}
-	seen := map[string]bool{}
-	var out []string
-	for _, c := range r.Commands {
-		paths := append([][]string{c.Path}, c.AliasPaths...)
-		for _, path := range paths {
-			if len(path) < 2 {
-				continue
-			}
-			candidate := path[1]
-			close := editDistance(normalized, candidate) <= max(2, len(normalized)/3) || (len(normalized) >= 4 && strings.Contains(candidate, normalized))
-			if candidate != normalized && !seen[candidate] && close {
-				seen[candidate] = true
-				out = append(out, candidate)
-			}
-		}
-	}
-	sortStringsByDistance(out, input)
-	if len(out) > 3 {
-		return out[:3]
-	}
-	return out
+	return r.commandTree().Suggestions([]string{input})
 }
 
 func (r *Registry) subcommandSuggestions(group string, rest []string) []string {
-	seen := map[string]bool{}
-	var out []string
-	for _, c := range r.commandsUnder([]string{"flint", group}) {
-		sub := c.Path[2:]
-		typed := strings.Join(rest[:min(len(sub), len(rest))], " ")
-		name := strings.Join(sub, " ")
-		if name != strings.Join(rest, " ") && !seen[name] && (editDistance(typed, name) <= max(1, len(name)/3) || (len(typed) >= 3 && strings.HasPrefix(name, typed))) {
-			seen[name] = true
-			out = append(out, name)
-		}
-	}
-	sortStringsByDistance(out, strings.Join(rest, " "))
-	for i := range out {
-		out[i] = group + " " + out[i]
-	}
-	if len(out) > 3 {
-		return out[:3]
-	}
-	return out
+	return r.commandTree().Suggestions(append([]string{group}, rest...))
 }
 
 func sortStringsByDistance(values []string, input string) {

@@ -1,0 +1,76 @@
+Customer-session endpoints for a customer to manage their own account, commerce data, and sign-out.
+
+Usage:
+  flint me <command> [flags]
+
+Commands:
+  addresses create                             Create an address for the current buyer (customer session secret) POST /v1/me/addresses
+  addresses delete <customer_address_id>       Delete one of the current buyer's addresses (customer session secret) DELETE /v1/me/addresses/{customer_address_id}
+  addresses get <customer_address_id>          Get one of the current buyer's addresses (customer session secret) GET /v1/me/addresses/{customer_address_id}
+  addresses list                               List the current buyer's addresses (customer session secret) GET /v1/me/addresses
+  addresses update <customer_address_id>       Update one of the current buyer's addresses (customer session secret) PATCH /v1/me/addresses/{customer_address_id}
+  deletion-requests create                     Request deletion of the current buyer's account (customer session secret) POST /v1/me/deletion-requests
+  deletion-requests get <customer_deletion_request_id> Get the current buyer's deletion request (customer session secret) GET /v1/me/deletion-requests/{customer_deletion_request_id}
+  deletion-requests list                       List the current buyer's deletion requests (customer session secret) GET /v1/me/deletion-requests
+  email-change-requests confirm <email_change_request_id> Confirm an email change (customer session secret) POST /v1/me/email-change-requests/{email_change_request_id}/confirm
+  email-change-requests create                 Request an email change (customer session secret) POST /v1/me/email-change-requests
+  email-preferences get                        Get the current buyer's email preferences (customer session secret) GET /v1/me/email-preferences
+  email-preferences update                     Update the current buyer's email preferences (customer session secret) PATCH /v1/me/email-preferences
+  flint-wallet cards list                      List cards saved with Flint for this store (customer session secret) GET /v1/me/flint-wallet/cards
+  flint-wallet cards store-setups create <flint_wallet_card_id> Set up a Flint wallet card at this store (customer session secret) POST /v1/me/flint-wallet/cards/{flint_wallet_card_id}/store-setups
+  fulfillment-events list                      List the current buyer's fulfillment events (customer session secret) GET /v1/me/fulfillment-events
+  fulfillments get <fulfillment_id>            Get one of the current buyer's fulfillments (customer session secret) GET /v1/me/fulfillments/{fulfillment_id}
+  fulfillments list                            List the current buyer's fulfillments (customer session secret) GET /v1/me/fulfillments
+  get                                          Get the current buyer profile (customer session secret) GET /v1/me
+  gift-cards create                            Save a gift card to your account (customer session secret) POST /v1/me/gift-cards
+  gift-cards delete <gift_card_id>             Remove a saved gift card (customer session secret) DELETE /v1/me/gift-cards/{gift_card_id}
+  gift-cards get <gift_card_id>                Get a saved gift card (customer session secret) GET /v1/me/gift-cards/{gift_card_id}
+  gift-cards list                              List your saved gift cards (customer session secret) GET /v1/me/gift-cards
+  gift-cards transactions list <gift_card_id>  List a saved gift card's balance history (customer session secret) GET /v1/me/gift-cards/{gift_card_id}/transactions
+  invoices checkout-sessions create <invoice_id> Create an invoice checkout session for the current buyer (invoice access token) POST /v1/me/invoices/{invoice_id}/checkout-sessions
+  invoices credit-notes get <invoice_id> <credit_note_id> Get a credit note for one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}/credit-notes/{credit_note_id}
+  invoices credit-notes list <invoice_id>      List credit notes for one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}/credit-notes
+  invoices credit-notes pdf get <invoice_id> <credit_note_id> Download a credit note for one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}/credit-notes/{credit_note_id}/pdf
+  invoices get <invoice_id>                    Get one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}
+  invoices list                                List the current buyer's invoices (customer session secret) GET /v1/me/invoices
+  invoices pdf get <invoice_id>                Download one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}/pdf
+  orders activities list <order_id>            List activity for one of the current buyer's orders (customer session secret) GET /v1/me/orders/{order_id}/activities
+  orders get <order_id>                        Get one of the current buyer's orders (customer session secret) GET /v1/me/orders/{order_id}
+  orders list                                  List the current buyer's orders (customer session secret) GET /v1/me/orders
+  orders send-receipt <order_id>               Send a receipt for one of the current buyer's orders (customer session secret) POST /v1/me/orders/{order_id}/send-receipt
+  packages get <package_id>                    Get one of the current buyer's packages (customer session secret) GET /v1/me/packages/{package_id}
+  packages list                                List the current buyer's packages (customer session secret) GET /v1/me/packages
+  payment-intents get <payment_intent_id>      Get one of the current buyer's payments (customer session secret) GET /v1/me/payment-intents/{payment_intent_id}
+  payment-intents list                         List the current buyer's payments (customer session secret) GET /v1/me/payment-intents
+  payment-methods create                       Create a payment method for the current buyer (customer session secret) POST /v1/me/payment-methods
+  payment-methods delete <payment_method_id>   Delete one of the current buyer's payment methods (customer session secret) DELETE /v1/me/payment-methods/{payment_method_id}
+  payment-methods get <payment_method_id>      Get one of the current buyer's payment methods (customer session secret) GET /v1/me/payment-methods/{payment_method_id}
+  payment-methods list                         List the current buyer's payment methods (customer session secret) GET /v1/me/payment-methods
+  refunds get <refund_id>                      Get one of the current buyer's refunds (customer session secret) GET /v1/me/refunds/{refund_id}
+  refunds list                                 List the current buyer's refunds (customer session secret) GET /v1/me/refunds
+  return-previews create                       Preview Return eligibility or resolution amounts for the current buyer (customer session secret) POST /v1/me/return-previews
+  return-resolutions checkout-sessions create <return_resolution_id> Create a Return resolution checkout session for the current buyer (customer session secret) POST /v1/me/return-resolutions/{return_resolution_id}/checkout-sessions
+  return-resolutions get <return_resolution_id> Get one of the current buyer's Return resolutions (customer session secret) GET /v1/me/return-resolutions/{return_resolution_id}
+  returns cancel <return_id>                   Cancel one of the current buyer's Returns (customer session secret) POST /v1/me/returns/{return_id}/cancel
+  returns create                               Create a Return for the current buyer (customer session secret) POST /v1/me/returns
+  returns get <return_id>                      Get one of the current buyer's Returns (customer session secret) GET /v1/me/returns/{return_id}
+  returns list                                 List the current buyer's Returns (customer session secret) GET /v1/me/returns
+  session revoke                               Revoke the current customer session (customer session secret) POST /v1/me/session/revoke
+  shipments get <shipment_id>                  Get one of the current buyer's shipments (customer session secret) GET /v1/me/shipments/{shipment_id}
+  shipments list                               List the current buyer's shipments (customer session secret) GET /v1/me/shipments
+  subscription-previews create                 Preview subscription (customer session secret) POST /v1/me/subscription-previews
+  subscriptions cancel <subscription_id>       Cancel one of the current buyer's subscriptions (customer session secret) POST /v1/me/subscriptions/{subscription_id}/cancel
+  subscriptions get <subscription_id>          Get one of the current buyer's subscriptions (customer session secret) GET /v1/me/subscriptions/{subscription_id}
+  subscriptions line-items update <subscription_id> <subscription_line_item_id> Swap subscription variant (customer session secret) PATCH /v1/me/subscriptions/{subscription_id}/line-items/{subscription_line_item_id}
+  subscriptions list                           List the current buyer's subscriptions (customer session secret) GET /v1/me/subscriptions
+  subscriptions pause <subscription_id>        Pause one of the current buyer's subscriptions (customer session secret) POST /v1/me/subscriptions/{subscription_id}/pause
+  subscriptions payment-retries create <subscription_id> Retry the failed payment on one of the current buyer's subscriptions (customer session secret) POST /v1/me/subscriptions/{subscription_id}/payment-retries
+  subscriptions payment-retries get <subscription_id> <subscription_payment_retry_id> Get a payment retry for one of the current buyer's subscriptions (customer session secret) GET /v1/me/subscriptions/{subscription_id}/payment-retries/{subscription_payment_retry_id}
+  subscriptions payment-retries list <subscription_id> List payment retries for one of the current buyer's subscriptions (customer session secret) GET /v1/me/subscriptions/{subscription_id}/payment-retries
+  subscriptions renew <subscription_id>        Renew subscription now (customer session secret) POST /v1/me/subscriptions/{subscription_id}/renew
+  subscriptions resume <subscription_id>       Resume one of the current buyer's subscriptions (customer session secret) POST /v1/me/subscriptions/{subscription_id}/resume
+  subscriptions skip-cycle <subscription_id>   Skip subscription cycle (customer session secret) POST /v1/me/subscriptions/{subscription_id}/skip-cycle
+  subscriptions update <subscription_id>       Update subscription (customer session secret) PATCH /v1/me/subscriptions/{subscription_id}
+  update                                       Update the current buyer profile (customer session secret) PATCH /v1/me
+
+Run flint me <command> --help for flags and examples.

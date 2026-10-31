@@ -33,7 +33,7 @@ func additionalCommands(page []Arg, input Arg) []*Command {
 				"flint mcp serve --allow-live --allow-destructive",
 			),
 		},
-		{Name: "help", CanonicalName: "help", Path: pathWithFlint("help"), Description: "Show command help or an offline reference topic", Local: true, Arguments: []Arg{{Name: "topic", Type: "string", Positional: 1, Description: "A command such as customers.create, or a topic: " + strings.Join(helpTopicNames, ", ")}, {Name: "event_type", Type: "string", Positional: 2, Description: "Event type to inspect with help events"}}, Examples: ex("flint help test-cards", "flint help exit-codes")},
+		{Name: "help", CanonicalName: "help", Path: pathWithFlint("help"), Description: "Show command help or an offline reference topic", Local: true, Arguments: []Arg{{Name: "topic", Type: "string", Positional: 1, Variadic: true, Description: "A command such as customers.create, or a topic: " + strings.Join(helpTopicNames, ", ")}}, Examples: ex("flint help test-cards", "flint help exit-codes")},
 		{
 			Name: "help.search", CanonicalName: "help.search", Path: pathWithFlint("help", "search"),
 			Description: "Search Flint Help for community answers and support threads",

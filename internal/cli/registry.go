@@ -3,9 +3,12 @@ package cli
 import (
 	"sort"
 	"strings"
+	"sync"
 )
 
 type Registry struct {
+	tree      *CommandTree
+	treeBuild *sync.Once
 	Commands  []*Command
 	localOnly bool
 	byName    map[string]*Command
@@ -44,7 +47,7 @@ func (r *Registry) ensureAPICommands() {
 }
 
 func newRegistry(includeAPI bool) *Registry {
-	r := &Registry{localOnly: !includeAPI, byName: map[string]*Command{}, byPath: map[string]*Command{}}
+	r := &Registry{treeBuild: &sync.Once{}, localOnly: !includeAPI, byName: map[string]*Command{}, byPath: map[string]*Command{}}
 	definitions := append(curatedCommandDefinitions(), triggerCommand())
 	if includeAPI {
 		definitions = append(definitions, publicAPICommands()...)
@@ -136,6 +139,9 @@ func newRegistry(includeAPI bool) *Registry {
 }
 
 func (r *Registry) add(c *Command) {
+	if r.treeBuild == nil {
+		r.treeBuild = &sync.Once{}
+	}
 	r.Commands = append(r.Commands, c)
 	r.byName[c.Name] = c
 	r.byPath[strings.Join(c.Path, " ")] = c

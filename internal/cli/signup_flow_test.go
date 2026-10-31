@@ -362,12 +362,12 @@ func TestSignupFlowRootHelpOrder(t *testing.T) {
 	app, out, _ := testApp(t, "")
 	app.printRootHelp()
 	start := strings.Split(strings.Split(out.String(), "Start here:\n")[1], "\n\n")[0]
-	if !strings.HasPrefix(start, "  flint signup\n  flint login  (alias for flint auth login)\n  flint payment-links create\n  flint payment-intents\n") {
+	if !strings.HasPrefix(start, "  flint login\n  flint signup\n  flint init\n  flint payment-links create\n  flint help test-cards") {
 		t.Fatalf("start here = %s", start)
 	}
-	resources := strings.Split(strings.Split(out.String(), "API resource groups (run flint <resource> --help):\n")[1], "\n\n")[0]
+	resources := strings.Split(strings.Split(out.String(), "Merchant resources:\n")[1], "\n\n")[0]
 	fields := strings.Fields(resources)
-	if len(fields) < 2 || fields[0] != "checkout-sessions" || fields[1] != "payment-intents" {
+	if len(fields) < 2 || fields[0] != "analytics" || fields[1] != "api-keys" || !strings.Contains(resources, "checkout-sessions") || !strings.Contains(resources, "payment-intents") {
 		t.Fatalf("resource order = %s", resources)
 	}
 	for _, args := range [][]string{{"signup", "--help"}, {"login", "--help"}, {"payment-links", "create", "--help"}, {"payment-intents", "--help"}} {

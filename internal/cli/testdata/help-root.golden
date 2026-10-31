@@ -1,0 +1,103 @@
+Flint Pay command-line interface
+
+Usage:
+  flint <command> [flags]
+  flint help <command>          Help for a command or group
+  flint help --all              Every command, one per line
+  flint help search <words>     Find commands and topics offline
+
+Start here:
+  flint login
+  flint signup
+  flint init
+  flint payment-links create
+  flint help test-cards
+
+Developer tools:
+  api                              Call a Flint public API route
+  api-request-logs                 get, list
+  auth                             Sign in and out, import keys, export tokens, and show the active credential
+  config                           Read, set, unset, and validate CLI configuration
+  context                          List and switch authorized contexts
+  demo-sessions                    Demo and test-drive sessions.
+  doctor                           Check credential, connectivity, scopes, and API compatibility; explain scopes that need a live key
+  help                             Command help, reference topics, and offline search
+  history                          List or clear recent Flint resource IDs
+  init                             Initialize Flint CLI context
+  listen                           Forward Flint webhook events to a local endpoint using the local HMAC listen secret, regardless of endpoint signing methods. JWT handlers need an HMAC path or a local test bypass
+  mcp                              Serve Flint operations to AI agents over MCP
+  openapi                          API metadata.
+  partner-app-installs             Partner apps installed on your account.
+  partner-apps                     Partner app registration and install management.
+  resource-timelines               get
+  schema                           Command, input, output, error, and event schemas as JSON
+  signup                           Create an account and sandbox key. Without a code, email a verification code and save progress; finish with --verification-code. MCP and --no-input use two calls.
+  support                          Start a Flint Help thread with your context prefilled
+  test-clocks                      Sandbox clocks that move customers and their subscriptions through time.
+  trigger                          Create sandbox resources that produce a webhook event; no automatic cleanup (reset the sandbox when done)
+  upgrade                          Upgrade Flint CLI to the latest stable release
+  version                          Print CLI and public API schema version metadata
+  Shortcuts: login, logout, reauth (auth login, logout, reauth), whoami (auth status)
+
+Merchant resources:
+  analytics                           api-keys                            balance-transactions
+  balances                            bundles                             categories
+  checkout-sessions                   credit-notes                        custom-domains
+  customer-deletion-requests          customer-sessions                   customer-verifications
+  customers                           delivery-location-sets              delivery-methods
+  delivery-previews                   delivery-profiles                   delivery-quotes
+  delivery-rate-callbacks             delivery-revocations                delivery-zones
+  devices                             discount-previews                   disputes
+  email-preference-links              files                               fraud-warnings
+  fulfillment-events                  fulfillment-notifications           fulfillments
+  gift-card-funding-dispositions      gift-card-loads                     gift-card-notifications
+  gift-card-redemptions               gift-card-transactions              gift-cards
+  inventory-adjustments               inventory-allocation-policies       inventory-counts
+  inventory-items                     inventory-levels                    inventory-movements
+  inventory-receipts                  inventory-reservations              inventory-transfers
+  invoice-payment-terms               invoices                            locations
+  merchant                            merchant-account-session-refreshes  merchant-account-sessions
+  merchant-billing-balances           merchant-billing-entries            merchant-billing-invoices
+  modifier-groups                     modifier-sets                       onboarding
+  orders                              organizations                       packages
+  payment-intents                     payment-links                       payment-method-domains
+  payment-methods                     payment-reviews                     payout-destinations
+  payout-settings                     payouts                             products
+  promotion-codes                     promotions                          refunds
+  report-downloads                    reports                             return-dispositions
+  return-inspections                  return-policies                     return-previews
+  return-reasons                      return-receipts                     return-resolutions
+  returns                             risk-lists                          risk-previews
+  risk-rules                          sandboxes                           settings
+  shipments                           subscription-delivery-migrations    subscription-offers
+  subscription-plans                  subscription-previews               subscriptions
+  tax-connection                      webhook-deliveries                  webhook-endpoints
+  webhook-event-types                 webhook-events                      workload-identities
+
+Buyer session (set FLINT_ACCESS_TOKEN to a customer session secret, flint_cses_...):
+  me                               Customer-session endpoints for a customer to manage their own account, commerce data, and sign-out.
+
+Scripts and AI agents:
+  --output json (or FLINT_OUTPUT=json) prints JSON results and errors on stdout and never prompts.
+  Exit codes: 0 ok, 1 API error, 2 usage, 3 auth or config, 4 confirmation required, 5 network, 6 wait unmet, 70 internal error.
+  --field, --select, and --wait-for take paths inside the resource; --jq sees the whole response.
+  Lists return one page: pass --page-token, or use --all or --limit N.
+  Reuse --idempotency-key when retrying a write that timed out.
+
+Environment:
+  FLINT_API_KEY               API key; overrides saved credentials
+  FLINT_OUTPUT                human, json, or ndjson (streams and lists)
+  FLINT_NO_INPUT              1, true, yes, or on to disable prompts
+  FLINT_PROFILE               Profile to use, like --profile
+  FLINT_MERCHANT              Merchant guard, like --merchant
+  FLINT_WEBHOOK_SECRET        Signing secret for flint listen
+  FLINT_ACCESS_TOKEN          Access token; takes precedence over FLINT_API_KEY
+  FLINT_WORKLOAD_IDENTITY_ID  Workload identity; overrides saved login and contexts
+  FLINT_OIDC_SOURCE           auto, none, token, token_file, github_actions, gitlab_ci, kubernetes; gcp/azure/aws unsupported
+  FLINT_OIDC_AUDIENCE         OIDC audience; defaults to the API base URL origin
+  FLINT_OIDC_TOKEN            OIDC JWT for workload identity exchange
+  FLINT_OIDC_TOKEN_FILE       Flint OIDC token file; re-read on exchange
+  FLINT_OIDC_SCOPE            Optional narrowing scopes for workload tokens
+  FLINT_BASE_URL              API server for development; sign in with a separate profile
+
+Run flint help <command> for one command. Run flint schema commands --output json for the full catalog.

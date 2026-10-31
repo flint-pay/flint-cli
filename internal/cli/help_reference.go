@@ -6,24 +6,7 @@ import (
 	"strings"
 )
 
-func rootHelpIndex(reg *Registry) map[string]any {
-	groups := []string{}
-	seen := map[string]bool{}
-	for _, c := range reg.Commands {
-		if c.Local || c.APIPath == "" || len(c.Path) < 3 || seen[c.Path[1]] {
-			continue
-		}
-		seen[c.Path[1]] = true
-		groups = append(groups, c.Path[1])
-	}
-	sort.Strings(groups)
-	return map[string]any{
-		"start_here":      []string{"flint login", "flint signup", "flint init", "flint doctor", "flint payment-links create", "flint help test-cards"},
-		"resource_groups": groups,
-		"group_schema":    "flint schema commands <group> --output json",
-		"full_catalog":    "flint schema commands --output json",
-	}
-}
+// rootHelpIndex lives beside the tree renderers.
 
 func commandHasRequestBody(cmd *Command) bool {
 	if cmd.InputSchema != "" {
