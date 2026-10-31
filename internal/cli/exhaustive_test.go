@@ -999,6 +999,7 @@ func TestEveryRemoteCommandBuildsAndExecutesARequest(t *testing.T) {
 			defer server.Close()
 
 			app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
+			useExhaustiveCredential(t, command)
 			app.Now = func() time.Time { return fixedNow }
 			input := exhaustiveInputBody(t, command)
 			app.Stdin = strings.NewReader(jsonString(t, input))
@@ -1035,6 +1036,7 @@ func TestEveryMutationExecutesClientDryRunWithoutNetwork(t *testing.T) {
 		}
 		t.Run(command.CanonicalName, func(t *testing.T) {
 			app, stdout, stderr := testAppFromTemplate(t, "http://127.0.0.1:1", template)
+			useExhaustiveCredential(t, command)
 			argv := minimalInvocation(t, command)
 			argv = append(argv, "--dry-run", "client", "--output", "json")
 			if strings.HasPrefix(command.CanonicalName, "sandboxes.") {
@@ -1112,6 +1114,7 @@ func TestEveryDestructiveMutationExecutesPreviewWithoutMutation(t *testing.T) {
 			}))
 			defer server.Close()
 			app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
+			useExhaustiveCredential(t, command)
 			argv := append(minimalInvocation(t, command), "--preview", "--output", "json")
 			if environment == "live" {
 				argv = append(argv, "--live")
@@ -1198,6 +1201,7 @@ func TestEveryWaitCapableCommandExecutesMatchingWait(t *testing.T) {
 			}))
 			defer server.Close()
 			app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
+			useExhaustiveCredential(t, command)
 			argv := append(minimalInvocation(t, command),
 				"--wait-for", field+"=succeeded",
 				"--for", "100ms",
@@ -1270,6 +1274,7 @@ func TestEveryPaginatedCommandExecutesAllPages(t *testing.T) {
 			}))
 			defer server.Close()
 			app, stdout, stderr := testAppFromTemplate(t, server.URL, template)
+			useExhaustiveCredential(t, command)
 			argv := append(minimalInvocation(t, command),
 				"--page-size", "1",
 				"--all",
@@ -1609,6 +1614,38 @@ func resourceTypeForPrefix(prefix string) string {
 	return resourcePrefixes[prefix]
 }
 
+// Request matrices need a compatible synthetic credential for each route.
+func exhaustiveSessionCredential(command *Command) string {
+	if !command.AuthRequired || len(command.Security) == 0 {
+		return ""
+	}
+	for _, requirement := range command.Security {
+		if _, merchant := requirement["BearerAuth"]; merchant {
+			return ""
+		}
+	}
+	for _, requirement := range command.Security {
+		if _, customer := requirement["CustomerSessionBearer"]; customer {
+			return "flint_cses_exhaustive"
+		}
+		if _, checkout := requirement["CheckoutSessionBearer"]; checkout {
+			return "ckat_v1.exhaustive"
+		}
+	}
+	// Other session formats remain API-decided, as in normal CLI execution.
+	return "session_exhaustive"
+}
+
+func useExhaustiveCredential(t *testing.T, command *Command) {
+	t.Helper()
+	token := exhaustiveSessionCredential(command)
+	t.Setenv("FLINT_ACCESS_TOKEN", token)
+	t.Setenv("FLINT_WORKLOAD_IDENTITY_ID", "")
+	if token != "" {
+		t.Setenv("FLINT_API_KEY", "")
+	}
+}
+
 func exhaustiveRemoteInvocation(command *Command) []string {
 	argv := append([]string(nil), command.Path[1:]...)
 	for _, argument := range command.Arguments {
@@ -1667,6 +1704,9 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 		t.Errorf("request = %s %s, want %s %s", request.Method, request.URL.Path, wantMethod, wantPath)
 	}
 	wantAuth := "Bearer flint_test_test"
+	if token := exhaustiveSessionCredential(command); token != "" {
+		wantAuth = "Bearer " + token
+	}
 	if !command.AuthRequired {
 		wantAuth = ""
 	}

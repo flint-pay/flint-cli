@@ -184,6 +184,8 @@ type CLIError struct {
 	HTTPStatus     int
 	ExitCode       int
 	Type           string
+	ErrorSource    string
+	Origin         string
 	Code           string
 	Message        string
 	Param          string

@@ -4,6 +4,7 @@ package cli
 // unchanged. Keep each locally emitted category in localErrorTypes as well.
 const (
 	errorTypeAPI                  = "api_error"
+	errorTypeAuthentication       = "authentication_error"
 	errorTypeAuthorization        = "authorization_error"
 	errorTypeConfiguration        = "configuration_error"
 	errorTypeConfirmationRequired = "confirmation_required"
@@ -20,6 +21,7 @@ const (
 
 var localErrorTypes = []string{
 	errorTypeAPI,
+	errorTypeAuthentication,
 	errorTypeAuthorization,
 	errorTypeConfiguration,
 	errorTypeConfirmationRequired,

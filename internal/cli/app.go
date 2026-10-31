@@ -373,7 +373,7 @@ func (a *App) printCommandHelp(cmd *Command) {
 
 	fmt.Fprintln(a.Stdout, cmd.Description)
 	if cmd.Audience == "buyer" {
-		fmt.Fprintln(a.Stdout, "Credential: set FLINT_ACCESS_TOKEN to a "+buyerCredentialName(cmd)+".")
+		fmt.Fprintln(a.Stdout, "Credential: set FLINT_ACCESS_TOKEN to a "+buyerCredentialName(cmd)+". Known incompatible credentials stop locally before any request.")
 	}
 	fmt.Fprintln(a.Stdout)
 	usage := append([]string{}, cmd.Path...)
