@@ -27,6 +27,8 @@ type BuildInfo struct {
 }
 
 type Arg struct {
+	ShortcutTagPath   string `json:"shortcut_tag_path,omitempty"`
+	ShortcutTagValue  string `json:"shortcut_tag_value,omitempty"`
 	bodyGenerated     bool
 	Discriminator     string   `json:"discriminator,omitempty"`
 	InferenceHint     string   `json:"inference_hint,omitempty"`

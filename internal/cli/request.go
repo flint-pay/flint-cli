@@ -18,12 +18,13 @@ import (
 )
 
 type preparedRequest struct {
-	Method         string
-	Path           string
-	Body           []byte
-	BodyValue      map[string]any
-	IdempotencyKey string
-	Warnings       []map[string]any
+	Method           string
+	Path             string
+	Body             []byte
+	BodyValue        map[string]any
+	IdempotencyKey   string
+	Warnings         []map[string]any
+	OverriddenFields []string
 }
 
 // commandIdempotencyClass derives write safety from the vendored API contract.
@@ -94,6 +95,8 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 	if inputErr != nil {
 		return req, inputErr
 	}
+	inputBody := deepCopyMap(body)
+	overridden := map[string]bool{}
 	for _, arg := range cmd.Arguments {
 		// Query arrays and their history references are normalized together below.
 		if arg.Query != "" {
@@ -108,6 +111,9 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		}
 		if len(values) == 0 {
 			continue
+		}
+		if arg.Repeat && arg.BodyPath != "" {
+			_ = setBodyPath(body, arg.BodyPath, []any{})
 		}
 		for i, value := range values {
 			if arg.IDPrefix != "" && !(arg.Nullable && value == "null") {
@@ -132,6 +138,12 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 				req.Path = strings.Replace(req.Path, "{"+arg.Name+"}", url.PathEscape(value), 1)
 			}
 			if arg.BodyPath != "" && arg.Name != "input" {
+				if _, exists := lookupPath(inputBody, arg.BodyPath); exists && !overridden[arg.BodyPath] {
+					overridden[arg.BodyPath] = true
+					if opts.Debug {
+						fmt.Fprintf(a.Stderr, "debug: %s overrides %s from --input\n", arg.Flag, arg.BodyPath)
+					}
+				}
 				if strings.HasSuffix(arg.BodyPath, ".currency") {
 					value = strings.ToUpper(value)
 				}
@@ -165,16 +177,20 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 					list, _ := existing.([]any)
 					list = append(list, converted)
 					if e := setBodyPath(body, arg.BodyPath, list); e != nil {
-						return req, usageError("INVALID_ARGUMENT", e.Error(), arg.Name)
+						return req, usageError("CONFLICTING_ARGUMENTS", e.Error(), arg.Name)
 					}
 				} else if e := setBodyPath(body, arg.BodyPath, converted); e != nil {
-					return req, usageError("INVALID_ARGUMENT", e.Error(), arg.Name)
+					return req, usageError("CONFLICTING_ARGUMENTS", e.Error(), arg.Name)
 				}
 			}
 		}
 	}
 
-	if e := selectRequestUnionTags(cmd, opts, body); e != nil {
+	for field := range overridden {
+		req.OverriddenFields = append(req.OverriddenFields, field)
+	}
+	sort.Strings(req.OverriddenFields)
+	if e := inferRequestUnion(cmd, opts, body, inputBody); e != nil {
 		return req, e
 	}
 	query := url.Values{}
@@ -289,85 +305,6 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 	return req, nil
 }
 
-// selectRequestUnionTags fills the discriminator that a convenience flag
-// implies. The public contract requires an explicit tag on every union
-// request body; a tag already present in --input is kept, so JSON input must
-// still satisfy the contract on its own.
-func selectRequestUnionTags(cmd *Command, opts Options, body map[string]any) *CLIError {
-	// Raw requests resolve operation IDs for contract metadata and safety checks.
-	// Convenience defaults belong only to named commands, never the raw body.
-	if cmd.CanonicalName == "api" {
-		return nil
-	}
-
-	flagged := func(names ...string) bool {
-		for _, name := range names {
-			if len(opts.Raw[name]) > 0 {
-				return true
-			}
-		}
-		return false
-	}
-	switch publicOperationOverlays[cmd.OperationID].Union {
-	case "quick_pay":
-		if _, hasType := body["type"]; !hasType && flagged("quick-pay-name", "amount", "currency") {
-			body["type"] = "quick_pay"
-		}
-	case "line_items":
-		if !flagged("item-name", "amount", "currency") {
-			return nil
-		}
-		items, _ := body["line_items"].([]any)
-		if len(items) == 0 {
-			return nil
-		}
-		if item, ok := items[0].(map[string]any); ok {
-			if _, hasType := item["type"]; !hasType {
-				item["type"] = "custom_fixed"
-			}
-		}
-	case "credential":
-		credentials := map[string]string{
-			"confirmation-token":   "stripe_confirmation_token",
-			"payment-source-token": "token",
-			"payment-method-id":    "payment_method",
-		}
-		var selected []string
-		for _, name := range []string{"confirmation-token", "payment-source-token", "payment-method-id"} {
-			if flagged(name) {
-				selected = append(selected, name)
-			}
-		}
-		if len(selected) == 0 {
-			// Without a credential, confirm continues with the attached payment
-			// source, such as after the buyer completes current_payment_action.
-			if _, present := body["credential_type"]; !present && opts.Input == "" {
-				body["credential_type"] = "attached"
-			}
-			return nil
-		}
-		if len(selected) > 1 {
-			return usageError("CONFLICTING_ARGUMENTS", "Use only one of --confirmation-token, --payment-source-token, or --payment-method.", strings.ReplaceAll(selected[1], "-", "_"))
-		}
-		credentialType := credentials[selected[0]]
-		if existing, present := body["credential_type"]; present && existing != credentialType {
-			return usageError("CONFLICTING_ARGUMENTS", fmt.Sprintf("--%s requires credential_type %s.", selected[0], credentialType), "credential_type")
-		}
-		body["credential_type"] = credentialType
-	case "api_key":
-		return inferAPIKeyAccess(cmd, opts, body)
-	case "invoice":
-		if !flagged("order-id") {
-			return nil
-		}
-		if existing, present := body["type"]; present && existing != "order" {
-			return usageError("CONFLICTING_ARGUMENTS", "--order-id requires type order.", "type")
-		}
-		body["type"] = "order"
-	}
-	return nil
-}
-
 func withRequestQuery(path string, query url.Values) (string, *CLIError) {
 	parsed, err := url.Parse(path)
 	if err != nil {
@@ -398,6 +335,9 @@ func (a *App) validateBody(cmd *Command, opts Options, body map[string]any, req 
 					for _, arg := range cmd.Arguments {
 						if arg.BodyPath != "" && path == jsonFieldPath(strings.Split(arg.BodyPath, ".")) && problem["message"] == "required field is missing" {
 							message := fmt.Sprintf("Missing required field %s (%s or --input).", arg.BodyPath, arg.Flag)
+							if arg.Flag == arg.Discriminator && len(arg.Enum) > 0 {
+								message += " Values: " + strings.Join(arg.Enum, ", ") + "."
+							}
 							e.Message = strings.ReplaceAll(e.Message, path+": required field is missing", path+": "+message)
 							problem["message"] = message
 						}
@@ -721,31 +661,6 @@ func validateRawPublicRoute(method, path string) *CLIError {
 	}
 	if u.RawPath != "" {
 		return usageError("UNDOCUMENTED_API_OPERATION", "Unknown API routes require a canonical escaped /v1/ path.", "path")
-	}
-	return nil
-}
-
-// inferAPIKeyAccess fills the access discriminator for API key commands.
-// --scope without --access selects restricted, as the Dashboard does, and
-// --access, --scope, or --test-key-name on sandboxes create imply
-// issue_test_key. JSON input keeps its explicit fields and must satisfy the
-// public contract. Creating a key with no access choice names the flags
-// instead of reporting a schema branch.
-func inferAPIKeyAccess(cmd *Command, opts Options, body map[string]any) *CLIError {
-	if _, hasAccess := body["access"]; !hasAccess && len(opts.Raw["scopes"]) > 0 {
-		body["access"] = "restricted"
-	}
-	creates := cmd.OperationID != "updateAPIKey"
-	if cmd.OperationID == "createSandbox" {
-		_, hasIssue := body["issue_test_key"]
-		if !hasIssue && (len(opts.Raw["access"]) > 0 || len(opts.Raw["scopes"]) > 0 || len(opts.Raw["test-key-name"]) > 0) {
-			body["issue_test_key"] = true
-		}
-		issue, _ := body["issue_test_key"].(bool)
-		creates = issue
-	}
-	if _, hasAccess := body["access"]; creates && !hasAccess {
-		return usageError("MISSING_REQUIRED_ARGUMENT", "Choose the key's access with --access full, --access read_only, or --scopes SCOPE for restricted access.", "access")
 	}
 	return nil
 }

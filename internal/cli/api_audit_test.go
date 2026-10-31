@@ -106,7 +106,7 @@ func TestAuditConfirmationCredentialsAreExclusive(t *testing.T) {
 		argv := append([]string{"payment-intents", "confirm", "pi_test", "--dry-run=client"}, flags...)
 		exit, result := runJSON(t, app, stdout, argv...)
 		want := ExitOK
-		if len(flags) > 2 {
+		if len(flags) > 2 || len(flags) == 0 {
 			want = ExitUsage
 		}
 		if exit != want {

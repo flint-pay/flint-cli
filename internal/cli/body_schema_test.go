@@ -95,7 +95,7 @@ func exhaustiveInputBody(t testing.TB, command *Command) map[string]any {
 				_ = setBodyPath(body, arg.BodyPath, converted)
 			}
 		}
-		_ = selectRequestUnionTags(command, flagged, body)
+		_ = inferRequestUnion(command, flagged, body, nil)
 		return body
 	}
 	schema, e := requestBodySchema(command)
@@ -425,16 +425,16 @@ func TestAPIKeyAccessFlagsOnUpdateAndSandboxCommands(t *testing.T) {
 		code string
 		body map[string]any
 	}{
-		{"update scope implies restricted", []string{"api-keys", "update", "key_123", "--scopes", "customers.read", "--expected-version", "3"}, ExitOK, "", map[string]any{"access": "restricted", "scopes": []any{"customers.read"}, "expected_version": float64(3)}},
+		{"update restricted explicitly", []string{"api-keys", "update", "key_123", "--access", "restricted", "--scopes", "customers.read", "--expected-version", "3"}, ExitOK, "", map[string]any{"access": "restricted", "scopes": []any{"customers.read"}, "expected_version": float64(3)}},
 		{"update to read only", []string{"api-keys", "update", "key_123", "--access", "read_only", "--expected-version", "3"}, ExitOK, "", map[string]any{"access": "read_only", "expected_version": float64(3)}},
 		{"update name only", []string{"api-keys", "update", "key_123", "--name", "ci"}, ExitOK, "", map[string]any{"name": "ci"}},
 		{"update full with scope", []string{"api-keys", "update", "key_123", "--access", "full", "--scopes", "customers.read", "--expected-version", "3"}, ExitUsage, "INVALID_REQUEST_BODY", nil},
-		{"update input scopes without access", []string{"api-keys", "update", "key_123", "--input", `{"scopes":["customers.read"],"expected_version":3}`}, ExitUsage, "INVALID_REQUEST_BODY", nil},
+		{"update input scopes without access", []string{"api-keys", "update", "key_123", "--input", `{"scopes":["customers.read"],"expected_version":3}`}, ExitUsage, "MISSING_REQUIRED_ARGUMENT", nil},
 		{"test key scope implies restricted", []string{"sandboxes", "api-keys", "create", "test_123", "--name", "qa", "--scopes", "customers.read"}, ExitOK, "", map[string]any{"name": "qa", "access": "restricted", "scopes": []any{"customers.read"}}},
 		{"test key full", []string{"sandboxes", "api-keys", "create", "test_123", "--name", "qa", "--access", "full"}, ExitOK, "", map[string]any{"name": "qa", "access": "full"}},
-		{"test key without access", []string{"sandboxes", "api-keys", "create", "test_123", "--name", "qa"}, ExitUsage, "MISSING_REQUIRED_ARGUMENT", nil},
-		{"sandbox scope issues a restricted key", []string{"sandboxes", "create", "--name", "qa", "--scopes", "customers.read", "--test-key-name", "qa key"}, ExitOK, "", map[string]any{"name": "qa", "issue_test_key": true, "access": "restricted", "scopes": []any{"customers.read"}, "test_key_name": "qa key"}},
-		{"sandbox read only key", []string{"sandboxes", "create", "--name", "qa", "--access", "read_only"}, ExitOK, "", map[string]any{"name": "qa", "issue_test_key": true, "access": "read_only"}},
+		{"test key without access", []string{"sandboxes", "api-keys", "create", "test_123", "--name", "qa"}, ExitUsage, "INVALID_REQUEST_BODY", nil},
+		{"sandbox explicit restricted key", []string{"sandboxes", "create", "--issue-test-key", "true", "--access", "restricted", "--name", "qa", "--scopes", "customers.read", "--test-key-name", "qa key"}, ExitOK, "", map[string]any{"name": "qa", "issue_test_key": true, "access": "restricted", "scopes": []any{"customers.read"}, "test_key_name": "qa key"}},
+		{"sandbox read only key", []string{"sandboxes", "create", "--issue-test-key", "true", "--name", "qa", "--access", "read_only"}, ExitOK, "", map[string]any{"name": "qa", "issue_test_key": true, "access": "read_only"}},
 		{"sandbox without key", []string{"sandboxes", "create", "--name", "qa"}, ExitOK, "", map[string]any{"name": "qa"}},
 		{"sandbox key name without access", []string{"sandboxes", "create", "--name", "qa", "--test-key-name", "qa key"}, ExitUsage, "MISSING_REQUIRED_ARGUMENT", nil},
 		{"sandbox declined key with access", []string{"sandboxes", "create", "--name", "qa", "--access", "full", "--input", `{"issue_test_key":false}`}, ExitUsage, "INVALID_REQUEST_BODY", nil},

@@ -17,7 +17,7 @@ func TestConvenienceFlagsSelectRequiredUnionTags(t *testing.T) {
 		{[]string{"payment-intents", "confirm", "pi_test", "--confirmation-token", "ctoken_test"}, "credential_type", "stripe_confirmation_token"},
 		{[]string{"payment-intents", "confirm", "pi_test", "--payment-source-token", "pm_card_visa"}, "credential_type", "token"},
 		{[]string{"payment-intents", "confirm", "pi_test", "--payment-method-id", "pm_test"}, "credential_type", "payment_method"},
-		{[]string{"payment-intents", "confirm", "pi_test"}, "credential_type", "attached"},
+		{[]string{"payment-intents", "confirm", "pi_test", "--credential-type", "attached"}, "credential_type", "attached"},
 		{[]string{"invoices", "create", "--order-id", "ord_test"}, "type", "order"},
 		{[]string{"payment-links", "create", "--name", "Tee", "--item-name", "Tee", "--amount", "2500", "--currency", "USD"}, "line_items.0.type", "custom_fixed"},
 		{[]string{"orders", "pay", "ord_test", "--payment-source-token", "pi_test=pm_card_visa"}, "payment_intents.0.credential_type", "token"},
@@ -111,7 +111,7 @@ func TestRawAPIBodiesDoNotUseNamedCommandConveniences(t *testing.T) {
 	}
 }
 
-func TestNamedPaymentIntentConfirmKeepsAttachedDefault(t *testing.T) {
+func TestNamedPaymentIntentConfirmRequiresExplicitAttached(t *testing.T) {
 	app, _, _ := testApp(t, "http://127.0.0.1:1")
 	app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(*http.Request) (*http.Response, error) {
 		t.Fatal("preparation must not send a request")
@@ -122,10 +122,7 @@ func TestNamedPaymentIntentConfirmKeepsAttachedDefault(t *testing.T) {
 		t.Fatal(err)
 	}
 	req, err := app.prepareRequest(t.Context(), cmd, opts, ResolvedConfig{}, "", "http://127.0.0.1:1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(req.Body) != `{"credential_type":"attached"}` {
-		t.Fatalf("named request body=%s", req.Body)
+	if err == nil || err.Code != "INVALID_REQUEST_BODY" {
+		t.Fatalf("body=%s err=%v", req.Body, err)
 	}
 }
