@@ -512,8 +512,7 @@ func validateMCPToolArguments(cmd *Command, arguments map[string]any, policy mcp
 	return nil
 }
 
-// schemaForMCPTool is the input schema advertised under policy: controls the
-// human withheld are absent so agents are not invited to use them.
+// schemaForMCPTool advertises the public controls for each operation.
 func schemaForMCPTool(cmd *Command, policy mcpPolicy) (map[string]any, *CLIError) {
 	public := *cmd
 	if public.CanonicalName == "listen" || public.CanonicalName == "auth.status" {
@@ -542,12 +541,14 @@ func schemaForMCPTool(cmd *Command, policy mcpPolicy) (map[string]any, *CLIError
 		}
 	}
 	kind, idempotency, paginated, get := "read", commandIdempotencyClass(cmd), cmd.Supports.Pagination, cmd.Get
+	gated := cmd.Destructive || cmd.Sensitive
 	if cmd.Mutation || cmd.Destructive || cmd.CanonicalName == "listen" || cmd.CanonicalName == "signup" || cmd.CanonicalName == "trigger" {
 		kind = "write"
 	}
 	if policy.index != nil {
 		if entry, ok := policy.index.Lookup(cmd.CanonicalName); ok {
 			kind, idempotency, paginated, get = entry.Kind, entry.Idempotency, entry.Paginated, entry.Get
+			gated = entry.ConfirmRequired()
 		}
 	}
 	// Typed schemas use the same public controls as discovery. The command's
@@ -562,7 +563,7 @@ func schemaForMCPTool(cmd *Command, policy mcpPolicy) (map[string]any, *CLIError
 		}
 		controls := tool["inputSchema"].(map[string]any)["properties"].(map[string]any)
 		for name, control := range controls {
-			if name == "operation" || name == "arguments" || name == "all" && !paginated || (name == "wait_for" || name == "wait_seconds") && !get || name == "idempotency_key" && idempotency == "none" {
+			if name == "operation" || name == "arguments" || name == "all" && !paginated || (name == "wait_for" || name == "wait_seconds") && !get || name == "idempotency_key" && idempotency == "none" || name == "confirm" && !gated {
 				continue
 			}
 			properties[name] = control
@@ -745,7 +746,7 @@ var mcpLocalTools = map[string]struct{ title, description string }{
 	"schema.errors":   {"Error catalog", "Flint exit codes and error types."},
 	"schema.events":   {"Webhook event catalog", "List webhook event types with one-line descriptions. Pass event_type (an exact type, or a prefix such as payment_intent) for their payload schemas."},
 	"history":         {"Recent resource IDs", "List Flint resource IDs this CLI recently created or changed with the active credential."},
-	"history.clear":   {"Clear resource history", "Delete this CLI's saved list of recent resource IDs. Needs the user's confirmation."},
+	"history.clear":   {"Clear resource history", "Delete this CLI's saved list of recent resource IDs. Needs confirm: true."},
 	"version":         {"CLI version", "Flint CLI version and build, and the public API version and schema hash it targets."},
 	"doctor":          {"Check the Flint setup", "Check this server's Flint credential, connectivity, scopes, and API version compatibility."},
 	"init":            {"Flint setup status", "Report whether a Flint credential is configured, with setup checks and suggested first steps."},
@@ -816,7 +817,7 @@ func mcpBaseDescription(cmd *Command) string {
 	case "delivery-rate-callbacks.create":
 		return "Create a delivery rate callback. signing_methods defaults to [jwt]; verify Authorization: Bearer <token> with Flint's JWKS and aud set to the delivery_rate_callback_id. A shared secret and key_id are returned only when hmac is included; save them if present."
 	case "delivery-rate-callbacks.update":
-		return "Update a delivery rate callback. signing_methods replaces the set; omit to leave unchanged. Adding hmac without an issued secret returns 409 ACTION_NOT_ALLOWED with reason secret_not_issued; use rotate-secret to issue one and enable hmac. Removing hmac deletes shared secrets."
+		return "Update a delivery rate callback. signing_methods replaces the set; omit to keep it. Adding hmac without a secret returns 409 ACTION_NOT_ALLOWED with reason secret_not_issued; rotate-secret issues one and enables hmac. Removing hmac deletes shared secrets."
 	case "delivery-rate-callbacks.rotate-secret":
 		return "Rotate a delivery rate callback secret, or issue the first one and enable hmac. Save the returned secret and key_id."
 	}
@@ -1377,7 +1378,7 @@ var mcpControlHelp = []map[string]string{
 	{"name": "_flint.dry_run", "applies_to": "writes", "description": "\"client\" validates the arguments and returns the prepared request (method, path, headers, body) without sending it. Nothing changes in Flint."},
 	{"name": "_flint.preview", "applies_to": "destructive writes", "description": "Returns the request and its effect (permission check, reversibility, affected resources) without making the change."},
 	{"name": "_flint.idempotency_key", "applies_to": "writes", "description": "Sent as the Idempotency-Key header. Flint returns the original result when a key is reused, so reuse the same key when retrying a write that timed out or failed on the network; a new key could run it twice. The CLI generates a key only when the route makes it optional. Required routes need a key saved before the first call; operations that take no key send none. The API never generates keys. Every error from a keyed write includes its key."},
-	{"name": "_flint.confirm", "applies_to": "destructive and live-sensitive operations, only when the server was started with --allow-destructive", "description": "Confirms the operation. Without --allow-destructive the server asks the user through elicitation, or refuses when the client cannot ask."},
+	{"name": "_flint.confirm", "applies_to": "sensitive or irreversible operations", "description": "Required in every environment. In sandbox the agent confirms. Live and unverified environments also require user approval through elicitation, or return a terminal command; --allow-destructive permits agent confirmation there."},
 	{"name": "_flint.live", "applies_to": "API tools, only when the server was started with --allow-live", "description": "Acknowledges a live (production) credential or context. Without --allow-live the server refuses live credentials."},
 	{"name": "_flint.merchant", "applies_to": "API tools", "description": "Fails the call unless the credential belongs to this mer_ merchant. An agent may add a guard but cannot replace one the server already uses."},
 	{"name": "_flint.profile", "applies_to": "API tools", "description": "Selects a saved Flint CLI profile, unless the server pins one with --profile, FLINT_PROFILE, or project configuration, or the profile would change the server's merchant guard or context."},

@@ -23,6 +23,14 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 	if e != nil {
 		return nil, e
 	}
+	if a.mcpGate != nil {
+		if e := a.mcpGate.prepared(ctx, a, cmd, req, resolved); e != nil {
+			return nil, e
+		}
+		// The MCP gate authorized this exact prepared request. Legacy terminal
+		// confirmation must not add a second approval or change the request.
+		opts.Confirm = true
+	}
 	if opts.DryRun == "client" || opts.Preview {
 		if authContext.AuthType == "none" {
 			req.Warnings = append(req.Warnings, map[string]any{

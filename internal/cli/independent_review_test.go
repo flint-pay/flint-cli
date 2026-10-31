@@ -121,13 +121,13 @@ func TestMCPUnverifiedEnvironmentElicitsConfirmation(t *testing.T) {
 			t.Setenv("FLINT_ACCESS_TOKEN", "synthetic-partner-token")
 			conn := startMCPTestConn(t, app, defaultOptions())
 			conn.initialize(`{"elicitation":{"form":{}}}`)
-			conn.send(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"flint_write","arguments":{"operation":"payment-intents.create","arguments":{"amount_money":{"amount":500,"currency":"USD"},"payment_options":["card"]},"idempotency_key":"saved-test-action-1"}}}`)
+			conn.send(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"flint_write","arguments":{"operation":"payment-intents.create","arguments":{"amount_money":{"amount":500,"currency":"USD"},"payment_options":["card"]},"idempotency_key":"saved-test-action-1","confirm":true}}}`)
 			request := conn.next()
-			if request["method"] != "elicitation/create" || writes != 0 || !strings.Contains(fmt.Sprint(lookupPathValue(request, "params.message")), "cannot verify") {
+			if request["method"] != "elicitation/create" || writes != 0 || !strings.Contains(fmt.Sprint(lookupPathValue(request, "params.message")), "unverified") {
 				t.Fatalf("writes=%d request=%v", writes, request)
 			}
 			id, _ := json.Marshal(request["id"])
-			conn.send(fmt.Sprintf(`{"jsonrpc":"2.0","id":%s,"result":{"action":"accept","content":{"confirm":%t}}}`, id, approve))
+			conn.send(fmt.Sprintf(`{"jsonrpc":"2.0","id":%s,"result":{"action":"accept","content":{"approve":%t}}}`, id, approve))
 			response := conn.next()
 			if (lookupPathValue(response, "result.isError") == true) == approve || (writes == 1) != approve || writes > 1 {
 				t.Fatalf("writes=%d response=%v", writes, response)

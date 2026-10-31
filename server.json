@@ -50,7 +50,7 @@
         {
           "type": "named",
           "name": "--allow-destructive",
-          "description": "Set to true to let agents confirm destructive operations, and sensitive operations in live mode, themselves. Otherwise the server asks you.",
+          "description": "Set to true to let agents confirm sensitive or irreversible live operations with confirm: true. Sandbox operations still need confirm: true and never ask the user.",
           "isRequired": false,
           "format": "boolean",
           "default": "false",

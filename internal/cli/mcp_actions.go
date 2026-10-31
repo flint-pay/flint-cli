@@ -466,9 +466,24 @@ func (a *App) mcpNextActions(cmd *Command, args map[string]any, opts Options, po
 			return append(actions, mcpUserAction("restart this MCP server with the credential type this operation accepts; check flint_describe for its accepted credentials."))
 		}
 	case "CONFIRMATION_NEEDS_USER":
-		return append(actions, mcpUserAction("approve this operation in a terminal using the same credential, or enable elicitation in the MCP client."))
+		text := "run this command in an interactive terminal with the same credential this server uses and from the same project directory. The terminal will ask for confirmation."
+		if credentialFromEnvironment() != "" {
+			text += " The server's key is FLINT_API_KEY in the MCP client's env configuration."
+		}
+		action := mcpUserAction(text)
+		if command, ok := mcpErrorFact(e.Details, "command").(string); ok && command != "" {
+			action["command"] = command
+		}
+		actions = append(actions, action)
+		for _, recovery := range a.mcpRecoveryActions(cmd, args, policy, key, environment) {
+			recovery["text"] = "After the user says the command ran, " + strings.ToLower(fmt.Sprint(recovery["text"]))
+			actions = append(actions, recovery)
+		}
+		return actions
+	case "CONFIRMATION_DECLINED":
+		return append(actions, mcpAgentAction("The operation was not performed. Do not retry unless the user asks.", map[string]any{"tool": "flint_help", "arguments": map[string]any{"topic": "safety"}}))
 	case "CONFIRMATION_REQUIRED":
-		if cmd != nil && policy.allowDestructive {
+		if cmd != nil {
 			confirmed := maps.Clone(args)
 			if confirmed == nil {
 				confirmed = map[string]any{}
@@ -480,7 +495,11 @@ func (a *App) mcpNextActions(cmd *Command, args map[string]any, opts Options, po
 			}
 			controls["confirm"] = true
 			confirmed["_flint"] = controls
-			return append(actions, mcpAgentAction("Check the effect with dry_run, then supply confirm: true.", a.mcpOperationCall(cmd, confirmed, policy)))
+			text := "Check the effect with dry_run, then supply confirm: true."
+			if environment != "sandbox" && !policy.allowDestructive {
+				text += " The server will ask the user to approve it."
+			}
+			return append(actions, mcpAgentAction(text, a.mcpOperationCall(cmd, confirmed, policy)))
 		}
 		return append(actions, mcpUserAction("approve this operation in the MCP client before the agent proceeds."))
 	case "LIVE_ACKNOWLEDGEMENT_REQUIRED":
