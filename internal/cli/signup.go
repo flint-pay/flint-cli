@@ -68,25 +68,38 @@ func (a *App) runSignup(opts Options) int {
 	if !ok {
 		return a.fail(invalidResponseError("INVALID_SIGNUP_RESPONSE", "Flint did not return an onboarding session token.", nil), opts)
 	}
-	state, e := a.doSignupRequest(baseURL, sessionToken, http.MethodGet, "/v1/onboarding/state", nil, "", opts)
-	if e != nil {
-		return a.fail(e, opts)
+	// Current verify responses identify the default sandbox directly. Older
+	// servers expose it through onboarding state and readiness actions.
+	state := verify
+	if sandboxID, _ := firstStringAt(state.Value, "data.default_sandbox_id"); sandboxID == "" {
+		state, e = a.doSignupRequest(baseURL, sessionToken, http.MethodGet, "/v1/onboarding/state", nil, "", opts)
+		if e != nil {
+			return a.fail(e, opts)
+		}
+		if _, legacy := lookupPath(state.Value, "data.can_issue_api_key"); legacy {
+			state, e = a.advanceSignupUntilKeyAvailable(baseURL, sessionToken, state, reader, email, mergeSignupInputs(opts, pending.Inputs))
+			if e != nil {
+				return a.fail(e, opts)
+			}
+		}
 	}
-	state, e = a.advanceSignupUntilKeyAvailable(baseURL, sessionToken, state, reader, email, mergeSignupInputs(opts, pending.Inputs))
-	if e != nil {
-		return a.fail(e, opts)
-	}
+
 	sandboxID, _ := firstStringAt(state.Value, "data.default_sandbox_id")
 	if sandboxID == "" {
 		return a.fail(invalidResponseError("INVALID_SIGNUP_RESPONSE", "Flint did not return a default sandbox for the initial API key.", nil), opts)
 	}
-	// The onboarding session always issues the key in the default sandbox.
-	keyBody, _ := json.Marshal(map[string]any{"name": "flint-cli"})
+	// Mint explicitly in the default sandbox. Only an absent route permits the
+	// compatibility fallback; authentication and grant failures must stop signup.
+	keyBody, _ := json.Marshal(map[string]any{"access": "full"})
 	issueKey, err := newIdempotencyKey()
 	if err != nil {
 		return a.fail(networkError("IDEMPOTENCY_KEY_GENERATION_FAILED", "Could not generate an idempotency key.", err), opts)
 	}
-	created, e := a.doSignupRequest(baseURL, sessionToken, http.MethodPost, "/v1/onboarding/api-key", keyBody, issueKey, opts)
+	created, e := a.doSignupRequest(baseURL, sessionToken, http.MethodPost, "/v1/sandboxes/"+url.PathEscape(sandboxID)+"/api-keys", keyBody, issueKey, opts)
+	if e != nil && e.HTTPStatus == http.StatusNotFound {
+		keyBody, _ = json.Marshal(map[string]any{"sandbox_id": sandboxID, "access": "full"})
+		created, e = a.doSignupRequest(baseURL, sessionToken, http.MethodPost, "/v1/api-keys", keyBody, issueKey, opts)
+	}
 	if e != nil {
 		return a.fail(e, opts)
 	}
@@ -166,7 +179,7 @@ func (a *App) runSignup(opts Options) int {
 	nextCommand := a.signupCommand(signupNextCommand, resolved.ProfileName, baseURL)
 	result := map[string]any{"data": map[string]any{
 		"api_key":          valueAt(created.Value, "data"),
-		"onboarding":       valueAt(state.Value, "data"),
+		"onboarding":       signupOnboardingSummary(state.Value),
 		"credential_saved": true,
 		"next_command":     nextCommand,
 	}}
@@ -179,6 +192,21 @@ func (a *App) runSignup(opts Options) int {
 		return ExitOK
 	}
 	return a.outputLocal(result, nilCommand("signup"), opts)
+}
+
+// Verification results can include a bearer token. Publish only known scalar
+// onboarding facts so all output formats and projections share the safe value.
+func signupOnboardingSummary(value any) map[string]any {
+	summary := map[string]any{}
+	for _, field := range []string{"status", "default_sandbox_id"} {
+		if fact, ok := firstStringAt(value, "data."+field); ok {
+			summary[field] = fact
+		}
+	}
+	if fact, ok := valueAt(value, "data.can_issue_api_key").(bool); ok {
+		summary["can_issue_api_key"] = fact
+	}
+	return summary
 }
 
 func (a *App) advanceSignupUntilKeyAvailable(baseURL, sessionToken string, state *apiResponse, reader *bufio.Reader, email string, opts Options) (*apiResponse, *CLIError) {

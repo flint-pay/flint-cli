@@ -126,7 +126,7 @@ func TestDXHelpAndSchemaShapes(t *testing.T) {
 	}
 	out.Reset()
 	app.Run([]string{"--help"})
-	if strings.Contains(out.String(), "--color") || strings.Contains(out.String(), "FLINT_COLOR") || !strings.Contains(out.String(), "70 internal error") {
+	if !strings.Contains(out.String(), "FLINT_COLOR") || !strings.Contains(out.String(), "70 internal error") {
 		t.Fatal(out.String())
 	}
 }

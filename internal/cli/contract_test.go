@@ -1087,16 +1087,16 @@ func TestSignupIssuesScopedSandboxKeyAndStoresOnlyInCredentialStore(t *testing.T
 				t.Errorf("state authorization = %q", r.Header.Get("Authorization"))
 			}
 			fmt.Fprint(w, `{"data":{"can_issue_api_key":true,"default_sandbox_id":"test_123","next_step":{"code":"complete_verification_step"}}}`)
-		case "/v1/onboarding/api-key":
+		case "/v1/sandboxes/test_123/api-keys":
 			var body struct {
-				Name      string          `json:"name"`
+				Access    string          `json:"access"`
 				SandboxID json.RawMessage `json:"sandbox_id"`
 				Scopes    json.RawMessage `json:"scopes"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				t.Error(err)
 			}
-			if body.Name != "flint-cli" || body.SandboxID != nil || body.Scopes != nil {
+			if body.Access != "full" || body.SandboxID != nil || body.Scopes != nil {
 				t.Errorf("unexpected initial key request: %#v", body)
 			}
 			fmt.Fprint(w, `{"data":{"api_key_id":"key_123","merchant_id":"mer_123","sandbox_id":"test_123","secret_key":"flint_test_secret"}}`)
@@ -1125,7 +1125,7 @@ func TestSignupIssuesScopedSandboxKeyAndStoresOnlyInCredentialStore(t *testing.T
 		"POST /v1/onboarding/start",
 		"POST /v1/onboarding/verify-email",
 		"GET /v1/onboarding/state",
-		"POST /v1/onboarding/api-key",
+		"POST /v1/sandboxes/test_123/api-keys",
 	}
 	if !slices.Equal(requests, wantRequests) {
 		t.Fatalf("requests=%v, want %v", requests, wantRequests)

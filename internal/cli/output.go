@@ -446,7 +446,12 @@ func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) *CLIError 
 
 func renderDoctorHuman(w io.Writer, value any) {
 	envelope, _ := value.(map[string]any)
-	checks, _ := envelope["data"].([]map[string]any)
+	data, _ := envelope["data"].(map[string]any)
+	info, _ := data["cli"].(cliIdentity)
+	fmt.Fprintln(w, "API base URL:", terminalSafe(info.APIBaseURL))
+	fmt.Fprintln(w, "Credential source:", terminalSafe(info.CredentialSource))
+	fmt.Fprintln(w, "Profile:", terminalSafe(info.Profile))
+	checks, _ := data["checks"].([]map[string]any)
 	for _, check := range checks {
 		marker := "✓"
 		if check["status"] == "fail" {

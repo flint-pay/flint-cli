@@ -31,13 +31,15 @@ func TestDoctorWithoutCredentialContinuesPublicChecks(t *testing.T) {
 		t.Fatalf("exit=%d out=%s", exit, out)
 	}
 	var result struct {
-		Data []map[string]any `json:"data"`
+		Data struct {
+			Checks []map[string]any `json:"checks"`
+		} `json:"data"`
 	}
 	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
 	names := map[string]bool{}
-	for _, check := range result.Data {
+	for _, check := range result.Data.Checks {
 		names[check["name"].(string)] = true
 	}
 	for _, name := range []string{"credential", "connectivity", "api_version", "cli_version"} {

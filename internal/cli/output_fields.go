@@ -75,6 +75,10 @@ func resourceOutputSchema(cmd *Command) (map[string]any, map[string]any) {
 	if items, ok := root["items"].(map[string]any); ok {
 		root = items
 	}
+	if cmd.CanonicalName == "auth.status" {
+		root = map[string]any{"allOf": []any{root, map[string]any{"type": "object", "properties": identityOutputProperties()}}}
+	}
+
 	return root, defs
 }
 

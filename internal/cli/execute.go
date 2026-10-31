@@ -183,7 +183,7 @@ func permissionPreview(cmd *Command, authContext AuthContext) map[string]any {
 }
 
 func commandPermissionError(cmd *Command, authContext AuthContext, profile string) *CLIError {
-	if authContext.AuthType != "oauth" && authContext.AuthType != "api_key" {
+	if !authContext.isCLILogin() && authContext.AuthType != "api_key" {
 		return nil
 	}
 	check := permissionPreview(cmd, authContext)
@@ -210,7 +210,7 @@ func commandPermissionError(cmd *Command, authContext AuthContext, profile strin
 	if liveRequired {
 		message += " The missing scopes require live mode: " + strings.Join(liveOnly, ", ") + "."
 		actions = []any{map[string]any{"reason_message": "Use a live key with the required scopes. These scopes cannot be added to a sandbox key or browser context."}}
-	} else if authContext.AuthType == "oauth" {
+	} else if authContext.isCLILogin() {
 		requestScopes := eligible
 		if mode == "any" && len(requestScopes) > 1 {
 			requestScopes = requestScopes[:1]

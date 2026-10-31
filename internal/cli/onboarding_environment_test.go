@@ -38,7 +38,7 @@ func TestSignupDrivesReadinessActions(t *testing.T) {
 			}
 			// create_api_key ends the loop even while can_issue_api_key lags.
 			fmt.Fprint(w, `{"data":{"can_issue_api_key":false,"default_sandbox_id":"test_new","next_step":{"action_type":"create_api_key","owner":"integrator","required_fields":["name"]}}}`)
-		case "/v1/onboarding/api-key":
+		case "/v1/sandboxes/test_new/api-keys":
 			if err := json.NewDecoder(r.Body).Decode(&keyBody); err != nil {
 				t.Fatal(err)
 			}
@@ -51,7 +51,7 @@ func TestSignupDrivesReadinessActions(t *testing.T) {
 	if exit := app.Run(args); exit != ExitOK {
 		t.Fatalf("signup exit=%d out=%s stderr=%s", exit, out, stderr)
 	}
-	wantPaths := []string{"/v1/onboarding/start", "/v1/onboarding/verify-email", "/v1/onboarding/state", "/v1/onboarding/advance", "/v1/onboarding/advance", "/v1/onboarding/api-key"}
+	wantPaths := []string{"/v1/onboarding/start", "/v1/onboarding/verify-email", "/v1/onboarding/state", "/v1/onboarding/advance", "/v1/onboarding/advance", "/v1/sandboxes/test_new/api-keys"}
 	if !reflect.DeepEqual(paths, wantPaths) {
 		t.Fatalf("paths=%v want %v", paths, wantPaths)
 	}
@@ -62,8 +62,8 @@ func TestSignupDrivesReadinessActions(t *testing.T) {
 	if !reflect.DeepEqual(advanceBodies, wantAdvance) {
 		t.Fatalf("advance bodies=%#v", advanceBodies)
 	}
-	if !reflect.DeepEqual(keyBody, map[string]any{"name": "flint-cli"}) {
-		t.Fatalf("api-key body=%#v; the onboarding session always uses the default sandbox", keyBody)
+	if !reflect.DeepEqual(keyBody, map[string]any{"access": "full"}) {
+		t.Fatalf("api-key body=%#v; the initial key explicitly requests full access", keyBody)
 	}
 }
 
@@ -97,7 +97,7 @@ func TestSignupStopsForReadinessActionsItCannotComplete(t *testing.T) {
 				t.Fatalf("error omits the next step: %v", result)
 			}
 			for _, path := range paths {
-				if path == "/v1/onboarding/advance" || path == "/v1/onboarding/api-key" {
+				if path == "/v1/onboarding/advance" || path == "/v1/sandboxes/test_new/api-keys" {
 					t.Fatalf("signup submitted %s for a step it cannot complete", path)
 				}
 			}
@@ -142,7 +142,7 @@ func TestSignupLegacyStepShapes(t *testing.T) {
 		if exit := app.Run(args); exit != ExitOK {
 			t.Fatalf("signup exit=%d out=%s stderr=%s", exit, out, stderr)
 		}
-		if strings.Join(paths, ",") != "/v1/onboarding/start,/v1/onboarding/verify-email,/v1/onboarding/state,/v1/onboarding/advance,/v1/onboarding/api-key" {
+		if strings.Join(paths, ",") != "/v1/onboarding/start,/v1/onboarding/verify-email,/v1/onboarding/state,/v1/onboarding/advance,/v1/sandboxes/test_new/api-keys" {
 			t.Fatalf("paths=%v", paths)
 		}
 	})
@@ -152,7 +152,7 @@ func TestSignupLegacyStepShapes(t *testing.T) {
 			switch r.URL.Path {
 			case "/v1/onboarding/state":
 				fmt.Fprint(w, `{"data":{"can_issue_api_key":false,"default_sandbox_id":"test_new","next_step":{"code":"create_api_key","owner":"agent","machine_completable":true,"submit_endpoint":"/v1/onboarding/api-key","required_fields":["name","sandbox_id"]}}}`)
-			case "/v1/onboarding/api-key":
+			case "/v1/sandboxes/test_new/api-keys":
 				issued = true
 				signupFlowSuccess(t, w, r)
 			default:

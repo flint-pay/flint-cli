@@ -37,6 +37,8 @@ Access tokens refresh automatically as needed. `flint auth logout --confirm` rev
 
 `flint login` is a shortcut for `flint auth login`. Related shortcuts: `flint logout` for `flint auth logout`, and `flint whoami` for `flint auth status`.
 
+`whoami`, `auth status`, `doctor`, and `config get` show the API base URL, credential source, and selected profile in human output and under `data.cli` in JSON. Doctor results are under `data.checks`. `config get` resolves local configuration without an API request; an unreadable credential store is shown as `credential_source: "unavailable"`. Auth-context accepts `mode` (with `environment` as a fallback), `access`, and `auth_type: "cli_login"`. Live-mode guards use the verified auth-context mode. Set `FLINT_COLOR=auto|always|never` to choose color, or override it with `--color`.
+
 ### Sessions and contexts
 
 Approve access to selected merchants, sandboxes, and live contexts once in the browser, then select where commands run:
