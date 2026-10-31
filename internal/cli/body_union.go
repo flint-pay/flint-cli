@@ -82,6 +82,7 @@ func inferRequestUnion(cmd *Command, opts Options, body, input map[string]any) *
 	} else {
 		disc := union.discriminator
 		tag, _ := body[disc].(string)
+		_, hasTag := body[disc]
 		original, inputHasTag := input[disc]
 		if inputHasTag && tag != "" && !reflect.DeepEqual(original, body[disc]) {
 			return usageError("CONFLICTING_ARGUMENTS", fmt.Sprintf("--%s conflicts with %s from --input.", strings.ReplaceAll(disc, "_", "-"), disc), disc)
@@ -110,7 +111,7 @@ func inferRequestUnion(cmd *Command, opts Options, body, input map[string]any) *
 			}
 			candidates = slices.DeleteFunc(candidates, func(candidate string) bool { return !slices.Contains(membership, candidate) })
 		}
-		if tag == "" && specific {
+		if !hasTag && specific {
 			if len(candidates) != 1 {
 				e := usageError("AMBIGUOUS_VARIANT", fmt.Sprintf("These flags do not select one --%s variant. Candidates: %s. Set --%s explicitly and use flags from that variant.", strings.ReplaceAll(disc, "_", "-"), strings.Join(candidates, ", "), strings.ReplaceAll(disc, "_", "-")), disc)
 				e.Details = map[string]any{"candidates": candidates}
