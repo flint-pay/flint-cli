@@ -514,6 +514,9 @@ func isShortFlag(token string) bool {
 
 func unknownFlagError(token string, allowed map[string]bool) *CLIError {
 	key, _, _ := strings.Cut(strings.TrimLeft(token, "-"), "=")
+	if key == "follow" {
+		return usageError("UNSUPPORTED_FLAG", "--follow applies only to api-request-logs list.", key)
+	}
 	shown := "--" + key
 	message := "Unknown flag: " + shown + "."
 	if !strings.HasPrefix(token, "--") {

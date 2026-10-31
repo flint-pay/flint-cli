@@ -156,8 +156,8 @@ func TestFollowOptionsAndNormalList(t *testing.T) {
 		}
 	}
 	for _, args := range [][]string{{"customers", "list", "--follow"}, {"api-request-logs", "list", "--max-events", "1"}, {"api-request-logs", "list", "--follow=false", "--for", "1s"}} {
-		if _, _, _, e := parseInvocation(r, args); e == nil {
-			t.Fatalf("accepted %v", args)
+		if _, _, _, e := parseInvocation(r, args); e == nil || e.Code != "UNSUPPORTED_FLAG" {
+			t.Fatalf("accepted %v or wrong error: %v", args, e)
 		}
 	}
 	var calls atomic.Int64
