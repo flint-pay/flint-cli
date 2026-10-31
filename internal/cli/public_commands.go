@@ -156,6 +156,8 @@ func openAPIArgumentType(typeName string, schema map[string]any) string {
 	default:
 		if format, _ := schema["format"].(string); format == "date-time" {
 			return "time"
+		} else if format == "date" {
+			return "date"
 		}
 		return "string"
 	}
@@ -408,13 +410,12 @@ func publicSchemaType(schema map[string]any) string {
 	if value, ok := schema["type"].(string); ok {
 		return value
 	}
-	if types, ok := schema["type"].([]any); ok {
-		for _, value := range types {
-			if name, ok := value.(string); ok && name != "null" {
-				return name
-			}
+	for _, name := range mcpSchemaStrings(schema["type"]) {
+		if name != "null" {
+			return name
 		}
 	}
+
 	return "string"
 }
 

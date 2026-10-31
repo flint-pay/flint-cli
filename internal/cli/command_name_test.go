@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -444,33 +443,13 @@ func TestNamingSuggestionsResolveAndNeverEcho(t *testing.T) {
 	}
 }
 
-func TestCompatibilityBodyFlagsUnchanged(t *testing.T) {
-	// Captured from 02caeb3 before A1, with only createPaymentIntent --order
-	// removed. A4 replaces this compatibility baseline with generated flags.
-	raw, err := os.ReadFile("testdata/compatibility-body-flags.golden.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var want map[string][]string
-	if err := json.Unmarshal(raw, &want); err != nil {
-		t.Fatal(err)
-	}
-	got := map[string][]string{}
-	for _, command := range NewRegistry().Commands {
-		if commandOwned(command) {
-			continue
-		}
-		for _, arg := range command.Arguments {
-			if arg.BodyPath != "" {
-				got[command.OperationID] = append(got[command.OperationID], arg.Flag)
+func TestBodyShortcutsAreNested(t *testing.T) {
+	for id, overlay := range publicOperationOverlays {
+		for _, arg := range overlay.Arguments {
+			if !strings.Contains(arg.BodyPath, ".") && !(id == "payOrder" && arg.Name == "payment_source_token") {
+				t.Fatal(id, arg)
 			}
 		}
-	}
-	for _, flags := range got {
-		slices.Sort(flags)
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("compatibility body flags changed: got %v, want %v", got, want)
 	}
 }
 

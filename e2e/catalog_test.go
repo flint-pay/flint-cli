@@ -265,7 +265,10 @@ func builtInputBody(t *testing.T, bin string, command *cli.Command) string {
 			delete(body, "payment_method_id")
 		}
 		for _, argument := range command.Arguments {
-			if command.CanonicalName == "payment-intents.confirm" && (argument.Name == "payment_method" || argument.Name == "payment_source_token") {
+			if generatedBodyArgument(argument) {
+				continue
+			}
+			if command.CanonicalName == "payment-intents.confirm" && (argument.Name == "payment_method_id" || argument.Name == "payment_source_token") {
 				continue
 			}
 			if argument.Repeat && argument.BodyPath != "" {
@@ -276,7 +279,10 @@ func builtInputBody(t *testing.T, bin string, command *cli.Command) string {
 	}
 	withFlags := func(body map[string]any) any {
 		for _, argument := range command.Arguments {
-			if command.CanonicalName == "payment-intents.confirm" && (argument.Name == "payment_method" || argument.Name == "payment_source_token") {
+			if generatedBodyArgument(argument) {
+				continue
+			}
+			if command.CanonicalName == "payment-intents.confirm" && (argument.Name == "payment_method_id" || argument.Name == "payment_source_token") {
 				continue
 			}
 			if argument.BodyPath == "" || argument.Name == "input" || argument.Positional > 0 || argument.Query != "" ||
@@ -347,7 +353,10 @@ func setBuiltBodyPath(container any, parts []string, value any) any {
 func builtRemoteInvocation(command *cli.Command) []string {
 	argv := append([]string(nil), command.Path[1:]...)
 	for _, argument := range command.Arguments {
-		if command.CanonicalName == "payment-intents.confirm" && (argument.Name == "payment_method" || argument.Name == "payment_source_token") {
+		if generatedBodyArgument(argument) {
+			continue
+		}
+		if command.CanonicalName == "payment-intents.confirm" && (argument.Name == "payment_method_id" || argument.Name == "payment_source_token") {
 			continue
 		}
 		if command.CanonicalName == "payment-intents.create" && argument.Name == "order" {
@@ -535,4 +544,8 @@ func buildCLI(t *testing.T) string {
 		t.Fatalf("build CLI: %v\n%s", builtCLI.err, builtCLI.output)
 	}
 	return builtCLI.path
+}
+
+func generatedBodyArgument(argument cli.Arg) bool {
+	return argument.BodyPath != "" && !strings.Contains(argument.BodyPath, ".") && argument.Name != "payment_source_token"
 }

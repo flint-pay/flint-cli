@@ -55,6 +55,9 @@ func exhaustiveInputBody(t testing.TB, command *Command) map[string]any {
 			delete(body, "payment_method_id")
 		}
 		for _, arg := range command.Arguments {
+			if generatedBodyArgument(arg) {
+				continue
+			}
 			if arg.Repeat && arg.BodyPath != "" {
 				delete(body, strings.Split(arg.BodyPath, ".")[0])
 			}
@@ -69,6 +72,9 @@ func exhaustiveInputBody(t testing.TB, command *Command) map[string]any {
 		}
 		flagged := Options{Input: "-", Raw: map[string][]string{}}
 		for _, arg := range command.Arguments {
+			if generatedBodyArgument(arg) {
+				continue
+			}
 			if skipExhaustiveConfirmationFlag(command, arg) {
 				continue
 			}
@@ -127,6 +133,9 @@ func TestEveryBodyFlagTargetsADocumentedRequestField(t *testing.T) {
 			t.Fatal(e)
 		}
 		for _, arg := range command.Arguments {
+			if generatedBodyArgument(arg) {
+				continue
+			}
 			if arg.BodyPath == "" || arg.Name == "input" || arg.Positional > 0 || arg.Query != "" {
 				continue
 			}

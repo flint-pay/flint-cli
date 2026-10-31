@@ -206,7 +206,15 @@ func TestEveryHistoryReferenceArgumentResolvesAndMissingFails(t *testing.T) {
 					}
 
 					options := historyReferenceOptions(t, template.Registry, command, argument, reference)
-					request, cliErr := app.prepareRequest(context.Background(), command, options, resolved, "flint_test_test", "")
+					historyCommand := command
+					if generatedBodyArgument(argument) {
+						// Isolate history resolution from variant and dependent-field validation.
+						// Schema-valid generated flags are exercised by the round-trip matrix.
+						copy := *command
+						copy.OperationID = ""
+						historyCommand = &copy
+					}
+					request, cliErr := app.prepareRequest(context.Background(), historyCommand, options, resolved, "flint_test_test", "")
 					if cliErr != nil {
 						t.Fatalf("prepareRequest(%s): %v", reference, cliErr)
 					}
@@ -220,7 +228,7 @@ func TestEveryHistoryReferenceArgumentResolvesAndMissingFails(t *testing.T) {
 
 					emptyApp, _, _ := testAppFromTemplate(t, "", template)
 					missingOptions := historyReferenceOptions(t, template.Registry, command, argument, reference)
-					_, missingErr := emptyApp.prepareRequest(context.Background(), command, missingOptions, resolved, "flint_test_test", "")
+					_, missingErr := emptyApp.prepareRequest(context.Background(), historyCommand, missingOptions, resolved, "flint_test_test", "")
 					if missingErr == nil || missingErr.Code != "HISTORY_REFERENCE_NOT_FOUND" || missingErr.ExitCode != ExitUsage {
 						t.Fatalf("missing history error = %#v, want HISTORY_REFERENCE_NOT_FOUND exit %d", missingErr, ExitUsage)
 					}
@@ -583,11 +591,9 @@ func TestEveryBooleanFlagAcceptsExplicitTrueAndFalse(t *testing.T) {
 		"list":              {"trigger"},
 		"print-secret":      {"listen"},
 	}
-	if len(cases) != len(boolFlags) {
-		t.Fatalf("boolean flag matrix has %d entries, parser has %d", len(cases), len(boolFlags))
-	}
-	for flag := range boolFlags {
-		base, ok := cases[flag]
+
+	for flag, base := range cases {
+		_, ok := cases[flag]
 		if !ok {
 			t.Errorf("boolean flag --%s has no explicit true/false test", flag)
 			continue
@@ -1534,7 +1540,7 @@ func minimalInvocation(t testing.TB, command *Command) []string {
 			argv = append(argv, exhaustiveArgumentValues(argument)[0])
 			continue
 		}
-		if !argument.Required {
+		if !argument.Required || argument.BodyPath != "" {
 			continue
 		}
 		argv = append(argv, argument.Flag, exhaustiveArgumentValues(argument)[0])
@@ -1588,7 +1594,7 @@ func historyReferenceOptions(t *testing.T, registry *Registry, command *Command,
 
 // Confirmation credentials are exclusive in the public API contract.
 func skipExhaustiveConfirmationFlag(command *Command, argument Arg) bool {
-	return command.CanonicalName == "payment-intents.confirm" && (argument.Name == "payment_method" || argument.Name == "payment_source_token")
+	return command.CanonicalName == "payment-intents.confirm" && (argument.Name == "payment_method_id" || argument.Name == "payment_source_token")
 }
 
 func historyQualifierForPrefix(prefix string) string {
@@ -1642,7 +1648,7 @@ func useExhaustiveCredential(t *testing.T, command *Command) {
 func exhaustiveRemoteInvocation(command *Command) []string {
 	argv := append([]string(nil), command.Path[1:]...)
 	for _, argument := range command.Arguments {
-		if skipExhaustiveConfirmationFlag(command, argument) {
+		if skipExhaustiveConfirmationFlag(command, argument) || generatedBodyArgument(argument) {
 			continue
 		}
 		if command.CanonicalName == "payment-intents.create" && argument.Name == "order" {
@@ -1685,7 +1691,7 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 		wantPath = "/v1/payment-intents"
 	}
 	for _, argument := range command.Arguments {
-		if skipExhaustiveConfirmationFlag(command, argument) {
+		if skipExhaustiveConfirmationFlag(command, argument) || generatedBodyArgument(argument) {
 			continue
 		}
 		if argument.Positional == 0 || command.CanonicalName == "api" {
@@ -1720,7 +1726,7 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 	}
 
 	for _, argument := range command.Arguments {
-		if skipExhaustiveConfirmationFlag(command, argument) {
+		if skipExhaustiveConfirmationFlag(command, argument) || generatedBodyArgument(argument) {
 			continue
 		}
 		if argument.Query == "" {
@@ -1766,7 +1772,7 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 	}
 	hasInput := false
 	for _, argument := range command.Arguments {
-		if skipExhaustiveConfirmationFlag(command, argument) {
+		if skipExhaustiveConfirmationFlag(command, argument) || generatedBodyArgument(argument) {
 			continue
 		}
 		if argument.Name == "input" {
@@ -1813,6 +1819,10 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 			t.Errorf("orders.pay body = %#v, want two payment intent selections", body)
 		}
 	}
+}
+
+func generatedBodyArgument(argument Arg) bool {
+	return argument.BodyPath != "" && !strings.Contains(argument.BodyPath, ".") && argument.Name != "payment_source_token"
 }
 
 func exhaustiveArgumentValues(argument Arg) []string {

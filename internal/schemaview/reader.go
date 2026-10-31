@@ -301,7 +301,7 @@ func unite(a, b map[string]any) map[string]any {
 		}
 	}
 	// Scalar alternatives keep all possible types and fixed enum values.
-	types := unique(append(stringsOf(a["type"]), stringsOf(b["type"])...))
+	types := unique(append(slices.Clone(stringsOf(a["type"])), stringsOf(b["type"])...))
 	if len(types) == 1 {
 		out["type"] = types[0]
 	} else if len(types) > 1 {
@@ -310,7 +310,7 @@ func unite(a, b map[string]any) map[string]any {
 	av, bv := fixedValues(a), fixedValues(b)
 	delete(out, "const")
 	if len(av) > 0 && len(bv) > 0 {
-		out["enum"] = uniqueValues(append(av, bv...))
+		out["enum"] = uniqueValues(append(slices.Clone(av), bv...))
 	} else {
 		delete(out, "enum")
 	}

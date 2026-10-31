@@ -52,10 +52,11 @@ func publicBodyArguments(operation openAPIOperation, existing []Arg) []Arg {
 		}
 		arg := flag(name, openAPIArgumentType(typ, node), name, "", "", slices.Contains(required, name))
 		arg.Description, _ = field.Schema["description"].(string)
-		arg.Nullable, arg.Repeat = nullable, repeat
-		if node["format"] == "date" {
-			arg.Type = "date"
+		if arg.Description == "" {
+			arg.Description = "Set " + name + "."
 		}
+		arg.Nullable, arg.Repeat = nullable, repeat
+
 		arg.Enum = mcpSchemaStrings(node["enum"])
 		if value, ok := node["const"].(string); ok {
 			arg.Enum = []string{value}

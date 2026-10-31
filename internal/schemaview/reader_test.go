@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -160,5 +161,27 @@ func TestConditionalExclusionKeepsIndependentFields(t *testing.T) {
 	props := flat["properties"].(map[string]any)
 	if props["signing_methods"] == nil || props["status"] == nil {
 		t.Fatalf("conditional exclusion removed independently valid fields: %v", props)
+	}
+}
+
+func TestResolveUnionConcurrentDoesNotMutateEnums(t *testing.T) {
+	// Spare capacity in the embedded JSON enum must never become append scratch.
+	left := make([]any, 1, 8)
+	left[0] = "a"
+	schema := map[string]any{"anyOf": []any{map[string]any{"type": "string", "enum": left}, map[string]any{"type": "string", "enum": []any{"b"}}}}
+	reader := New(schema)
+	var workers sync.WaitGroup
+	for range 8 {
+		workers.Go(func() {
+			for range 100 {
+				if _, err := reader.Resolve(schema, ""); err != nil {
+					t.Error(err)
+				}
+			}
+		})
+	}
+	workers.Wait()
+	if len(left) != 1 || left[0] != "a" {
+		t.Fatal(left)
 	}
 }
