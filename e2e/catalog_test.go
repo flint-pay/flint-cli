@@ -42,6 +42,7 @@ func TestBuiltCLIExecutesEveryRemoteCommand(t *testing.T) {
 				environment = "live"
 				credential = "flint_live_exhaustive"
 			}
+			apiKey, accessToken := builtRemoteCredentials(command, credential)
 			resourceCalls := 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
@@ -68,7 +69,7 @@ func TestBuiltCLIExecutesEveryRemoteCommand(t *testing.T) {
 			canonicalArgs := builtRemoteInvocation(command)
 			input := builtInputBody(t, bin, command)
 			canonicalExit, canonicalStdout, canonicalStderr := runBuiltCLI(
-				t, bin, canonicalArgs, credential, server.URL, input,
+				t, bin, canonicalArgs, apiKey, accessToken, server.URL, input,
 			)
 			if canonicalExit != cli.ExitOK {
 				t.Fatalf(
@@ -88,7 +89,7 @@ func TestBuiltCLIExecutesEveryRemoteCommand(t *testing.T) {
 				aliasArgs := append([]string(nil), aliasPath[1:]...)
 				aliasArgs = append(aliasArgs, canonicalArgs[len(command.Path)-1:]...)
 				aliasExit, aliasStdout, aliasStderr := runBuiltCLI(
-					t, bin, aliasArgs, credential, server.URL, input,
+					t, bin, aliasArgs, apiKey, accessToken, server.URL, input,
 				)
 				if aliasExit != canonicalExit || aliasStdout != canonicalStdout || aliasStderr != canonicalStderr {
 					t.Fatalf(
@@ -180,13 +181,41 @@ func TestBuiltCLISchemaContainsEveryRegisteredCommand(t *testing.T) {
 	}
 }
 
-func runBuiltCLI(t *testing.T, bin string, argv []string, credential, baseURL, stdin string) (int, string, string) {
+// The compiled matrix must use a credential accepted by each route.
+func builtRemoteCredentials(command *cli.Command, merchantKey string) (string, string) {
+	if !command.AuthRequired {
+		return "", ""
+	}
+	for _, requirement := range command.Security {
+		if _, merchant := requirement["BearerAuth"]; merchant {
+			return merchantKey, ""
+		}
+	}
+	for _, requirement := range command.Security {
+		if _, customer := requirement["CustomerSessionBearer"]; customer {
+			return "", "flint_cses_exhaustive"
+		}
+		if _, checkout := requirement["CheckoutSessionBearer"]; checkout {
+			return "", "ckat_v1.exhaustive"
+		}
+	}
+	if len(command.Security) > 0 {
+		// Other session formats intentionally remain API-decided.
+		return "", "session_exhaustive"
+	}
+	// Raw API calls resolve their route security inside the CLI.
+	return merchantKey, ""
+}
+
+func runBuiltCLI(t *testing.T, bin string, argv []string, apiKey, accessToken, baseURL, stdin string) (int, string, string) {
 	t.Helper()
 	configHome := t.TempDir()
 	process := exec.Command(bin, argv...)
 	process.Env = append(
 		os.Environ(),
-		"FLINT_API_KEY="+credential,
+		"FLINT_API_KEY="+apiKey,
+		"FLINT_ACCESS_TOKEN="+accessToken,
+		"FLINT_WORKLOAD_IDENTITY_ID=",
 		"FLINT_BASE_URL="+baseURL,
 		"FLINT_NO_INPUT=1",
 		"XDG_CONFIG_HOME="+configHome,

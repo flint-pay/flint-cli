@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/flint-pay/flint-cli/internal/opindex"
-	apispec "github.com/flint-pay/flint-cli/internal/spec"
 )
 
 // Select the source without opening the credential store or obtaining a workload token.
@@ -36,27 +35,7 @@ func (a *App) credentialClassError(command *Command) *CLIError {
 	if err != nil {
 		return cliError(ExitSoftware, errorTypeInternal, "OPERATION_INDEX_FAILED", "Could not read the embedded operation index.")
 	}
-	entry, found := index.Lookup(command.CanonicalName)
-	// Raw API commands carry the matched operation ID, not its generated name.
-	if !found || entry.OperationID != command.OperationID {
-		found = false
-		for _, candidate := range index.Entries {
-			if candidate.OperationID == command.OperationID {
-				entry, found = candidate, true
-				break
-			}
-		}
-	}
-	// CLI-owned bound routes remain local for MCP exposure, but their HTTP
-	// operation still constrains terminal credentials. A neutral registry name
-	// asks the shared index for route metadata without changing local exposure.
-	if !found || entry.Audience == "local" {
-		routes, routeErr := opindex.New([]opindex.Command{{Name: "credential.check", OperationID: command.OperationID}}, apispec.OpenAPI)
-		if routeErr != nil {
-			return cliError(ExitSoftware, errorTypeInternal, "OPERATION_INDEX_FAILED", "Could not read the embedded operation index.")
-		}
-		entry, found = routes.Lookup("credential.check")
-	}
+	entry, found := index.CredentialPolicy(command.OperationID)
 	if !found || entry.Audience == "local" || entry.Audience == "keyless" || credential.Allows(entry) {
 		return nil
 	}

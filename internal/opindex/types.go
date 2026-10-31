@@ -42,12 +42,13 @@ type Entry struct {
 func (e Entry) ConfirmRequired() bool { return e.Irreversible || e.Sensitive }
 
 type Index struct {
-	Entries     []Entry
-	byID        map[string]Entry
-	names       map[string]string
-	impliedBy   map[string][]string
-	documents   []searchDocument
-	frequencies map[string]int
+	Entries            []Entry
+	byID               map[string]Entry
+	credentialPolicies map[string]Entry
+	names              map[string]string
+	impliedBy          map[string][]string
+	documents          []searchDocument
+	frequencies        map[string]int
 	// The bridge test trips when the embedded spec has taken over every derived mark.
 	DerivedDestructive, PublishedDestructive int
 }
