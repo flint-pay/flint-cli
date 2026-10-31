@@ -696,7 +696,7 @@ func (a *App) localInit(cmd *Command, opts Options) int {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
 	}
 	if opts.DryRunClient() {
-		return a.outputLocal(map[string]any{"data": map[string]any{"dry_run": true, "operation": "init", "project_config_path": target, "force": force, "verification_required": true}}, cmd, opts)
+		return a.outputLocal(map[string]any{"data": map[string]any{"dry_run": true, "persistent_side_effects": false, "operation": "init", "project_config_path": target, "force": force, "verification_required": true}}, cmd, opts)
 	}
 	key, _, err := a.resolveCheckCredential(resolved.ProfileName)
 	if err != nil {
