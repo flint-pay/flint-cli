@@ -27,7 +27,11 @@ func (a *App) operationIndex() (*opindex.Index, error) {
 	}
 	fingerprint := sha256.Sum256(metadata)
 	build, _ := operationIndexes.LoadOrStore(fingerprint, sync.OnceValues(func() (*opindex.Index, error) {
-		return opindex.New(commands, apispec.OpenAPI)
+		document := apispec.OpenAPI
+		if !fullSnapshotLoaded.Load() {
+			document = apispec.Startup().Metadata
+		}
+		return opindex.New(commands, document)
 	}))
 	return build.(func() (*opindex.Index, error))()
 }
