@@ -74,3 +74,14 @@ func TestHumanOutputMoneyLabelsAndCompactList(t *testing.T) {
 		t.Fatalf("money missing: %s", &out)
 	}
 }
+
+func TestHumanListPrefersNestedResourceID(t *testing.T) {
+	var out bytes.Buffer
+	rows := []any{map[string]any{"address_id": "addr_one", "customer_id": "cus_parent", "name": "Work\naddress\x1b[31m"}}
+	if !renderResourceTable(&out, rows, &Command{CanonicalName: "customers.addresses.list"}, time.Now()) {
+		t.Fatal("no table")
+	}
+	if !strings.HasPrefix(out.String(), "Address ID") || strings.Contains(out.String(), "cus_parent") || strings.Contains(out.String(), "\x1b") || strings.Count(out.String(), "\n") != 2 {
+		t.Fatalf("bad table: %q", out.String())
+	}
+}

@@ -263,6 +263,10 @@ flint schema input subscription-plans.create --output json
 flint subscription-plans create --input plan.json
 ```
 
+`--output human` formats Money objects in their currency units, including currencies with zero or three decimal places. List commands show compact tables; use `--output json` for complete records and unchanged minor-unit amounts. Detail fields align within each object.
+
+Offline reference topics render as tables. Run `flint help test-cards` for sandbox API tokens covering payments, authentication, declines, disputes, risk levels, fraud blocks, and available-balance testing. Card numbers in that topic are for hosted checkout forms.
+
 `flint support open` opens the Flint Help composer; you review and post in the browser. Use `--private` for a private thread or `--no-open` to print the link only.
 
 ```bash
