@@ -711,6 +711,11 @@ func (a *App) localInit(cmd *Command, opts Options) int {
 		return a.fail(authErr, opts)
 	}
 	auth := envelope.Data
+	if a.mcpGate != nil {
+		if e := a.mcpGate.afterAuth(auth); e != nil {
+			return a.fail(e, opts)
+		}
+	}
 	if e := validateResolvedCredentialIntent(auth, opts, resolved, EnvironmentAffinityMerchant); e != nil {
 		return a.fail(e, opts)
 	}

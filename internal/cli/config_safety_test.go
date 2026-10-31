@@ -276,3 +276,42 @@ func TestConfigSafetyInitDryRunDoesNotWriteOrRequest(t *testing.T) {
 		t.Fatal("dry run wrote project config", err)
 	}
 }
+
+func TestConfigSafetyMCPInitHonorsLivePolicy(t *testing.T) {
+	for _, scenario := range []struct{ allow, live bool }{{false, false}, {true, false}, {true, true}} {
+		t.Run(fmt.Sprint(scenario), func(t *testing.T) {
+			app, _, _, state, stored := newContextTestApp(t)
+			credential, e := decodeOAuthCredential(stored())
+			if e != nil {
+				t.Fatal(e)
+			}
+			auth := contextTestAuth("ctx_live")
+			credential.Auth = auth
+			credential.ContextID = auth.ContextID
+			installTestOAuth(t, app, credential)
+			state.tokens[testOAuthAccess] = "ctx_live"
+			if err := app.updateConfig(func(cfg *Config) error {
+				p := cfg.Profiles["default"]
+				p.ContextID = "ctx_live"
+				cfg.Profiles["default"] = p
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			opts := defaultOptions()
+			if scenario.allow {
+				opts = mcpServeOptions(t, "--allow-live")
+			}
+			args := map[string]any{}
+			if scenario.live {
+				args["_flint"] = map[string]any{"live": true}
+			}
+			result := mcpCall(t, app, opts, "init", args)
+			_, err := os.Stat(filepath.Join(app.WorkingDir, ".flint", "config.json"))
+			want := scenario.allow && scenario.live
+			if (result["isError"] != true) != want || (err == nil) != want {
+				t.Fatalf("want=%v result=%v fileErr=%v", want, result, err)
+			}
+		})
+	}
+}
