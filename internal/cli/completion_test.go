@@ -19,6 +19,7 @@ func TestCompletionTreeFlagsAndEnums(t *testing.T) {
 		{[]string{"orders", "dis"}, []string{"discounts"}, false},
 		{[]string{"webhook-endpoints", "update", "whep_test", "--add-ena"}, []string{"--add-enabled-events"}, true},
 		{[]string{"api-keys", "create", "--access", "r"}, []string{"read_only", "restricted"}, true},
+		{[]string{"api-keys", "create", "--access", "=", "r"}, []string{"--access=read_only", "--access=restricted"}, true},
 		{[]string{"api-keys", "create", "--access=r"}, []string{"--access=read_only", "--access=restricted"}, true},
 		{[]string{"webhook-endpoints", "create", "--signing-methods", "jwt,h"}, []string{"jwt,hmac"}, true},
 		{[]string{"--profile", "work", "orders", "l"}, []string{"line-items", "list"}, false},
@@ -68,5 +69,23 @@ func TestCompletionScriptsAndOfflineEndpoint(t *testing.T) {
 	}
 	if _, ok := app.Registry.ByName("__complete"); ok {
 		t.Fatal("hidden endpoint entered public tree")
+	}
+}
+
+func TestCompletionBashSplitInlineReplacement(t *testing.T) {
+	script := completionScripts["bash"] + `
+flint() { printf '%s\n' --access=read_only --access=restricted; }
+COMP_WORDS=(flint api-keys create --access = r)
+COMP_CWORD=5
+_flint_complete
+printf '%s\n' "${COMPREPLY[@]}"
+`
+	cmd := exec.Command("bash", "-c", script)
+	got, err := cmd.CombinedOutput()
+	if err != nil || string(got) != "read_only\nrestricted\n" {
+		t.Fatal(err, string(got))
+	}
+	if !strings.Contains(completionScripts["fish"], `$words "$current"`) {
+		t.Fatal("fish drops empty token")
 	}
 }

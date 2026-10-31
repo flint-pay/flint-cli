@@ -25,9 +25,11 @@ func (a *App) localCompletion(cmd *Command, opts Options) int {
 
 var completionScripts = map[string]string{
 	"bash": `_flint_complete() {
-    local candidate
+    local candidate prefix=""
+    if [[ ${COMP_WORDS[COMP_CWORD-1]} == = ]]; then prefix="${COMP_WORDS[COMP_CWORD-2]}=";
+    elif [[ ${COMP_WORDS[COMP_CWORD]} == = ]]; then prefix="${COMP_WORDS[COMP_CWORD-1]}="; fi
     COMPREPLY=()
-    while IFS= read -r candidate; do COMPREPLY+=("$candidate"); done < <(flint __complete "${COMP_WORDS[@]:1:COMP_CWORD}")
+    while IFS= read -r candidate; do COMPREPLY+=("${candidate#"$prefix"}"); done < <(flint __complete "${COMP_WORDS[@]:1:COMP_CWORD}")
 }
 complete -F _flint_complete flint
 `,
@@ -42,7 +44,8 @@ compdef _flint_complete flint
 	"fish": `function __flint_complete
     set -l words (commandline -opc)
     set -e words[1]
-    flint __complete $words (commandline -ct)
+    set -l current (commandline -ct)
+    flint __complete $words "$current"
 end
 complete -c flint -f -a '(__flint_complete)'
 `,
@@ -60,6 +63,20 @@ func (a *App) runCompletionWords(words []string) int {
 }
 
 func (a *App) completionCandidates(words []string) []string {
+	// Bash's default word breaks split --flag=value into --flag, =, value.
+	normalized := make([]string, 0, len(words))
+	for i := 0; i < len(words); i++ {
+		if words[i] == "=" && len(normalized) > 0 && strings.HasPrefix(normalized[len(normalized)-1], "--") {
+			normalized[len(normalized)-1] += "="
+			if i+1 < len(words) {
+				i++
+				normalized[len(normalized)-1] += words[i]
+			}
+		} else {
+			normalized = append(normalized, words[i])
+		}
+	}
+	words = normalized
 	tree := a.Registry.commandTree()
 	if len(words) == 0 {
 		words = []string{""}
