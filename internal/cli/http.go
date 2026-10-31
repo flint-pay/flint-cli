@@ -33,11 +33,32 @@ type AuthContext struct {
 	APIKeyID           string   `json:"api_key_id"`
 	Name               string   `json:"name,omitempty"`
 	Environment        string   `json:"environment"`
+	Mode               string   `json:"mode,omitempty"`
+	Access             string   `json:"access,omitempty"`
 	MerchantID         string   `json:"merchant_id"`
 	OrganizationID     string   `json:"organization_id,omitempty"`
 	SandboxID          string   `json:"sandbox_id,omitempty"`
 	Scopes             []string `json:"scopes"`
 	ExpiresAt          *string  `json:"expires_at"`
+}
+
+// New servers report mode. Keep the effective environment for existing guards
+// and accept older servers and saved sessions that only carry environment.
+func (auth *AuthContext) UnmarshalJSON(data []byte) error {
+	type fields AuthContext
+	var value fields
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	*auth = AuthContext(value)
+	if auth.Mode != "" {
+		auth.Environment = normalizeEnvironment(auth.Mode)
+	}
+	return nil
+}
+
+func (auth AuthContext) isCLILogin() bool {
+	return auth.AuthType == "oauth" || auth.AuthType == "cli_login"
 }
 
 type authContextEnvelope struct {

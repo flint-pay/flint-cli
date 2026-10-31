@@ -33,7 +33,7 @@ func (a *App) localAuthToken(_ *Command, opts Options) int {
 	if e != nil {
 		return a.fail(e, opts)
 	}
-	if envelope.Data.AuthType != "oauth" && envelope.Data.AuthType != "workload_identity" {
+	if !envelope.Data.isCLILogin() && envelope.Data.AuthType != "workload_identity" {
 		return a.fail(configError("TOKEN_NOT_EXPORTABLE", "Only OAuth and workload identity access tokens can be exported.", nil), opts)
 	}
 	if e := validateResolvedCredentialIntent(envelope.Data, opts, resolved, EnvironmentAffinityAccount); e != nil {
