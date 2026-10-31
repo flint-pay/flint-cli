@@ -1,9 +1,11 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -127,5 +129,63 @@ func TestIdentityRootHelpListsColorEnvironment(t *testing.T) {
 	app, out, _ := testApp(t, "http://127.0.0.1:9")
 	if exit := app.Run([]string{"--help"}); exit != ExitOK || !strings.Contains(out.String(), "FLINT_COLOR") {
 		t.Fatal(out)
+	}
+}
+
+func TestIdentityDoctorRetainsSavedOAuthServerOnFailure(t *testing.T) {
+	const savedBaseURL = "http://127.0.0.1:18990"
+	for _, failure := range []string{"rejected", "transport"} {
+		for _, output := range []string{"json", "human"} {
+			t.Run(failure+"/"+output, func(t *testing.T) {
+				app, out, stderr := testApp(t, savedBaseURL)
+				t.Setenv("FLINT_API_KEY", "")
+				t.Setenv("FLINT_BASE_URL", "")
+				installTestOAuth(t, app, testOAuthCredential(t, savedBaseURL, time.Now().Add(time.Hour)))
+				authCalls, discoveryCalls := 0, 0
+				app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(r *http.Request) (*http.Response, error) {
+					if r.URL.Scheme+"://"+r.URL.Host != savedBaseURL {
+						t.Errorf("attempted a request outside the saved loopback server: %s", r.URL.Host)
+						return nil, fmt.Errorf("unexpected server")
+					}
+					w := httptest.NewRecorder()
+					switch r.URL.Path {
+					case "/v1/auth-context":
+						authCalls++
+						if failure == "transport" {
+							return nil, context.Canceled
+						}
+						w.WriteHeader(http.StatusUnauthorized)
+						fmt.Fprint(w, `{"error":{"code":"INVALID_CREDENTIAL","message":"Session rejected."}}`)
+					case "/v1/openapi.json":
+						discoveryCalls++
+						w.Header().Set("Flint-Version", "2026-02-01")
+					default:
+						t.Errorf("unexpected request %s", r.URL.Path)
+					}
+					return w.Result(), nil
+				})}
+				exit := app.Run([]string{"doctor", "--output", output})
+				if exit == ExitOK || authCalls != 1 {
+					t.Fatalf("failure=%s exit=%d authCalls=%d", failure, exit, authCalls)
+				}
+				if output == "json" {
+					var value map[string]any
+					if err := json.Unmarshal(out.Bytes(), &value); err != nil {
+						t.Fatal(err)
+					}
+					if lookupPathValue(value, "data.cli.api_base_url") != savedBaseURL || lookupPathValue(value, "data.cli.credential_source") != "oauth_session" {
+						t.Fatalf("incorrect saved identity: %v", value)
+					}
+				} else if !strings.Contains(out.String(), "API base URL: "+savedBaseURL) {
+					t.Fatalf("incorrect saved identity: %s", out)
+				}
+				if failure == "rejected" && discoveryCalls != 1 {
+					t.Fatalf("diagnostics did not probe the saved server: %d", discoveryCalls)
+				}
+				if strings.Contains(out.String()+stderr.String(), defaultAPIBaseURL) {
+					t.Fatal("diagnostics reported the production default instead of the saved server")
+				}
+			})
+		}
 	}
 }

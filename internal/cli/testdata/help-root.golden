@@ -23,7 +23,7 @@ Developer tools:
   config                           Read, set, unset, and validate CLI configuration
   context                          List and switch authorized contexts
   demo-sessions                    Demo and test-drive sessions.
-  doctor                           Check credential, connectivity, scopes, and API compatibility; explain scopes that need a live key
+  doctor                           Show the API server, credential source, and profile; check connectivity, access, scopes, and API compatibility
   help                             Command help, reference topics, and offline search
   history                          List or clear recent Flint resource IDs
   init                             Write or validate .flint/config.json project guards; commit this file with your project
@@ -103,5 +103,6 @@ Environment:
   FLINT_OIDC_TOKEN_FILE       Flint OIDC token file; re-read on exchange
   FLINT_OIDC_SCOPE            Optional narrowing scopes for workload tokens
   FLINT_BASE_URL              API server for development; sign in with a separate profile
+  FLINT_COLOR                 auto, always, or never; overridden by --color
 
 Run flint help <command> for one command. Run flint schema commands --output json for the full catalog.

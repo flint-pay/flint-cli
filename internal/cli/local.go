@@ -816,17 +816,21 @@ func (a *App) doctorChecks(opts Options) (checks []map[string]any, exit int, inf
 	}
 	if isOAuthCredential(key) {
 		info.CredentialSource = "oauth_session"
+		if credential, e := decodeOAuthCredential(key); e == nil && a.BaseURL == "" && strings.TrimSpace(os.Getenv("FLINT_BASE_URL")) == "" {
+			info.APIBaseURL = credential.BaseURL
+		}
 	}
 	if key == "" {
 		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": missingCredentialMessage(resolved.ProfileName)})
 		return checks, ExitAuth, info
 	}
+	discoveryBaseURL = info.APIBaseURL
 	checks = append(checks, map[string]any{"name": "credential", "status": "pass", "source": source, "note": "Credential found; API validation follows."})
 	ctx := withOAuthContext(a.commandContext(), resolved.ContextID)
 	_, baseURL, authResponse, e := a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, key, opts.Debug)
-	discoveryBaseURL = baseURL
 	if baseURL != "" {
 		info.APIBaseURL = baseURL
+		discoveryBaseURL = baseURL
 	}
 	if e != nil {
 		switch e.Code {

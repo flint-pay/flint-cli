@@ -7,10 +7,10 @@ Developer tools:
   flint auth login                                                  Sign in through the Flint website (recommended for local development)
   flint auth logout                                                 Revoke the active OAuth session and delete the active profile
   flint auth reauth                                                 Change authorized contexts or add scopes in the browser
-  flint auth status                                                 Fetch the current credential context from the API without using cached metadata
+  flint auth status                                                 Show the current credential context, API server, credential source, and profile without using cached metadata
   flint auth token                                                  Export an OAuth or workload identity access token as JSON
   flint completion <shell>                                          Print an offline bash, zsh, or fish completion script
-  flint config get                                                  Print resolved Flint CLI configuration and saved profiles
+  flint config get                                                  Print resolved configuration, saved profiles, API server, and credential source
   flint config set <key> <value>                                    Set profile or merchant guard configuration
   flint config unset <key>                                          Clear a saved profile setting
   flint config validate                                             Validate global and project Flint configuration
@@ -18,7 +18,7 @@ Developer tools:
   flint context switch [<context_id>]                               Choose the active merchant and environment
   flint demo-sessions create                                        Create demo session
   flint demo-sessions reset <demo_session_id>                       Reset demo session
-  flint doctor                                                      Check credential, connectivity, scopes, and API compatibility; explain scopes that need a live key
+  flint doctor                                                      Show the API server, credential source, and profile; check connectivity, access, scopes, and API compatibility
   flint help [<topic>...]                                           Show command help or an offline reference topic
   flint help search <query>...                                      Find commands, webhook events, and reference topics offline
   flint history                                                     List or clear recent Flint resource IDs
