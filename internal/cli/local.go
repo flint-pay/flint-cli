@@ -681,9 +681,7 @@ func (a *App) localHelp(cmd *Command, opts Options) int {
 		return a.outputLocal(map[string]any{"data": value}, cmd, opts)
 	}
 	if topic == "events" && len(resolution.Arguments) == 0 {
-		for _, event := range value["events"].([]map[string]any) {
-			fmt.Fprintf(a.Stdout, "%-56s %s\n", event["type"], event["description"])
-		}
+		renderHelpTopic(a.Stdout, topic, value)
 		fmt.Fprintln(a.Stdout, "Run flint help events <event_type> for details.")
 		return ExitOK
 	}
@@ -962,13 +960,11 @@ func helpTopic(topic string) (map[string]any, bool) {
 		v, err := eventHelpIndex()
 		return map[string]any{"events": v}, err == nil
 	case "test-cards":
-		return map[string]any{"sandbox_tokens": []map[string]string{{"scenario": "success", "token": "pm_card_visa"}, {"scenario": "3d_secure", "token": "pm_card_threeDSecure2Required"}, {"scenario": "authentication_required", "token": "pm_card_authenticationRequired"}, {"scenario": "insufficient_funds", "token": "pm_card_chargeDeclinedInsufficientFunds"}, {"scenario": "generic_decline", "token": "pm_card_chargeDeclined"}}, "provider_test_cards": []map[string]string{{"scenario": "success", "number": "4242 4242 4242 4242"}, {"scenario": "3d_secure", "number": "4000 0000 0000 3220"}, {"scenario": "authentication_required", "number": "4000 0025 0000 3155"}, {"scenario": "insufficient_funds", "number": "4000 0000 0000 9995"}, {"scenario": "generic_decline", "number": "4000 0000 0000 0002"}}}, true
+		return map[string]any{"sandbox_tokens": sandboxTestTokens(), "provider_test_cards": []map[string]string{{"scenario": "success", "number": "4242 4242 4242 4242"}, {"scenario": "3d_secure", "number": "4000 0000 0000 3220"}, {"scenario": "authentication_required", "number": "4000 0025 0000 3155"}, {"scenario": "insufficient_funds", "number": "4000 0000 0000 9995"}, {"scenario": "generic_decline", "number": "4000 0000 0000 0002"}}}, true
 	default:
 		return nil, false
 	}
 }
 func renderHelpTopic(w io.Writer, topic string, value map[string]any) {
-	fmt.Fprintln(w, strings.ToUpper(strings.ReplaceAll(topic, "-", " ")))
-	b, _ := json.MarshalIndent(value, "", "  ")
-	fmt.Fprintln(w, string(b))
+	renderHelpTopicHuman(w, topic, value)
 }

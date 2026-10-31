@@ -404,6 +404,9 @@ func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) *CLIError 
 		renderDoctorHuman(w, value)
 		return nil
 	}
+	if cmd != nil && cmd.CanonicalName == "init" && renderInitHuman(w, value, now) {
+		return nil
+	}
 	if cmd != nil && cmd.Render == "checkout" {
 		renderCheckoutHuman(w, value, now)
 		return nil
@@ -440,6 +443,9 @@ func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) *CLIError 
 	if data == nil {
 		data = value
 	}
+	if rows, ok := data.([]any); ok && cmd != nil && (cmd.Kind == "collection" || strings.HasSuffix(cmd.CanonicalName, ".list")) && renderResourceTable(w, rows, cmd, now) {
+		return nil
+	}
 	renderHumanValue(w, data, "", now, 0)
 	return nil
 }
@@ -452,6 +458,10 @@ func renderDoctorHuman(w io.Writer, value any) {
 	fmt.Fprintln(w, "Credential source:", terminalSafe(info.CredentialSource))
 	fmt.Fprintln(w, "Profile:", terminalSafe(info.Profile))
 	checks, _ := data["checks"].([]map[string]any)
+	renderChecksHuman(w, checks)
+}
+
+func renderChecksHuman(w io.Writer, checks []map[string]any) {
 	for _, check := range checks {
 		marker := "✓"
 		if check["status"] == "fail" {
@@ -520,6 +530,10 @@ func renderHumanValue(w io.Writer, value any, prefix string, now time.Time, dept
 	}
 	switch v := value.(type) {
 	case map[string]any:
+		if money, ok := humanMoney(v); ok {
+			fmt.Fprintln(w, indent+money)
+			return
+		}
 		if len(v) == 0 {
 			fmt.Fprintln(w, indent+"(none)")
 			return
@@ -529,14 +543,22 @@ func renderHumanValue(w io.Writer, value any, prefix string, now time.Time, dept
 			keys = append(keys, key)
 		}
 		sort.Strings(keys)
+		width := 20
+		for _, key := range keys {
+			width = max(width, utf8.RuneCountInString(humanLabel(key))+2)
+		}
 		for _, key := range keys {
 			x := v[key]
+			if money, ok := humanMoney(x); ok {
+				fmt.Fprintf(w, "%s%-*s %s\n", indent, width, humanLabel(key), money)
+				continue
+			}
 			switch x.(type) {
 			case map[string]any, []any:
 				fmt.Fprintln(w, indent+humanLabel(key))
 				renderHumanValue(w, x, key, now, depth+1)
 			default:
-				fmt.Fprintf(w, "%s%-20s %s\n", indent, humanLabel(key), formatHumanScalar(x, now))
+				fmt.Fprintf(w, "%s%-*s %s\n", indent, width, humanLabel(key), formatHumanScalar(x, now))
 			}
 		}
 	case []any:
