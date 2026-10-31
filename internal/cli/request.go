@@ -509,6 +509,7 @@ func setBodyPath(root map[string]any, path string, value any) error {
 			if err != nil || index < 0 {
 				return fmt.Errorf("invalid array path %s", path)
 			}
+			existed := index < len(container)
 			for len(container) <= index {
 				container = append(container, nil)
 			}
@@ -526,6 +527,9 @@ func setBodyPath(root map[string]any, path string, value any) error {
 				return nil
 			}
 			if container[index] == nil {
+				if existed {
+					return fmt.Errorf("input path %s conflicts with an existing null", path)
+				}
 				container[index] = map[string]any{}
 			}
 			current = container[index]

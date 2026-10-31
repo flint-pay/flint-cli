@@ -21,6 +21,7 @@ func TestBodyUnionMerge(t *testing.T) {
 		{args: []string{"customers", "create", "--name", "one", "--name", "two"}, code: "DUPLICATE_FLAG"},
 		{args: []string{"customers", "create", "--name", "same", "--name", "same"}, want: map[string]any{"name": "same"}},
 		{args: []string{"payment-intents", "create", "--input", `{"amount_money":"wrong"}`, "--amount", "10"}, code: "CONFLICTING_ARGUMENTS"},
+		{args: []string{"payment-links", "create", "--input", `{"name":"Tee","line_items":[null]}`, "--item-name", "Tee", "--amount", "10", "--currency", "USD"}, code: "CONFLICTING_ARGUMENTS"},
 		{args: []string{"payment-intents", "confirm", "pi_123", "--payment-method-id", "pm_123", "--confirmation-token", "ctok_test"}, code: "AMBIGUOUS_VARIANT"},
 		{args: []string{"payment-intents", "confirm", "pi_123"}, code: "INVALID_REQUEST_BODY"},
 		{args: []string{"payment-intents", "confirm", "pi_123", "--credential-type", "attached"}, want: map[string]any{"credential_type": "attached"}},
@@ -64,5 +65,19 @@ func TestBodyUnionNestedOverrideAndMissingSources(t *testing.T) {
 	message, _ := lookupPath(result, "error.message")
 	if exit != 2 || !strings.Contains(message.(string), "--name or --input") {
 		t.Fatal(exit, result)
+	}
+}
+
+func TestBodyUnionAccessExamplesAreComplete(t *testing.T) {
+	for _, name := range []string{"api-keys.update", "sandboxes.create"} {
+		cmd, _ := NewRegistry().ByName(name)
+		for _, example := range cmd.Examples {
+			if strings.Contains(example, "--scopes") && !strings.Contains(example, "--access restricted") {
+				t.Fatal(example)
+			}
+			if name == "sandboxes.create" && strings.Contains(example, "--access") && !strings.Contains(example, "--issue-test-key true") {
+				t.Fatal(example)
+			}
+		}
 	}
 }
