@@ -1349,7 +1349,7 @@ func (a *App) writeListenCheckpoint(opts Options, state *listenStreamState) *CLI
 		}
 		hint := listenReplayHint(state)
 		if state.replayCursor != "" {
-			replay := "flint listen --forward-to " + quoteRemediationArgument(forwardTo) + " --cursor " + state.replayCursor
+			replay := "flint listen --forward-to " + forwardTo + " --cursor " + state.replayCursor
 			if lastRawOption(opts, "webhook-endpoint-id") != "" {
 				replay += " --webhook-endpoint-id " + quoteRemediationArgument(listenEndpointID(opts))
 			}
