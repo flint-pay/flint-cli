@@ -304,10 +304,7 @@ func (a *App) mcpAdvertisedTools(policy mcpPolicy, version string) ([]map[string
 		if entry.Sensitive {
 			meta["com.withflintpay/sensitive"] = true
 		}
-		description := strings.ReplaceAll(mcpToolDescription(cmd, schema), "_flint.", "")
-		if entry.ConfirmRequired() {
-			description += " Needs confirm: true."
-		}
+		description := mcpTypedDescription(cmd, entry)
 		tool := map[string]any{"name": mcpToolName(entry.ID), "description": description, "inputSchema": schema, "_meta": meta}
 		if version >= "2025-06-18" {
 			tool["title"] = entry.Title
@@ -711,4 +708,43 @@ func (a *App) mcpDiscoveryHelp(topic string, opts Options, policy mcpPolicy, ind
 		return map[string]any{"group": topic, "operations": results}, nil
 	}
 	return nil, usageError("UNKNOWN_OPERATION", "Unknown Flint help topic or resource group: "+topic+". Call flint_help without a topic for the index.", "topic")
+}
+
+// The title is sent separately. Keep only substantive operation prose here;
+// common pagination, money, and execution guidance belongs in instructions.
+func mcpTypedDescription(cmd *Command, entry opindex.Entry) string {
+	text := entry.Description
+	if operation, ok := openAPIOperationByID(cmd.OperationID); ok {
+		text = operation.Description
+	}
+	if local, ok := mcpLocalTools[cmd.CanonicalName]; ok {
+		text = local.description
+	}
+	parts := []string{}
+	for _, sentence := range strings.Split(strings.Join(strings.Fields(text), " "), ". ") {
+		sentence = strings.TrimSpace(sentence)
+		if sentence == "" || mcpDescriptionKey(sentence) == mcpDescriptionKey(entry.Title) || strings.Contains(sentence, "--") {
+			continue
+		}
+		parts = append(parts, strings.TrimRight(sentence, ".")+".")
+		break
+	}
+	for _, requirement := range []struct {
+		needed bool
+		text   string
+	}{{entry.ConfirmRequired(), "Needs confirm: true."}, {entry.Idempotency == "required", "Needs idempotency_key."}} {
+		if requirement.needed && !strings.Contains(strings.Join(parts, " "), requirement.text) {
+			parts = append(parts, requirement.text)
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+func mcpDescriptionKey(text string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, strings.ToLower(text))
 }
