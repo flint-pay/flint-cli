@@ -362,7 +362,7 @@ Local commands are operations reached through read or write, including `version`
 
 ## Migrating from 0.10.0
 
-0.11.0 refreshes the embedded public API snapshot, which renames and removes commands; for example, `reviews` commands are now `payment-reviews` and `flint sandboxes api-keys create` is now `flint sandboxes api-keys create` (the old name still works). See [the 0.11.0 migration notes](docs/migrating-0.11.md) for the command and MCP tool changes.
+0.11.0 refreshes the embedded public API snapshot, which renames and removes commands; for example, `reviews` commands are now `payment-reviews` and `flint sandboxes test-key` became `flint sandboxes api-keys create`. The old alias remained available through 0.14.x; current versions require the canonical command. See [the 0.11.0 migration notes](docs/migrating-0.11.md) for the command and MCP tool changes.
 
 If upgrading from 0.9.0, also follow [the 0.10.0 migration notes](docs/migrating-0.10.md) for required idempotency keys, retry rules, and error fields. If upgrading from 0.8.0, also follow [the 0.9.0 migration notes](docs/migrating-0.9.md) for the public API refresh's command and MCP tool lists, parameter changes, and schema field inventory. In particular, use `flint gift-cards adjust-balance`, `flint gift-cards cash-out`, and `flint webhook-deliveries list --webhook-event-id whev_123`; create refunds with an explicit `--refund-type full|amount|targets`.
 

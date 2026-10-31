@@ -212,7 +212,7 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 	for _, expand := range opts.Expand {
 		query.Add("expand", expand)
 	}
-	if cmd.OperationID == "createPaymentIntent" && opts.Input == "" {
+	if cmd.CanonicalName != "api" && cmd.OperationID == "createPaymentIntent" && opts.Input == "" {
 		if len(opts.Raw["amount"]) == 0 || len(opts.Raw["currency"]) == 0 {
 			return req, usageError("MISSING_REQUIRED_ARGUMENT", "Standalone payment intents require --amount and --currency.", "amount")
 		}
@@ -221,7 +221,7 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		}
 	}
 
-	if cmd.OperationID == "payOrder" {
+	if cmd.CanonicalName != "api" && cmd.OperationID == "payOrder" {
 		if e := a.prepareOrderPayment(ctx, body, cmd, opts, resolved, key, baseURL, req.Path); e != nil {
 			return req, e
 		}
@@ -269,6 +269,12 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 // request body; a tag already present in --input is kept, so JSON input must
 // still satisfy the contract on its own.
 func selectRequestUnionTags(cmd *Command, opts Options, body map[string]any) *CLIError {
+	// Raw requests resolve operation IDs for contract metadata and safety checks.
+	// Convenience defaults belong only to named commands, never the raw body.
+	if cmd.CanonicalName == "api" {
+		return nil
+	}
+
 	flagged := func(names ...string) bool {
 		for _, name := range names {
 			if len(opts.Raw[name]) > 0 {
