@@ -91,9 +91,8 @@ func (a *App) localTrigger(cmd *Command, opts Options) int {
 	authOpts.DryRun = ""
 	authOpts.Preview = false
 	// auth.status always introspects bearer credentials. Never infer sandbox mode from a key prefix.
-	authCmd := *cmd
-	authCmd.CanonicalName = "auth.status"
-	key, baseURL, envelope, e := a.authenticateCommand(ctx, &authCmd, authOpts, resolved)
+	authCmd, _ := a.Registry.ByName("auth.status")
+	key, baseURL, envelope, e := a.authenticateCommand(ctx, authCmd, authOpts, resolved)
 	if e != nil {
 		return a.fail(e, opts)
 	}

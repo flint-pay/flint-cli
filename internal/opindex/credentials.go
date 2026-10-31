@@ -96,3 +96,10 @@ func (ix *Index) MissingScopes(entry Entry, granted []string, known bool) []stri
 	}
 	return missing
 }
+
+// CredentialPolicy returns HTTP credential requirements independently of local
+// discovery exposure. Bound CLI commands and raw routes use the same policy.
+func (ix *Index) CredentialPolicy(operationID string) (Entry, bool) {
+	entry, ok := ix.credentialPolicies[operationID]
+	return entry, ok
+}

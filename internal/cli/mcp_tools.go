@@ -8,7 +8,6 @@ import (
 	"github.com/flint-pay/flint-cli/internal/opindex"
 	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 	"maps"
-	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -66,16 +65,7 @@ func mcpPolicyFromOptions(opts Options) mcpPolicy {
 // Classification is offline: opening a server never introspects a credential to build tools/list.
 func (a *App) mcpPolicy(opts Options) mcpPolicy {
 	policy := mcpPolicyFromOptions(opts)
-	source, token := opindex.CredentialLogin, ""
-	switch {
-	case strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) != "":
-		source, token = opindex.CredentialAccessToken, strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN"))
-	case credentialFromEnvironment() != "":
-		source = opindex.CredentialAPIKey
-	case strings.TrimSpace(os.Getenv("FLINT_WORKLOAD_IDENTITY_ID")) != "":
-		source = opindex.CredentialWorkload
-	}
-	policy.credential = opindex.ClassifyCredential(source, token)
+	_, policy.credential = activeCredentialClass()
 	if a.mcpAuth != nil {
 		policy.index = a.mcpAuth.index
 	}

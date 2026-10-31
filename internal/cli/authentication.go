@@ -126,6 +126,9 @@ func oauthAuthorizationEnvironment(command *Command, opts Options) string {
 func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Options, resolved ResolvedConfig) (string, string, authContextEnvelope, *CLIError) {
 	ctx = withOAuthContext(ctx, resolved.ContextID)
 	envelope := authContextEnvelope{}
+	if e := a.credentialClassError(command); e != nil {
+		return "", "", envelope, e
+	}
 	if resolved.ContextID != "" && environmentCredentialActive() {
 		return "", "", envelope, contextSessionRequired()
 	}

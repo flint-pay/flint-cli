@@ -57,7 +57,11 @@ func New(commands []Command, document []byte) (*Index, error) {
 			}
 		}
 	}
-	ix := &Index{byID: map[string]Entry{}, names: map[string]string{}, impliedBy: map[string][]string{}}
+	ix := &Index{byID: map[string]Entry{}, names: map[string]string{}, impliedBy: map[string][]string{}, credentialPolicies: map[string]Entry{}}
+	for id, route := range routes {
+		schemes := securitySchemes(route.Security)
+		ix.credentialPolicies[id] = Entry{OperationID: id, Schemes: schemes, Audience: audience(schemes), PartnerAccess: route.PartnerAccess == "install_scoped"}
+	}
 	for _, scope := range doc.Scopes {
 		ix.impliedBy[scope.Name] = append([]string(nil), scope.ImpliedBy...)
 	}
@@ -87,9 +91,8 @@ func New(commands []Command, document []byte) (*Index, error) {
 			if route.Method == "GET" && !cmd.Mutation && route.ID != "authorizePartnerInstall" {
 				entry.Kind = "read"
 			}
-			entry.Schemes = securitySchemes(route.Security)
-			entry.Audience = audience(entry.Schemes)
-			entry.PartnerAccess = route.PartnerAccess == "install_scoped"
+			policy := ix.credentialPolicies[cmd.OperationID]
+			entry.Schemes, entry.Audience, entry.PartnerAccess = policy.Schemes, policy.Audience, policy.PartnerAccess
 			entry.Overwrites = route.Method == "PUT" || route.Method == "PATCH"
 			entry.Sensitive = route.RouteClass == "payment" || route.RouteClass == "sensitive_write" || route.RouteClass == "external_provider_action"
 			derived := derivedDestructive(route.Method, route.Path)

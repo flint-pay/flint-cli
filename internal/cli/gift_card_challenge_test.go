@@ -52,6 +52,7 @@ func TestEmbeddedCheckoutOriginJSONInput(t *testing.T) {
 			if !ok {
 				t.Fatal("command missing")
 			}
+			useExhaustiveCredential(t, command)
 			arguments := deepCopyMap(body)
 			argv := append([]string(nil), command.Path[1:]...)
 			if fixture.resourceID != "" {
