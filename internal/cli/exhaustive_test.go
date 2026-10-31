@@ -1700,12 +1700,14 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 				if err != nil {
 					t.Fatal(err)
 				}
-				value = resolved
+				values[i] = resolved
 			}
-			got := request.URL.Query()[argument.Query]
-			if i >= len(got) || got[i] != value {
-				t.Errorf("query %s = %#v, want value %q at index %d", argument.Query, got, value, i)
-			}
+		}
+		if argument.Repeat && argument.Style == "form" && argument.Explode != nil && !*argument.Explode {
+			values = []string{strings.Join(values, ",")}
+		}
+		if got := request.URL.Query()[argument.Query]; !slices.Equal(got, values) {
+			t.Errorf("query %s = %#v, want %#v", argument.Query, got, values)
 		}
 	}
 
@@ -1781,13 +1783,6 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 }
 
 func exhaustiveArgumentValues(argument Arg) []string {
-	if len(argument.Enum) > 0 {
-		count := 1
-		if argument.Repeat {
-			count = min(2, len(argument.Enum))
-		}
-		return append([]string(nil), argument.Enum[:count]...)
-	}
 	if argument.Type == "boolean" {
 		return []string{"true"}
 	}
@@ -1899,6 +1894,12 @@ func exhaustiveArgumentValues(argument Arg) []string {
 			value = exhaustiveNamedID(argument.Name)
 		}
 	}
+	// Keep coherent union fixtures (restricted access with scopes, amount
+	// refunds with money, and ACH options with a transaction purpose). Enum
+	// publication must not replace those values with an unrelated first member.
+	if len(argument.Enum) > 0 && !slices.Contains(argument.Enum, value) {
+		value = argument.Enum[0]
+	}
 	if !argument.Repeat {
 		return []string{value}
 	}
@@ -1916,6 +1917,15 @@ func exhaustiveArgumentValues(argument Arg) []string {
 		second = "customers.write"
 	case "requested_capability":
 		second = "webhooks"
+	}
+	if len(argument.Enum) > 0 && !slices.Contains(argument.Enum, second) {
+		if len(argument.Enum) == 1 {
+			return []string{value}
+		}
+		second = argument.Enum[1]
+		if second == value {
+			second = argument.Enum[0]
+		}
 	}
 	return []string{value, second}
 }
