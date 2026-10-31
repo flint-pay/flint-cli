@@ -9,6 +9,7 @@ Developer tools:
   flint auth reauth                                                 Change authorized contexts or add scopes in the browser
   flint auth status                                                 Fetch the current credential context from the API without using cached metadata
   flint auth token                                                  Export an OAuth or workload identity access token as JSON
+  flint completion <shell>                                          Print an offline bash, zsh, or fish completion script
   flint config get                                                  Print resolved Flint CLI configuration
   flint config set <key> <value>                                    Set profile or merchant guard configuration
   flint config unset <key>                                          Clear a saved profile setting

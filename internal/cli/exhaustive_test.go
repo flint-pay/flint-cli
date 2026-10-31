@@ -1394,6 +1394,8 @@ func TestEveryLocalCommandExecutes(t *testing.T) {
 				}()
 			case "trigger":
 				argv = append(argv, "--list")
+			case "completion":
+				argv = append(argv, "bash")
 			case "config.set":
 				argv = append(argv, "profile", "exhaustive")
 			case "config.unset":

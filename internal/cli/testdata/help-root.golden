@@ -17,6 +17,7 @@ Developer tools:
   api                              Call a Flint public API route
   api-request-logs                 get, list
   auth                             Sign in and out, import keys, export tokens, and show the active credential
+  completion                       Print an offline bash, zsh, or fish completion script
   config                           Read, set, unset, and validate CLI configuration
   context                          List and switch authorized contexts
   demo-sessions                    Demo and test-drive sessions.

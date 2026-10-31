@@ -309,6 +309,12 @@
     "audience": "merchant"
   },
   {
+    "name": "completion",
+    "kind": "cli",
+    "section": "developer_tools",
+    "audience": "local"
+  },
+  {
     "name": "config.get",
     "kind": "cli",
     "section": "developer_tools",
