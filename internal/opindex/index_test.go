@@ -46,7 +46,7 @@ func TestCredentialAdapter(t *testing.T) {
 }
 
 func TestIndexEffectsScopesAndRecovery(t *testing.T) {
-	doc := []byte(`{"paths":{"/v1/things":{"get":{"operationId":"list","security":[{"BearerAuth":[]}],"parameters":[{"in":"query","name":"idempotency_key"}]},"post":{"operationId":"create","security":[{"BearerAuth":[]}],"parameters":[{"in":"header","name":"Idempotency-Key","required":true}],"x-flint-route-class":"payment","x-flint-required-scopes":["things.read","things.write"]}},"/v1/things/{id}":{"patch":{"operationId":"update","security":[{"BearerAuth":[]}]},"delete":{"operationId":"delete","security":[{"BearerAuth":[]}]}}},"x-flint-scopes":[{"name":"things.read","implied_by":["things.write"]},{"name":"things.write","implied_by":["admin"]}]}`)
+	doc := []byte(`{"paths":{"/v1/things":{"get":{"operationId":"list","security":[{"BearerAuth":[]}],"parameters":[{"in":"query","name":"idempotency_key"}]},"post":{"operationId":"create","security":[{"BearerAuth":[]}],"parameters":[{"in":"header","name":"Idempotency-Key","required":true}],"x-flint-route-class":"payment","x-flint-required-scopes":["things.read","things.write"]}},"/v1/things/{id}":{"patch":{"operationId":"update","security":[{"BearerAuth":[]}]},"delete":{"operationId":"delete","x-flint-destructive":true,"security":[{"BearerAuth":[]}]}}},"x-flint-scopes":[{"name":"things.read","implied_by":["things.write"]},{"name":"things.write","implied_by":["admin"]}]}`)
 	ix, err := New([]Command{{Name: "things.list", OperationID: "list"}, {Name: "things.create", OperationID: "create"}, {Name: "things.update", OperationID: "update"}, {Name: "things.delete", OperationID: "delete"}, {Name: "listen", OperationID: "list"}, {Name: "history"}, {Name: "trigger"}}, doc)
 	if err != nil {
 		t.Fatal(err)

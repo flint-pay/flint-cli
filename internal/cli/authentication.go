@@ -76,7 +76,7 @@ func resolveAPICommand(command *Command, opts Options) *Command {
 		resolved.Security = operation.Security
 		resolved.AuthRequired = len(operation.Security) > 0
 		resolved.Mutation = resolved.Mutation || operation.OperationID == "authorizePartnerInstall"
-		resolved.Destructive = resolved.Destructive || operation.FlintDestructive
+		resolved.Destructive = operation.FlintDestructive
 		metadata := &Command{OperationID: operation.OperationID}
 		applyPublicOperationMetadata(metadata)
 		resolved.ResponseMediaType = metadata.ResponseMediaType

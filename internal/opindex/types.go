@@ -49,8 +49,6 @@ type Index struct {
 	impliedBy          map[string][]string
 	documents          []searchDocument
 	frequencies        map[string]int
-	// The bridge test trips when the embedded spec has taken over every derived mark.
-	DerivedDestructive, PublishedDestructive int
 }
 
 type Filter struct {

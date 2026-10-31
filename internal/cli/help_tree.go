@@ -18,9 +18,10 @@ func rootHelpIndex(reg *Registry) map[string]any {
 	}
 	return map[string]any{
 		"usage": "flint <command> [flags]", "start_here": helpStartHere,
-		"sections":  rootHelpSections(tree, false),
-		"shortcuts": map[string]string{"login": "auth.login", "logout": "auth.logout", "reauth": "auth.reauth", "whoami": "auth.status"},
-		"topics":    helpTopicNames, "counts": map[string]int{"commands": len(tree.Commands), "top_level_groups": groups},
+		"sections":       rootHelpSections(tree, false),
+		"shortcuts":      map[string]string{"login": "auth.login", "logout": "auth.logout", "reauth": "auth.reauth", "whoami": "auth.status"},
+		"topics":         helpTopicNames,
+		"hosted_account": "Flint-hosted account operations work only with Flint's hosted account sign-in and are excluded from discovery", "counts": map[string]int{"commands": len(tree.Commands), "top_level_groups": groups},
 		"all_commands": "flint help --all --output json", "catalog": "flint schema commands --output json", "search": "flint help search <words> --output json",
 	}
 }
@@ -92,6 +93,7 @@ func (a *App) printTreeRootHelp(all bool) {
 		for _, line := range []string{"flint <command> [flags]", "flint help <command>          Help for a command or group", "flint help --all              Every command, one per line", "flint help search <words>     Find commands and topics offline"} {
 			fmt.Fprintln(a.Stdout, "  "+line)
 		}
+		fmt.Fprintln(a.Stdout, "\nFlint-hosted account operations require Flint's hosted account sign-in and are excluded from discovery.")
 		fmt.Fprintln(a.Stdout, "\nStart here:")
 		for _, line := range helpStartHere {
 			fmt.Fprintln(a.Stdout, "  "+line)

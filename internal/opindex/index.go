@@ -15,6 +15,7 @@ type operation struct {
 	Security      []map[string][]string `json:"security"`
 	Destructive   bool                  `json:"x-flint-destructive"`
 	RouteClass    string                `json:"x-flint-route-class"`
+	Audience      string                `json:"x-flint-audience"`
 	PartnerAccess string                `json:"x-flint-partner-access"`
 	Scopes        []string              `json:"x-flint-required-scopes"`
 	ScopeMode     string                `json:"x-flint-required-scopes-mode"`
@@ -64,9 +65,16 @@ func New(commands []Command, document []byte) (*Index, error) {
 		if route.Method == "GET" && id != "authorizePartnerInstall" {
 			kind = "read"
 		}
-		ix.credentialPolicies[id] = Entry{OperationID: id, Kind: kind, Schemes: schemes, Audience: audience(schemes), PartnerAccess: route.PartnerAccess == "install_scoped",
+		ix.credentialPolicies[id] = Entry{OperationID: id, Method: route.Method, Path: route.Path, Kind: kind, Schemes: schemes, Audience: audience(schemes), PartnerAccess: route.PartnerAccess == "install_scoped",
 			Sensitive:    route.RouteClass == "payment" || route.RouteClass == "sensitive_write" || route.RouteClass == "external_provider_action",
-			Irreversible: route.Destructive || derivedDestructive(route.Method, route.Path)}
+			Irreversible: route.Destructive}
+	}
+	for id, route := range routes {
+		if route.Audience == "flint_hosted" {
+			policy := ix.credentialPolicies[id]
+			policy.Audience = "flint_hosted"
+			ix.credentialPolicies[id] = policy
+		}
 	}
 	for _, scope := range doc.Scopes {
 		ix.impliedBy[scope.Name] = append([]string(nil), scope.ImpliedBy...)
@@ -101,14 +109,7 @@ func New(commands []Command, document []byte) (*Index, error) {
 			entry.Schemes, entry.Audience, entry.PartnerAccess = policy.Schemes, policy.Audience, policy.PartnerAccess
 			entry.Overwrites = route.Method == "PUT" || route.Method == "PATCH"
 			entry.Sensitive = policy.Sensitive
-			derived := derivedDestructive(route.Method, route.Path)
 			entry.Irreversible = policy.Irreversible
-			if derived {
-				ix.DerivedDestructive++
-				if route.Destructive {
-					ix.PublishedDestructive++
-				}
-			}
 			for _, parameter := range route.Parameters {
 				if parameter.In == "header" && parameter.Name == "Idempotency-Key" {
 					entry.Idempotency = "optional"
@@ -128,7 +129,7 @@ func New(commands []Command, document []byte) (*Index, error) {
 				entry.ScopeRequirement = &ScopeRequirement{mode, append([]string(nil), route.Scopes...)}
 			}
 		}
-		entry.MCP = !cmd.MCPHidden && !hidden[entry.ID] && !strings.HasPrefix(entry.ID, "schema.") && entry.Audience != "keyless" && (!local || localExposed[entry.ID])
+		entry.MCP = !cmd.MCPHidden && !hidden[entry.ID] && !strings.HasPrefix(entry.ID, "schema.") && entry.Audience != "keyless" && entry.Audience != "flint_hosted" && (!local || localExposed[entry.ID])
 		ix.Entries = append(ix.Entries, entry)
 	}
 	if seen["history"] && !seen["history.clear"] {
@@ -223,27 +224,6 @@ func audience(schemes []string) string {
 		}
 	}
 	return "buyer"
-}
-
-// Bridge until the embedded contract marks every destructive operation.
-func derivedDestructive(method, path string) bool {
-	if method == "DELETE" {
-		return true
-	}
-	if method != "POST" {
-		return false
-	}
-	// Money-out creates remain irreversible until FLI-879 publishes these marks.
-	switch path {
-	case "/v1/refunds", "/v1/payouts", "/v1/credit-notes/{credit_note_id}/refunds":
-		return true
-	}
-	last := path[strings.LastIndex(path, "/")+1:]
-	switch last {
-	case "void", "revoke", "cancel", "mark-uncollectible", "accept", "reset", "rotate-secret", "rotate-code", "cash-out":
-		return true
-	}
-	return false
 }
 
 func shortText(value string, sentences, limit int) string {

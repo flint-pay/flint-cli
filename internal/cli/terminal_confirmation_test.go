@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestTerminalIrreversibleBridge(t *testing.T) {
+func TestTerminalPublishedIrreversible(t *testing.T) {
 	for _, scenario := range []struct {
 		name, input          string
 		tty, confirm, raw    bool
@@ -44,8 +44,8 @@ func TestTerminalIrreversibleBridge(t *testing.T) {
 				t.Fatal(err)
 			}
 			entry, ok := index.Lookup(cmd.CanonicalName)
-			if !ok || !entry.Irreversible || cmd.Destructive {
-				t.Fatalf("fixture no longer exercises added gate: %+v %+v", cmd, entry)
+			if !ok || !entry.Irreversible || !cmd.Destructive {
+				t.Fatalf("published destructive metadata missing: %+v %+v", cmd, entry)
 			}
 			argv := []string{"invoices", "payment-attempts", "cancel", "inv_fixture", "ipa_fixture"}
 			if scenario.raw {

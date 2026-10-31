@@ -32,7 +32,7 @@ func publicAPICommands() []*Command {
 				arguments = append(arguments, flag("input", "string", "", "", "JSON body: FILE.json, - for stdin, or inline JSON", false))
 			}
 			arguments = appendArrayEditArguments(&doc, path, upper, operation, arguments)
-			destructive := operation.FlintDestructive || upper == "DELETE" || overlay.Destructive
+			destructive := operation.FlintDestructive
 			command := apiCommand(name, strings.TrimSpace(operation.Summary), upper, path, operation.OperationID, requestSchemaName(operation.RequestBody), responseSchemaName(operation.Responses), arguments, upper != "GET", false, destructive, upper == "GET" && kind != "collection")
 			command.Follow = overlay.Follow
 			if command.Follow {

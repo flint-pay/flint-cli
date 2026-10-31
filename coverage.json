@@ -684,6 +684,15 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/customers/{customer_id}/email-preferences",
+    "operation_id": "getCustomerEmailPreferences",
+    "classification": "resource",
+    "commands": [
+      "customers.email-preferences.get"
+    ]
+  },
+  {
     "method": "POST",
     "path": "/v1/customers/{customer_id}/link-guest-purchases",
     "operation_id": "linkCustomerGuestPurchases",
@@ -1152,6 +1161,15 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/email-preferences/lookup",
+    "operation_id": "lookupEmailPreferences",
+    "classification": "resource",
+    "commands": [
+      "email-preferences.lookup"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/feedback-reports",
     "operation_id": "listFeedbackReports",
@@ -1344,6 +1362,15 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/gift-card-loads",
+    "operation_id": "createGiftCardLoad",
+    "classification": "resource",
+    "commands": [
+      "gift-card-loads.create"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/gift-card-loads/{gift_card_load_id}",
     "operation_id": "getGiftCardLoad",
@@ -1521,15 +1548,6 @@
     "classification": "resource",
     "commands": [
       "gift-cards.freeze"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/gift-cards/{gift_card_id}/loads",
-    "operation_id": "createGiftCardLoad",
-    "classification": "resource",
-    "commands": [
-      "gift-cards.loads.create"
     ]
   },
   {
@@ -2319,19 +2337,15 @@
     "method": "GET",
     "path": "/v1/me/flint-wallet/cards",
     "operation_id": "listMeFlintWalletCards",
-    "classification": "resource",
-    "commands": [
-      "me.flint-wallet.cards.list"
-    ]
+    "classification": "raw-api-only",
+    "reason": "E3: Works only with Flint's hosted account sign-in."
   },
   {
     "method": "POST",
     "path": "/v1/me/flint-wallet/cards/{flint_wallet_card_id}/store-setups",
     "operation_id": "createMeFlintWalletStoreSetup",
-    "classification": "resource",
-    "commands": [
-      "me.flint-wallet.cards.store-setups.create"
-    ]
+    "classification": "raw-api-only",
+    "reason": "E3: Works only with Flint's hosted account sign-in."
   },
   {
     "method": "GET",
@@ -2358,6 +2372,15 @@
     "classification": "resource",
     "commands": [
       "me.fulfillments.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/gift-card-transactions",
+    "operation_id": "listMeGiftCardTransactions",
+    "classification": "resource",
+    "commands": [
+      "me.gift-card-transactions.list"
     ]
   },
   {
@@ -2394,15 +2417,6 @@
     "classification": "resource",
     "commands": [
       "me.gift-cards.get"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/me/gift-cards/{gift_card_id}/transactions",
-    "operation_id": "listMeGiftCardTransactions",
-    "classification": "resource",
-    "commands": [
-      "me.gift-cards.transactions.list"
     ]
   },
   {
@@ -4075,6 +4089,42 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/promotion-codes",
+    "operation_id": "createPromotionCode",
+    "classification": "resource",
+    "commands": [
+      "promotion-codes.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/promotion-codes/{promotion_code_id}",
+    "operation_id": "deletePromotionCode",
+    "classification": "resource",
+    "commands": [
+      "promotion-codes.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/promotion-codes/{promotion_code_id}",
+    "operation_id": "getPromotionCode",
+    "classification": "resource",
+    "commands": [
+      "promotion-codes.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/promotion-codes/{promotion_code_id}",
+    "operation_id": "updatePromotionCode",
+    "classification": "resource",
+    "commands": [
+      "promotion-codes.update"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/promotions",
     "operation_id": "listPromotions",
@@ -4117,42 +4167,6 @@
     "classification": "resource",
     "commands": [
       "promotions.update"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/promotions/{promotion_id}/codes",
-    "operation_id": "createPromotionCode",
-    "classification": "resource",
-    "commands": [
-      "promotions.codes.create"
-    ]
-  },
-  {
-    "method": "DELETE",
-    "path": "/v1/promotions/{promotion_id}/codes/{promotion_code_id}",
-    "operation_id": "deletePromotionCode",
-    "classification": "resource",
-    "commands": [
-      "promotions.codes.delete"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/promotions/{promotion_id}/codes/{promotion_code_id}",
-    "operation_id": "getPromotionCode",
-    "classification": "resource",
-    "commands": [
-      "promotions.codes.get"
-    ]
-  },
-  {
-    "method": "PATCH",
-    "path": "/v1/promotions/{promotion_id}/codes/{promotion_code_id}",
-    "operation_id": "updatePromotionCode",
-    "classification": "resource",
-    "commands": [
-      "promotions.codes.update"
     ]
   },
   {

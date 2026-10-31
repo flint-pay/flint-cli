@@ -32,7 +32,7 @@ func TestCredentialPolicyIncludesBoundAndRawRoutes(t *testing.T) {
 }
 
 func TestOperationSafetyIncludesRawOnlyRoutes(t *testing.T) {
-	document := []byte(`{"paths":{"/v1/things":{"post":{"operationId":"createThing","x-flint-route-class":"sensitive_write"}},"/v1/things/{id}/void":{"post":{"operationId":"voidThing"}},"/v1/things/{id}":{"patch":{"operationId":"updateThing","x-flint-route-class":"standard_write"}},"/v1/oauth/authorize":{"get":{"operationId":"authorizePartnerInstall","x-flint-route-class":"sensitive_write"}}}}`)
+	document := []byte(`{"paths":{"/v1/things":{"post":{"operationId":"createThing","x-flint-route-class":"sensitive_write"}},"/v1/things/{id}/void":{"post":{"operationId":"voidThing","x-flint-destructive":true}},"/v1/things/{id}":{"patch":{"operationId":"updateThing","x-flint-route-class":"standard_write"}},"/v1/oauth/authorize":{"get":{"operationId":"authorizePartnerInstall","x-flint-route-class":"sensitive_write"}}}}`)
 	index, err := New([]Command{{Name: "things.create", OperationID: "createThing", Mutation: true}}, document)
 	if err != nil {
 		t.Fatal(err)
