@@ -128,7 +128,7 @@ func testSigningMethodRequests(t *testing.T, family signingMethodFamily) {
 			if tc.input != "" {
 				args = append(args, "--input", tc.input)
 			}
-			args = append(args, "--output", "json", "--idempotency-key", "synthetic-webhook-action")
+			args = append(args, "--output", "json", "--idempotency-key", "synthetic-webhook-action", "--confirm")
 			if exit := app.Run(args); exit != tc.wantExit {
 				t.Fatalf("exit=%d stdout=%s stderr=%s", exit, out, errOut)
 			}

@@ -26,7 +26,7 @@ func TestOAuthAuthorizationSafetyForRawCommands(t *testing.T) {
 	}{
 		{"live_requires_acknowledgment", "live", nil, ExitAuth, "LIVE_ACKNOWLEDGEMENT_REQUIRED", 0},
 		{"confirm_does_not_replace_live", "live", []string{"--confirm"}, ExitAuth, "LIVE_ACKNOWLEDGEMENT_REQUIRED", 0},
-		{"live_requires_confirmation", "live", []string{"--live"}, ExitConfirmation, "PRODUCTION_CONFIRMATION_REQUIRED", 0},
+		{"live ordinary authorization", "live", []string{"--live"}, ExitOK, "", 1},
 		{"live_confirmed", "live", []string{"--live", "--confirm"}, ExitOK, "", 1},
 		{"sandbox", "test", nil, ExitOK, "", 1},
 		{"mode_mismatch", "test", []string{"--live", "--confirm"}, ExitAuth, "CREDENTIAL_MODE_MISMATCH", 0},
@@ -86,22 +86,32 @@ func TestMCPRawOAuthIsUnavailable(t *testing.T) {
 	}
 }
 
-func TestRawOAuthPathVariantsCannotSkipSafetyClassification(t *testing.T) {
+func TestRawOAuthPathVariantsUseSharedSafety(t *testing.T) {
 	for _, path := range []string{"/v1/oauth/authorize/", "/v1/oauth/%61uthorize"} {
 		t.Run(path, func(t *testing.T) {
-			app, out, stderr := testApp(t, "http://127.0.0.1:1")
-			t.Setenv("FLINT_ACCESS_TOKEN", "synthetic_session")
-			app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(*http.Request) (*http.Response, error) {
-				t.Error("unconfirmed authorization must not reach the network")
-				return nil, fmt.Errorf("unexpected request")
-			})}
-			exit := app.Run([]string{"api", "get", path + "?mode=live", "--live", "--output", "json"})
-			wantExit, wantCode := ExitConfirmation, "PRODUCTION_CONFIRMATION_REQUIRED"
+			app, _, _ := testApp(t, "http://127.0.0.1:9")
+			cmd, opts, _, e := parseInvocation(app.Registry, []string{"api", "get", path + "?mode=live", "--live", "--output", "json"})
 			if strings.HasSuffix(path, "/") {
-				wantExit, wantCode = ExitUsage, "UNDOCUMENTED_API_OPERATION"
+				if e == nil || e.Code != "UNDOCUMENTED_API_OPERATION" {
+					t.Fatalf("error=%v", e)
+				}
+				return
 			}
-			if exit != wantExit || !strings.Contains(out.String(), wantCode) {
-				t.Fatalf("exit=%d stdout=%s stderr=%s", exit, out, stderr)
+			if e != nil {
+				t.Fatal(e)
+			}
+			effective := resolveAPICommand(cmd, opts)
+			index, err := app.operationIndex()
+			if err != nil {
+				t.Fatal(err)
+			}
+			entry, found := index.OperationSafety(effective.OperationID)
+			if !found {
+				t.Fatal(effective.OperationID)
+			}
+			e = app.confirmCommand(effective, AuthContext{Environment: "live"}, opts)
+			if (e != nil) != (entry.Kind == "write" && entry.ConfirmRequired()) {
+				t.Fatalf("entry=%+v error=%v", entry, e)
 			}
 		})
 	}

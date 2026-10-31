@@ -72,6 +72,7 @@ func TestPaymentLinkAndCheckoutOpen(t *testing.T) {
 					return tc.browserErr
 				}
 				args := append(append([]string{}, command.args...), tc.flags...)
+				args = append(args, "--confirm")
 				exit := app.Run(args)
 				if tc.fail {
 					if exit == ExitOK || strings.Contains(out.String(), target) {

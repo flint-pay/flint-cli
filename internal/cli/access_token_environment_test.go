@@ -25,7 +25,7 @@ func TestAccessTokenWritesUseIntrospectedOrUnverifiedEnvironment(t *testing.T) {
 	}{
 		{"live oauth token needs --live", 200, `{"data":{"auth_type":"oauth","environment":"live","merchant_id":"mer_1","scopes":["payments.payment_intents.write"]}}`, createIntent, ExitAuth, "LIVE_ACKNOWLEDGEMENT_REQUIRED", false},
 		{"live oauth token needs confirmation", 200, `{"data":{"auth_type":"oauth","environment":"live","merchant_id":"mer_1","scopes":["payments.payment_intents.write"]}}`, append(append([]string{}, createIntent...), "--live"), ExitConfirmation, "PRODUCTION_CONFIRMATION_REQUIRED", false},
-		{"sandbox oauth token writes", 200, `{"data":{"auth_type":"oauth","environment":"sandbox","merchant_id":"mer_1","scopes":["payments.payment_intents.write"]}}`, createIntent, ExitOK, "", true},
+		{"sandbox oauth token writes", 200, `{"data":{"auth_type":"oauth","environment":"sandbox","merchant_id":"mer_1","scopes":["payments.payment_intents.write"]}}`, append(append([]string{}, createIntent...), "--confirm"), ExitOK, "", true},
 		{"unverifiable token needs confirmation", 401, `{"error":{"type":"authentication_error","code":"UNAUTHORIZED","message":"no"}}`, createIntent, ExitConfirmation, "UNVERIFIED_ENVIRONMENT_CONFIRMATION_REQUIRED", false},
 		{"unverifiable token confirmed", 401, `{"error":{"type":"authentication_error","code":"UNAUTHORIZED","message":"no"}}`, append(append([]string{}, createIntent...), "--confirm"), ExitOK, "", true},
 		{"unverifiable token ordinary write", 401, `{"error":{"type":"authentication_error","code":"UNAUTHORIZED","message":"no"}}`, []string{"customers", "create", "--email", "a@example.com", "--output", "json"}, ExitOK, "", true},

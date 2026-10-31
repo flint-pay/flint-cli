@@ -103,3 +103,9 @@ func (ix *Index) CredentialPolicy(operationID string) (Entry, bool) {
 	entry, ok := ix.credentialPolicies[operationID]
 	return entry, ok
 }
+
+// OperationSafety includes routes omitted from CLI/MCP discovery, so raw API
+// calls use exactly the same classification as exposed operations.
+func (ix *Index) OperationSafety(operationID string) (Entry, bool) {
+	return ix.CredentialPolicy(operationID)
+}
