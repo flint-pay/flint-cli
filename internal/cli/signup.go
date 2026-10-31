@@ -179,7 +179,7 @@ func (a *App) runSignup(opts Options) int {
 	nextCommand := a.signupCommand(signupNextCommand, resolved.ProfileName, baseURL)
 	result := map[string]any{"data": map[string]any{
 		"api_key":          valueAt(created.Value, "data"),
-		"onboarding":       valueAt(state.Value, "data"),
+		"onboarding":       signupOnboardingSummary(state.Value),
 		"credential_saved": true,
 		"next_command":     nextCommand,
 	}}
@@ -192,6 +192,21 @@ func (a *App) runSignup(opts Options) int {
 		return ExitOK
 	}
 	return a.outputLocal(result, nilCommand("signup"), opts)
+}
+
+// Verification results can include a bearer token. Publish only known scalar
+// onboarding facts so all output formats and projections share the safe value.
+func signupOnboardingSummary(value any) map[string]any {
+	summary := map[string]any{}
+	for _, field := range []string{"status", "default_sandbox_id"} {
+		if fact, ok := firstStringAt(value, "data."+field); ok {
+			summary[field] = fact
+		}
+	}
+	if fact, ok := valueAt(value, "data.can_issue_api_key").(bool); ok {
+		summary["can_issue_api_key"] = fact
+	}
+	return summary
 }
 
 func (a *App) advanceSignupUntilKeyAvailable(baseURL, sessionToken string, state *apiResponse, reader *bufio.Reader, email string, opts Options) (*apiResponse, *CLIError) {
