@@ -181,7 +181,7 @@ func (a *App) executeFollow(ctx context.Context, opts Options, req preparedReque
 				case "ndjson":
 					err = writeJSON(a.Stdout, row.value)
 				default:
-					err = a.writeFollowHuman(row)
+					err = a.writeFollowHuman(row, opts)
 				}
 				if err != nil {
 					return nil, networkError("OUTPUT_WRITE_FAILED", "Could not write command output.", err)
@@ -213,7 +213,7 @@ func pruneFollowSeen(seen map[string]time.Time, cursor time.Time) {
 	}
 }
 
-func (a *App) writeFollowHuman(row followedLog) error {
+func (a *App) writeFollowHuman(row followedLog, opts Options) error {
 	v := row.value
 	text := func(key string) string {
 		if value, ok := v[key]; ok {
@@ -222,7 +222,7 @@ func (a *App) writeFollowHuman(row followedLog) error {
 		return ""
 	}
 	status := text("status_code")
-	if a.IsTTY() {
+	if a.IsTTY() && opts.Color != "never" {
 		color := "32"
 		if len(status) > 0 && status[0] >= '4' {
 			color = "31"

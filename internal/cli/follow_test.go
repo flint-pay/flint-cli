@@ -229,3 +229,24 @@ func TestFollowBoundsCancelAndFatal(t *testing.T) {
 		t.Fatalf("e=%v out=%s", e, out)
 	}
 }
+
+func TestFollowHumanColorPreference(t *testing.T) {
+	for _, scenario := range []struct {
+		tty   bool
+		color string
+		ansi  bool
+	}{{true, "never", false}, {true, "auto", true}, {false, "always", false}} {
+		app, out, _ := testApp(t, "http://127.0.0.1:9")
+		app.IsTTY = func() bool { return scenario.tty }
+		opts := defaultOptions()
+		t.Setenv("FLINT_COLOR", scenario.color)
+		applyEnvironmentOptions(&opts)
+		row := followedLog{value: followRow("color", time.Now()), at: time.Now()}
+		if err := app.writeFollowHuman(row, opts); err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.Contains(out.String(), "\x1b["); got != scenario.ansi {
+			t.Fatalf("tty=%v color=%s out=%q", scenario.tty, scenario.color, out.String())
+		}
+	}
+}
