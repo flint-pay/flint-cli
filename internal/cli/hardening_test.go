@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -835,10 +836,10 @@ func TestBoundedListenReportsOutputWriteFailure(t *testing.T) {
 }
 
 func TestSignupTransportTimeoutDoesNotIncludeHumanInputDelay(t *testing.T) {
-	requests := 0
+	var requests atomic.Int64
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		requests++
+		requests.Add(1)
 		switch r.URL.Path {
 		case "/v1/onboarding/start":
 			fmt.Fprint(w, `{"data":{"verification_token":"devver_123"}}`)
@@ -861,8 +862,8 @@ func TestSignupTransportTimeoutDoesNotIncludeHumanInputDelay(t *testing.T) {
 	app.IsTTY = func() bool { return true }
 	app.Stdin = &delayedReader{delay: 40 * time.Millisecond, reader: strings.NewReader("482193\n")}
 	exit := app.Run([]string{"signup", "--email", "dev@example.com", "--first-name", "Ada", "--last-name", "Lovelace", "--timeout", "20ms", "--output", "human"})
-	if exit != ExitOK || requests != 5 || !strings.Contains(stdout.String(), "Your sandbox is ready for test payments.") {
-		t.Fatalf("exit=%d requests=%d stdout=%s stderr=%s", exit, requests, stdout, stderr)
+	if exit != ExitOK || requests.Load() != 5 || !strings.Contains(stdout.String(), "Your sandbox is ready for test payments.") {
+		t.Fatalf("exit=%d requests=%d stdout=%s stderr=%s", exit, requests.Load(), stdout, stderr)
 	}
 }
 
