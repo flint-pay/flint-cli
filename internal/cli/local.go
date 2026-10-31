@@ -783,12 +783,12 @@ func doctorScopeCheck(authContext AuthContext) map[string]any {
 	if len(missingBaselineScopes) > 0 || len(liveOnly) > 0 {
 		scopeCheck["limited"] = true
 		scopeCheck["missing_cli_baseline"] = missingBaselineScopes
-		if authContext.AuthType == "oauth" {
+		if authContext.isCLILogin() {
 			scopeCheck["note"] = "This browser session is missing CLI baseline scopes. Commands outside its granted scopes will fail authorization."
 		} else {
 			scopeCheck["note"] = "This is a limited key. Commands outside its granted scopes will fail authorization."
 		}
-	} else if authContext.AuthType == "oauth" {
+	} else if authContext.isCLILogin() {
 		scopeCheck["status"] = "info"
 		scopeCheck["browser_login_baseline"] = true
 		scopeCheck["note"] = "Browser login grants the CLI baseline scopes. Use flint reauth --scope for commands that need additional access."

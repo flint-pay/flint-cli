@@ -221,8 +221,8 @@ func TestUpgradeUsesOwningPackageManager(t *testing.T) {
 		executable string
 		want       []string
 	}{
-		{name: "npm", executable: npmBinary, want: []string{"npm root -g", "npm config get globalconfig", "npm install -g --prefix STAGING @flintpay/cli@1.1.0 --include=optional --no-audit --no-fund --globalconfig " + filepath.Join(root, "npmrc"), "node " + filepath.Join("STAGING", "lib", "node_modules", "@flintpay", "cli", "bin", "flint.js") + " version --field data.cli_version --color never", "node " + filepath.Join(npmRoot, "@flintpay", "cli", "bin", "flint.js") + " version --field data.cli_version --color never"}},
-		{name: "homebrew", executable: brewBinary, want: []string{"brew --cellar flint-pay/tap/flint", "brew update", "brew upgrade flint-pay/tap/flint", "brew --prefix flint-pay/tap/flint", filepath.Join(brewPrefix, "bin", "flint") + " version --field data.cli_version --color never"}},
+		{name: "npm", executable: npmBinary, want: []string{"npm root -g", "npm config get globalconfig", "npm install -g --prefix STAGING @flintpay/cli@1.1.0 --include=optional --no-audit --no-fund --globalconfig " + filepath.Join(root, "npmrc"), "node " + filepath.Join("STAGING", "lib", "node_modules", "@flintpay", "cli", "bin", "flint.js") + " version --jq .data.cli_version --output human --color never", "node " + filepath.Join(npmRoot, "@flintpay", "cli", "bin", "flint.js") + " version --jq .data.cli_version --output human --color never"}},
+		{name: "homebrew", executable: brewBinary, want: []string{"brew --cellar flint-pay/tap/flint", "brew update", "brew upgrade flint-pay/tap/flint", "brew --prefix flint-pay/tap/flint", filepath.Join(brewPrefix, "bin", "flint") + " version --jq .data.cli_version --output human --color never"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

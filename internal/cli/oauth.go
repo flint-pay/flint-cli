@@ -78,7 +78,7 @@ func validOAuthToken(token string) bool {
 }
 
 func validOAuthContext(auth AuthContext) bool {
-	return auth.AuthType == "oauth" && auth.OAuthGrantID != "" && auth.MerchantID != "" && len(auth.Scopes) > 0 &&
+	return auth.isCLILogin() && auth.OAuthGrantID != "" && auth.MerchantID != "" && len(auth.Scopes) > 0 &&
 		(auth.Environment == "live" || (auth.Environment == "sandbox" && auth.SandboxID != ""))
 }
 

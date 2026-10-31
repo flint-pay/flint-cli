@@ -858,7 +858,7 @@ func TestSignupTransportTimeoutDoesNotIncludeHumanInputDelay(t *testing.T) {
 			fmt.Fprint(w, `{"data":{"can_issue_api_key":false,"next_step":{"code":"refresh_account","machine_completable":true,"submit_method":"POST","submit_endpoint":"/v1/onboarding/advance"}}}`)
 		case "/v1/onboarding/advance":
 			fmt.Fprint(w, `{"data":{"can_issue_api_key":true,"default_sandbox_id":"test_123"}}`)
-		case "/v1/onboarding/api-key":
+		case "/v1/sandboxes/test_123/api-keys":
 			fmt.Fprint(w, `{"data":{"api_key_id":"key_123","merchant_id":"mer_123","sandbox_id":"test_123","secret_key":"flint_test_new"}}`)
 		default:
 			http.NotFound(w, r)
@@ -968,7 +968,7 @@ func signupCompensationTestServer(t *testing.T, revoked *bool) *httptest.Server 
 			fmt.Fprint(w, `{"data":{"onboarding_session_token":"devsess_123"}}`)
 		case "/v1/onboarding/state":
 			fmt.Fprint(w, `{"data":{"can_issue_api_key":true,"default_sandbox_id":"test_123"}}`)
-		case "/v1/onboarding/api-key":
+		case "/v1/sandboxes/test_123/api-keys":
 			fmt.Fprint(w, `{"data":{"api_key_id":"key_123","merchant_id":"mer_123","sandbox_id":"test_123","secret_key":"flint_test_new"}}`)
 		case "/v1/api-keys/key_123/revoke":
 			if r.Header.Get("Authorization") != "Bearer flint_test_new" || r.Header.Get("Idempotency-Key") == "" {

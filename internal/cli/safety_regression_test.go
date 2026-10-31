@@ -299,7 +299,7 @@ func TestSignupCancellationAfterKeyIssuanceStillRevokesKey(t *testing.T) {
 			io.WriteString(w, `{"data":{"onboarding_session_token":"synthetic"}}`)
 		case "/v1/onboarding/state":
 			io.WriteString(w, `{"data":{"can_issue_api_key":true,"default_sandbox_id":"test_review"}}`)
-		case "/v1/onboarding/api-key":
+		case "/v1/sandboxes/test_review/api-keys":
 			io.WriteString(w, `{"data":{"secret_key":"flint_test_synthetic","api_key_id":"key_review","merchant_id":"mer_review"}}`)
 		case "/v1/api-keys/key_review/revoke":
 			if ctx.Err() == nil {
@@ -319,7 +319,7 @@ func TestSignupCancellationAfterKeyIssuanceStillRevokesKey(t *testing.T) {
 	defer baseClient.CloseIdleConnections()
 	app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		response, err := baseClient.Transport.RoundTrip(req)
-		if err == nil && req.URL.Path == "/v1/onboarding/api-key" {
+		if err == nil && req.URL.Path == "/v1/sandboxes/test_review/api-keys" {
 			response.Body = cancelSignupOnEOF{ReadCloser: response.Body, cancel: cancel}
 		}
 		return response, err

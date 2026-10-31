@@ -167,7 +167,7 @@ func TestNPMUpgradeWithOfflinePackages(t *testing.T) {
 			binary := filepath.Join(wrapper, "node_modules", "@flintpay", strings.TrimPrefix(platformName, "@flintpay/"), "bin", "flint")
 			binLink := filepath.Join(prefix, "bin", "flint")
 			assertVersion := func(want string) {
-				output, err := runUpgradeCommand(t.Context(), binLink, "version", "--field", "data.cli_version", "--color", "never")
+				output, err := runUpgradeCommand(t.Context(), binLink, "version", "--jq", ".data.cli_version", "--output", "human", "--color", "never")
 				if err != nil || strings.TrimSpace(string(output)) != want {
 					t.Fatalf("installed command version=%q error=%v want=%s", output, err, want)
 				}
