@@ -28,11 +28,11 @@ func commandRequestUnion(cmd *Command) requestUnion {
 	if err != nil {
 		panic(err)
 	}
-	doc, _ := loadOpenAPI()
 	var discriminator func(map[string]any) string
 	discriminator = func(node map[string]any) string {
 		if ref, ok := node["$ref"].(string); ok {
-			return discriminator(doc.Components.Schemas[strings.TrimPrefix(ref, "#/components/schemas/")])
+			node, _ := resolveComponentReference(ref)
+			return discriminator(node)
 		}
 		if d, ok := node["discriminator"].(map[string]any); ok {
 			name, _ := d["propertyName"].(string)

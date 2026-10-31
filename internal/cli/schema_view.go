@@ -28,7 +28,7 @@ func commandDiscoverySchema(cmd *Command, input bool) (*schemaview.Reader, map[s
 	} else {
 		_, defs = resourceOutputSchema(cmd)
 	}
-	doc, _ := loadOpenAPI()
+	doc := commandOpenAPI(cmd)
 	components := map[string]any{}
 	for name, node := range doc.Components.Schemas {
 		components[name] = node
@@ -85,7 +85,7 @@ func commandDiscoverySchema(cmd *Command, input bool) (*schemaview.Reader, map[s
 		// Parameters sit outside body variants and survive a closed selected branch.
 		schema = map[string]any{"allOf": []any{schema, map[string]any{"type": "object", "properties": props, "required": required}}}
 	}
-	return schemaview.New(root), schema, nil
+	return schemaview.NewLazy(root, resolveComponentReference), schema, nil
 }
 func queryDiscoverySchema(schema map[string]any) map[string]any {
 	schema = maps.Clone(schema)
