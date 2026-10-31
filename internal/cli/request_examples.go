@@ -107,6 +107,9 @@ func specRequestCommandExample(cmd *Command, operation openAPIOperation) string 
 		if operation.FlintDestructive {
 			parts = append(parts, "--confirm")
 		}
+		if cmd.Supports.Open {
+			parts = append(parts, "--open")
+		}
 		return strings.Join(parts, " ")
 	}
 	for _, example := range examples {
