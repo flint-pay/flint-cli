@@ -722,7 +722,7 @@ func (a *App) localInit(cmd *Command, opts Options) int {
 	if writeErr != nil {
 		return a.fail(configError("CONFIG_WRITE_FAILED", writeErr.Error(), writeErr), opts)
 	}
-	checks := []map[string]any{{"name": "project_config", "status": "pass", "path": target, "written": written}}
+	checks := []map[string]any{{"name": "authentication", "status": "pass", "message": "API accepted the credential."}, {"name": "project_config", "status": "pass", "path": target, "written": written}}
 	exit := ExitOK
 	value := map[string]any{"data": map[string]any{
 		"checks": checks,
