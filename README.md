@@ -160,7 +160,7 @@ Help and `schema commands --output json` list allowed values and required fields
 
 Flags override `--input` field by field, including replacing complete arrays.
 Nested shortcuts override their field inside an object. Conflicting duplicate
-flags and shortcuts below a scalar input value stop locally. Client dry runs
+body flags and shortcuts below a scalar input value stop locally. Client dry runs
 list `overridden_fields`; `--debug` also prints each override.
 
 Variant-only flags infer an explicit schema discriminator: `api-keys create

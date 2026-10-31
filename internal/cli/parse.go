@@ -286,7 +286,7 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	}
 	for _, arg := range cmd.Arguments {
 		values := o.Raw[strings.TrimPrefix(arg.Flag, "--")]
-		if arg.Flag != "" && !arg.Repeat && len(values) > 1 {
+		if arg.BodyPath != "" && arg.Flag != "" && !arg.Repeat && len(values) > 1 {
 			for _, value := range values[1:] {
 				if value != values[0] {
 					return usageError("DUPLICATE_FLAG", "Give "+arg.Flag+" only once; conflicting values were provided.", arg.Name)

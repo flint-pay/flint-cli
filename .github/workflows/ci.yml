@@ -68,8 +68,8 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Test
-        # Exhaustive subprocess catalogs can exceed Go's default budget on Windows.
-        run: go test -race -timeout ${{ runner.os == 'Windows' && '20m' || '10m' }} ./...
+        # Exhaustive subprocess catalogs exercise every generated command and flag.
+        run: go test -race -timeout 20m ./...
       - name: Vet
         run: go vet ./...
       - name: Verify coverage report
