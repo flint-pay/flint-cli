@@ -115,7 +115,7 @@ func TestSignupCompletionPreservesNewerProgress(t *testing.T) {
 			fmt.Fprint(w, `{"data":{"verification_token":"synthetic-newer"}}`)
 			return
 		}
-		if r.URL.Path == "/v1/onboarding/api-key" {
+		if r.URL.Path == "/v1/sandboxes/test_new/api-keys" {
 			close(issuing)
 			<-release
 		}

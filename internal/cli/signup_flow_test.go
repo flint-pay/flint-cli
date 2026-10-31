@@ -48,7 +48,7 @@ func signupFlowSuccess(t *testing.T, w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `{"data":{"onboarding_session_token":"synthetic-session"}}`)
 	case "/v1/onboarding/state":
 		fmt.Fprint(w, `{"data":{"can_issue_api_key":true,"default_sandbox_id":"test_new"}}`)
-	case "/v1/onboarding/api-key":
+	case "/v1/sandboxes/test_new/api-keys":
 		fmt.Fprint(w, `{"data":{"api_key_id":"key_new","merchant_id":"mer_new","secret_key":"flint_test_synthetic_new"}}`)
 	case "/v1/auth-context":
 		fmt.Fprint(w, authContextJSON("sandbox"))
@@ -118,7 +118,7 @@ func TestSignupFlowTwoPhase(t *testing.T) {
 			if exit := resumed.Run([]string{"signup", "--verification-code", "123456", "--no-input", "--output", output}); exit != ExitOK {
 				t.Fatalf("finish exit=%d out=%s stderr=%s", exit, out, stderr)
 			}
-			if !reflect.DeepEqual(paths, []string{"/v1/onboarding/start", "/v1/onboarding/verify-email", "/v1/onboarding/state", "/v1/onboarding/api-key"}) {
+			if !reflect.DeepEqual(paths, []string{"/v1/onboarding/start", "/v1/onboarding/verify-email", "/v1/onboarding/state", "/v1/sandboxes/test_new/api-keys"}) {
 				t.Fatalf("paths = %v", paths)
 			}
 			cfg, err = app.loadConfig()
