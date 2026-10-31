@@ -1,9 +1,9 @@
 package cli
 
+import "strings"
+
 // operationOverlay carries behavior by public operation ID, never a generated name.
-// Compatibility body flags preserve the existing terminal interface until A4
-// derives top-level flags and union inference from the contract. New overlays
-// must not add top-level body flags; nested shortcuts remain CLI conveniences.
+// Top-level body flags are generated; nested shortcuts remain CLI conveniences.
 type operationOverlay struct {
 	Arguments      []Arg
 	Examples       []string
@@ -85,6 +85,25 @@ func operationOverlays() map[string]operationOverlay {
 		"updateAPIKey":                         {Arguments: []Arg{flag("name", "string", "name", "", "API key name", false), apiKeyAccessFlag, apiKeyScopeFlag, flag("expected_version", "integer", "expected_version", "", "Update only if the key is still at this version; required with --access or --scope", false)}, Examples: ex("flint api-keys update key_123 --name ci", "flint api-keys update key_123 --scope customers.read --expected-version 3", "flint api-keys update key_123 --access read_only --expected-version 3"), Union: "api_key"},
 		"listAPIKeys":                          {Examples: ex("flint api-keys list")},
 		"revokeAPIKey":                         {Arguments: []Arg{flag("expected_version", "integer", "expected_version", "", "Revoke only if the key is still at this version", false)}, Examples: ex("flint api-keys revoke key_123 --preview", "flint api-keys revoke key_123 --confirm"), Destructive: true},
+	}
+	for id, overlay := range overlays {
+		var shortcuts []Arg
+		for _, arg := range overlay.Arguments {
+			if strings.Contains(arg.BodyPath, ".") || id == "payOrder" && arg.Name == "payment_source_token" {
+				shortcuts = append(shortcuts, arg)
+			}
+		}
+		overlay.Arguments = shortcuts
+		for i, example := range overlay.Examples {
+			for _, rename := range [][2]string{{"--parent-organization", "--parent-organization-id"}, {"--customer", "--customer-id"}, {"--payment-option", "--payment-options"}, {"--payment-method", "--payment-method-id"}, {"--payment-intent", "--payment-intent-id"}, {"--order", "--order-id"}, {"--customer-verification", "--customer-verification-id"}, {"--enabled-event", "--enabled-events"}, {"--signing-method", "--signing-methods"}, {"--scope", "--scopes"}} {
+				example = strings.ReplaceAll(example, rename[0]+" ", rename[1]+" ")
+			}
+			if id == "waiveInvoiceLateFee" {
+				example = strings.ReplaceAll(example, "--reason ", "--reason-message ")
+			}
+			overlay.Examples[i] = example
+		}
+		overlays[id] = overlay
 	}
 	return overlays
 }

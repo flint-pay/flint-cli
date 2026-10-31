@@ -104,13 +104,13 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 			values = []string{opts.Positionals[arg.Positional-1]}
 		}
 		if arg.Flag != "" {
-			values = opts.Raw[strings.TrimPrefix(arg.Flag, "--")]
+			values = argumentValues(arg, opts)
 		}
 		if len(values) == 0 {
 			continue
 		}
 		for i, value := range values {
-			if arg.IDPrefix != "" {
+			if arg.IDPrefix != "" && !(arg.Nullable && value == "null") {
 				value = strings.TrimSpace(value)
 				values[i] = value
 				if e := validateIDPrefix(value, arg); e != nil {
@@ -135,11 +135,32 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 				if strings.HasSuffix(arg.BodyPath, ".currency") {
 					value = strings.ToUpper(value)
 				}
-				converted, e := convertValue(value, arg.Type)
+				var converted any
+				var e error
+				if arg.Nullable && value == "null" {
+					converted = nil
+				} else if arg.Type == "time" {
+					location := time.UTC
+					if calendarTime(value) {
+						var note string
+						location, note = a.reportingTimezone(ctx, opts, resolved, key, baseURL)
+						if note != "" && !opts.Quiet {
+							fmt.Fprintln(a.Stderr, "Note: "+note)
+						}
+					}
+					var timeErr *CLIError
+					converted, timeErr = resolveBodyTime(value, a.Now(), location)
+					if timeErr != nil {
+						timeErr.Param = arg.Name
+						return req, timeErr
+					}
+				} else {
+					converted, e = convertValue(value, arg.Type)
+				}
 				if e != nil {
 					return req, usageError("INVALID_ARGUMENT", fmt.Sprintf("Invalid value for %s: %v", arg.Flag, e), arg.Name)
 				}
-				if arg.Repeat {
+				if arg.Repeat && !(arg.Nullable && value == "null") {
 					existing, _ := lookupPath(body, arg.BodyPath)
 					list, _ := existing.([]any)
 					list = append(list, converted)
@@ -220,8 +241,8 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		if len(opts.Raw["amount"]) == 0 || len(opts.Raw["currency"]) == 0 {
 			return req, usageError("MISSING_REQUIRED_ARGUMENT", "Standalone payment intents require --amount and --currency.", "amount")
 		}
-		if len(opts.Raw["payment-option"]) == 0 {
-			return req, usageError("MISSING_REQUIRED_ARGUMENT", "Standalone payment intents require at least one --payment-option.", "payment_option")
+		if len(opts.Raw["payment-options"]) == 0 {
+			return req, usageError("MISSING_REQUIRED_ARGUMENT", "Standalone payment intents require at least one --payment-options.", "payment_option")
 		}
 	}
 
@@ -309,10 +330,10 @@ func selectRequestUnionTags(cmd *Command, opts Options, body map[string]any) *CL
 		credentials := map[string]string{
 			"confirmation-token":   "stripe_confirmation_token",
 			"payment-source-token": "token",
-			"payment-method":       "payment_method",
+			"payment-method-id":    "payment_method",
 		}
 		var selected []string
-		for _, name := range []string{"confirmation-token", "payment-source-token", "payment-method"} {
+		for _, name := range []string{"confirmation-token", "payment-source-token", "payment-method-id"} {
 			if flagged(name) {
 				selected = append(selected, name)
 			}
@@ -336,11 +357,11 @@ func selectRequestUnionTags(cmd *Command, opts Options, body map[string]any) *CL
 	case "api_key":
 		return inferAPIKeyAccess(cmd, opts, body)
 	case "invoice":
-		if !flagged("order") {
+		if !flagged("order-id") {
 			return nil
 		}
 		if existing, present := body["type"]; present && existing != "order" {
-			return usageError("CONFLICTING_ARGUMENTS", "--order requires type order.", "type")
+			return usageError("CONFLICTING_ARGUMENTS", "--order-id requires type order.", "type")
 		}
 		body["type"] = "order"
 	}
@@ -375,6 +396,11 @@ func (a *App) validateBody(cmd *Command, opts Options, body map[string]any, req 
 				for _, problem := range problems {
 					path, _ := problem["path"].(string)
 					for _, arg := range cmd.Arguments {
+						if arg.BodyPath != "" && path == jsonFieldPath(strings.Split(arg.BodyPath, ".")) && problem["message"] == "required field is missing" {
+							message := fmt.Sprintf("Missing required field %s (%s or --input).", arg.BodyPath, arg.Flag)
+							e.Message = strings.ReplaceAll(e.Message, path+": required field is missing", path+": "+message)
+							problem["message"] = message
+						}
 						flag := strings.TrimPrefix(arg.Flag, "--")
 						if arg.BodyPath != "" && len(opts.Raw[flag]) > 0 && path == jsonFieldPath(strings.Split(arg.BodyPath, ".")) {
 							annotated := path + " (from " + arg.Flag + ")"
@@ -494,6 +520,17 @@ func convertValue(value, typ string) (any, error) {
 			return nil, fmt.Errorf("%q is not a whole number", value)
 		}
 		return n, nil
+	case "number":
+		n, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return nil, fmt.Errorf("%q is not a number", value)
+		}
+		return n, nil
+	case "date":
+		if _, err := time.Parse(time.DateOnly, value); err != nil {
+			return nil, fmt.Errorf("date must be YYYY-MM-DD")
+		}
+		return value, nil
 	case "boolean":
 		b, err := strconv.ParseBool(value)
 		if err != nil {
@@ -695,20 +732,20 @@ func validateRawPublicRoute(method, path string) *CLIError {
 // public contract. Creating a key with no access choice names the flags
 // instead of reporting a schema branch.
 func inferAPIKeyAccess(cmd *Command, opts Options, body map[string]any) *CLIError {
-	if _, hasAccess := body["access"]; !hasAccess && len(opts.Raw["scope"]) > 0 {
+	if _, hasAccess := body["access"]; !hasAccess && len(opts.Raw["scopes"]) > 0 {
 		body["access"] = "restricted"
 	}
 	creates := cmd.OperationID != "updateAPIKey"
 	if cmd.OperationID == "createSandbox" {
 		_, hasIssue := body["issue_test_key"]
-		if !hasIssue && (len(opts.Raw["access"]) > 0 || len(opts.Raw["scope"]) > 0 || len(opts.Raw["test-key-name"]) > 0) {
+		if !hasIssue && (len(opts.Raw["access"]) > 0 || len(opts.Raw["scopes"]) > 0 || len(opts.Raw["test-key-name"]) > 0) {
 			body["issue_test_key"] = true
 		}
 		issue, _ := body["issue_test_key"].(bool)
 		creates = issue
 	}
 	if _, hasAccess := body["access"]; creates && !hasAccess {
-		return usageError("MISSING_REQUIRED_ARGUMENT", "Choose the key's access with --access full, --access read_only, or --scope SCOPE for restricted access.", "access")
+		return usageError("MISSING_REQUIRED_ARGUMENT", "Choose the key's access with --access full, --access read_only, or --scopes SCOPE for restricted access.", "access")
 	}
 	return nil
 }

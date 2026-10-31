@@ -144,8 +144,19 @@ the browser protocol for you.
 `payment-intents create --order` is removed. Use
 `orders payment-intents create ORDER_ID` for the order-scoped operation.
 Query filters use their field names, such as `orders list --customer-id` and
-`refunds list --order-id` or `--payment-intent-id`. Existing body convenience flags
-keep their current names, including `--customer`, `--scope`, and `--payment-option`.
+`refunds list --order-id` or `--payment-intent-id`. Body flags use the schema field names: `--customer-id`, `--scopes`,
+`--payment-options`, `--enabled-events`, `--signing-methods`, `--order-id`,
+`--payment-intent-id`, `--parent-organization-id`, `--payment-method-id`,
+and `invoices late-fees waive --reason-message`.
+
+Every top-level scalar or scalar array has a flag. Repeat array flags or separate
+values with commas. Use `--input` for objects and object arrays. Nested money,
+quick-pay, payment-link item, and confirmation-token shortcuts remain available.
+Boolean flags accept `--tax-exempt`, `--tax-exempt=false`, or `--tax-exempt false`.
+Nullable fields accept `null` to clear; use `--input` for the string "null".
+Body times accept RFC3339, reporting-timezone dates, `now`, `+14d`, or `-2h`.
+Unsigned relative body times are rejected; query durations still mean the past.
+Help and `schema commands --output json` list allowed values and required fields.
 MCP operation IDs use these same dotted command names; typed tool names replace
 every dot and hyphen with an underscore.
 
@@ -163,12 +174,12 @@ flint listen --forward-to http://localhost:8080/webhooks/flint
 Create a webhook endpoint with JWT signing (the default):
 
 ```sh
-flint webhook-endpoints create --url https://example.com/webhooks/flint --enabled-event payment_intent.succeeded --signing-method jwt
+flint webhook-endpoints create --url https://example.com/webhooks/flint --enabled-events payment_intent.succeeded --signing-methods jwt
 ```
 
-Repeat `--signing-method` to select `jwt`, `hmac`, or both. JWT deliveries carry `Authorization: Bearer <token>`; verify the token with [Flint's JWKS](https://api.withflintpay.com/.well-known/jwks.json), including its issuer, endpoint audience, expiry, and raw body hash. Creation returns `secret` only when `hmac` is included; save it if present. `webhook-endpoints update --signing-method ... --expected-version N` replaces the set; omitting the flag leaves it unchanged. Removing `hmac` deletes shared secrets. Adding `hmac` without an issued secret returns `409 ACTION_NOT_ALLOWED` with reason `secret_not_issued` (param `signing_methods`); run `flint webhook-endpoints rotate-secret whep_... --confirm` to issue the first secret and enable `hmac`.
+Repeat `--signing-methods` to select `jwt`, `hmac`, or both. JWT deliveries carry `Authorization: Bearer <token>`; verify the token with [Flint's JWKS](https://api.withflintpay.com/.well-known/jwks.json), including its issuer, endpoint audience, expiry, and raw body hash. Creation returns `secret` only when `hmac` is included; save it if present. `webhook-endpoints update --signing-methods ... --expected-version N` replaces the set; omitting the flag leaves it unchanged. Removing `hmac` deletes shared secrets. Adding `hmac` without an issued secret returns `409 ACTION_NOT_ALLOWED` with reason `secret_not_issued` (param `signing_methods`); run `flint webhook-endpoints rotate-secret whep_... --confirm` to issue the first secret and enable `hmac`.
 
-Delivery rate callbacks take the same repeatable `--signing-method jwt|hmac` flag on `delivery-rate-callbacks create` and `delivery-rate-callbacks update`, also defaulting to `jwt`. JWT callback requests carry `Authorization: Bearer <token>` whose `aud` is the callback's `dcb_` ID. Creation returns `secret` and `key_id` only when `hmac` is included. Updating signing methods replaces the set and requires `--expected-version`, and `flint delivery-rate-callbacks rotate-secret dcb_... --confirm` issues the first secret and enables `hmac`, or rotates an existing one.
+Delivery rate callbacks take the same repeatable `--signing-methods jwt|hmac` flag on `delivery-rate-callbacks create` and `delivery-rate-callbacks update`, also defaulting to `jwt`. JWT callback requests carry `Authorization: Bearer <token>` whose `aud` is the callback's `dcb_` ID. Creation returns `secret` and `key_id` only when `hmac` is included. Updating signing methods replaces the set and requires `--expected-version`, and `flint delivery-rate-callbacks rotate-secret dcb_... --confirm` issues the first secret and enables `hmac`, or rotates an existing one.
 
 `flint`, `flint --help`, and `flint help` group commands into Developer tools, Merchant resources, and Buyer session. Use `flint help customers create`, `flint help customers.create`, or `flint customers create --help` for the same help. `flint help --all` lists every command; add `--output json` for a structured index. `flint schema commands --output json` returns the same command tree as a full catalog, including each command's section and credential audience. Buyer help identifies the required session credential.
 
@@ -183,7 +194,7 @@ Commands with convenience flags can create a resource directly. Other commands t
 Writes that require an idempotency key, such as `flint refunds create` and `flint orders pay`, require `--idempotency-key KEY`, including with `--dry-run=client`. Save the key with the action before the first command and reuse it on retry. For writes with an optional key, the CLI generates a `flint-cli-…` key and reuses it across its own retries. Operations that take no key send none. The API never generates keys.
 
 ```sh
-flint payment-intents create --amount 2500 --currency USD --payment-option card --idempotency-key quickstart-pi-1
+flint payment-intents create --amount 2500 --currency USD --payment-options card --idempotency-key quickstart-pi-1
 ```
 
 Running the command again with the same key returns the same payment intent; change the key to create another.

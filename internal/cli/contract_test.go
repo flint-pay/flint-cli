@@ -315,7 +315,7 @@ func TestPaymentIntentCreateSendsRepeatablePaymentOptions(t *testing.T) {
 	app, stdout, stderr := testApp(t, server.URL)
 	exit := app.Run([]string{
 		"payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--amount", "2500", "--currency", "USD",
-		"--payment-option", "card", "--payment-option", "ach_debit", "--transaction-purpose", "services",
+		"--payment-options", "card", "--payment-options", "ach_debit", "--transaction-purpose", "services",
 		"--output", "json",
 	})
 	if exit != ExitOK || stderr.Len() != 0 {
@@ -412,7 +412,7 @@ func TestLiveJSONMutationFailsClosedWithoutConfirm(t *testing.T) {
 	defer server.Close()
 	app, stdout, stderr := testApp(t, server.URL)
 	t.Setenv("FLINT_API_KEY", "flint_live_test")
-	exit := app.Run([]string{"payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--amount", "2500", "--currency", "USD", "--payment-option", "card", "--live", "--output", "json"})
+	exit := app.Run([]string{"payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--amount", "2500", "--currency", "USD", "--payment-options", "card", "--live", "--output", "json"})
 	if exit != ExitConfirmation {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
@@ -458,7 +458,7 @@ func TestClientDryRunPerformsNoNetworkRequest(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { requests++ }))
 	defer server.Close()
 	app, stdout, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--amount", "2500", "--currency", "USD", "--payment-option", "card", "--dry-run=client", "--output", "json"})
+	exit := app.Run([]string{"payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--amount", "2500", "--currency", "USD", "--payment-options", "card", "--dry-run=client", "--output", "json"})
 	if exit != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}

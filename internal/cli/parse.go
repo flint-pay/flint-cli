@@ -11,11 +11,6 @@ var boolFlags = map[string]bool{
 	"quiet": true, "debug": true, "no-input": true, "live": true, "confirm": true,
 	"open": true, "all": true, "paginate": true, "preview": true, "clear": true,
 	"stdin": true, "fix": true, "help": true,
-	// Command-scoped booleans. They stay out of globalFlags so only the command
-	// that declares them accepts them, but the parser still has to know they
-	// take no value.
-	"list": true, "new-session": true, "private": true, "no-open": true, "ai-agent": true,
-	"read-only": true, "allow-live": true, "allow-destructive": true, "no-wait": true, "check": true, "print-secret": true,
 }
 
 var globalFlags = map[string]bool{
@@ -66,6 +61,12 @@ func parseInvocation(r *Registry, argv []string) (*Command, Options, bool, *CLIE
 	}
 
 	opts.streamCommand = cmd.Stream
+	opts.booleanFlags = map[string]bool{}
+	for _, arg := range cmd.Arguments {
+		if arg.Type == "boolean" && !arg.Repeat {
+			opts.booleanFlags[strings.TrimPrefix(arg.Flag, "--")] = true
+		}
+	}
 	commandFlags := map[string]bool{}
 	for k := range globalFlags {
 		commandFlags[k] = true
@@ -152,7 +153,7 @@ func extractFlags(args []string, allowed map[string]bool, opts *Options, rejectU
 			}
 			return nil, unknownFlagError(token, allowed)
 		}
-		if boolFlags[key] {
+		if boolFlags[key] || opts.booleanFlags[key] {
 			if !hasValue {
 				value = "true"
 				if i+1 < len(args) && (args[i+1] == "true" || args[i+1] == "false") {
@@ -160,7 +161,7 @@ func extractFlags(args []string, allowed map[string]bool, opts *Options, rejectU
 					value = args[i]
 				}
 			}
-			if value != "true" && value != "false" {
+			if value != "true" && value != "false" && !(opts.booleanFlags[key] && value == "null") {
 				return nil, usageError("INVALID_FLAG_VALUE", "--"+key+" must be true or false.", key)
 			}
 		} else if !hasValue {
@@ -442,7 +443,7 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 		if a.Positional > 0 && a.Required && len(o.Positionals) < a.Positional {
 			return usageError("MISSING_REQUIRED_ARGUMENT", fmt.Sprintf("Missing required argument: %s", a.Name), a.Name)
 		}
-		if a.Flag != "" && a.Required && len(o.Raw[strings.TrimPrefix(a.Flag, "--")]) == 0 && (o.Input == "" || a.Query != "") {
+		if a.Flag != "" && a.BodyPath == "" && a.Required && len(o.Raw[strings.TrimPrefix(a.Flag, "--")]) == 0 && (o.Input == "" || a.Query != "") {
 			return usageError("MISSING_REQUIRED_ARGUMENT", "Missing required argument: "+a.Flag, a.Name)
 		}
 	}

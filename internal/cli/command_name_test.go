@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -377,7 +376,7 @@ func TestGeneratedQueryFlagsAndCompatibilityBodyFlags(t *testing.T) {
 	registry := NewRegistry()
 	for _, tc := range []struct{ name, flag string }{
 		{"orders.list", "--customer-id"}, {"invoices.list", "--customer-id"}, {"payment-intents.list", "--customer-id"}, {"refunds.list", "--order-id"}, {"refunds.list", "--payment-intent-id"},
-		{"payment-intents.create", "--customer"}, {"payment-intents.create", "--payment-option"}, {"api-keys.create", "--scope"}, {"invoices.create", "--order"},
+		{"payment-intents.create", "--customer-id"}, {"payment-intents.create", "--payment-options"}, {"api-keys.create", "--scopes"}, {"invoices.create", "--order-id"},
 	} {
 		c, _ := registry.ByName(tc.name)
 		found := false
@@ -444,33 +443,13 @@ func TestNamingSuggestionsResolveAndNeverEcho(t *testing.T) {
 	}
 }
 
-func TestCompatibilityBodyFlagsUnchanged(t *testing.T) {
-	// Captured from 02caeb3 before A1, with only createPaymentIntent --order
-	// removed. A4 replaces this compatibility baseline with generated flags.
-	raw, err := os.ReadFile("testdata/compatibility-body-flags.golden.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var want map[string][]string
-	if err := json.Unmarshal(raw, &want); err != nil {
-		t.Fatal(err)
-	}
-	got := map[string][]string{}
-	for _, command := range NewRegistry().Commands {
-		if commandOwned(command) {
-			continue
-		}
-		for _, arg := range command.Arguments {
-			if arg.BodyPath != "" {
-				got[command.OperationID] = append(got[command.OperationID], arg.Flag)
+func TestBodyShortcutsAreNested(t *testing.T) {
+	for id, overlay := range publicOperationOverlays {
+		for _, arg := range overlay.Arguments {
+			if !strings.Contains(arg.BodyPath, ".") && !(id == "payOrder" && arg.Name == "payment_source_token") {
+				t.Fatal(id, arg)
 			}
 		}
-	}
-	for _, flags := range got {
-		slices.Sort(flags)
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("compatibility body flags changed: got %v, want %v", got, want)
 	}
 }
 

@@ -26,6 +26,7 @@ func publicAPICommands() []*Command {
 			}
 			arguments := publicAPIArguments(path, operation)
 			overlay := publicOperationOverlays[operation.OperationID]
+			arguments = append(arguments, publicBodyArguments(operation, arguments)...)
 			arguments = append(arguments, overlay.Arguments...)
 			if operation.RequestBody != nil {
 				arguments = append(arguments, flag("input", "string", "", "", "JSON body: FILE.json, - for stdin, or inline JSON", false))
@@ -155,6 +156,8 @@ func openAPIArgumentType(typeName string, schema map[string]any) string {
 	default:
 		if format, _ := schema["format"].(string); format == "date-time" {
 			return "time"
+		} else if format == "date" {
+			return "date"
 		}
 		return "string"
 	}
@@ -212,6 +215,7 @@ var publicResourceIDPrefixes = map[string]string{
 	"inventory_reservation_id":           "invr_",
 	"inventory_transfer_id":              "invtr_",
 	"invoice_id":                         "inv_",
+	"invoice_schedule_entry_id":          "invse_",
 	"invoice_late_fee_id":                "inlf_",
 	"invoice_payment_term_id":            "ipt_",
 	"location_id":                        "loc_",
@@ -359,6 +363,11 @@ func publicAPIExample(
 				value = "true"
 			case argument.Type == "time":
 				value = "2h"
+				if argument.BodyPath != "" {
+					value = "+2h"
+				}
+			case argument.Type == "date":
+				value = "2026-10-31"
 			}
 			parts = append(parts, argument.Flag, value)
 		}
@@ -401,13 +410,12 @@ func publicSchemaType(schema map[string]any) string {
 	if value, ok := schema["type"].(string); ok {
 		return value
 	}
-	if types, ok := schema["type"].([]any); ok {
-		for _, value := range types {
-			if name, ok := value.(string); ok && name != "null" {
-				return name
-			}
+	for _, name := range mcpSchemaStrings(schema["type"]) {
+		if name != "null" {
+			return name
 		}
 	}
+
 	return "string"
 }
 

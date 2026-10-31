@@ -159,7 +159,7 @@ func TestVerificationCreateResponsesRecordHistoryAndResolveReferences(t *testing
 				run(confirm, args, `{"code":"123456"}`)
 				if !scenario.checkout {
 					link, _ := registry.ByName("customers.link-guest-purchases")
-					run(link, []string{"cus_test", "--customer-verification", ref}, "")
+					run(link, []string{"cus_test", "--customer-verification-id", ref}, "")
 				}
 			}
 			if confirmCalls != 2 || (!scenario.checkout && linkCalls != 2) {

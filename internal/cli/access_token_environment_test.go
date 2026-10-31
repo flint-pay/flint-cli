@@ -13,7 +13,7 @@ import (
 // get the same gates as live API keys, and tokens the API will not describe
 // must not be treated as sandbox for sensitive writes.
 func TestAccessTokenWritesUseIntrospectedOrUnverifiedEnvironment(t *testing.T) {
-	createIntent := []string{"payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--amount", "500", "--currency", "USD", "--payment-option", "card", "--output", "json"}
+	createIntent := []string{"payment-intents", "create", "--idempotency-key", "saved-test-action-1", "--amount", "500", "--currency", "USD", "--payment-options", "card", "--output", "json"}
 	for _, scenario := range []struct {
 		name       string
 		authStatus int

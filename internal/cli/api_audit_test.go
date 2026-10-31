@@ -68,7 +68,7 @@ func TestAuditRenamedParametersKeepTheirRequestBindings(t *testing.T) {
 
 func TestAuditRefundRequiresAnExplicitMode(t *testing.T) {
 	app, stdout, _ := testApp(t, "")
-	args := []string{"refunds", "create", "--idempotency-key", "saved-test-action-1", "--payment-intent", "pi_test", "--dry-run=client"}
+	args := []string{"refunds", "create", "--idempotency-key", "saved-test-action-1", "--payment-intent-id", "pi_test", "--dry-run=client"}
 	exit, result := runJSON(t, app, stdout, args...)
 	if code, _ := lookupPath(result, "error.code"); exit != ExitUsage || code != "INVALID_REQUEST_BODY" {
 		t.Fatalf("exit=%d result=%v", exit, result)
@@ -98,9 +98,9 @@ func TestAuditConfirmationCredentialsAreExclusive(t *testing.T) {
 	for _, flags := range [][]string{
 		{"--confirmation-token", "ctoken_test"},
 		{"--payment-source-token", "pm_card_visa"},
-		{"--payment-method", "pm_test"},
+		{"--payment-method-id", "pm_test"},
 		{},
-		{"--confirmation-token", "ctoken_test", "--payment-method", "pm_test"},
+		{"--confirmation-token", "ctoken_test", "--payment-method-id", "pm_test"},
 	} {
 		app, stdout, _ := testApp(t, "")
 		argv := append([]string{"payment-intents", "confirm", "pi_test", "--dry-run=client"}, flags...)
