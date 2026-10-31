@@ -418,18 +418,28 @@ func TestUpgradeDoesNothingWhenCurrent(t *testing.T) {
 		fmt.Fprint(w, `[{"tag_name":"cli/v2.0.0"}]`)
 	}))
 	defer server.Close()
-	for _, name := range []string{"upgrade", "update"} {
-		t.Run(name, func(t *testing.T) {
-			app, stdout, stderr := testApp(t, "")
-			app.Info.Version = "2.0.0"
-			app.upgradeReleaseAPIURL = server.URL
-			app.executablePath = func() (string, error) { t.Fatal("looked up executable for current version"); return "", nil }
-
-			if exit := app.Run([]string{name, "--output", "json"}); exit != ExitOK {
-				t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
-			}
-			if !strings.Contains(stdout.String(), `"status":"current"`) {
-				t.Fatalf("stdout=%s", stdout)
+	t.Run("upgrade", func(t *testing.T) {
+		app, stdout, stderr := testApp(t, "")
+		app.Info.Version = "2.0.0"
+		app.upgradeReleaseAPIURL = server.URL
+		app.executablePath = func() (string, error) { t.Fatal("looked up executable for current version"); return "", nil }
+		if exit := app.Run([]string{"upgrade", "--output", "json"}); exit != ExitOK {
+			t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
+		}
+		if !strings.Contains(stdout.String(), `"status":"current"`) {
+			t.Fatalf("stdout=%s", stdout)
+		}
+	})
+	for _, argv := range [][]string{{"update"}, {"update", "--check"}} {
+		t.Run(strings.Join(argv, " ")+" removed", func(t *testing.T) {
+			app, out, _ := testApp(t, "http://127.0.0.1:1")
+			app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(*http.Request) (*http.Response, error) {
+				t.Fatal("removed update alias sent a request")
+				return nil, nil
+			})}
+			exit, result := runJSON(t, app, out, argv...)
+			if code, _ := lookupPath(result, "error.code"); exit != ExitUsage || code != "UNKNOWN_COMMAND" {
+				t.Fatalf("exit=%d result=%v", exit, result)
 			}
 		})
 	}
@@ -454,7 +464,7 @@ func TestUpgradeCheckReportsVersionsWithoutInstalling(t *testing.T) {
 		{"update available", []string{"upgrade", "--check"}, "1.0.0", map[string]any{
 			"status": "update_available", "current_version": "1.0.0", "latest_version": "1.2.0", "update_available": true, "upgrade_command": "flint upgrade",
 		}},
-		{"alias", []string{"update", "--check"}, "1.1.0", map[string]any{
+		{"older installed version", []string{"upgrade", "--check"}, "1.1.0", map[string]any{
 			"status": "update_available", "current_version": "1.1.0", "latest_version": "1.2.0", "update_available": true, "upgrade_command": "flint upgrade",
 		}},
 		{"current", []string{"upgrade", "--check"}, "1.2.0", map[string]any{

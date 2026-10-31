@@ -297,17 +297,31 @@ func TestSigningHelpAndMCPDescriptions(t *testing.T) {
 		name  string
 		wants []string
 	}{
-		{"webhook-endpoints.create", []string{"--signing-method", "jwt (default, verify with Flint's public keys) or hmac (shared secret)", "secret is returned only when hmac is included", "--signing-method jwt"}},
-		{"webhook-endpoints.update", []string{"--signing-method", "required with --enabled-event or --signing-method"}},
-		{"webhook-endpoints.rotate-secret", []string{"Rotate a webhook endpoint secret, or issue the first one and enable hmac"}},
+		{"webhook-endpoints.create", []string{"--signing-method", "jwt (default, verify with Flint's public keys) or hmac (shared secret)", "--signing-method jwt"}},
+		{"webhook-endpoints.update", []string{"--signing-method", "--expected-version", "required with --enabled-event or --signing-method"}},
+		{"webhook-endpoints.rotate-secret", []string{"--confirm"}},
 		{"listen", []string{"local HMAC listen secret", "regardless of endpoint signing methods", "JWT handlers need an HMAC path or a local test bypass"}},
-		{"delivery-rate-callbacks.create", []string{"--signing-method", "jwt (default, verify with Flint's public keys) or hmac (shared secret)", "secret and key_id are returned only when hmac is included", "--signing-method jwt"}},
+		{"delivery-rate-callbacks.create", []string{"--signing-method", "jwt (default, verify with Flint's public keys) or hmac (shared secret)", "--signing-method jwt"}},
 		{"delivery-rate-callbacks.update", []string{"--signing-method", "--expected-version", "required with --signing-method"}},
-		{"delivery-rate-callbacks.rotate-secret", []string{"Rotate a delivery rate callback secret, or issue the first one and enable hmac", "--confirm"}},
+		{"delivery-rate-callbacks.rotate-secret", []string{"--confirm"}},
 	} {
 		app, out, errOut := testApp(t, "")
 		if exit := app.Run([]string{"help", tc.name}); exit != ExitOK {
 			t.Fatalf("%s exit=%d stdout=%s stderr=%s", tc.name, exit, out, errOut)
+		}
+		cmd, ok := app.Registry.ByName(tc.name)
+		if !ok {
+			t.Fatal("missing command", tc.name)
+		}
+		if cmd.Kind != "" {
+			operation, ok := openAPIOperationByID(cmd.OperationID)
+			if !ok {
+				t.Fatal("missing operation", cmd.OperationID)
+			}
+			summary := strings.TrimSpace(operation.Summary)
+			if cmd.Description != summary || !strings.HasPrefix(out.String(), summary+"\n") {
+				t.Errorf("%s CLI help must use operation summary %q: %s", tc.name, summary, out)
+			}
 		}
 		for _, want := range tc.wants {
 			if !strings.Contains(out.String(), want) {
