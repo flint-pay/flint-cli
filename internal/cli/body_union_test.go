@@ -2,6 +2,7 @@ package cli
 
 import (
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -69,13 +70,18 @@ func TestBodyUnionNestedOverrideAndMissingSources(t *testing.T) {
 }
 
 func TestBodyUnionAccessExamplesAreComplete(t *testing.T) {
+	registry := NewRegistry()
 	for _, name := range []string{"api-keys.update", "sandboxes.create"} {
-		cmd, _ := NewRegistry().ByName(name)
+		cmd, _ := registry.ByName(name)
 		for _, example := range cmd.Examples {
-			if strings.Contains(example, "--scopes") && !strings.Contains(example, "--access restricted") {
+			_, opts, _, e := parseInvocation(registry, mcpFallbackWords(example)[1:])
+			if e != nil {
+				t.Fatal(example, e)
+			}
+			if len(opts.Raw["scopes"]) > 0 && !slices.Contains(opts.Raw["access"], "restricted") {
 				t.Fatal(example)
 			}
-			if name == "sandboxes.create" && strings.Contains(example, "--access") && !strings.Contains(example, "--issue-test-key true") {
+			if name == "sandboxes.create" && len(opts.Raw["access"]) > 0 && !slices.Contains(opts.Raw["issue-test-key"], "true") {
 				t.Fatal(example)
 			}
 		}

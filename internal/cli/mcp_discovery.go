@@ -578,6 +578,11 @@ func (a *App) mcpDescribe(args map[string]any, policy mcpPolicy, index *opindex.
 			}
 		}
 		result["arguments"] = view.Fields
+		if !public.Local && opts.Path == "" {
+			if examples := compactRequestExamples(cmd, opts.Variant); len(examples) > 0 {
+				result["request_examples"] = examples
+			}
+		}
 	} else {
 		result["result"] = "data is this resource"
 		if entry.Paginated {

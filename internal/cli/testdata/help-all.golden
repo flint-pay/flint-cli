@@ -47,7 +47,7 @@ Developer tools:
   flint schema commands [<prefix>...]                               List command schemas, optionally only those under a command group
   flint schema errors                                               List CLI and public API error types and exit codes
   flint schema events [<event_type>]                                List webhook event types, or print payload schemas for a type or prefix
-  flint schema input <command>...                                   Print the full JSON Schema of a command's --input body, including variants
+  flint schema input <command>...                                   Print the JSON Schema of a command's --input body, or its documented body with --example
   flint schema output <command>...                                  Print a command output JSON Schema
   flint signup                                                      Create an account and sandbox key. Without a code, email a verification code and save progress; finish with --verification-code. MCP and --no-input use two calls.
   flint support open                                                Start a Flint Help thread with your terminal context prefilled. Opens the composer in your browser; posting happens there.

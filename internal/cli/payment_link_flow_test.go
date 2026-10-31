@@ -147,10 +147,14 @@ func TestPaymentLinkOpenHelp(t *testing.T) {
 	if exit := app.Run([]string{"payment-links", "create", "--help"}); exit != ExitOK {
 		t.Fatalf("exit=%d stderr=%s", exit, stderr)
 	}
-	for _, want := range []string{"--open", "interactive terminal", "flint payment-links create --name T-shirt --item-name T-shirt --amount 2500 --currency USD --open"} {
+	for _, want := range []string{"--open", "interactive terminal", "flint payment-links create --input "} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("missing %q in help: %s", want, out)
 		}
+	}
+	cmd, _ := app.Registry.ByName("payment-links.create")
+	if !strings.HasSuffix(cmd.Examples[0], "--open") {
+		t.Fatal("payment-link example does not open checkout", cmd.Examples)
 	}
 	if exit := app.Run([]string{"payment-links", "list", "--open"}); exit != ExitUsage {
 		t.Fatalf("list accepts --open: exit=%d", exit)
