@@ -16,9 +16,9 @@ import (
 
 func TestRequiredIdempotencyKeyFailsBeforeAnyRequest(t *testing.T) {
 	for _, argv := range [][]string{
-		{"refunds", "create", "--payment-intent", "pi_test", "--refund-type", "full"},
+		{"refunds", "create", "--payment-intent-id", "pi_test", "--refund-type", "full"},
 		{"orders", "pay", "ord_test", "--input", `{"action":"pay"}`},
-		{"payment-intents", "create", "--amount", "2500", "--currency", "USD", "--payment-option", "card"},
+		{"payment-intents", "create", "--amount", "2500", "--currency", "USD", "--payment-options", "card"},
 		{"orders", "payment-intents", "create", "ord_test"},
 		{"api", "POST", "/v1/refunds", "--input", `{}`},
 	} {

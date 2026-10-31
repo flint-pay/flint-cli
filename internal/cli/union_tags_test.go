@@ -16,9 +16,9 @@ func TestConvenienceFlagsSelectRequiredUnionTags(t *testing.T) {
 	}{
 		{[]string{"payment-intents", "confirm", "pi_test", "--confirmation-token", "ctoken_test"}, "credential_type", "stripe_confirmation_token"},
 		{[]string{"payment-intents", "confirm", "pi_test", "--payment-source-token", "pm_card_visa"}, "credential_type", "token"},
-		{[]string{"payment-intents", "confirm", "pi_test", "--payment-method", "pm_test"}, "credential_type", "payment_method"},
+		{[]string{"payment-intents", "confirm", "pi_test", "--payment-method-id", "pm_test"}, "credential_type", "payment_method"},
 		{[]string{"payment-intents", "confirm", "pi_test"}, "credential_type", "attached"},
-		{[]string{"invoices", "create", "--order", "ord_test"}, "type", "order"},
+		{[]string{"invoices", "create", "--order-id", "ord_test"}, "type", "order"},
 		{[]string{"payment-links", "create", "--name", "Tee", "--item-name", "Tee", "--amount", "2500", "--currency", "USD"}, "line_items.0.type", "custom_fixed"},
 		{[]string{"orders", "pay", "ord_test", "--payment-source-token", "pi_test=pm_card_visa"}, "payment_intents.0.credential_type", "token"},
 	} {
@@ -32,8 +32,8 @@ func TestConvenienceFlagsSelectRequiredUnionTags(t *testing.T) {
 		})
 	}
 	for _, argv := range [][]string{
-		{"payment-intents", "confirm", "pi_test", "--payment-method", "pm_test", "--input", `{"credential_type":"token","payment_source_token":"pm_card_visa"}`},
-		{"invoices", "create", "--order", "ord_test", "--input", `{"type":"quick_pay"}`},
+		{"payment-intents", "confirm", "pi_test", "--payment-method-id", "pm_test", "--input", `{"credential_type":"token","payment_source_token":"pm_card_visa"}`},
+		{"invoices", "create", "--order-id", "ord_test", "--input", `{"type":"quick_pay"}`},
 	} {
 		app, stdout, _ := testApp(t, "")
 		argv = append(argv, "--idempotency-key", "saved-test-action-1", "--dry-run=client")

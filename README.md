@@ -144,8 +144,19 @@ the browser protocol for you.
 `payment-intents create --order` is removed. Use
 `orders payment-intents create ORDER_ID` for the order-scoped operation.
 Query filters use their field names, such as `orders list --customer-id` and
-`refunds list --order-id` or `--payment-intent-id`. Existing body convenience flags
-keep their current names, including `--customer`, `--scope`, and `--payment-option`.
+`refunds list --order-id` or `--payment-intent-id`. Body flags use the schema field names: `--customer-id`, `--scopes`,
+`--payment-options`, `--enabled-events`, `--signing-methods`, `--order-id`,
+`--payment-intent-id`, `--parent-organization-id`, `--payment-method-id`,
+and `invoices late-fees waive --reason-message`.
+
+Every top-level scalar or scalar array has a flag. Repeat array flags or separate
+values with commas. Use `--input` for objects and object arrays. Nested money,
+quick-pay, payment-link item, and confirmation-token shortcuts remain available.
+Boolean flags accept `--tax-exempt`, `--tax-exempt=false`, or `--tax-exempt false`.
+Nullable fields accept `null` to clear; use `--input` for the string "null".
+Body times accept RFC3339, reporting-timezone dates, `now`, `+14d`, or `-2h`.
+Unsigned relative body times are rejected; query durations still mean the past.
+Help and `schema commands --output json` list allowed values and required fields.
 MCP operation IDs use these same dotted command names; typed tool names replace
 every dot and hyphen with an underscore.
 
@@ -183,7 +194,7 @@ Commands with convenience flags can create a resource directly. Other commands t
 Writes that require an idempotency key, such as `flint refunds create` and `flint orders pay`, require `--idempotency-key KEY`, including with `--dry-run=client`. Save the key with the action before the first command and reuse it on retry. For writes with an optional key, the CLI generates a `flint-cli-…` key and reuses it across its own retries. Operations that take no key send none. The API never generates keys.
 
 ```sh
-flint payment-intents create --amount 2500 --currency USD --payment-option card --idempotency-key quickstart-pi-1
+flint payment-intents create --amount 2500 --currency USD --payment-options card --idempotency-key quickstart-pi-1
 ```
 
 Running the command again with the same key returns the same payment intent; change the key to create another.

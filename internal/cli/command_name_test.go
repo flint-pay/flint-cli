@@ -377,7 +377,7 @@ func TestGeneratedQueryFlagsAndCompatibilityBodyFlags(t *testing.T) {
 	registry := NewRegistry()
 	for _, tc := range []struct{ name, flag string }{
 		{"orders.list", "--customer-id"}, {"invoices.list", "--customer-id"}, {"payment-intents.list", "--customer-id"}, {"refunds.list", "--order-id"}, {"refunds.list", "--payment-intent-id"},
-		{"payment-intents.create", "--customer"}, {"payment-intents.create", "--payment-option"}, {"api-keys.create", "--scope"}, {"invoices.create", "--order"},
+		{"payment-intents.create", "--customer-id"}, {"payment-intents.create", "--payment-options"}, {"api-keys.create", "--scopes"}, {"invoices.create", "--order-id"},
 	} {
 		c, _ := registry.ByName(tc.name)
 		found := false

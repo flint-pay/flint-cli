@@ -107,7 +107,7 @@ func argumentValues(arg Arg, opts Options) []string {
 		return nil
 	}
 	values := opts.Raw[strings.TrimPrefix(arg.Flag, "--")]
-	if !arg.Repeat || arg.Query == "" {
+	if !arg.Repeat {
 		return values
 	}
 	out := []string{}
@@ -125,7 +125,7 @@ func validateArgumentValues(cmd *Command, opts *Options) *CLIError {
 			continue
 		}
 		for _, value := range argumentValues(arg, *opts) {
-			if slices.Contains(arg.Enum, value) {
+			if slices.Contains(arg.Enum, value) || arg.Nullable && value == "null" {
 				continue
 			}
 			suggestions := []string{}
@@ -191,7 +191,7 @@ func printArgumentHelp(w io.Writer, cmd *Command, arg Arg) {
 	value := argumentValueLabel(arg)
 	if arg.Repeat {
 		// Existing body shortcuts accept repeated flags until A4 adds comma input.
-		if arg.Query != "" {
+		if arg.Query != "" || arg.BodyPath != "" {
 			value += "[," + value + "...]"
 		}
 	}
@@ -199,6 +199,9 @@ func printArgumentHelp(w io.Writer, cmd *Command, arg Arg) {
 		label += " " + value
 	}
 	description := strings.TrimSpace(arg.Description)
+	if len(arg.RequiredFor) > 0 {
+		description += " (required for " + strings.Join(arg.RequiredFor, "|") + ")"
+	}
 	if arg.Required {
 		description += " (required)"
 	}

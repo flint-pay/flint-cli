@@ -26,6 +26,7 @@ func publicAPICommands() []*Command {
 			}
 			arguments := publicAPIArguments(path, operation)
 			overlay := publicOperationOverlays[operation.OperationID]
+			arguments = append(arguments, publicBodyArguments(operation, arguments)...)
 			arguments = append(arguments, overlay.Arguments...)
 			if operation.RequestBody != nil {
 				arguments = append(arguments, flag("input", "string", "", "", "JSON body: FILE.json, - for stdin, or inline JSON", false))

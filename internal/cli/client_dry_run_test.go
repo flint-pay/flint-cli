@@ -132,7 +132,7 @@ func TestClientDryRunRequiredKeyRequestNeverExchangesTokensOrExecutes(t *testing
 				t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "http://127.0.0.1:1/subject-token")
 				t.Setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "synthetic")
 			}
-			exit, result := runJSON(t, app, out, "refunds", "create", "--payment-intent", "pi_offline", "--refund-type", "full", "--idempotency-key", "offline-required-key", "--dry-run=client")
+			exit, result := runJSON(t, app, out, "refunds", "create", "--payment-intent-id", "pi_offline", "--refund-type", "full", "--idempotency-key", "offline-required-key", "--dry-run=client")
 			if exit != ExitOK || lookupPathValue(result, "data.path") != "/v1/refunds" || lookupPathValue(result, "data.headers.Idempotency-Key") != "offline-required-key" || lookupPathValue(result, "data.body.payment_intent_id") != "pi_offline" || lookupPathValue(result, "data.body.refund_type") != "full" {
 				t.Fatalf("exit=%d result=%v stderr=%s", exit, result, stderr)
 			}

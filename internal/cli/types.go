@@ -27,6 +27,9 @@ type BuildInfo struct {
 }
 
 type Arg struct {
+	Nullable          bool     `json:"nullable,omitempty"`
+	Variants          []string `json:"variants,omitempty"`
+	RequiredFor       []string `json:"required_for,omitempty"`
 	Name              string   `json:"name"`
 	Flag              string   `json:"flag,omitempty"`
 	Type              string   `json:"type"`
@@ -137,6 +140,7 @@ type Options struct {
 	Raw             map[string][]string
 	Positionals     []string
 
+	booleanFlags          map[string]bool
 	allowMissingProfile   bool
 	streamCommand         bool
 	outputFromEnvironment bool

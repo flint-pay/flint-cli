@@ -27,6 +27,20 @@ func resolveTime(value string, now time.Time, locations ...*time.Location) (stri
 	if len(locations) > 0 && locations[0] != nil {
 		location = locations[0]
 	}
+	if value == "now" {
+		return now.UTC().Format(time.RFC3339), nil
+	}
+	if strings.HasPrefix(value, "+") || strings.HasPrefix(value, "-") {
+		past, err := resolveTime(value[1:], now, location)
+		if err != nil {
+			return "", err
+		}
+		instant, _ := time.Parse(time.RFC3339, past)
+		if value[0] == '+' {
+			instant = now.Add(now.Sub(instant))
+		}
+		return instant.UTC().Format(time.RFC3339), nil
+	}
 	if calendarTime(value) {
 		local := now.In(location)
 		midnight := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, location)

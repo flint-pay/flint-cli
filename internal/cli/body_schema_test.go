@@ -383,10 +383,10 @@ func TestAPIKeyCreateAccessFlag(t *testing.T) {
 	}{
 		{"read only", []string{"--access", "read_only"}, ExitOK, map[string]any{"name": "ci", "access": "read_only"}},
 		{"full", []string{"--access", "full"}, ExitOK, map[string]any{"name": "ci", "access": "full"}},
-		{"restricted", []string{"--access", "restricted", "--scope", "customers.read"}, ExitOK, map[string]any{"name": "ci", "access": "restricted", "scopes": []any{"customers.read"}}},
+		{"restricted", []string{"--access", "restricted", "--scopes", "customers.read"}, ExitOK, map[string]any{"name": "ci", "access": "restricted", "scopes": []any{"customers.read"}}},
 		{"restricted without scope", []string{"--access", "restricted"}, ExitUsage, nil},
-		{"full with scope", []string{"--access", "full", "--scope", "customers.read"}, ExitUsage, nil},
-		{"scope implies restricted", []string{"--scope", "customers.read"}, ExitOK, map[string]any{"name": "ci", "access": "restricted", "scopes": []any{"customers.read"}}},
+		{"full with scope", []string{"--access", "full", "--scopes", "customers.read"}, ExitUsage, nil},
+		{"scope implies restricted", []string{"--scopes", "customers.read"}, ExitOK, map[string]any{"name": "ci", "access": "restricted", "scopes": []any{"customers.read"}}},
 		{"no access choice", nil, ExitUsage, nil},
 		{"unknown access", []string{"--access", "admin"}, ExitUsage, nil},
 		{"input keeps its access", []string{"--input", `{"access":"read_only"}`}, ExitOK, map[string]any{"name": "ci", "access": "read_only"}},
@@ -416,15 +416,15 @@ func TestAPIKeyAccessFlagsOnUpdateAndSandboxCommands(t *testing.T) {
 		code string
 		body map[string]any
 	}{
-		{"update scope implies restricted", []string{"api-keys", "update", "key_123", "--scope", "customers.read", "--expected-version", "3"}, ExitOK, "", map[string]any{"access": "restricted", "scopes": []any{"customers.read"}, "expected_version": float64(3)}},
+		{"update scope implies restricted", []string{"api-keys", "update", "key_123", "--scopes", "customers.read", "--expected-version", "3"}, ExitOK, "", map[string]any{"access": "restricted", "scopes": []any{"customers.read"}, "expected_version": float64(3)}},
 		{"update to read only", []string{"api-keys", "update", "key_123", "--access", "read_only", "--expected-version", "3"}, ExitOK, "", map[string]any{"access": "read_only", "expected_version": float64(3)}},
 		{"update name only", []string{"api-keys", "update", "key_123", "--name", "ci"}, ExitOK, "", map[string]any{"name": "ci"}},
-		{"update full with scope", []string{"api-keys", "update", "key_123", "--access", "full", "--scope", "customers.read", "--expected-version", "3"}, ExitUsage, "INVALID_REQUEST_BODY", nil},
+		{"update full with scope", []string{"api-keys", "update", "key_123", "--access", "full", "--scopes", "customers.read", "--expected-version", "3"}, ExitUsage, "INVALID_REQUEST_BODY", nil},
 		{"update input scopes without access", []string{"api-keys", "update", "key_123", "--input", `{"scopes":["customers.read"],"expected_version":3}`}, ExitUsage, "INVALID_REQUEST_BODY", nil},
-		{"test key scope implies restricted", []string{"sandboxes", "api-keys", "create", "test_123", "--name", "qa", "--scope", "customers.read"}, ExitOK, "", map[string]any{"name": "qa", "access": "restricted", "scopes": []any{"customers.read"}}},
+		{"test key scope implies restricted", []string{"sandboxes", "api-keys", "create", "test_123", "--name", "qa", "--scopes", "customers.read"}, ExitOK, "", map[string]any{"name": "qa", "access": "restricted", "scopes": []any{"customers.read"}}},
 		{"test key full", []string{"sandboxes", "api-keys", "create", "test_123", "--name", "qa", "--access", "full"}, ExitOK, "", map[string]any{"name": "qa", "access": "full"}},
 		{"test key without access", []string{"sandboxes", "api-keys", "create", "test_123", "--name", "qa"}, ExitUsage, "MISSING_REQUIRED_ARGUMENT", nil},
-		{"sandbox scope issues a restricted key", []string{"sandboxes", "create", "--name", "qa", "--scope", "customers.read", "--test-key-name", "qa key"}, ExitOK, "", map[string]any{"name": "qa", "issue_test_key": true, "access": "restricted", "scopes": []any{"customers.read"}, "test_key_name": "qa key"}},
+		{"sandbox scope issues a restricted key", []string{"sandboxes", "create", "--name", "qa", "--scopes", "customers.read", "--test-key-name", "qa key"}, ExitOK, "", map[string]any{"name": "qa", "issue_test_key": true, "access": "restricted", "scopes": []any{"customers.read"}, "test_key_name": "qa key"}},
 		{"sandbox read only key", []string{"sandboxes", "create", "--name", "qa", "--access", "read_only"}, ExitOK, "", map[string]any{"name": "qa", "issue_test_key": true, "access": "read_only"}},
 		{"sandbox without key", []string{"sandboxes", "create", "--name", "qa"}, ExitOK, "", map[string]any{"name": "qa"}},
 		{"sandbox key name without access", []string{"sandboxes", "create", "--name", "qa", "--test-key-name", "qa key"}, ExitUsage, "MISSING_REQUIRED_ARGUMENT", nil},

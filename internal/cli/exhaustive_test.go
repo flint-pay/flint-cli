@@ -822,7 +822,7 @@ func TestMachineModesNeverPromptEvenWithTTY(t *testing.T) {
 				"payment-intents", "create", "--idempotency-key", "saved-test-action-1",
 				"--amount", "2500",
 				"--currency", "USD",
-				"--payment-option", "card",
+				"--payment-options", "card",
 				"--live",
 				"--output", "json",
 			},
@@ -1540,7 +1540,7 @@ func minimalInvocation(t testing.TB, command *Command) []string {
 		argv = append(argv, argument.Flag, exhaustiveArgumentValues(argument)[0])
 	}
 	if command.CanonicalName == "payment-intents.create" {
-		return append(argv, "--amount", "2500", "--currency", "USD", "--payment-option", "card")
+		return append(argv, "--amount", "2500", "--currency", "USD", "--payment-options", "card")
 	}
 	// Required request fields that no required flag supplies come from a
 	// minimal body derived from the command's --input schema.

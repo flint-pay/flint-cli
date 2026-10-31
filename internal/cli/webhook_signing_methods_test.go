@@ -30,11 +30,11 @@ type signingMethodFamily struct {
 var signingMethodFamilies = []signingMethodFamily{
 	{
 		group: "webhook-endpoints", id: "whep_test", path: "/v1/webhook-endpoints", idField: "webhook_endpoint_id",
-		createArgs:       []string{"--url", "https://example.com/webhooks/flint", "--enabled-event", "payment_intent.succeeded"},
+		createArgs:       []string{"--url", "https://example.com/webhooks/flint", "--enabled-events", "payment_intent.succeeded"},
 		createMCP:        map[string]any{"url": "https://example.com/webhooks/flint", "enabled_events": []any{"payment_intent.succeeded"}},
 		secretFields:     []string{"secret"},
 		scalarUpdate:     []string{"--url", "https://example.com/new"},
-		versionedUpdate:  []string{"--enabled-event", "payment_intent.succeeded"},
+		versionedUpdate:  []string{"--enabled-events", "payment_intent.succeeded"},
 		emptyUpdateValid: true,
 	},
 	{
@@ -67,18 +67,18 @@ func testSigningMethodRequests(t *testing.T, family signingMethodFamily) {
 		wantExit            int
 	}{
 		{name: "create defaults on server", action: "create"},
-		{name: "create jwt", action: "create", flags: []string{"--signing-method", "jwt"}, wantMethods: []any{"jwt"}},
-		{name: "create hmac", action: "create", flags: []string{"--signing-method", "hmac"}, wantMethods: []any{"hmac"}},
-		{name: "create both", action: "create", flags: []string{"--signing-method", "jwt", "--signing-method", "hmac"}, wantMethods: []any{"jwt", "hmac"}},
-		{name: "invalid method", action: "create", flags: []string{"--signing-method", "rsa"}, wantExit: ExitUsage},
-		{name: "duplicate method", action: "create", flags: []string{"--signing-method", "jwt", "--signing-method", "jwt"}, wantExit: ExitUsage},
+		{name: "create jwt", action: "create", flags: []string{"--signing-methods", "jwt"}, wantMethods: []any{"jwt"}},
+		{name: "create hmac", action: "create", flags: []string{"--signing-methods", "hmac"}, wantMethods: []any{"hmac"}},
+		{name: "create both", action: "create", flags: []string{"--signing-methods", "jwt", "--signing-methods", "hmac"}, wantMethods: []any{"jwt", "hmac"}},
+		{name: "invalid method", action: "create", flags: []string{"--signing-methods", "rsa"}, wantExit: ExitUsage},
+		{name: "duplicate method", action: "create", flags: []string{"--signing-methods", "jwt", "--signing-methods", "jwt"}, wantExit: ExitUsage},
 		{name: "update scalar without version", action: "update", flags: family.scalarUpdate},
-		{name: "update signing without version", action: "update", flags: []string{"--signing-method", "jwt"}, wantExit: ExitUsage},
+		{name: "update signing without version", action: "update", flags: []string{"--signing-methods", "jwt"}, wantExit: ExitUsage},
 		{name: "update set or configuration without version", action: "update", flags: family.versionedUpdate, wantExit: ExitUsage},
-		{name: "update signing with version", action: "update", flags: []string{"--signing-method", "jwt", "--signing-method", "hmac", "--expected-version", "3"}, wantMethods: []any{"jwt", "hmac"}, wantVersion: true},
+		{name: "update signing with version", action: "update", flags: []string{"--signing-methods", "jwt", "--signing-methods", "hmac", "--expected-version", "3"}, wantMethods: []any{"jwt", "hmac"}, wantVersion: true},
 		{name: "update input without version", action: "update", input: `{"signing_methods":["jwt"]}`, wantExit: ExitUsage},
 		{name: "update input with version", action: "update", input: `{"signing_methods":["jwt"],"expected_version":3}`, wantMethods: []any{"jwt"}, wantVersion: true},
-		{name: "secret not issued", action: "update", flags: []string{"--signing-method", "hmac", "--expected-version", "3"}, wantMethods: []any{"hmac"}, wantVersion: true, wantExit: ExitAPI},
+		{name: "secret not issued", action: "update", flags: []string{"--signing-methods", "hmac", "--expected-version", "3"}, wantMethods: []any{"hmac"}, wantVersion: true, wantExit: ExitAPI},
 		{name: "empty set", action: "update", input: `{"signing_methods":[],"expected_version":3}`, wantExit: ExitUsage},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -298,12 +298,12 @@ func TestSigningHelpAndMCPDescriptions(t *testing.T) {
 		name  string
 		wants []string
 	}{
-		{"webhook-endpoints.create", []string{"--signing-method", "jwt (default, verify with Flint's public keys) or hmac (shared secret)", "--signing-method jwt"}},
-		{"webhook-endpoints.update", []string{"--signing-method", "--expected-version", "required with --enabled-event or --signing-method"}},
+		{"webhook-endpoints.create", []string{"--signing-methods", "jwt|hmac"}},
+		{"webhook-endpoints.update", []string{"--signing-methods", "--expected-version", "signing_methods"}},
 		{"webhook-endpoints.rotate-secret", []string{"--confirm"}},
 		{"listen", []string{"local HMAC listen secret", "regardless of endpoint signing methods", "JWT handlers need an HMAC path or a local test bypass"}},
-		{"delivery-rate-callbacks.create", []string{"--signing-method", "jwt (default, verify with Flint's public keys) or hmac (shared secret)", "--signing-method jwt"}},
-		{"delivery-rate-callbacks.update", []string{"--signing-method", "--expected-version", "required with --signing-method"}},
+		{"delivery-rate-callbacks.create", []string{"--signing-methods", "jwt|hmac"}},
+		{"delivery-rate-callbacks.update", []string{"--signing-methods", "--expected-version", "signing_methods"}},
 		{"delivery-rate-callbacks.rotate-secret", []string{"--confirm"}},
 	} {
 		app, out, errOut := testApp(t, "")

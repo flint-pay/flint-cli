@@ -148,7 +148,7 @@ func TestScopeKeyModesMixedRequirements(t *testing.T) {
 
 func TestScopeKeyModesStopGeneratedRequests(t *testing.T) {
 	for _, environment := range []string{"sandbox", "live"} {
-		for _, args := range [][]string{{"partner-apps", "list"}, {"sandboxes", "list"}, {"organizations", "create", "--name", "Scope test", "--parent-organization", "org_test"}, {"sandboxes", "api-keys", "create", "test_123"}} {
+		for _, args := range [][]string{{"partner-apps", "list"}, {"sandboxes", "list"}, {"organizations", "create", "--name", "Scope test", "--parent-organization-id", "org_test"}, {"sandboxes", "api-keys", "create", "test_123"}} {
 			t.Run(environment+"/"+strings.Join(args, "."), func(t *testing.T) {
 				targetRequests := 0
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

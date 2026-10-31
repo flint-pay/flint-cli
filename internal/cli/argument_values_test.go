@@ -71,7 +71,7 @@ func TestArgumentEnumValidationBeforeRequests(t *testing.T) {
 	for _, argv := range [][]string{
 		{"orders", "list", "--status", "opne"},
 		{"api-keys", "create", "--name", "review", "--access", "partial"},
-		{"api-keys", "create", "--name", "review", "--scope", "not.a.scope"},
+		{"api-keys", "create", "--name", "review", "--scopes", "not.a.scope"},
 		{"config", "set", "unknown", "value"},
 		{"support", "open", "--area", "unknown"},
 	} {
@@ -112,7 +112,7 @@ func TestArgumentValueHelpRendering(t *testing.T) {
 		}
 	}
 	var events bytes.Buffer
-	printArgumentHelp(&events, &Command{CanonicalName: "fixture"}, Arg{Name: "enabled_event", Flag: "--enabled-event", BodyPath: "enabled_events", Enum: listenEventTypes()})
+	printArgumentHelp(&events, &Command{CanonicalName: "fixture"}, Arg{Name: "enabled_event", Flag: "--enabled-events", BodyPath: "enabled_events", Enum: listenEventTypes()})
 	if !strings.Contains(events.String(), "see flint help events") {
 		t.Fatal(events.String())
 	}
