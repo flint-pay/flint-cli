@@ -169,6 +169,7 @@ func (a *App) printTreeRootHelp(all bool) {
 		{"FLINT_OIDC_SOURCE", "auto, none, token, token_file, github_actions, gitlab_ci, kubernetes; gcp/azure/aws unsupported"}, {"FLINT_OIDC_AUDIENCE", "OIDC audience; defaults to the API base URL origin"},
 		{"FLINT_OIDC_TOKEN", "OIDC JWT for workload identity exchange"}, {"FLINT_OIDC_TOKEN_FILE", "Flint OIDC token file; re-read on exchange"}, {"FLINT_OIDC_SCOPE", "Optional narrowing scopes for workload tokens"},
 		{"FLINT_BASE_URL", "API server for development; sign in with a separate profile"},
+		{"FLINT_COLOR", "auto, always, or never; overridden by --color"},
 	} {
 		fmt.Fprintf(a.Stdout, "  %-27s %s\n", line[0], line[1])
 	}

@@ -102,7 +102,7 @@ func TestConfigSafetyProfileSelectionAndListing(t *testing.T) {
 	out.Reset()
 	exit, result := runJSON(t, app, out, "config", "get")
 	profiles, ok := lookupPath(result, "data.profiles")
-	if exit != ExitOK || !ok || len(profiles.([]any)) != 2 || strings.Contains(out.String(), "credential") {
+	if exit != ExitOK || !ok || len(profiles.([]any)) != 2 || strings.Contains(out.String(), "flint_test_") || strings.Contains(out.String(), `"credential_store"`) {
 		t.Fatal(result)
 	}
 	out.Reset()

@@ -71,6 +71,7 @@ type ResolvedConfig struct {
 	GlobalConfigPath  string            `json:"global_config_path"`
 	Sources           map[string]string `json:"sources"`
 	Profiles          []map[string]any  `json:"profiles"`
+	CLI               *cliIdentity      `json:"cli,omitempty"`
 }
 
 func (a *App) configDirectory() (string, error) {

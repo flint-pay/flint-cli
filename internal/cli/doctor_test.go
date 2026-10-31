@@ -41,13 +41,15 @@ func TestDoctorRejectedCredential(t *testing.T) {
 				}
 				if output == "json" {
 					var result struct {
-						Data []map[string]any `json:"data"`
+						Data struct {
+							Checks []map[string]any `json:"checks"`
+						} `json:"data"`
 					}
 					if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 						t.Fatal(err)
 					}
 					found := false
-					for _, check := range result.Data {
+					for _, check := range result.Data.Checks {
 						if check["name"] == "authentication" && check["status"] == "fail" {
 							found = true
 						}

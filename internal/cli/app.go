@@ -156,7 +156,7 @@ func (a *App) Run(argv []string) int {
 		}
 	}
 	if cmd.CanonicalName == "auth.status" {
-		if e := a.writeResult(map[string]any{"data": authEnvelope.Data, "request_id": authEnvelope.RequestID, "meta": authEnvelope.Meta}, cmd, opts); e != nil {
+		if e := a.writeResult(map[string]any{"data": authStatusData{AuthContext: authEnvelope.Data, CLI: a.identityInfo(resolved, baseURL, a.identityCredentialSource(resolved, authEnvelope.Data))}, "request_id": authEnvelope.RequestID, "meta": authEnvelope.Meta}, cmd, opts); e != nil {
 			return a.fail(e, opts)
 		}
 		return ExitOK

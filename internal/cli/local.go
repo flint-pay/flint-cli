@@ -83,6 +83,26 @@ func (a *App) localConfigGet(cmd *Command, opts Options) int {
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
 	}
+	// Config inspection stays useful if a saved store is unavailable. Resolve
+	// its server when readable, without making an API request.
+	raw, source, credentialErr := a.resolveCheckCredential(resolved.ProfileName)
+	baseURL := ""
+	if credentialErr != nil {
+		source = "unavailable"
+	}
+	if source == "" {
+		source = "none"
+	}
+	if isOAuthCredential(raw) {
+		if credential, e := decodeOAuthCredential(raw); e == nil {
+			source = "oauth_session"
+			if a.BaseURL == "" && strings.TrimSpace(os.Getenv("FLINT_BASE_URL")) == "" {
+				baseURL = credential.BaseURL
+			}
+		}
+	}
+	info := a.identityInfo(resolved, baseURL, source)
+	resolved.CLI = &info
 	return a.outputLocal(map[string]any{"data": resolved}, cmd, opts)
 }
 
@@ -750,14 +770,15 @@ func (a *App) localInit(cmd *Command, opts Options) int {
 }
 
 func (a *App) localDoctor(cmd *Command, opts Options) int {
-	checks, exit := a.doctorChecks(opts)
-	if outputErr := a.writeResult(map[string]any{"data": checks}, cmd, opts); outputErr != nil {
+	checks, exit, info := a.doctorChecks(opts)
+	if outputErr := a.writeResult(map[string]any{"data": map[string]any{"checks": checks, "cli": info}}, cmd, opts); outputErr != nil {
 		return a.fail(outputErr, opts)
 	}
 	return exit
 }
 
-func (a *App) doctorChecks(opts Options) (checks []map[string]any, exit int) {
+func (a *App) doctorChecks(opts Options) (checks []map[string]any, exit int, info cliIdentity) {
+	info = a.identityInfo(ResolvedConfig{ProfileName: opts.Profile}, "", "unavailable")
 	checks = []map[string]any{}
 	discoveryBaseURL := ""
 	defer func() {
@@ -767,7 +788,7 @@ func (a *App) doctorChecks(opts Options) (checks []map[string]any, exit int) {
 		changes, err := a.applyDoctorFixes()
 		if err != nil {
 			checks = append(checks, map[string]any{"name": "config_fix", "status": "fail", "fix": err.Error()})
-			return checks, ExitAuth
+			return checks, ExitAuth, info
 		}
 		for _, change := range changes {
 			checks = append(checks, map[string]any{"name": "config_fix", "status": "pass", "change": change})
@@ -776,27 +797,42 @@ func (a *App) doctorChecks(opts Options) (checks []map[string]any, exit int) {
 	resolved, _, err := a.resolveConfig(opts)
 	if err != nil {
 		checks = append(checks, map[string]any{"name": "config", "status": "fail", "fix": err.Error()})
-		return checks, ExitAuth
+		return checks, ExitAuth, info
 	}
+	info = a.identityInfo(resolved, "", a.identityCredentialSource(resolved, AuthContext{}))
 	checks = append(checks, map[string]any{"name": "config", "status": "pass", "profile": resolved.ProfileName})
 	key, source, err := a.resolveCheckCredential(resolved.ProfileName)
 	if err != nil {
+		info.CredentialSource = "unavailable"
 		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the credential.", err).Message})
-		return checks, ExitAuth
+		return checks, ExitAuth, info
+	}
+	info.CredentialSource = source
+	if source == "environment" {
+		info.CredentialSource = "environment_api_key"
+	}
+	if source == "" {
+		info.CredentialSource = "none"
+	}
+	if isOAuthCredential(key) {
+		info.CredentialSource = "oauth_session"
 	}
 	if key == "" {
 		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": missingCredentialMessage(resolved.ProfileName)})
-		return checks, ExitAuth
+		return checks, ExitAuth, info
 	}
 	checks = append(checks, map[string]any{"name": "credential", "status": "pass", "source": source, "note": "Credential found; API validation follows."})
 	ctx := withOAuthContext(a.commandContext(), resolved.ContextID)
 	_, baseURL, authResponse, e := a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, key, opts.Debug)
 	discoveryBaseURL = baseURL
+	if baseURL != "" {
+		info.APIBaseURL = baseURL
+	}
 	if e != nil {
 		switch e.Code {
 		case "CREDENTIAL_FORMAT_INVALID", "INVALID_CREDENTIAL", "INVALID_OAUTH_CREDENTIAL", "OAUTH_SERVER_MISMATCH", "CREDENTIAL_LOOKUP_FAILED", "KEYCHAIN_WRITE_FAILED", "OAUTH_REFRESH_FAILED", "OAUTH_SESSION_CHANGED":
 			checks = append(checks, map[string]any{"name": "authentication", "status": "fail", "fix": e.Message})
-			return checks, e.ExitCode
+			return checks, e.ExitCode, info
 		}
 		if e.ExitCode == ExitAuth {
 			fix := "Run flint login --profile " + resolved.ProfileName + " to sign in again (recommended), or flint auth import --profile " + resolved.ProfileName + " to replace the saved API key."
@@ -812,15 +848,16 @@ func (a *App) doctorChecks(opts Options) (checks []map[string]any, exit int) {
 				message = "API rejected the credential: " + e.Message
 			}
 			checks = append(checks, map[string]any{"name": "authentication", "status": "fail", "message": message, "fix": fix})
-			return checks, e.ExitCode
+			return checks, e.ExitCode, info
 		}
 		checks = append(checks, map[string]any{"name": "connectivity", "status": "fail", "fix": e.Message})
-		return checks, e.ExitCode
+		return checks, e.ExitCode, info
 	}
 	authContext := authResponse.Data
+	checks = append(checks, map[string]any{"name": "access", "status": "pass", "auth_type": authContext.AuthType, "value": authContext.Access})
 	if intentErr := validateResolvedCredentialIntent(authContext, opts, resolved, ""); intentErr != nil {
 		checks = append(checks, map[string]any{"name": "context_guard", "status": "fail", "fix": intentErr.Message})
-		return checks, intentErr.ExitCode
+		return checks, intentErr.ExitCode, info
 	}
 	checks = append(
 		checks,
@@ -832,9 +869,9 @@ func (a *App) doctorChecks(opts Options) (checks []map[string]any, exit int) {
 	scopeCheck := doctorScopeCheck(authContext)
 	checks = append(checks, scopeCheck)
 	if scopeCheck["status"] == "fail" {
-		return checks, ExitAuth
+		return checks, ExitAuth, info
 	}
-	return checks, ExitOK
+	return checks, ExitOK, info
 }
 
 func doctorScopeCheck(authContext AuthContext) map[string]any {
