@@ -284,6 +284,16 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	if o.CredentialStore != "" && o.CredentialStore != "keyring" && o.CredentialStore != "file" {
 		return usageError("INVALID_CREDENTIAL_STORE", "--credential-store or FLINT_CREDENTIAL_STORE must be keyring or file.", "credential-store")
 	}
+	for _, arg := range cmd.Arguments {
+		values := o.Raw[strings.TrimPrefix(arg.Flag, "--")]
+		if arg.BodyPath != "" && arg.Flag != "" && !arg.Repeat && len(values) > 1 {
+			for _, value := range values[1:] {
+				if value != values[0] {
+					return usageError("DUPLICATE_FLAG", "Give "+arg.Flag+" only once; conflicting values were provided.", arg.Name)
+				}
+			}
+		}
+	}
 	if err := validateArgumentValues(cmd, o); err != nil {
 		return err
 	}

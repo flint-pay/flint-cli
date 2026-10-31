@@ -10,7 +10,6 @@ type operationOverlay struct {
 	Render         string
 	Open           bool
 	Destructive    bool
-	Union          string
 	ReadOnly       bool
 	TerminalStates map[string]bool
 }
@@ -35,10 +34,10 @@ func operationOverlays() map[string]operationOverlay {
 		"createPaymentIntent":                  {Arguments: []Arg{flag("amount", "integer", "amount_money.amount", "", "Amount in the smallest currency unit", false), flag("currency", "string", "amount_money.currency", "", "Uppercase ISO 4217 currency code, such as USD", false), idFlag("customer", "cus_", "customer_id", "", "Customer ID", false), flag("capture_method", "string", "capture_method", "", "automatic or manual", false), {Name: "payment_option", Flag: "--payment-option", Type: "string", Repeat: true, BodyPath: "payment_options", Description: "Standalone payment option; repeat for multiple options"}, flag("transaction_purpose", "string", "transaction_purpose", "", "goods, services, or other; required for ach_debit", false)}, Examples: ex("flint payment-intents create --amount 2500 --currency USD --payment-option card")},
 		"getPaymentIntent":                     {Examples: ex("flint payment-intents get pi_123 --wait-for status=succeeded"), TerminalStates: map[string]bool{"succeeded": true, "canceled": true, "expired": true}},
 		"listPaymentIntents":                   {Examples: ex("flint payment-intents list --status succeeded")},
-		"confirmPaymentIntent":                 {Arguments: []Arg{flag("confirmation_token", "string", "stripe.confirmation_token", "", "Stripe confirmation token created with Stripe.js", false), flag("payment_source_token", "string", "payment_source_token", "", "Documented sandbox payment source token", false), idFlag("payment_method", "pm_", "payment_method_id", "", "Saved payment method ID", false)}, Examples: ex("flint payment-intents confirm pi_123 --confirmation-token ctoken_123"), Union: "credential"},
+		"confirmPaymentIntent":                 {Arguments: []Arg{flag("confirmation_token", "string", "stripe.confirmation_token", "", "Stripe confirmation token created with Stripe.js", false), flag("payment_source_token", "string", "payment_source_token", "", "Documented sandbox payment source token", false), idFlag("payment_method", "pm_", "payment_method_id", "", "Saved payment method ID", false)}, Examples: ex("flint payment-intents confirm pi_123 --confirmation-token ctoken_123")},
 		"capturePaymentIntent":                 {Arguments: []Arg{flag("amount", "integer", "amount_money.amount", "", "Optional capture amount", false), flag("currency", "string", "amount_money.currency", "", "Currency for capture amount", false)}, Examples: ex("flint payment-intents capture pi_123")},
 		"cancelPaymentIntent":                  {Arguments: []Arg{flag("cancellation_reason", "string", "cancellation_reason", "", "requested_by_customer, duplicate, fraudulent, or abandoned", false)}, Examples: ex("flint payment-intents cancel pi_123 --cancellation-reason abandoned --confirm"), Destructive: true},
-		"createCheckoutSession":                {Arguments: []Arg{flag("quick_pay_name", "string", "quick_pay_item.name", "", "Quick-pay item name", false), flag("amount", "integer", "quick_pay_item.amount_money.amount", "", "Amount in the smallest currency unit", false), flag("currency", "string", "quick_pay_item.amount_money.currency", "", "Uppercase ISO 4217 currency code, such as USD", false)}, Examples: ex("flint checkout-sessions create --quick-pay-name T-shirt --amount 2500 --currency USD --open"), Render: "checkout", Open: true, Union: "quick_pay"},
+		"createCheckoutSession":                {Arguments: []Arg{flag("quick_pay_name", "string", "quick_pay_item.name", "", "Quick-pay item name", false), flag("amount", "integer", "quick_pay_item.amount_money.amount", "", "Amount in the smallest currency unit", false), flag("currency", "string", "quick_pay_item.amount_money.currency", "", "Uppercase ISO 4217 currency code, such as USD", false)}, Examples: ex("flint checkout-sessions create --quick-pay-name T-shirt --amount 2500 --currency USD --open"), Render: "checkout", Open: true},
 		"getCheckoutSession":                   {Examples: ex("flint checkout-sessions get cs_123"), TerminalStates: map[string]bool{"paid": true, "expired": true, "closed": true, "invalidated": true}},
 		"listCheckoutSessions":                 {Examples: ex("flint checkout-sessions list --page-size 25")},
 		"createRefund":                         {Arguments: []Arg{idFlag("payment_intent", "pi_", "payment_intent_id", "", "Payment intent ID", false), idFlag("order", "ord_", "order_id", "", "Order ID", false), flag("amount", "integer", "amount_money.amount", "", "Refund amount in minor units", false), flag("currency", "string", "amount_money.currency", "", "Uppercase ISO 4217 currency code, such as USD", false), flag("refund_type", "string", "refund_type", "", "full, amount, or targets (required)", false), flag("reason", "string", "reason", "", "Optional refund reason", false)}, Examples: ex("flint refunds create --payment-intent pi_123 --refund-type amount --amount 1000 --currency USD --reason requested_by_customer")},
@@ -51,9 +50,9 @@ func operationOverlays() map[string]operationOverlay {
 		"lookupEmailPreferenceLink":            {Examples: ex("flint email-preference-links lookup --input -"), ReadOnly: true},
 		"unsubscribeEmailPreferenceLink":       {Examples: ex("flint email-preference-links unsubscribe --input -")},
 		"validateCustomDomain":                 {Examples: ex("flint custom-domains validate cdom_123")},
-		"createPaymentLink":                    {Arguments: []Arg{flag("name", "string", "name", "", "Payment link name", true), flag("item_name", "string", "line_items.0.name", "", "Item name", false), flag("amount", "integer", "line_items.0.unit_price_money.amount", "", "Item price in minor units", false), flag("currency", "string", "line_items.0.unit_price_money.currency", "", "Uppercase ISO 4217 currency code, such as USD", false)}, Examples: ex("flint payment-links create --name T-shirt --item-name T-shirt --amount 2500 --currency USD --open"), Render: "checkout", Open: true, Union: "line_items"},
+		"createPaymentLink":                    {Arguments: []Arg{flag("name", "string", "name", "", "Payment link name", true), flag("item_name", "string", "line_items.0.name", "", "Item name", false), flag("amount", "integer", "line_items.0.unit_price_money.amount", "", "Item price in minor units", false), flag("currency", "string", "line_items.0.unit_price_money.currency", "", "Uppercase ISO 4217 currency code, such as USD", false)}, Examples: ex("flint payment-links create --name T-shirt --item-name T-shirt --amount 2500 --currency USD --open"), Render: "checkout", Open: true},
 		"listPaymentLinks":                     {Examples: ex("flint payment-links list --page-size 25")},
-		"createInvoice":                        {Arguments: []Arg{idFlag("order", "ord_", "order_id", "", "Order ID", false), flag("recipient_email", "string", "recipient_email", "", "Invoice recipient email", false)}, Examples: ex("flint invoices create --order ord_123 --recipient-email jane@example.com"), Union: "invoice"},
+		"createInvoice":                        {Arguments: []Arg{idFlag("order", "ord_", "order_id", "", "Order ID", false), flag("recipient_email", "string", "recipient_email", "", "Invoice recipient email", false)}, Examples: ex("flint invoices create --order ord_123 --recipient-email jane@example.com")},
 		"issueInvoice":                         {Arguments: []Arg{flag("delivery_mode", "string", "delivery_mode", "", "Invoice delivery mode", false)}, Examples: ex("flint invoices issue inv_123 --delivery-mode email")},
 		"getInvoice":                           {Examples: ex("flint invoices get inv_123")},
 		"createInvoiceLateFee":                 {Arguments: []Arg{idFlag("invoice_schedule_entry_id", "invse_", "invoice_schedule_entry_id", "", "Schedule entry ID for a scheduled invoice", false)}, Examples: ex("flint invoices late-fees create inv_123")},
@@ -78,11 +77,11 @@ func operationOverlays() map[string]operationOverlay {
 		"listAPIRequestLogs":                   {Examples: ex("flint api-request-logs list --status-bucket server_error"), Render: "request_log"},
 		"getResourceTimeline":                  {Examples: ex("flint resource-timelines get pi_123", "flint resource-timelines get @last.pi")},
 		"listSandboxes":                        {Examples: ex("flint sandboxes list --live")},
-		"createSandbox":                        {Arguments: []Arg{flag("name", "string", "name", "", "Sandbox name", true), apiKeyAccessFlag, apiKeyScopeFlag, flag("test_key_name", "string", "test_key_name", "", "Name for the sandbox's test key; with --access or --scope, the sandbox issues one", false)}, Examples: ex("flint sandboxes create --name qa-scenarios --live", "flint sandboxes create --name qa-scenarios --access restricted --scope customers.read --live"), Union: "api_key"},
+		"createSandbox":                        {Arguments: []Arg{flag("name", "string", "name", "", "Sandbox name", true), apiKeyAccessFlag, apiKeyScopeFlag, flag("test_key_name", "string", "test_key_name", "", "Name for the sandbox's test key; with --access or --scope, the sandbox issues one", false)}, Examples: ex("flint sandboxes create --name qa-scenarios --live", "flint sandboxes create --name qa-scenarios --issue-test-key true --access restricted --scope customers.read --live")},
 		"resetSandbox":                         {Examples: ex("flint sandboxes reset test_123 --live --confirm"), Destructive: true},
-		"createSandboxAPIKey":                  {Arguments: []Arg{flag("name", "string", "name", "", "Test key name", false), apiKeyAccessFlag, apiKeyScopeFlag}, Examples: ex("flint sandboxes api-keys create test_123 --name qa --scope customers.read --live", "flint sandboxes api-keys create test_123 --name qa --access read_only --live"), Union: "api_key"},
-		"createAPIKey":                         {Arguments: []Arg{flag("name", "string", "name", "", "API key name", true), apiKeyAccessFlag, apiKeyScopeFlag}, Examples: ex("flint api-keys create --name local-dev --scope payments.payment_intents.read", "flint api-keys create --name ci-readonly --access read_only"), Union: "api_key"},
-		"updateAPIKey":                         {Arguments: []Arg{flag("name", "string", "name", "", "API key name", false), apiKeyAccessFlag, apiKeyScopeFlag, flag("expected_version", "integer", "expected_version", "", "Update only if the key is still at this version; required with --access or --scope", false)}, Examples: ex("flint api-keys update key_123 --name ci", "flint api-keys update key_123 --scope customers.read --expected-version 3", "flint api-keys update key_123 --access read_only --expected-version 3"), Union: "api_key"},
+		"createSandboxAPIKey":                  {Arguments: []Arg{flag("name", "string", "name", "", "Test key name", false), apiKeyAccessFlag, apiKeyScopeFlag}, Examples: ex("flint sandboxes api-keys create test_123 --name qa --scope customers.read --live", "flint sandboxes api-keys create test_123 --name qa --access read_only --live")},
+		"createAPIKey":                         {Arguments: []Arg{flag("name", "string", "name", "", "API key name", true), apiKeyAccessFlag, apiKeyScopeFlag}, Examples: ex("flint api-keys create --name local-dev --scope payments.payment_intents.read", "flint api-keys create --name ci-readonly --access read_only")},
+		"updateAPIKey":                         {Arguments: []Arg{flag("name", "string", "name", "", "API key name", false), apiKeyAccessFlag, apiKeyScopeFlag, flag("expected_version", "integer", "expected_version", "", "Update only if the key is still at this version; required with --access or --scope", false)}, Examples: ex("flint api-keys update key_123 --name ci", "flint api-keys update key_123 --access restricted --scope customers.read --expected-version 3", "flint api-keys update key_123 --access read_only --expected-version 3")},
 		"listAPIKeys":                          {Examples: ex("flint api-keys list")},
 		"revokeAPIKey":                         {Arguments: []Arg{flag("expected_version", "integer", "expected_version", "", "Revoke only if the key is still at this version", false)}, Examples: ex("flint api-keys revoke key_123 --preview", "flint api-keys revoke key_123 --confirm"), Destructive: true},
 	}
@@ -90,6 +89,17 @@ func operationOverlays() map[string]operationOverlay {
 		var shortcuts []Arg
 		for _, arg := range overlay.Arguments {
 			if strings.Contains(arg.BodyPath, ".") || id == "payOrder" && arg.Name == "payment_source_token" {
+				switch id {
+				case "createPaymentLink":
+					arg.ShortcutTagPath = "line_items.0.type"
+					arg.ShortcutTagValue = "custom_fixed"
+				case "createCheckoutSession":
+					arg.ShortcutTagPath = "type"
+					arg.ShortcutTagValue = "quick_pay"
+				case "confirmPaymentIntent":
+					arg.ShortcutTagPath = "credential_type"
+					arg.ShortcutTagValue = "stripe_confirmation_token"
+				}
 				shortcuts = append(shortcuts, arg)
 			}
 		}

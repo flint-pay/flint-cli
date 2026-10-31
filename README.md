@@ -157,6 +157,20 @@ Nullable fields accept `null` to clear; use `--input` for the string "null".
 Body times accept RFC3339, reporting-timezone dates, `now`, `+14d`, or `-2h`.
 Unsigned relative body times are rejected; query durations still mean the past.
 Help and `schema commands --output json` list allowed values and required fields.
+
+Flags override `--input` field by field, including replacing complete arrays.
+Nested shortcuts override their field inside an object. Conflicting duplicate
+body flags and shortcuts below a scalar input value stop locally. Client dry runs
+list `overridden_fields`; `--debug` also prints each override.
+
+Variant-only flags infer an explicit schema discriminator: `api-keys create
+--scopes customers.read` selects restricted access, and `invoices create
+--order-id ord_123` selects the order type. A conflicting discriminator in
+`--input` is rejected. Non-discriminated unions require explicit choices:
+`api-keys update --scopes X` needs `--access restricted`, and `sandboxes create
+--scopes X` needs both `--access restricted` and `--issue-test-key true`.
+`payment-intents confirm` with no credential flag needs `--credential-type attached`.
+
 MCP operation IDs use these same dotted command names; typed tool names replace
 every dot and hyphen with an underscore.
 

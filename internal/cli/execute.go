@@ -84,6 +84,9 @@ func previewRequest(req preparedRequest, cmd *Command, authContext AuthContext, 
 	if authContext.AuthType == "none" {
 		data["environment"] = authContext.Environment
 	}
+	if len(req.OverriddenFields) > 0 {
+		data["overridden_fields"] = req.OverriddenFields
+	}
 	if len(req.Warnings) > 0 {
 		data["warnings"] = req.Warnings
 	}
