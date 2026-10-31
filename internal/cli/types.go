@@ -27,6 +27,7 @@ type BuildInfo struct {
 }
 
 type Arg struct {
+	ArrayEdit         string `json:"array_edit,omitempty"`
 	ShortcutTagPath   string `json:"shortcut_tag_path,omitempty"`
 	ShortcutTagValue  string `json:"shortcut_tag_value,omitempty"`
 	bodyGenerated     bool

@@ -173,6 +173,9 @@ func TestEveryHistoryReferenceArgumentResolvesAndMissingFails(t *testing.T) {
 	resolved := ResolvedConfig{ProfileName: "default", Environment: "sandbox"}
 	for _, command := range template.Registry.Commands {
 		for _, argument := range command.Arguments {
+			if argument.ArrayEdit != "" {
+				continue
+			}
 			if !argument.AcceptsHistoryRef {
 				continue
 			}

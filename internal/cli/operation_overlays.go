@@ -5,6 +5,7 @@ import "strings"
 // operationOverlay carries behavior by public operation ID, never a generated name.
 // Top-level body flags are generated; nested shortcuts remain CLI conveniences.
 type operationOverlay struct {
+	ArrayReads     map[string]arrayReadProjection
 	Arguments      []Arg
 	Examples       []string
 	Render         string
@@ -84,6 +85,11 @@ func operationOverlays() map[string]operationOverlay {
 		"updateAPIKey":                         {Arguments: []Arg{flag("name", "string", "name", "", "API key name", false), apiKeyAccessFlag, apiKeyScopeFlag, flag("expected_version", "integer", "expected_version", "", "Update only if the key is still at this version; required with --access or --scope", false)}, Examples: ex("flint api-keys update key_123 --name ci", "flint api-keys update key_123 --access restricted --scope customers.read --expected-version 3", "flint api-keys update key_123 --access read_only --expected-version 3")},
 		"listAPIKeys":                          {Examples: ex("flint api-keys list")},
 		"revokeAPIKey":                         {Arguments: []Arg{flag("expected_version", "integer", "expected_version", "", "Revoke only if the key is still at this version", false)}, Examples: ex("flint api-keys revoke key_123 --preview", "flint api-keys revoke key_123 --confirm"), Destructive: true},
+	}
+	for _, id := range []string{"updateProduct", "updateBundle"} {
+		overlay := overlays[id]
+		overlay.ArrayReads = map[string]arrayReadProjection{"category_handles": {Field: "categories", Item: "handle"}}
+		overlays[id] = overlay
 	}
 	for id, overlay := range overlays {
 		var shortcuts []Arg

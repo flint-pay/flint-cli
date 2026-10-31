@@ -174,6 +174,17 @@ Variant-only flags infer an explicit schema discriminator: `api-keys create
 MCP operation IDs use these same dotted command names; typed tool names replace
 every dot and hyphen with an underscore.
 
+For readable, version-guarded PATCH routes, scalar arrays also have `--add-FIELD`
+and `--remove-FIELD`, for example `webhook-endpoints update ID --add-enabled-events
+refund.succeeded`. They read the current list and version, merge values, and PATCH;
+a version conflict is retried once after a fresh read. Adding an existing value or
+removing an absent one sends no PATCH when nothing else changes. Omit
+`--expected-version` with these flags. Use replacement flags for client dry runs.
+
+`--enabled-events` and other plain array flags replace the whole list. Object
+arrays remain `--input` replacements. Add/remove flags are absent when the PATCH
+route has no GET at the same path.
+
 ## Use
 
 ```bash

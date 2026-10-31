@@ -16,7 +16,7 @@ func TestGeneratedBodyFlagsInventory(t *testing.T) {
 	for _, cmd := range registry.Commands {
 		paths := map[string]bool{}
 		for _, arg := range cmd.Arguments {
-			if arg.BodyPath == "" {
+			if arg.BodyPath == "" || arg.ArrayEdit != "" {
 				continue
 			}
 			if paths[arg.BodyPath] {
@@ -158,7 +158,7 @@ func TestGeneratedBodyFlagRoundTripMinimalRequests(t *testing.T) {
 			opts.DryRun = "client"
 			opts.IdempotencyKey = "body-roundtrip"
 			for _, arg := range cmd.Arguments {
-				if !generatedBodyArgument(arg) {
+				if !generatedBodyArgument(arg) || arg.ArrayEdit != "" {
 					continue
 				}
 				value, exists := body[arg.BodyPath]

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os/exec"
@@ -52,7 +53,27 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 	if opts.All || opts.Limit > 0 || opts.Output == "ndjson" {
 		return a.executeAllPages(ctx, cmd, opts, req, key, baseURL)
 	}
+	if req.ArrayEditNoop {
+		return req.ArrayEditValue, nil
+	}
 	resp, e := a.doRequestWithin(ctx, opts.Timeout, baseURL, key, req.Method, req.Path, req.Body, req.IdempotencyKey, opts.Debug)
+	if e != nil && e.Code == "VERSION_CONFLICT" && hasArrayEdits(cmd, opts) {
+		retryOpts := opts
+		if opts.Input != "" {
+			input, _ := json.Marshal(req.OriginalInput)
+			retryOpts.Input = string(input)
+		}
+		retryOpts.IdempotencyKey = "" // The new version changes the body, so it needs a fresh replay key.
+		req, e = a.prepareRequest(ctx, cmd, retryOpts, resolved, key, baseURL)
+		if e != nil {
+			return nil, e
+		}
+		if req.ArrayEditNoop {
+			return req.ArrayEditValue, nil
+		}
+		resp, e = a.doRequestWithin(ctx, opts.Timeout, baseURL, key, req.Method, req.Path, req.Body, req.IdempotencyKey, opts.Debug)
+	}
+
 	if e != nil {
 		return nil, e
 	}

@@ -25,6 +25,9 @@ type preparedRequest struct {
 	IdempotencyKey   string
 	Warnings         []map[string]any
 	OverriddenFields []string
+	ArrayEditNoop    bool
+	ArrayEditValue   any
+	OriginalInput    map[string]any
 }
 
 // commandIdempotencyClass derives write safety from the vendored API contract.
@@ -96,10 +99,11 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		return req, inputErr
 	}
 	inputBody := deepCopyMap(body)
+	req.OriginalInput = inputBody
 	overridden := map[string]bool{}
 	for _, arg := range cmd.Arguments {
 		// Query arrays and their history references are normalized together below.
-		if arg.Query != "" {
+		if arg.Query != "" || arg.ArrayEdit != "" {
 			continue
 		}
 		var values []string
@@ -186,6 +190,9 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 		}
 	}
 
+	if e := a.prepareArrayEdits(ctx, cmd, opts, resolved, key, baseURL, body, &req); e != nil {
+		return req, e
+	}
 	for field := range overridden {
 		req.OverriddenFields = append(req.OverriddenFields, field)
 	}
