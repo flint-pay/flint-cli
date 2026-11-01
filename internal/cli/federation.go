@@ -229,9 +229,6 @@ func (c federationConfig) subjectToken(ctx context.Context) (string, *CLIError) 
 	case "token_file", "kubernetes":
 		path := c.File
 		if c.Source == "kubernetes" {
-			if os.Getenv("KUBERNETES_SERVICE_HOST") == "" {
-				return unavailable("KUBERNETES_SERVICE_HOST is required for a Kubernetes projected token.")
-			}
 			if path == "" {
 				path = "/var/run/secrets/flint/token"
 			}

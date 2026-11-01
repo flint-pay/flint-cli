@@ -230,25 +230,34 @@ func TestFederationSources(t *testing.T) {
 	if _, e := c.subjectToken(context.Background()); e != nil {
 		t.Fatal(e)
 	}
-	t.Setenv("GITLAB_CI", "")
+}
+
+func TestFederationKubernetesSelection(t *testing.T) {
+	app := federationApp(t, "https://api.example.test")
 	t.Setenv("FLINT_OIDC_TOKEN", "")
-	t.Setenv("FLINT_OIDC_SOURCE", "kubernetes")
-	c, e = app.federationConfig("https://api.example.test")
-	if e != nil {
-		t.Fatal(e)
-	}
-	if _, e = c.subjectToken(context.Background()); e == nil {
-		t.Fatal("kubernetes without marker accepted")
-	}
-	t.Setenv("KUBERNETES_SERVICE_HOST", "cluster.example")
-	path := filepath.Join(t.TempDir(), "projected")
-	if err := os.WriteFile(path, []byte("synthetic-projected-token"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	c.File = path
-	if token, e := c.subjectToken(context.Background()); e != nil || token != "synthetic-projected-token" {
-		t.Fatal(token, e)
-	}
+	t.Run("auto_without_marker", func(t *testing.T) {
+		t.Setenv("FLINT_OIDC_SOURCE", "auto")
+		c, e := app.federationConfig("https://api.example.test")
+		if c.Source != "auto" || e == nil || e.Code != "FEDERATION_SOURCE_UNAVAILABLE" || !strings.Contains(e.Message, "No source is available") {
+			t.Fatalf("auto selected a source without a marker: source=%s error=%v", c.Source, e)
+		}
+	})
+	t.Run("explicit_without_marker", func(t *testing.T) {
+		t.Setenv("FLINT_OIDC_SOURCE", "kubernetes")
+		path := filepath.Join(t.TempDir(), "projected")
+		token := subjectJWT("https://api.example.test", time.Now().Add(time.Hour), "synthetic-kubernetes-subject")
+		if err := os.WriteFile(path, []byte(token), 0600); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("FLINT_OIDC_TOKEN_FILE", path)
+		c, e := app.federationConfig("https://api.example.test")
+		if e != nil || c.Source != "kubernetes" {
+			t.Fatalf("explicit Kubernetes selection failed: source=%s error=%v", c.Source, e)
+		}
+		if got, e := c.subjectToken(context.Background()); e != nil || got != token {
+			t.Fatal("explicit Kubernetes did not read its projected token without a marker", e)
+		}
+	})
 }
 
 func TestFederationPrecedenceAndContexts(t *testing.T) {
