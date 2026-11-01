@@ -99,7 +99,7 @@ If `flint context list` reports that contexts are unavailable, your existing log
 
 For CI and containers, configure a Flint workload identity that trusts your platform's OIDC issuer, subject, and audience. Set the non-secret `FLINT_WORKLOAD_IDENTITY_ID` and `FLINT_NO_INPUT=1`. The CLI exchanges the platform token for a short-lived Flint access token, without saving credentials or using the OS keyring. The Flint server must support workload identity token exchange.
 
-For GitHub Actions, grant the job `permissions: id-token: write` and set `FLINT_WORKLOAD_IDENTITY_ID` in its environment. For GitLab CI, issue a token into `FLINT_OIDC_TOKEN`:
+For GitHub Actions, grant the job `permissions: id-token: write` and set `FLINT_WORKLOAD_IDENTITY_ID` in its environment, or use the [setup-flint](https://github.com/marketplace/actions/setup-flint) action, which installs the CLI and configures the identity. For GitLab CI, issue a token into `FLINT_OIDC_TOKEN`:
 
 ```yaml
 id_tokens:
