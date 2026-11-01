@@ -855,6 +855,9 @@ func TestSignupTransportTimeoutDoesNotIncludeHumanInputDelay(t *testing.T) {
 		case "/v1/onboarding/advance":
 			fmt.Fprint(w, `{"data":{"can_issue_api_key":true,"default_sandbox_id":"test_123"}}`)
 		case "/v1/sandboxes/test_123/api-keys":
+			if !signupKeyRequestValid(t, w, r) {
+				return
+			}
 			fmt.Fprint(w, `{"data":{"api_key_id":"key_123","merchant_id":"mer_123","sandbox_id":"test_123","secret_key":"flint_test_new"}}`)
 		default:
 			http.NotFound(w, r)
@@ -965,6 +968,9 @@ func signupCompensationTestServer(t *testing.T, revoked *bool) *httptest.Server 
 		case "/v1/onboarding/state":
 			fmt.Fprint(w, `{"data":{"can_issue_api_key":true,"default_sandbox_id":"test_123"}}`)
 		case "/v1/sandboxes/test_123/api-keys":
+			if !signupKeyRequestValid(t, w, r) {
+				return
+			}
 			fmt.Fprint(w, `{"data":{"api_key_id":"key_123","merchant_id":"mer_123","sandbox_id":"test_123","secret_key":"flint_test_new"}}`)
 		case "/v1/api-keys/key_123/revoke":
 			if r.Header.Get("Authorization") != "Bearer flint_test_new" || r.Header.Get("Idempotency-Key") == "" {

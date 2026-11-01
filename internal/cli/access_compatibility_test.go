@@ -98,6 +98,9 @@ func TestAccessCompatibilitySignupFallbackOnlyOn404(t *testing.T) {
 				if r.Method != "POST" || r.Header.Get("Authorization") != "Bearer synthetic-session" {
 					t.Error("wrong key issuance method or credential")
 				}
+				if !signupKeyRequestValid(t, w, r) {
+					return
+				}
 				paths = append(paths, r.URL.Path)
 				keys = append(keys, r.Header.Get("Idempotency-Key"))
 				var body map[string]any
@@ -114,10 +117,10 @@ func TestAccessCompatibilitySignupFallbackOnlyOn404(t *testing.T) {
 			})
 			exit, _ := runJSON(t, app, out, append(append([]string{}, signupFlowStartArgs...), "--verification-code", "123456", "--no-input")...)
 			wantPaths := []string{"/v1/sandboxes/test_new/api-keys"}
-			wantBodies := []map[string]any{{"access": "full"}}
+			wantBodies := []map[string]any{{"name": "Flint CLI", "access": "full"}}
 			if status == 404 {
 				wantPaths = append(wantPaths, "/v1/api-keys")
-				wantBodies = append(wantBodies, map[string]any{"access": "full", "sandbox_id": "test_new"})
+				wantBodies = append(wantBodies, map[string]any{"name": "Flint CLI", "access": "full", "sandbox_id": "test_new"})
 			}
 			if !reflect.DeepEqual(paths, wantPaths) || !reflect.DeepEqual(bodies, wantBodies) {
 				t.Fatalf("paths=%v bodies=%v", paths, bodies)

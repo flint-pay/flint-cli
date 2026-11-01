@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -32,6 +33,33 @@ func signupFlowApp(t *testing.T, handler http.HandlerFunc) (*App, *bytes.Buffer,
 
 var signupFlowStartArgs = []string{"signup", "--email", "dev@example.com", "--first-name", "Ada", "--last-name", "Lovelace"}
 
+// Match the API's required name and access fields before issuing a fixture key.
+func signupKeyRequestValid(t *testing.T, w http.ResponseWriter, r *http.Request) bool {
+	t.Helper()
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		t.Error(err)
+		return false
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	var fields map[string]any
+	if err := json.Unmarshal(body, &fields); err != nil {
+		t.Error(err)
+		return false
+	}
+	if fields["name"] == nil || fields["name"] == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, `{"error":{"code":"INVALID_REQUEST","message":"name is required","param":"name"}}`)
+		return false
+	}
+	if fields["name"] != "Flint CLI" || fields["access"] != "full" {
+		t.Errorf("unexpected signup key body: %#v", fields)
+		w.WriteHeader(http.StatusBadRequest)
+		return false
+	}
+	return true
+}
+
 func signupFlowSuccess(t *testing.T, w http.ResponseWriter, r *http.Request) {
 	t.Helper()
 	switch r.URL.Path {
@@ -49,6 +77,9 @@ func signupFlowSuccess(t *testing.T, w http.ResponseWriter, r *http.Request) {
 	case "/v1/onboarding/state":
 		fmt.Fprint(w, `{"data":{"can_issue_api_key":true,"default_sandbox_id":"test_new"}}`)
 	case "/v1/sandboxes/test_new/api-keys":
+		if !signupKeyRequestValid(t, w, r) {
+			return
+		}
 		fmt.Fprint(w, `{"data":{"api_key_id":"key_new","merchant_id":"mer_new","secret_key":"flint_test_synthetic_new"}}`)
 	case "/v1/auth-context":
 		fmt.Fprint(w, authContextJSON("sandbox"))

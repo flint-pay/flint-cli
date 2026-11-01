@@ -90,14 +90,14 @@ func (a *App) runSignup(opts Options) int {
 	}
 	// Mint explicitly in the default sandbox. Only an absent route permits the
 	// compatibility fallback; authentication and grant failures must stop signup.
-	keyBody, _ := json.Marshal(map[string]any{"access": "full"})
+	keyBody, _ := json.Marshal(map[string]any{"name": "Flint CLI", "access": "full"})
 	issueKey, err := newIdempotencyKey()
 	if err != nil {
 		return a.fail(networkError("IDEMPOTENCY_KEY_GENERATION_FAILED", "Could not generate an idempotency key.", err), opts)
 	}
 	created, e := a.doSignupRequest(baseURL, sessionToken, http.MethodPost, "/v1/sandboxes/"+url.PathEscape(sandboxID)+"/api-keys", keyBody, issueKey, opts)
 	if e != nil && e.HTTPStatus == http.StatusNotFound {
-		keyBody, _ = json.Marshal(map[string]any{"sandbox_id": sandboxID, "access": "full"})
+		keyBody, _ = json.Marshal(map[string]any{"name": "Flint CLI", "sandbox_id": sandboxID, "access": "full"})
 		created, e = a.doSignupRequest(baseURL, sessionToken, http.MethodPost, "/v1/api-keys", keyBody, issueKey, opts)
 	}
 	if e != nil {
