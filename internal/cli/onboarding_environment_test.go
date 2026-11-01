@@ -39,10 +39,10 @@ func TestSignupDrivesReadinessActions(t *testing.T) {
 			// create_api_key ends the loop even while can_issue_api_key lags.
 			fmt.Fprint(w, `{"data":{"can_issue_api_key":false,"default_sandbox_id":"test_new","next_step":{"action_type":"create_api_key","owner":"integrator","required_fields":["name"]}}}`)
 		case "/v1/sandboxes/test_new/api-keys":
+			signupFlowSuccess(t, w, r)
 			if err := json.NewDecoder(r.Body).Decode(&keyBody); err != nil {
 				t.Fatal(err)
 			}
-			signupFlowSuccess(t, w, r)
 		default:
 			signupFlowSuccess(t, w, r)
 		}
@@ -62,7 +62,7 @@ func TestSignupDrivesReadinessActions(t *testing.T) {
 	if !reflect.DeepEqual(advanceBodies, wantAdvance) {
 		t.Fatalf("advance bodies=%#v", advanceBodies)
 	}
-	if !reflect.DeepEqual(keyBody, map[string]any{"access": "full"}) {
+	if !reflect.DeepEqual(keyBody, map[string]any{"name": "Flint CLI", "access": "full"}) {
 		t.Fatalf("api-key body=%#v; the initial key explicitly requests full access", keyBody)
 	}
 }
