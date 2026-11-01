@@ -13,6 +13,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/endpointcreds"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
@@ -22,7 +23,7 @@ func gcpEnvironment() bool {
 }
 
 func azureEnvironment() bool {
-	return (os.Getenv("IDENTITY_ENDPOINT") != "" && os.Getenv("IDENTITY_HEADER") != "") || os.Getenv("AZURE_RESOURCE_ID") != ""
+	return os.Getenv("IDENTITY_ENDPOINT") != "" && os.Getenv("IDENTITY_HEADER") != ""
 }
 
 func awsEnvironment() bool {
@@ -55,25 +56,19 @@ func (c federationConfig) cloudSubjectToken(ctx context.Context) (string, *CLIEr
 	query := url.Values{}
 	switch c.Source {
 	case "gcp":
-		if !gcpEnvironment() {
-			return unavailable("GCP requires K_SERVICE, FUNCTION_TARGET, or GCE_METADATA_HOST. Run on Cloud Run, Cloud Functions, or a GCE workload with metadata identity access.")
-		}
 		endpoint = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity"
 		header, value = "Metadata-Flavor", "Google"
 		query.Set("audience", c.Audience)
 		query.Set("format", "full")
 	case "azure":
-		if !azureEnvironment() {
-			return unavailable("Azure requires IDENTITY_ENDPOINT and IDENTITY_HEADER on App Service or Container Apps, or AZURE_RESOURCE_ID for IMDS on an Azure VM. Enable a managed identity.")
-		}
 		if strings.TrimSpace(os.Getenv("FLINT_OIDC_AUDIENCE")) == "" {
 			return unavailable("Set FLINT_OIDC_AUDIENCE to your Entra app ID URI for Azure managed identity tokens.")
 		}
 		endpoint = os.Getenv("IDENTITY_ENDPOINT")
+		if (endpoint == "") != (os.Getenv("IDENTITY_HEADER") == "") {
+			return unavailable("Azure requires IDENTITY_ENDPOINT and IDENTITY_HEADER together. Enable the App Service or Container Apps managed identity, or unset both to use VM IMDS.")
+		}
 		if endpoint != "" {
-			if os.Getenv("IDENTITY_HEADER") == "" {
-				return unavailable("Azure IDENTITY_HEADER is missing. Enable the App Service or Container Apps managed identity.")
-			}
 			header, value = "X-IDENTITY-HEADER", os.Getenv("IDENTITY_HEADER")
 			query.Set("api-version", "2019-08-01")
 		} else {
@@ -86,11 +81,13 @@ func (c federationConfig) cloudSubjectToken(ctx context.Context) (string, *CLIEr
 			query.Set("client_id", id)
 		}
 	case "aws":
-		if !awsEnvironment() {
-			return unavailable("AWS requires Lambda or ECS execution markers (AWS_EXECUTION_ENV, AWS_LAMBDA_FUNCTION_NAME, or ECS_CONTAINER_METADATA_URI[_V4]). Run with an AWS workload role.")
-		}
 		cfg, err := awsconfig.LoadDefaultConfig(ctx,
 			awsconfig.WithHTTPClient(&client), awsconfig.WithRetryMaxAttempts(1),
+			// Unlike IMDS and service clients, endpointcreds does not inherit
+			// cfg.HTTPClient in this SDK version.
+			awsconfig.WithEndpointCredentialOptions(func(o *endpointcreds.Options) {
+				o.HTTPClient = &client
+			}),
 			awsconfig.WithWebIdentityRoleCredentialOptions(func(o *stscreds.WebIdentityRoleOptions) {
 				o.TokenRetriever = refusedAWSIdentityFile{}
 			}),

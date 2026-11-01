@@ -98,7 +98,7 @@ func (a *App) federationConfig(base string) (federationConfig, *CLIError) {
 			c.Source = "aws"
 		default:
 			c.Source = "auto"
-			return c, c.failure("FEDERATION_SOURCE_UNAVAILABLE", subjectClaims{}, "No source is available. Tried FLINT_OIDC_TOKEN, FLINT_OIDC_TOKEN_FILE, GitHub Actions (permissions: id-token: write), GitLab CI (id_tokens:), Kubernetes (KUBERNETES_SERVICE_HOST and a Flint projected token), GCP (K_SERVICE, FUNCTION_TARGET, or GCE_METADATA_HOST), Azure (IDENTITY_ENDPOINT with IDENTITY_HEADER, or AZURE_RESOURCE_ID for IMDS), and AWS (Lambda or ECS execution markers). Configure the platform environment or select a source explicitly.")
+			return c, c.failure("FEDERATION_SOURCE_UNAVAILABLE", subjectClaims{}, "No source is available. Tried FLINT_OIDC_TOKEN, FLINT_OIDC_TOKEN_FILE, GitHub Actions (permissions: id-token: write), GitLab CI (id_tokens:), Kubernetes (KUBERNETES_SERVICE_HOST and a Flint projected token), GCP (K_SERVICE, FUNCTION_TARGET, or GCE_METADATA_HOST), Azure (IDENTITY_ENDPOINT with IDENTITY_HEADER), and AWS (Lambda or ECS execution markers). Configure the platform environment. On VMs, set FLINT_OIDC_SOURCE explicitly to gcp, azure, or aws.")
 		}
 	}
 	switch c.Source {

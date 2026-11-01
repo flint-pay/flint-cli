@@ -56,8 +56,6 @@ func cloudTestMarker(t *testing.T, source string) {
 	case "azure":
 		t.Setenv("IDENTITY_ENDPOINT", "http://identity.example.test/token?existing=yes")
 		t.Setenv("IDENTITY_HEADER", "synthetic-identity-header")
-	case "azure_imds":
-		t.Setenv("AZURE_RESOURCE_ID", "/subscriptions/synthetic/resourceGroups/test/providers/Microsoft.Compute/virtualMachines/test")
 	case "aws":
 		t.Setenv("AWS_EXECUTION_ENV", "AWS_Lambda_go1.x")
 	}
@@ -141,7 +139,7 @@ func TestCloudFederationRequests(t *testing.T) {
 				t.Setenv("FLINT_AZURE_CLIENT_ID", "synthetic-user-identity")
 				cloudTestAWS(t)
 				cloudTestMarker(t, platform)
-				if result == "success_explicit" {
+				if platform == "azure_imds" || result == "success_explicit" {
 					t.Setenv("FLINT_OIDC_SOURCE", strings.Split(platform, "_")[0])
 				}
 				cloudTestHTTP(t, server)
@@ -180,19 +178,39 @@ func TestCloudSourceMarkers(t *testing.T) {
 	app := federationApp(t, "https://api.example.test")
 	t.Setenv("FLINT_OIDC_TOKEN", "")
 	cloudTestAWS(t)
+	t.Setenv("FLINT_OIDC_AUDIENCE", "https://api.example.test")
+	token := subjectJWT("https://api.example.test", time.Now().Add(time.Hour), "synthetic-explicit-subject")
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		switch r.Host {
+		case "metadata.google.internal":
+			fmt.Fprint(w, token)
+		case "169.254.169.254":
+			_ = json.NewEncoder(w).Encode(map[string]string{"access_token": token})
+		default:
+			fmt.Fprintf(w, `<GetWebIdentityTokenResponse><GetWebIdentityTokenResult><WebIdentityToken>%s</WebIdentityToken></GetWebIdentityTokenResult></GetWebIdentityTokenResponse>`, token)
+		}
+	}))
+	defer server.Close()
+	cloudTestHTTP(t, server)
 	for _, source := range []string{"gcp", "azure", "aws"} {
 		t.Run(source, func(t *testing.T) {
 			t.Setenv("FLINT_OIDC_SOURCE", "auto")
-			if _, e := app.federationConfig("https://api.example.test"); e == nil || !strings.Contains(e.Message, "No source is available") {
+			before := requests.Load()
+			if _, e := app.workloadToken(context.Background(), "https://api.example.test", ""); e == nil || !strings.Contains(e.Message, "No source is available") {
 				t.Fatal(e)
+			}
+			if requests.Load() != before {
+				t.Fatal("auto mode probed metadata without a marker")
 			}
 			t.Setenv("FLINT_OIDC_SOURCE", source)
 			c, e := app.federationConfig("https://api.example.test")
 			if e != nil {
 				t.Fatal(e)
 			}
-			if _, e = c.subjectToken(context.Background()); e == nil || e.Code != "FEDERATION_SOURCE_UNAVAILABLE" || !strings.Contains(e.Message, source) {
-				t.Fatal(e)
+			if got, e := c.subjectToken(context.Background()); e != nil || got != token {
+				t.Fatalf("explicit %s failed without a marker: %v", source, e)
 			}
 			cloudTestMarker(t, source)
 			t.Setenv("FLINT_OIDC_SOURCE", "auto")
@@ -209,7 +227,7 @@ func TestCloudSourceMarkers(t *testing.T) {
 		t.Fatal("foreign credentials selected a cloud source")
 	}
 	// Every documented marker selects its source, and the first source wins.
-	for _, pair := range [][2]string{{"GCE_METADATA_HOST", "gcp"}, {"FUNCTION_TARGET", "gcp"}, {"AZURE_RESOURCE_ID", "azure"}, {"AWS_LAMBDA_FUNCTION_NAME", "aws"}, {"ECS_CONTAINER_METADATA_URI", "aws"}, {"ECS_CONTAINER_METADATA_URI_V4", "aws"}} {
+	for _, pair := range [][2]string{{"GCE_METADATA_HOST", "gcp"}, {"FUNCTION_TARGET", "gcp"}, {"AWS_LAMBDA_FUNCTION_NAME", "aws"}, {"ECS_CONTAINER_METADATA_URI", "aws"}, {"ECS_CONTAINER_METADATA_URI_V4", "aws"}} {
 		t.Run(pair[0], func(t *testing.T) {
 			t.Setenv("IDENTITY_ENDPOINT", "")
 			t.Setenv(pair[0], "synthetic-marker")
@@ -284,6 +302,14 @@ func TestAzureConfigurationAndCloudCancellation(t *testing.T) {
 		t.Fatal(e)
 	}
 	t.Setenv("FLINT_OIDC_AUDIENCE", "api://synthetic-merchant")
+	for _, missing := range []string{"IDENTITY_ENDPOINT", "IDENTITY_HEADER"} {
+		t.Run("missing_"+missing, func(t *testing.T) {
+			t.Setenv(missing, "")
+			if _, e := c.subjectToken(context.Background()); e == nil || e.Code != "FEDERATION_SOURCE_UNAVAILABLE" || !strings.Contains(e.Message, "together") {
+				t.Fatal(e)
+			}
+		})
+	}
 	for _, endpoint := range []string{"http://user:synthetic-secret@identity.example.test", "file:///token", "http://identity.example.test/#synthetic-secret", "http://%"} {
 		t.Setenv("IDENTITY_ENDPOINT", endpoint)
 		if _, e = c.subjectToken(context.Background()); e == nil || e.Code != "FEDERATION_SOURCE_UNAVAILABLE" || strings.Contains(e.Message, "synthetic-secret") {
