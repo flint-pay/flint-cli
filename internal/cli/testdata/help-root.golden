@@ -97,8 +97,9 @@ Environment:
   FLINT_WEBHOOK_SECRET        Signing secret for flint listen
   FLINT_ACCESS_TOKEN          Access token; takes precedence over FLINT_API_KEY
   FLINT_WORKLOAD_IDENTITY_ID  Workload identity; overrides saved login and contexts
-  FLINT_OIDC_SOURCE           auto, none, token, token_file, github_actions, gitlab_ci, kubernetes; gcp/azure/aws unsupported
-  FLINT_OIDC_AUDIENCE         OIDC audience; defaults to the API base URL origin
+  FLINT_OIDC_SOURCE           auto, none, token, token_file, github_actions, gitlab_ci, kubernetes, gcp, azure, aws
+  FLINT_OIDC_AUDIENCE         OIDC audience; required Entra app ID URI for Azure, otherwise defaults to the API origin
+  FLINT_AZURE_CLIENT_ID       User-assigned Azure managed identity client ID
   FLINT_OIDC_TOKEN            OIDC JWT for workload identity exchange
   FLINT_OIDC_TOKEN_FILE       Flint OIDC token file; re-read on exchange
   FLINT_OIDC_SCOPE            Optional narrowing scopes for workload tokens
