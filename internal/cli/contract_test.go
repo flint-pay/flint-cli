@@ -1089,6 +1089,9 @@ func TestSignupIssuesScopedSandboxKeyAndStoresOnlyInCredentialStore(t *testing.T
 			}
 			fmt.Fprint(w, `{"data":{"can_issue_api_key":true,"default_sandbox_id":"test_123","next_step":{"code":"complete_verification_step"}}}`)
 		case "/v1/sandboxes/test_123/api-keys":
+			if !signupKeyRequestValid(t, w, r) {
+				return
+			}
 			var body struct {
 				Access    string          `json:"access"`
 				SandboxID json.RawMessage `json:"sandbox_id"`

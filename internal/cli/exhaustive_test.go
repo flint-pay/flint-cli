@@ -1478,6 +1478,9 @@ func testExhaustiveSignup(t *testing.T) {
 			}
 			fmt.Fprint(w, `{"data":{"can_issue_api_key":true,"default_sandbox_id":"test_test"}}`)
 		case "/v1/sandboxes/test_test/api-keys":
+			if !signupKeyRequestValid(t, w, request) {
+				return
+			}
 			fmt.Fprint(w, `{"data":{"api_key_id":"key_test","merchant_id":"mer_test","sandbox_id":"test_test","secret_key":"flint_test_created"}}`)
 		default:
 			t.Errorf("unexpected signup request: %s %s", request.Method, request.URL.Path)
