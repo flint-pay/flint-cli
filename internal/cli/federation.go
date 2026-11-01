@@ -77,7 +77,7 @@ func (a *App) federationConfig(base string) (federationConfig, *CLIError) {
 	}
 	c.File = strings.TrimSpace(os.Getenv("FLINT_OIDC_TOKEN_FILE"))
 	c.Endpoint = os.Getenv("ACTIONS_ID_TOKEN_REQUEST_URL")
-	c.TokenHash = sha256.Sum256([]byte(os.Getenv("FLINT_OIDC_TOKEN") + "\x00" + os.Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN")))
+	c.TokenHash = sha256.Sum256([]byte(os.Getenv("FLINT_OIDC_TOKEN") + "\x00" + os.Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN") + "\x00" + os.Getenv("IDENTITY_ENDPOINT") + "\x00" + os.Getenv("IDENTITY_HEADER") + "\x00" + os.Getenv("FLINT_AZURE_CLIENT_ID")))
 	if c.Source == "" || c.Source == "auto" {
 		switch {
 		case strings.TrimSpace(os.Getenv("FLINT_OIDC_TOKEN")) != "":
@@ -90,25 +90,23 @@ func (a *App) federationConfig(base string) (federationConfig, *CLIError) {
 			c.Source = "gitlab_ci"
 		case os.Getenv("KUBERNETES_SERVICE_HOST") != "":
 			c.Source = "kubernetes"
-		case os.Getenv("K_SERVICE") != "" || os.Getenv("GCE_METADATA_HOST") != "":
+		case gcpEnvironment():
 			c.Source = "gcp"
-		case os.Getenv("IDENTITY_ENDPOINT") != "" || os.Getenv("AZURE_CLIENT_ID") != "":
+		case azureEnvironment():
 			c.Source = "azure"
-		case os.Getenv("AWS_EXECUTION_ENV") != "" || os.Getenv("AWS_LAMBDA_FUNCTION_NAME") != "":
+		case awsEnvironment():
 			c.Source = "aws"
 		default:
 			c.Source = "auto"
-			return c, c.failure("FEDERATION_SOURCE_UNAVAILABLE", subjectClaims{}, "No source is available. Tried FLINT_OIDC_TOKEN, FLINT_OIDC_TOKEN_FILE, GitHub Actions (permissions: id-token: write), GitLab CI (id_tokens:), and Kubernetes (KUBERNETES_SERVICE_HOST and a Flint projected token). Configure a source explicitly.")
+			return c, c.failure("FEDERATION_SOURCE_UNAVAILABLE", subjectClaims{}, "No source is available. Tried FLINT_OIDC_TOKEN, FLINT_OIDC_TOKEN_FILE, GitHub Actions (permissions: id-token: write), GitLab CI (id_tokens:), Kubernetes (KUBERNETES_SERVICE_HOST and a Flint projected token), GCP (K_SERVICE, FUNCTION_TARGET, or GCE_METADATA_HOST), Azure (IDENTITY_ENDPOINT with IDENTITY_HEADER, or AZURE_RESOURCE_ID for IMDS), and AWS (Lambda or ECS execution markers). Configure the platform environment or select a source explicitly.")
 		}
 	}
 	switch c.Source {
-	case "token", "token_file", "github_actions", "gitlab_ci", "kubernetes":
-	case "gcp", "azure", "aws":
-		return c, c.failure("FEDERATION_SOURCE_UNAVAILABLE", subjectClaims{}, c.Source+" is not supported in this version.")
+	case "token", "token_file", "github_actions", "gitlab_ci", "kubernetes", "gcp", "azure", "aws":
 	case "none":
 		return c, c.failure("FEDERATION_SOURCE_UNAVAILABLE", subjectClaims{}, "FLINT_OIDC_SOURCE=none disables OIDC sources. Unset FLINT_WORKLOAD_IDENTITY_ID to use a saved login.")
 	default:
-		return c, c.failure("FEDERATION_SOURCE_UNAVAILABLE", subjectClaims{}, "Unknown FLINT_OIDC_SOURCE; use auto, none, token, token_file, github_actions, gitlab_ci, or kubernetes.")
+		return c, c.failure("FEDERATION_SOURCE_UNAVAILABLE", subjectClaims{}, "Unknown FLINT_OIDC_SOURCE; use auto, none, token, token_file, github_actions, gitlab_ci, kubernetes, gcp, azure, or aws.")
 	}
 	return c, nil
 }
@@ -218,6 +216,8 @@ func (c federationConfig) subjectToken(ctx context.Context) (string, *CLIError) 
 		return "", c.failure("FEDERATION_SOURCE_UNAVAILABLE", subjectClaims{}, message)
 	}
 	switch c.Source {
+	case "gcp", "azure", "aws":
+		return c.cloudSubjectToken(ctx)
 	case "token", "gitlab_ci":
 		if token := strings.TrimSpace(os.Getenv("FLINT_OIDC_TOKEN")); token != "" {
 			return token, nil

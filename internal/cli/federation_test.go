@@ -27,7 +27,7 @@ func subjectJWT(aud any, expiry time.Time, sub string) string {
 func federationApp(t *testing.T, base string) *App {
 	t.Helper()
 	app, _, _ := testApp(t, base)
-	for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_OIDC_TOKEN", "FLINT_OIDC_TOKEN_FILE", "FLINT_OIDC_SOURCE", "FLINT_OIDC_SCOPE", "FLINT_OIDC_AUDIENCE", "GITHUB_ACTIONS", "ACTIONS_ID_TOKEN_REQUEST_URL", "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "GITLAB_CI", "KUBERNETES_SERVICE_HOST", "K_SERVICE", "GCE_METADATA_HOST", "IDENTITY_ENDPOINT", "AZURE_CLIENT_ID", "AWS_EXECUTION_ENV", "AWS_LAMBDA_FUNCTION_NAME", "AWS_WEB_IDENTITY_TOKEN_FILE", "AZURE_FEDERATED_TOKEN_FILE"} {
+	for _, name := range []string{"FLINT_API_KEY", "FLINT_ACCESS_TOKEN", "FLINT_OIDC_TOKEN", "FLINT_OIDC_TOKEN_FILE", "FLINT_OIDC_SOURCE", "FLINT_OIDC_SCOPE", "FLINT_OIDC_AUDIENCE", "GITHUB_ACTIONS", "ACTIONS_ID_TOKEN_REQUEST_URL", "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "GITLAB_CI", "KUBERNETES_SERVICE_HOST", "K_SERVICE", "FUNCTION_TARGET", "GCE_METADATA_HOST", "IDENTITY_ENDPOINT", "IDENTITY_HEADER", "AZURE_RESOURCE_ID", "FLINT_AZURE_CLIENT_ID", "AZURE_CLIENT_ID", "ECS_CONTAINER_METADATA_URI", "ECS_CONTAINER_METADATA_URI_V4", "AWS_EXECUTION_ENV", "AWS_LAMBDA_FUNCTION_NAME", "AWS_WEB_IDENTITY_TOKEN_FILE", "AZURE_FEDERATED_TOKEN_FILE"} {
 		t.Setenv(name, "")
 	}
 	t.Setenv("FLINT_WORKLOAD_IDENTITY_ID", "wid_synthetic")
@@ -208,14 +208,11 @@ func TestFederationSources(t *testing.T) {
 	if e == nil || c.Audience != "https://api.example.test" {
 		t.Fatal("expected unavailable source and origin audience", e)
 	}
-	for _, source := range []string{"none", "gcp", "azure", "aws", "invalid"} {
+	for _, source := range []string{"none", "invalid"} {
 		t.Setenv("FLINT_OIDC_SOURCE", source)
 		_, e := app.federationConfig("https://api.example.test")
 		if e == nil || e.Code != "FEDERATION_SOURCE_UNAVAILABLE" {
 			t.Fatal(source, e)
-		}
-		if (source == "gcp" || source == "azure" || source == "aws") && !strings.Contains(e.Message, "not supported in this version") {
-			t.Fatal(e)
 		}
 	}
 	t.Setenv("FLINT_OIDC_SOURCE", "auto")
