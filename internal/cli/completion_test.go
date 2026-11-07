@@ -15,7 +15,7 @@ func TestCompletionTreeFlagsAndEnums(t *testing.T) {
 		want  []string
 		exact bool
 	}{
-		{[]string{"ord"}, []string{"orders"}, true},
+		{[]string{"ord"}, []string{"order-edit-previews", "orders"}, true},
 		{[]string{"orders", "dis"}, []string{"discounts"}, false},
 		{[]string{"webhook-endpoints", "update", "whep_test", "--add-ena"}, []string{"--add-enabled-events"}, true},
 		{[]string{"api-keys", "create", "--access", "r"}, []string{"read_only", "restricted"}, true},

@@ -155,7 +155,7 @@ func TestMCPInputValidationRealRefundVariants(t *testing.T) {
 	}
 	_, e = mcpValidateInputs(cmd, entry, map[string]any{"refund_type": "unknown", "order_id": "ord_fixture"}, map[string]any{"idempotency_key": "fixture"}, mcpPolicy{})
 	details = mcpValidationDetails(t, e)
-	if len(details) != 1 || details[0]["param"] != "refund_type" || !strings.Contains(fmt.Sprint(details[0]["message"]), "amount, full, targets") {
+	if len(details) != 1 || details[0]["param"] != "refund_type" || !strings.Contains(fmt.Sprint(details[0]["message"]), "amount, credit_note, full, targets") {
 		t.Fatalf("real unknown discriminator: %#v", details)
 	}
 }

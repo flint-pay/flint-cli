@@ -174,7 +174,6 @@ func TestMoneyOutPublishedIrreversiblePinned(t *testing.T) {
 	for _, item := range []struct{ name, id, path string }{
 		{"refunds.create", "createRefund", "/v1/refunds"},
 		{"payouts.create", "createPayout", "/v1/payouts"},
-		{"credit-notes.refunds.create", "createCreditNoteRefund", "/v1/credit-notes/{credit_note_id}/refunds"},
 		{"gift-cards.cash-out", "cashOutGiftCard", "/v1/gift-cards/{gift_card_id}/cash-out"},
 	} {
 		entry, found := index.Lookup(item.name)

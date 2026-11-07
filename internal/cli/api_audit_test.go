@@ -70,7 +70,7 @@ func TestAuditRefundRequiresAnExplicitMode(t *testing.T) {
 	app, stdout, _ := testApp(t, "")
 	args := []string{"refunds", "create", "--idempotency-key", "saved-test-action-1", "--payment-intent-id", "pi_test", "--dry-run=client"}
 	exit, result := runJSON(t, app, stdout, args...)
-	if code, _ := lookupPath(result, "error.code"); exit != ExitUsage || code != "INVALID_REQUEST_BODY" {
+	if code, _ := lookupPath(result, "error.code"); exit != ExitUsage || code != "AMBIGUOUS_VARIANT" {
 		t.Fatalf("exit=%d result=%v", exit, result)
 	}
 	for _, mode := range []string{"full", "amount"} {
@@ -81,6 +81,19 @@ func TestAuditRefundRequiresAnExplicitMode(t *testing.T) {
 		if exit, result := runJSON(t, app, stdout, argv...); exit != ExitOK {
 			t.Fatalf("%s exit=%d result=%v", mode, exit, result)
 		}
+	}
+}
+
+// Credit note refunds moved from credit-notes refunds create to a refund_type
+// variant of refunds create, so --credit-note-id alone selects that variant.
+func TestAuditCreditNoteRefundUsesRefundsCreate(t *testing.T) {
+	if _, ok := NewRegistry().ByName("credit-notes.refunds.create"); ok {
+		t.Fatal("credit-notes refunds create was removed from the public API")
+	}
+	app, stdout, _ := testApp(t, "")
+	args := []string{"refunds", "create", "--idempotency-key", "saved-test-action-2", "--credit-note-id", "cn_01ARZ3NDEKTSV4RRFFQ69G5FAV", "--dry-run=client"}
+	if exit, result := runJSON(t, app, stdout, args...); exit != ExitOK {
+		t.Fatalf("exit=%d result=%v", exit, result)
 	}
 }
 

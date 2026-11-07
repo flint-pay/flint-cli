@@ -367,6 +367,36 @@
   },
   {
     "method": "GET",
+    "path": "/v1/customers/{customer_id}/tax-exemptions",
+    "operation_id": "listCustomerTaxExemptions",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/tax-exemptions",
+    "operation_id": "createCustomerTaxExemption",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/customers/{customer_id}/tax-exemptions/{customer_tax_exemption_id}",
+    "operation_id": "deleteCustomerTaxExemption",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customers/{customer_id}/tax-exemptions/{customer_tax_exemption_id}",
+    "operation_id": "getCustomerTaxExemption",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/customers/{customer_id}/tax-exemptions/{customer_tax_exemption_id}",
+    "operation_id": "updateCustomerTaxExemption",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
     "path": "/v1/delivery-location-sets",
     "operation_id": "listDeliveryLocationSets",
     "classification": "resource"
@@ -519,12 +549,6 @@
     "method": "POST",
     "path": "/v1/delivery-rate-callbacks/{delivery_rate_callback_id}/test-deliveries",
     "operation_id": "createDeliveryRateCallbackTestDelivery",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/delivery-revocations",
-    "operation_id": "revokeDeliveryDependency",
     "classification": "resource"
   },
   {
@@ -820,8 +844,26 @@
   },
   {
     "method": "POST",
-    "path": "/v1/fulfillments/{fulfillment_id}/transitions",
-    "operation_id": "transitionFulfillment",
+    "path": "/v1/fulfillments/{fulfillment_id}/accept",
+    "operation_id": "acceptFulfillment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/cancel",
+    "operation_id": "cancelFulfillment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/complete",
+    "operation_id": "completeFulfillment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/dispatch",
+    "operation_id": "dispatchFulfillment",
     "classification": "resource"
   },
   {
@@ -832,8 +874,68 @@
   },
   {
     "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/fail",
+    "operation_id": "failFulfillment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/hold",
+    "operation_id": "holdFulfillment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/mark-no-show",
+    "operation_id": "markFulfillmentNoShow",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/mark-packed",
+    "operation_id": "markFulfillmentPacked",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/mark-picked",
+    "operation_id": "markFulfillmentPicked",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/mark-preparing",
+    "operation_id": "markFulfillmentPreparing",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/mark-ready",
+    "operation_id": "markFulfillmentReady",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/release-hold",
+    "operation_id": "releaseFulfillmentHold",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/schedule",
+    "operation_id": "scheduleFulfillment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
     "path": "/v1/fulfillments/{fulfillment_id}/shipments",
     "operation_id": "createShipment",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments/{fulfillment_id}/start",
+    "operation_id": "startFulfillment",
     "classification": "resource"
   },
   {
@@ -1270,6 +1372,12 @@
   },
   {
     "method": "GET",
+    "path": "/v1/me/orders/{order_id}/receipt-pdf",
+    "operation_id": "getMeOrderReceiptPDF",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
     "path": "/v1/me/packages",
     "operation_id": "listMePackages",
     "classification": "resource"
@@ -1350,6 +1458,12 @@
     "method": "POST",
     "path": "/v1/me/subscriptions/{subscription_id}/cancel",
     "operation_id": "cancelMeSubscription",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/change-plan",
+    "operation_id": "changeMeSubscriptionPlan",
     "classification": "resource"
   },
   {
@@ -1511,6 +1625,12 @@
     "classification": "resource"
   },
   {
+    "method": "POST",
+    "path": "/v1/order-edit-previews",
+    "operation_id": "createOrderEditPreview",
+    "classification": "resource"
+  },
+  {
     "method": "GET",
     "path": "/v1/orders",
     "operation_id": "listOrders",
@@ -1589,6 +1709,30 @@
     "classification": "resource"
   },
   {
+    "method": "GET",
+    "path": "/v1/orders/{order_id}/edits",
+    "operation_id": "listOrderEdits",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/edits",
+    "operation_id": "createOrderEdit",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders/{order_id}/edits/{order_edit_id}",
+    "operation_id": "getOrderEdit",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/orders/{order_id}/edits/{order_edit_id}/retry",
+    "operation_id": "retryOrderEditRefund",
+    "classification": "resource"
+  },
+  {
     "method": "POST",
     "path": "/v1/orders/{order_id}/fulfillments",
     "operation_id": "createFulfillment",
@@ -1596,7 +1740,7 @@
   },
   {
     "method": "POST",
-    "path": "/v1/orders/{order_id}/inventory-exception/resolve",
+    "path": "/v1/orders/{order_id}/resolve-inventory-exception",
     "operation_id": "resolveOrderInventoryException",
     "classification": "resource"
   },
@@ -1646,6 +1790,12 @@
     "method": "POST",
     "path": "/v1/orders/{order_id}/payment-intents",
     "operation_id": "createOrderPaymentIntent",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders/{order_id}/receipt-pdf",
+    "operation_id": "getOrderReceiptPDF",
     "classification": "resource"
   },
   {
@@ -1715,12 +1865,6 @@
     "classification": "resource"
   },
   {
-    "method": "POST",
-    "path": "/v1/packages/{package_id}/transitions",
-    "operation_id": "transitionPackage",
-    "classification": "resource"
-  },
-  {
     "method": "GET",
     "path": "/v1/packages/{package_id}/items",
     "operation_id": "listPackageItems",
@@ -1748,6 +1892,54 @@
     "method": "PATCH",
     "path": "/v1/packages/{package_id}/items/{package_item_id}",
     "operation_id": "updatePackageItem",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/packages/{package_id}/mark-delivered",
+    "operation_id": "markPackageDelivered",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/packages/{package_id}/mark-delivery-attempted",
+    "operation_id": "markPackageDeliveryAttempted",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/packages/{package_id}/mark-exception",
+    "operation_id": "markPackageException",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/packages/{package_id}/mark-in-transit",
+    "operation_id": "markPackageInTransit",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/packages/{package_id}/mark-out-for-delivery",
+    "operation_id": "markPackageOutForDelivery",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/packages/{package_id}/mark-packed",
+    "operation_id": "markPackagePacked",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/packages/{package_id}/mark-returned",
+    "operation_id": "markPackageReturned",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/packages/{package_id}/mark-shipped",
+    "operation_id": "markPackageShipped",
     "classification": "resource"
   },
   {
@@ -1928,6 +2120,66 @@
     "method": "POST",
     "path": "/v1/payouts/{payout_id}/cancel",
     "operation_id": "cancelPayout",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/price-lists",
+    "operation_id": "listPriceLists",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/price-lists",
+    "operation_id": "createPriceList",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/price-lists/{price_list_id}",
+    "operation_id": "deletePriceList",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/price-lists/{price_list_id}",
+    "operation_id": "getPriceList",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/price-lists/{price_list_id}",
+    "operation_id": "updatePriceList",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/price-lists/{price_list_id}/prices",
+    "operation_id": "listPriceListPrices",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/price-lists/{price_list_id}/prices",
+    "operation_id": "createPriceListPrices",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/price-lists/{price_list_id}/prices/{price_list_price_id}",
+    "operation_id": "deletePriceListPrice",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/price-lists/{price_list_id}/prices/{price_list_price_id}",
+    "operation_id": "getPriceListPrice",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/price-lists/{price_list_id}/prices/{price_list_price_id}",
+    "operation_id": "updatePriceListPrice",
     "classification": "resource"
   },
   {
@@ -2808,18 +3060,6 @@
   },
   {
     "method": "GET",
-    "path": "/v1/credit-notes/{credit_note_id}/refunds",
-    "operation_id": "listCreditNoteRefunds",
-    "classification": "resource"
-  },
-  {
-    "method": "POST",
-    "path": "/v1/credit-notes/{credit_note_id}/refunds",
-    "operation_id": "createCreditNoteRefund",
-    "classification": "resource"
-  },
-  {
-    "method": "GET",
     "path": "/v1/gift-card-loads",
     "operation_id": "listGiftCardLoads",
     "classification": "resource"
@@ -3565,6 +3805,12 @@
   },
   {
     "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/change-quantity",
+    "operation_id": "changeSubscriptionQuantity",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
     "path": "/v1/webhook-deliveries",
     "operation_id": "createWebhookDelivery",
     "classification": "resource"
@@ -3709,6 +3955,12 @@
   },
   {
     "method": "POST",
+    "path": "/v1/delivery-revocations",
+    "operation_id": "createDeliveryRevocation",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
     "path": "/v1/tax-connection/disconnect",
     "operation_id": "disconnectTaxConnection",
     "classification": "resource"
@@ -3747,6 +3999,24 @@
     "method": "POST",
     "path": "/v1/test-clocks/{test_clock_id}/advance",
     "operation_id": "advanceTestClock",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tickets",
+    "operation_id": "listTickets",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/tickets/lookup",
+    "operation_id": "lookupTicket",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tickets/{ticket_id}",
+    "operation_id": "getTicket",
     "classification": "resource"
   },
   {

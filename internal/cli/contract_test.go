@@ -145,14 +145,21 @@ func TestFulfillmentLifecycleResourcesHaveTypedCommands(t *testing.T) {
 
 	registry := NewRegistry()
 	for _, name := range []string{
-		"fulfillments.transitions.create",
+		"fulfillments.accept",
+		"fulfillments.start",
+		"fulfillments.mark-ready",
+		"fulfillments.complete",
+		"fulfillments.cancel",
 		"shipments.list",
 		"shipments.get",
 		"shipments.packages.create",
 		"shipments.void",
 		"packages.list",
 		"packages.get",
-		"packages.transitions.create",
+		"packages.mark-packed",
+		"packages.mark-shipped",
+		"packages.mark-in-transit",
+		"packages.mark-delivered",
 		"packages.items.list",
 		"packages.items.create",
 		"packages.void",

@@ -468,6 +468,10 @@ Unverified credentials follow live confirmation rules, without the verified-live
 
 Local commands are operations reached through read or write, including `version`, read-only `doctor`, `history`, `history.clear`, and sandbox-only `trigger`. Trigger waits are capped at 60 seconds. Agents cannot change credential stores, update config, or log out through MCP.
 
+## Migrating from 0.16.x
+
+0.17.0 refreshes the embedded public API snapshot. `fulfillments transitions create` and `packages transitions create` are replaced by one command per action, such as `fulfillments mark-ready` and `packages mark-shipped`; `credit-notes refunds create` and `credit-notes refunds list` are replaced by `refunds create --refund-type credit_note` and `refunds list --credit-note-id`; and `orders inventory-exception resolve` is now `orders resolve-inventory-exception`. See [the 0.17.0 migration notes](docs/migrating-0.17.md) for the full command list.
+
 ## Migrating from 0.14.x
 
 0.15.0 has two breaking redesigns. API commands and request flags now follow the API contract: 22 commands are renamed, seven aliases and the OAuth protocol commands are gone, 26 flags are renamed or removed to match their field names, and `--field`, `--select`, and `--wait-for` resolve inside the resource. Dates and calendar words such as `today` use the reporting timezone, and the terminal asks for confirmation by environment, so some sandbox commands now ask and some live commands no longer do. `flint mcp serve` exposes five discovery tools by default, with typed tools behind `--tools` and a new `--read-only` option. Project config keys are `merchant_id`, `sandbox_id`, and `context_id`, unknown config keys are errors, `flint doctor --output json` returns `data.checks`, and `flint listen` records `event_type` as an array. If `flint upgrade` fails on 0.14.x, run `npm install -g @flintpay/cli@latest` or `brew upgrade flint`. See [the 0.15.0 migration notes](docs/migrating-0.15.md) for each change with before and after forms.

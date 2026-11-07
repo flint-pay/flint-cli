@@ -10,12 +10,13 @@ import (
 
 func TestMCPTypedBudgetsAndContract(t *testing.T) {
 	app := discoveryFixture(t)
-	// 543 operations plus wait_for/wait_seconds controls and operation _meta,
-	// which the prototype omitted. Other typed and discovery budgets stay fixed.
+	// 591 typed tools (670 operations) plus wait_for/wait_seconds controls and
+	// operation _meta. The 2026-11 refresh added about 48 tools, so the all and
+	// orders caps grow in proportion; the per-tool cap stays fixed.
 	for _, scope := range []struct {
 		name   string
 		budget int
-	}{{"all", 780000}, {"orders", 50000}} {
+	}{{"all", 860000}, {"orders", 60000}} {
 		policy := app.mcpPolicy(mcpServeOptions(t, "--tools", scope.name))
 		tools, e := app.mcpAdvertisedTools(policy, latestMCPProtocolVersion)
 		if e != nil {
