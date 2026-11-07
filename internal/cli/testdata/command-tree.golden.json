@@ -414,20 +414,6 @@
     "audience": "merchant"
   },
   {
-    "name": "credit-notes.refunds.create",
-    "operation_id": "createCreditNoteRefund",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "credit-notes.refunds.list",
-    "operation_id": "listCreditNoteRefunds",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
     "name": "credit-notes.update",
     "operation_id": "updateCreditNote",
     "kind": "item",
@@ -620,6 +606,41 @@
     "name": "customers.sessions.revoke",
     "operation_id": "revokeCustomerSessions",
     "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "customers.tax-exemptions.create",
+    "operation_id": "createCustomerTaxExemption",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "customers.tax-exemptions.delete",
+    "operation_id": "deleteCustomerTaxExemption",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "customers.tax-exemptions.get",
+    "operation_id": "getCustomerTaxExemption",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "customers.tax-exemptions.list",
+    "operation_id": "listCustomerTaxExemptions",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "customers.tax-exemptions.update",
+    "operation_id": "updateCustomerTaxExemption",
+    "kind": "item",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -821,7 +842,7 @@
   },
   {
     "name": "delivery-revocations.create",
-    "operation_id": "revokeDeliveryDependency",
+    "operation_id": "createDeliveryRevocation",
     "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
@@ -1057,9 +1078,44 @@
     "audience": "merchant"
   },
   {
+    "name": "fulfillments.accept",
+    "operation_id": "acceptFulfillment",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "fulfillments.cancel",
+    "operation_id": "cancelFulfillment",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "fulfillments.complete",
+    "operation_id": "completeFulfillment",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "fulfillments.dispatch",
+    "operation_id": "dispatchFulfillment",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "fulfillments.events.create",
     "operation_id": "createFulfillmentEvent",
     "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "fulfillments.fail",
+    "operation_id": "failFulfillment",
+    "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -1071,9 +1127,65 @@
     "audience": "merchant"
   },
   {
+    "name": "fulfillments.hold",
+    "operation_id": "holdFulfillment",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "fulfillments.list",
     "operation_id": "listFulfillments",
     "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "fulfillments.mark-no-show",
+    "operation_id": "markFulfillmentNoShow",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "fulfillments.mark-packed",
+    "operation_id": "markFulfillmentPacked",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "fulfillments.mark-picked",
+    "operation_id": "markFulfillmentPicked",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "fulfillments.mark-preparing",
+    "operation_id": "markFulfillmentPreparing",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "fulfillments.mark-ready",
+    "operation_id": "markFulfillmentReady",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "fulfillments.release-hold",
+    "operation_id": "releaseFulfillmentHold",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "fulfillments.schedule",
+    "operation_id": "scheduleFulfillment",
+    "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -1085,9 +1197,9 @@
     "audience": "merchant"
   },
   {
-    "name": "fulfillments.transitions.create",
-    "operation_id": "transitionFulfillment",
-    "kind": "collection",
+    "name": "fulfillments.start",
+    "operation_id": "startFulfillment",
+    "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -2039,6 +2151,13 @@
     "audience": "buyer"
   },
   {
+    "name": "me.orders.receipt-pdf.get",
+    "operation_id": "getMeOrderReceiptPDF",
+    "kind": "singleton",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
     "name": "me.orders.send-receipt",
     "operation_id": "sendMeOrderReceipt",
     "kind": "action",
@@ -2195,6 +2314,13 @@
   {
     "name": "me.subscriptions.cancel",
     "operation_id": "cancelMeSubscription",
+    "kind": "action",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
+    "name": "me.subscriptions.change-plan",
+    "operation_id": "changeMeSubscriptionPlan",
     "kind": "action",
     "section": "buyer_session",
     "audience": "buyer"
@@ -2459,6 +2585,13 @@
     "audience": "keyless"
   },
   {
+    "name": "order-edit-previews.create",
+    "operation_id": "createOrderEditPreview",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "orders.access-links.create",
     "operation_id": "createOrderAccessLink",
     "kind": "collection",
@@ -2536,6 +2669,34 @@
     "audience": "merchant"
   },
   {
+    "name": "orders.edits.create",
+    "operation_id": "createOrderEdit",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "orders.edits.get",
+    "operation_id": "getOrderEdit",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "orders.edits.list",
+    "operation_id": "listOrderEdits",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "orders.edits.retry",
+    "operation_id": "retryOrderEditRefund",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "orders.fulfillments.create",
     "operation_id": "createFulfillment",
     "kind": "collection",
@@ -2560,13 +2721,6 @@
     "name": "orders.gift-cards.delete",
     "operation_id": "removeOrderGiftCard",
     "kind": "item",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "orders.inventory-exception.resolve",
-    "operation_id": "resolveOrderInventoryException",
-    "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -2630,6 +2784,20 @@
     "name": "orders.payment-intents.create",
     "operation_id": "createOrderPaymentIntent",
     "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "orders.receipt-pdf.get",
+    "operation_id": "getOrderReceiptPDF",
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "orders.resolve-inventory-exception",
+    "operation_id": "resolveOrderInventoryException",
+    "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -2753,9 +2921,58 @@
     "audience": "merchant"
   },
   {
-    "name": "packages.transitions.create",
-    "operation_id": "transitionPackage",
-    "kind": "collection",
+    "name": "packages.mark-delivered",
+    "operation_id": "markPackageDelivered",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "packages.mark-delivery-attempted",
+    "operation_id": "markPackageDeliveryAttempted",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "packages.mark-exception",
+    "operation_id": "markPackageException",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "packages.mark-in-transit",
+    "operation_id": "markPackageInTransit",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "packages.mark-out-for-delivery",
+    "operation_id": "markPackageOutForDelivery",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "packages.mark-packed",
+    "operation_id": "markPackagePacked",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "packages.mark-returned",
+    "operation_id": "markPackageReturned",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "packages.mark-shipped",
+    "operation_id": "markPackageShipped",
+    "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -3141,6 +3358,76 @@
     "name": "payouts.list",
     "operation_id": "listPayouts",
     "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "price-lists.create",
+    "operation_id": "createPriceList",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "price-lists.delete",
+    "operation_id": "deletePriceList",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "price-lists.get",
+    "operation_id": "getPriceList",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "price-lists.list",
+    "operation_id": "listPriceLists",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "price-lists.prices.create",
+    "operation_id": "createPriceListPrices",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "price-lists.prices.delete",
+    "operation_id": "deletePriceListPrice",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "price-lists.prices.get",
+    "operation_id": "getPriceListPrice",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "price-lists.prices.list",
+    "operation_id": "listPriceListPrices",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "price-lists.prices.update",
+    "operation_id": "updatePriceListPrice",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "price-lists.update",
+    "operation_id": "updatePriceList",
+    "kind": "item",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -4118,6 +4405,13 @@
     "audience": "merchant"
   },
   {
+    "name": "subscriptions.change-quantity",
+    "operation_id": "changeSubscriptionQuantity",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "subscriptions.create",
     "operation_id": "createSubscription",
     "kind": "collection",
@@ -4310,6 +4604,27 @@
     "operation_id": "listTestClocks",
     "kind": "collection",
     "section": "developer_tools",
+    "audience": "merchant"
+  },
+  {
+    "name": "tickets.get",
+    "operation_id": "getTicket",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "tickets.list",
+    "operation_id": "listTickets",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "tickets.lookup",
+    "operation_id": "lookupTicket",
+    "kind": "action",
+    "section": "merchant_resources",
     "audience": "merchant"
   },
   {

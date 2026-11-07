@@ -10,7 +10,7 @@ Arguments and flags:
   --partner-app-install-id pinst_ID      Links this key to a connected app's install. Revoking the install or its grant for this key's environment revokes the key. The install must be active and authorized for that environment. Set only at creation; it never changes. Omit for an unlinked key. Keys created by a linked key inherit its link. Each install can have up to 25 linked keys that have not been revoked per environment.
     Accepts @last.pinst for the most recent resource this profile created or changed.
   --scopes TEXT[,TEXT...]                The scopes to grant. Required only with access restricted; forbidden with full or read_only. (required for --access restricted)
-    96 values: flint schema command api-keys.create --output json
+    98 values: flint schema command api-keys.create --output json
     Repeat this flag for multiple values.
   --input TEXT                           JSON body: FILE.json, - for stdin, or inline JSON
 

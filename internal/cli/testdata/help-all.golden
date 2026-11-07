@@ -106,8 +106,6 @@ Merchant resources:
   flint credit-notes issue <credit_note_id>                         Issue credit note
   flint credit-notes list                                           List credit notes
   flint credit-notes pdf get <credit_note_id>                       Download credit note PDF
-  flint credit-notes refunds create <credit_note_id>                Refund credit note
-  flint credit-notes refunds list <credit_note_id>                  List credit note refunds
   flint credit-notes update <credit_note_id>                        Update credit note
   flint credit-notes void <credit_note_id>                          Void credit note
   flint custom-domains create                                       Create a custom domain
@@ -136,6 +134,11 @@ Merchant resources:
   flint customers link-guest-purchases <customer_id>                Link guest purchases to a customer
   flint customers list                                              List customers
   flint customers sessions revoke <customer_id>                     Revoke a customer's sessions
+  flint customers tax-exemptions create <customer_id>               Create a customer tax exemption
+  flint customers tax-exemptions delete <customer_id> <customer_tax_exemption_id> Archive a customer tax exemption
+  flint customers tax-exemptions get <customer_id> <customer_tax_exemption_id> Get a customer tax exemption
+  flint customers tax-exemptions list <customer_id>                 List customer tax exemptions
+  flint customers tax-exemptions update <customer_id> <customer_tax_exemption_id> Update a customer tax exemption
   flint customers update <customer_id>                              Update customer
   flint delivery-location-sets create                               Create delivery location set
   flint delivery-location-sets delete <delivery_location_set_id>    Delete delivery location set
@@ -164,7 +167,7 @@ Merchant resources:
   flint delivery-rate-callbacks rotate-secret <delivery_rate_callback_id> Rotate delivery rate callback signing key
   flint delivery-rate-callbacks test-deliveries create <delivery_rate_callback_id> Test delivery rate callback
   flint delivery-rate-callbacks update <delivery_rate_callback_id>  Update delivery rate callback
-  flint delivery-revocations create                                 Revoke delivery dependency
+  flint delivery-revocations create                                 Create delivery revocation
   flint delivery-revocations get <delivery_revocation_id>           Get delivery revocation
   flint delivery-revocations list                                   List delivery revocations
   flint delivery-zones create                                       Create delivery zone
@@ -195,11 +198,24 @@ Merchant resources:
   flint fulfillment-events list                                     List fulfillment events
   flint fulfillment-notifications get <fulfillment_notification_id> Get fulfillment notification
   flint fulfillment-notifications list                              List fulfillment notifications
+  flint fulfillments accept <fulfillment_id>                        Accept fulfillment
+  flint fulfillments cancel <fulfillment_id>                        Cancel fulfillment
+  flint fulfillments complete <fulfillment_id>                      Complete fulfillment
+  flint fulfillments dispatch <fulfillment_id>                      Dispatch fulfillment
   flint fulfillments events create <fulfillment_id>                 Create fulfillment event
+  flint fulfillments fail <fulfillment_id>                          Fail fulfillment
   flint fulfillments get <fulfillment_id>                           Get fulfillment
+  flint fulfillments hold <fulfillment_id>                          Hold fulfillment
   flint fulfillments list                                           List fulfillments
+  flint fulfillments mark-no-show <fulfillment_id>                  Mark fulfillment no show
+  flint fulfillments mark-packed <fulfillment_id>                   Mark fulfillment packed
+  flint fulfillments mark-picked <fulfillment_id>                   Mark fulfillment picked
+  flint fulfillments mark-preparing <fulfillment_id>                Mark fulfillment preparing
+  flint fulfillments mark-ready <fulfillment_id>                    Mark fulfillment ready
+  flint fulfillments release-hold <fulfillment_id>                  Release fulfillment hold
+  flint fulfillments schedule <fulfillment_id>                      Schedule fulfillment
   flint fulfillments shipments create <fulfillment_id>              Create shipment
-  flint fulfillments transitions create <fulfillment_id>            Transition fulfillment
+  flint fulfillments start <fulfillment_id>                         Start fulfillment
   flint fulfillments update <fulfillment_id>                        Update fulfillment
   flint gift-card-funding-dispositions create                       Create a gift card funding disposition
   flint gift-card-funding-dispositions get <gift_card_funding_disposition_id> Get a gift card funding disposition
@@ -323,6 +339,7 @@ Merchant resources:
   flint onboarding start                                            Start onboarding flow
   flint onboarding state get                                        Get onboarding state
   flint onboarding verify-email                                     Verify onboarding email
+  flint order-edit-previews create                                  Create order edit preview
   flint orders access-links create <order_id>                       Create an order access link
   flint orders activities list <order_id>                           List order activities
   flint orders charges create <order_id>                            Add order charge
@@ -334,11 +351,14 @@ Merchant resources:
   flint orders discounts create <order_id>                          Apply discount
   flint orders discounts remove <order_id>                          Remove discounts
   flint orders discounts reprice <order_id>                         Reprice discounts
+  flint orders edits create <order_id>                              Create order edit
+  flint orders edits get <order_id> <order_edit_id>                 Get order edit
+  flint orders edits list <order_id>                                List order edits
+  flint orders edits retry <order_id> <order_edit_id>               Retry order edit refund
   flint orders fulfillments create <order_id>                       Create fulfillment
   flint orders get <order_id>                                       Get order
   flint orders gift-cards create <order_id>                         Apply a gift card to an order
   flint orders gift-cards delete <order_id> <gift_card_id>          Remove a selected gift card
-  flint orders inventory-exception resolve <order_id>               Resolve order inventory exception
   flint orders line-items create <order_id>                         Add line items
   flint orders line-items delete <order_id> <order_line_item_id>    Delete line item
   flint orders line-items update <order_id> <order_line_item_id>    Update line item
@@ -348,6 +368,8 @@ Merchant resources:
   flint orders payment-attempts get <order_id> <order_payment_attempt_id> Get order payment attempt
   flint orders payment-attempts list <order_id>                     List order payment attempts
   flint orders payment-intents create <order_id>                    Create order payment intent
+  flint orders receipt-pdf get <order_id>                           Download order receipt PDF
+  flint orders resolve-inventory-exception <order_id>               Resolve order inventory exception
   flint orders send-receipt <order_id>                              Send an order receipt
   flint orders update <order_id>                                    Update order
   flint organizations create                                        Create organization
@@ -365,7 +387,14 @@ Merchant resources:
   flint packages items list <package_id>                            List package items
   flint packages items update <package_id> <package_item_id>        Update package item
   flint packages list                                               List packages
-  flint packages transitions create <package_id>                    Transition package
+  flint packages mark-delivered <package_id>                        Mark package delivered
+  flint packages mark-delivery-attempted <package_id>               Mark package delivery attempted
+  flint packages mark-exception <package_id>                        Mark package exception
+  flint packages mark-in-transit <package_id>                       Mark package in transit
+  flint packages mark-out-for-delivery <package_id>                 Mark package out for delivery
+  flint packages mark-packed <package_id>                           Mark package packed
+  flint packages mark-returned <package_id>                         Mark package returned
+  flint packages mark-shipped <package_id>                          Mark package shipped
   flint packages update <package_id>                                Update package
   flint packages void <package_id>                                  Void package
   flint payment-intents activities list <payment_intent_id>         List payment intent activities
@@ -405,6 +434,16 @@ Merchant resources:
   flint payouts create                                              Create a payout
   flint payouts get <payout_id>                                     Get a payout
   flint payouts list                                                List payouts
+  flint price-lists create                                          Create price list
+  flint price-lists delete <price_list_id>                          Archive price list
+  flint price-lists get <price_list_id>                             Get price list
+  flint price-lists list                                            List price lists
+  flint price-lists prices create <price_list_id>                   Add price list prices
+  flint price-lists prices delete <price_list_id> <price_list_price_id> Remove price list price
+  flint price-lists prices get <price_list_id> <price_list_price_id> Get price list price
+  flint price-lists prices list <price_list_id>                     List price list prices
+  flint price-lists prices update <price_list_id> <price_list_price_id> Update price list price
+  flint price-lists update <price_list_id>                          Update price list
   flint products create                                             Create product
   flint products delete <product_id>                                Retire product
   flint products get <product_id>                                   Get product
@@ -537,6 +576,7 @@ Merchant resources:
   flint subscriptions access-links create <subscription_id>         Create a subscription access link
   flint subscriptions cancel <subscription_id>                      Cancel subscription
   flint subscriptions change-plan <subscription_id>                 Change subscription plan
+  flint subscriptions change-quantity <subscription_id>             Change subscription quantity
   flint subscriptions create                                        Create subscription
   flint subscriptions get <subscription_id>                         Get subscription
   flint subscriptions line-items create <subscription_id>           Add subscription line item
@@ -559,6 +599,9 @@ Merchant resources:
   flint tax-connection registrations get <tax_registration_id>      Get a tax registration
   flint tax-connection registrations list                           List tax registrations
   flint tax-connection registrations update <tax_registration_id>   Update a tax registration
+  flint tickets get <ticket_id>                                     Get a ticket
+  flint tickets list                                                List tickets
+  flint tickets lookup                                              Look up a ticket
   flint webhook-deliveries attempts list <webhook_delivery_id>      List webhook delivery attempts
   flint webhook-deliveries create                                   Create webhook delivery
   flint webhook-deliveries get <webhook_delivery_id>                Get webhook delivery
@@ -612,6 +655,7 @@ Buyer session (set FLINT_ACCESS_TOKEN to a customer session secret, flint_cses_.
   flint me orders activities list <order_id>                        List activity for one of the current buyer's orders
   flint me orders get <order_id>                                    Get one of the current buyer's orders
   flint me orders list                                              List the current buyer's orders
+  flint me orders receipt-pdf get <order_id>                        Download order receipt PDF
   flint me orders send-receipt <order_id>                           Send a receipt for one of the current buyer's orders
   flint me packages get <package_id>                                Get one of the current buyer's packages
   flint me packages list                                            List the current buyer's packages
@@ -635,6 +679,7 @@ Buyer session (set FLINT_ACCESS_TOKEN to a customer session secret, flint_cses_.
   flint me shipments list                                           List the current buyer's shipments
   flint me subscription-previews create                             Preview subscription
   flint me subscriptions cancel <subscription_id>                   Cancel one of the current buyer's subscriptions
+  flint me subscriptions change-plan <subscription_id>              Change subscription plan
   flint me subscriptions get <subscription_id>                      Get one of the current buyer's subscriptions
   flint me subscriptions line-items update <subscription_id> <subscription_line_item_id> Swap subscription variant
   flint me subscriptions list                                       List the current buyer's subscriptions

@@ -62,19 +62,20 @@ Merchant resources:
   locations                           merchant                            merchant-account-session-refreshes
   merchant-account-sessions           merchant-billing-balances           merchant-billing-entries
   merchant-billing-invoices           modifier-groups                     modifier-sets
-  onboarding                          orders                              organizations
-  packages                            payment-intents                     payment-links
-  payment-method-domains              payment-methods                     payment-reviews
-  payout-destinations                 payout-settings                     payouts
-  products                            promotion-codes                     promotions
-  refunds                             report-downloads                    reports
-  return-dispositions                 return-inspections                  return-policies
-  return-previews                     return-reasons                      return-receipts
-  return-resolutions                  returns                             risk-lists
-  risk-previews                       risk-rules                          sandboxes
-  settings                            shipments                           subscription-delivery-migrations
-  subscription-offers                 subscription-plans                  subscription-previews
-  subscriptions                       tax-connection                      webhook-deliveries
+  onboarding                          order-edit-previews                 orders
+  organizations                       packages                            payment-intents
+  payment-links                       payment-method-domains              payment-methods
+  payment-reviews                     payout-destinations                 payout-settings
+  payouts                             price-lists                         products
+  promotion-codes                     promotions                          refunds
+  report-downloads                    reports                             return-dispositions
+  return-inspections                  return-policies                     return-previews
+  return-reasons                      return-receipts                     return-resolutions
+  returns                             risk-lists                          risk-previews
+  risk-rules                          sandboxes                           settings
+  shipments                           subscription-delivery-migrations    subscription-offers
+  subscription-plans                  subscription-previews               subscriptions
+  tax-connection                      tickets                             webhook-deliveries
   webhook-endpoints                   webhook-event-types                 webhook-events
   workload-identities
 

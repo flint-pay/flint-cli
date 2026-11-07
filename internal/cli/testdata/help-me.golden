@@ -35,6 +35,7 @@ Commands:
   orders activities list <order_id>            List activity for one of the current buyer's orders (customer session secret) GET /v1/me/orders/{order_id}/activities
   orders get <order_id>                        Get one of the current buyer's orders (customer session secret) GET /v1/me/orders/{order_id}
   orders list                                  List the current buyer's orders (customer session secret) GET /v1/me/orders
+  orders receipt-pdf get <order_id>            Download order receipt PDF (customer session secret) GET /v1/me/orders/{order_id}/receipt-pdf
   orders send-receipt <order_id>               Send a receipt for one of the current buyer's orders (customer session secret) POST /v1/me/orders/{order_id}/send-receipt
   packages get <package_id>                    Get one of the current buyer's packages (customer session secret) GET /v1/me/packages/{package_id}
   packages list                                List the current buyer's packages (customer session secret) GET /v1/me/packages
@@ -58,6 +59,7 @@ Commands:
   shipments list                               List the current buyer's shipments (customer session secret) GET /v1/me/shipments
   subscription-previews create                 Preview subscription (customer session secret) POST /v1/me/subscription-previews
   subscriptions cancel <subscription_id>       Cancel one of the current buyer's subscriptions (customer session secret) POST /v1/me/subscriptions/{subscription_id}/cancel
+  subscriptions change-plan <subscription_id>  Change subscription plan (customer session secret) POST /v1/me/subscriptions/{subscription_id}/change-plan
   subscriptions get <subscription_id>          Get one of the current buyer's subscriptions (customer session secret) GET /v1/me/subscriptions/{subscription_id}
   subscriptions line-items update <subscription_id> <subscription_line_item_id> Swap subscription variant (customer session secret) PATCH /v1/me/subscriptions/{subscription_id}/line-items/{subscription_line_item_id}
   subscriptions list                           List the current buyer's subscriptions (customer session secret) GET /v1/me/subscriptions
