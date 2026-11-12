@@ -177,7 +177,7 @@ func TestMCPClientCanCancelInFlightListen(t *testing.T) {
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/auth-context" {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `{"data":{"auth_type":"api_key","api_key_id":"key_test","environment":"sandbox","merchant_id":"mer_test","sandbox_id":"test_test","scopes":["webhooks.read","customers.read"]},"meta":{"api_version":"2026-02-01"}}`)
+			fmt.Fprint(w, `{"data":{"auth_type":"api_key","api_key_id":"key_test","environment":"sandbox","merchant_id":"mer_test","sandbox_id":"test_test","scopes":["webhooks.read","webhooks.write","customers.read"]},"meta":{"api_version":"2026-02-01"}}`)
 			return
 		}
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -232,8 +232,9 @@ func TestMCPClientCanCancelInFlightListen(t *testing.T) {
 		Params: map[string]any{
 			"name": "listen",
 			"arguments": map[string]any{
-				"forward_to":  "http://127.0.0.1:1/webhooks",
-				"max_seconds": 120,
+				"forward_to":          "http://127.0.0.1:1/webhooks",
+				"webhook_endpoint_id": "whep_fixture",
+				"max_seconds":         120,
 			},
 		},
 	}); err != nil {
