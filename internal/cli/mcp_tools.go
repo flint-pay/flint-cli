@@ -659,13 +659,6 @@ func schemaForMCPCommand(cmd *Command) (map[string]any, *CLIError) {
 		},
 	}
 	constraint := bound
-	if cmd.CanonicalName == "listen" {
-		controlsProperty["description"] = "Set max_events (1-100) or for (up to 2m); or print_secret."
-		constraint = map[string]any{"anyOf": []any{bound, map[string]any{
-			"required":   []string{"print_secret"},
-			"properties": map[string]any{"print_secret": map[string]any{"const": true}},
-		}}}
-	}
 	schema["allOf"] = appendSchemaConstraint(schema["allOf"], constraint)
 	return schema, nil
 }
@@ -754,7 +747,7 @@ var mcpLocalTools = map[string]struct{ title, description string }{
 	"config.validate": {"Validate configuration", "Validate the global and project Flint configuration and the credential they select."},
 	"signup":          {"Sign up for Flint", "Create a Flint account and sandbox API key in two calls: first email, first_name, and last_name (Flint emails a code), then verification_code. Only for a profile without a saved credential."},
 	"api":             {"Call a Flint API route", "Call any documented Flint public API route by method and /v1 path, with a JSON body for writes. Prefer a dedicated tool when one exists."},
-	"listen":          {"Stream webhook events", "Print Flint webhook events or forward merchant envelopes locally with HMAC signing and at-least-once delivery. Set webhook_endpoint_id to match your handler (default whep_cli_listen). JWT testing needs a tunnel and a registered sandbox endpoint. Set max_events or max_seconds (up to 100 events or 120 seconds). print_secret returns the local secret without connecting."},
+	"listen":          {"Stream webhook events", "Print Flint webhook events or forward exact signed deliveries locally with at-least-once delivery. Forwarding requires webhook_endpoint_id for a sandbox endpoint with JWT signing, webhooks.write and resource read scopes. Default JWT verification works unchanged. Set max_events or max_seconds (up to 100 events or 120 seconds)."},
 }
 
 // mcpToolTitle prefers the description's first sentence when it is short and

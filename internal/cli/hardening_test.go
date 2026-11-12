@@ -532,7 +532,7 @@ func TestDurationBoundedListenLimitsInFlightRequest(t *testing.T) {
 			return nil, context.DeadlineExceeded
 		}
 	})}
-	exit := app.Run([]string{"listen", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", duration.String(), "--timeout", "1h", "--output", "json"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", duration.String(), "--timeout", "1h", "--output", "json"})
 	select {
 	case <-requestCanceled:
 	case <-time.After(5 * time.Second):
@@ -567,7 +567,7 @@ func TestListenIdleTimeoutJoinsBlockedForwardBeforeReturning(t *testing.T) {
 	opts.Output = "ndjson"
 	opts.Timeout = 25 * time.Millisecond
 	state := &listenStreamState{}
-	streamErr := app.consumeListenStreamWithIdleTimeout(context.Background(), reader, opts, "http://127.0.0.1/webhooks", "whsec_dGVzdA==", state)
+	streamErr := app.consumeListenStreamWithIdleTimeout(context.Background(), reader, opts, "http://127.0.0.1/webhooks", mockListenSource(t), state)
 	if streamErr == nil || streamErr.Code != "STREAM_IDLE_TIMEOUT" {
 		t.Fatalf("stream error = %#v", streamErr)
 	}
@@ -834,7 +834,7 @@ func TestBoundedListenReportsOutputWriteFailure(t *testing.T) {
 
 	app, _, _ := testApp(t, server.URL)
 	app.Stdout = failingWriter{}
-	exit := app.Run([]string{"listen", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", "1ms", "--output", "json"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", "1ms", "--output", "json"})
 	if exit != ExitNetwork {
 		t.Fatalf("exit=%d", exit)
 	}

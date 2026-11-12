@@ -166,15 +166,6 @@ func mcpOutputSchema(cmd *Command) (map[string]any, *CLIError) {
 	}
 	if cmd.Stream {
 		stream := mcpStreamOutputSchema()
-		if cmd.CanonicalName == "listen" {
-			return map[string]any{"type": "object", "anyOf": []any{stream, map[string]any{
-				"type": "object", "additionalProperties": false, "required": []string{"data"},
-				"properties": map[string]any{"data": map[string]any{
-					"type": "object", "additionalProperties": false, "required": []string{"signing_secret", "source"},
-					"properties": map[string]any{"signing_secret": map[string]any{"type": "string"}, "source": map[string]any{"type": "string"}},
-				}},
-			}}}, nil
-		}
 		return stream, nil
 	}
 	variants := []any{outputSchema}

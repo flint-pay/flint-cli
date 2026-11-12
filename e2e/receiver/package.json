@@ -1,0 +1,6 @@
+{
+  "name": "flint-cli-webhook-receiver-test",
+  "private": true,
+  "type": "module",
+  "dependencies": { "@flintpay/node": "7.0.0" }
+}

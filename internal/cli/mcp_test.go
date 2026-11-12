@@ -288,24 +288,6 @@ func TestMCPClientCanCancelInFlightListen(t *testing.T) {
 	}
 }
 
-func TestMCPListenPrintSecretMatchesOutputSchema(t *testing.T) {
-	server, api := newMCPTestAPI(t, "sandbox")
-	app, _, _ := testApp(t, server.URL)
-	result := mcpCall(t, app, mcpAllToolsOptions(t), "listen", map[string]any{"print_secret": true})
-	if result["isError"] == true {
-		t.Fatalf("print_secret failed: %s", mcpResultText(result))
-	}
-	cmd, _ := app.Registry.ByName("listen")
-	schema, err := mcpOutputSchema(cmd)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assertMCPOutputMatchesSchema(t, schema, mcpResultJSON(t, result))
-	if len(api.seen()) != 0 {
-		t.Fatalf("print_secret opened a stream: %v", api.seen())
-	}
-}
-
 func TestMCPListenDurationAndExplicitEventCounts(t *testing.T) {
 	for _, test := range []struct {
 		name      string

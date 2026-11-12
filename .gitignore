@@ -8,3 +8,5 @@
 *.p12
 *.pfx
 .DS_Store
+
+node_modules/

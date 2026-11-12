@@ -14,15 +14,11 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
-	"unicode/utf8"
-
-	webhooksigning "github.com/flint-pay/flint-cli/internal/webhooksigning"
 )
 
 type listenRoundTripFunc func(*http.Request) (*http.Response, error)
@@ -122,7 +118,7 @@ func TestConsumeListenStreamCountsEventAfterReady(t *testing.T) {
 		fmt.Sprintf("id: %s\nevent: webhook.event\ndata: {\"webhook_event_id\":\"%s\",\"event_type\":\"payment_intent.succeeded\",\"payload\":{\"status\":\"succeeded\"}}\n\n", eventID, eventID)
 	app := &App{Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{}, Now: time.Now}
 	state := &listenStreamState{}
-	if err := app.consumeListenStream(context.Background(), strings.NewReader(input), Options{Output: "ndjson", Timeout: time.Second}, local.URL, "whsec_AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=", state); err != nil {
+	if err := app.consumeListenStream(context.Background(), strings.NewReader(input), Options{Output: "ndjson", Timeout: time.Second}, local.URL, mockListenSource(t), state); err != nil {
 		t.Fatalf("consumeListenStream error = %#v", err)
 	}
 	if state.processed != 1 || state.events != 1 || state.cursor != eventID {
@@ -142,7 +138,7 @@ func TestConsumeListenStreamAdvancesPastWithheldEvent(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	app := &App{Stdout: stdout, Stderr: &bytes.Buffer{}, Now: time.Now}
 	state := &listenStreamState{}
-	if err := app.consumeListenStream(context.Background(), strings.NewReader(input), Options{Output: "ndjson", Timeout: time.Second}, local.URL, "whsec_AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=", state); err != nil {
+	if err := app.consumeListenStream(context.Background(), strings.NewReader(input), Options{Output: "ndjson", Timeout: time.Second}, local.URL, mockListenSource(t), state); err != nil {
 		t.Fatalf("consumeListenStream error = %#v", err)
 	}
 	if state.processed != 2 || state.withheld != 1 || state.events != 1 || state.cursor != visibleID {
@@ -162,6 +158,10 @@ func TestListenMaxEventsCountsWithheldRecords(t *testing.T) {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
+		if strings.HasSuffix(r.URL.Path, "/sign-delivery") {
+			mockListenDelivery(w, r)
+			return
+		}
 		defer close(streamClosed)
 		w.Header().Set("Content-Type", "text/event-stream")
 		fmt.Fprintf(w, "id: %s\nevent: withheld\ndata: {\"webhook_event_id\":\"%s\",\"event_type\":\"order.paid\",\"reason\":\"missing_resource_scope\",\"resource_type\":\"order\",\"required_scopes\":[\"commerce.orders.read\"]}\n\n", withheldID, withheldID)
@@ -171,7 +171,7 @@ func TestListenMaxEventsCountsWithheldRecords(t *testing.T) {
 	defer server.Close()
 
 	app, stdout, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"listen", "--forward-to", "http://127.0.0.1:1/webhooks", "--max-events", "1", "--output", "json"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", "http://127.0.0.1:1/webhooks", "--max-events", "1", "--output", "json"})
 	if exit != ExitOK || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
@@ -206,6 +206,10 @@ func TestListenReconnectsWithLastEventID(t *testing.T) {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
+		if strings.HasSuffix(r.URL.Path, "/sign-delivery") {
+			mockListenDelivery(w, r)
+			return
+		}
 		connections++
 		w.Header().Set("Content-Type", "text/event-stream")
 		switch connections {
@@ -226,14 +230,14 @@ func TestListenReconnectsWithLastEventID(t *testing.T) {
 	defer server.Close()
 
 	app, stdout, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"listen", "--forward-to", local.URL, "--max-events", "2", "--output", "ndjson"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", local.URL, "--max-events", "2", "--output", "ndjson"})
 	if exit != ExitOK || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
 	mu.Lock()
 	gotBodies := append([]string(nil), bodies...)
 	mu.Unlock()
-	if len(gotBodies) != 2 || gotBodies[0] != `{"sequence":1}` || gotBodies[1] != `{"sequence":2}` {
+	if len(gotBodies) != 2 || gotBodies[0] != `{}` || gotBodies[1] != `{}` {
 		t.Fatalf("forwarded bodies = %#v", gotBodies)
 	}
 	if !strings.Contains(stdout.String(), `"cursor":"`+secondID+`"`) {
@@ -254,6 +258,10 @@ func TestListenMaxEventsStopsAnOpenStream(t *testing.T) {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
+		if strings.HasSuffix(r.URL.Path, "/sign-delivery") {
+			mockListenDelivery(w, r)
+			return
+		}
 		defer close(streamClosed)
 		w.Header().Set("Content-Type", "text/event-stream")
 		fmt.Fprintf(w, "id: %s\nevent: webhook.event\ndata: {\"webhook_event_id\":\"%s\",\"event_type\":\"payment_intent.succeeded\",\"payload\":{}}\n\n", eventID, eventID)
@@ -263,7 +271,7 @@ func TestListenMaxEventsStopsAnOpenStream(t *testing.T) {
 	defer server.Close()
 
 	app, stdout, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"listen", "--forward-to", local.URL, "--max-events", "1", "--output", "ndjson"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", local.URL, "--max-events", "1", "--output", "ndjson"})
 	if exit != ExitOK || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
@@ -289,6 +297,11 @@ func TestListenReconnectsAfterTransientStreamReadError(t *testing.T) {
 	streamCalls := 0
 	lastEventIDs := []string{}
 	transport := listenRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if strings.HasSuffix(req.URL.Path, "/sign-delivery") {
+			recorder := httptest.NewRecorder()
+			mockListenDelivery(recorder, req)
+			return recorder.Result(), nil
+		}
 		if req.URL.Path == "/v1/auth-context" {
 			return &http.Response{
 				StatusCode: http.StatusOK,
@@ -319,7 +332,7 @@ func TestListenReconnectsAfterTransientStreamReadError(t *testing.T) {
 
 	app, stdout, stderr := testApp(t, "https://api.example.test")
 	app.HTTPClient = &http.Client{Transport: transport}
-	exit := app.Run([]string{"listen", "--forward-to", local.URL, "--max-events", "2", "--output", "ndjson"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", local.URL, "--max-events", "2", "--output", "ndjson"})
 	if exit != ExitOK || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
@@ -348,7 +361,7 @@ func TestListenTimeoutBoundsStreamResponseHeaders(t *testing.T) {
 	defer server.Close()
 
 	app, _, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"listen", "--forward-to", "http://127.0.0.1:1/webhooks", "--timeout", "25ms"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", "http://127.0.0.1:1/webhooks", "--timeout", "25ms"})
 	if exit != ExitNetwork || !strings.Contains(stderr.String(), "Timed out waiting") {
 		t.Fatalf("exit=%d stderr=%s", exit, stderr)
 	}
@@ -357,6 +370,11 @@ func TestListenTimeoutBoundsStreamResponseHeaders(t *testing.T) {
 func TestOpenListenStreamTimeoutDoesNotWaitForTransportCancellation(t *testing.T) {
 	release := make(chan struct{})
 	transport := listenRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if strings.HasSuffix(req.URL.Path, "/sign-delivery") {
+			recorder := httptest.NewRecorder()
+			mockListenDelivery(recorder, req)
+			return recorder.Result(), nil
+		}
 		<-release
 		return &http.Response{
 			StatusCode: http.StatusOK,
@@ -388,7 +406,7 @@ func TestListenReconnectsWhenStreamGoesIdle(t *testing.T) {
 	})
 
 	app, stdout, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"listen", "--forward-to", "http://127.0.0.1:1/webhooks", "--timeout", "50ms", "--for", "600ms", "--output", "ndjson"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", "http://127.0.0.1:1/webhooks", "--timeout", "50ms", "--for", "600ms", "--output", "ndjson"})
 	if exit != ExitOK || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
@@ -420,7 +438,7 @@ func TestListenReportsCursorGapAndUsesResumeCursor(t *testing.T) {
 	defer server.Close()
 
 	app, stdout, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"listen", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", "25ms", "--output", "ndjson"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", "25ms", "--output", "ndjson"})
 	if exit != ExitOK || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
@@ -445,7 +463,7 @@ func TestListenWithholdsInvisiblePayloadAndContinues(t *testing.T) {
 	})
 
 	app, stdout, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"listen", "--forward-to", local.URL, "--max-events", "2", "--output", "ndjson"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", local.URL, "--max-events", "2", "--output", "ndjson"})
 	if exit != ExitOK || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
@@ -472,11 +490,7 @@ func TestLocalForwardingDoesNotFollowRedirects(t *testing.T) {
 	defer redirect.Close()
 
 	app := &App{Now: time.Now}
-	result := app.forwardListenPayload(context.Background(), time.Second, redirect.URL, "whsec_AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=", listenWebhookEvent{
-		WebhookEventID: "whev_01ABCDEFGHIJKLMNOPQRSTUVWX",
-		EventType:      "payment_intent.succeeded",
-		Payload:        []byte(`{"status":"succeeded"}`),
-	})
+	result := app.forwardListenAttempt(context.Background(), time.Second, redirect.URL, listenSignedDelivery{Body: `{}`, Headers: map[string]string{"Authorization": "Bearer test"}})
 	if result.err != nil || result.statusCode != http.StatusTemporaryRedirect || reached {
 		t.Fatalf("result=%+v reached=%t", result, reached)
 	}
@@ -486,7 +500,7 @@ func TestListenRejectsMismatchedSSEEventID(t *testing.T) {
 	app := &App{Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{}, Now: time.Now}
 	state := &listenStreamState{}
 	body := strings.NewReader("id: whev_one\nevent: webhook.event\ndata: {\"webhook_event_id\":\"whev_two\",\"event_type\":\"order.paid\",\"payload\":{}}\n\n")
-	err := app.consumeListenStream(context.Background(), body, Options{}, "http://127.0.0.1:1/webhooks", "whsec_AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=", state)
+	err := app.consumeListenStream(context.Background(), body, Options{}, "http://127.0.0.1:1/webhooks", mockListenSource(t), state)
 	if err == nil || err.Code != "INVALID_STREAM_EVENT_ID" || err.ExitCode != ExitAPI {
 		t.Fatalf("error = %#v", err)
 	}
@@ -532,6 +546,10 @@ func listenAPI(t *testing.T, stream func(w http.ResponseWriter, r *http.Request,
 		if r.URL.Path == "/v1/auth-context" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, authContextJSON("sandbox"))
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, "/sign-delivery") {
+			mockListenDelivery(w, r)
 			return
 		}
 		stream(w, r, int(connections.Add(1)))
@@ -605,158 +623,6 @@ func TestDockerHostForwardingStaysOnPrivateAddresses(t *testing.T) {
 	}
 }
 
-func TestListenSavesSigningSecretOutsideConfig(t *testing.T) {
-	t.Setenv(listenSecretEnv, "")
-	const eventID = "whev_01ABCDEFGHIJKLMNOPQRSTUVWX"
-	server := listenAPI(t, func(w http.ResponseWriter, r *http.Request, _ int) {
-		w.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprint(w, "event: ready\ndata: {\"cursor\":\"\"}\n\n")
-		fmt.Fprint(w, listenEventFrame(eventID, "payment_intent.succeeded", `{"status":"succeeded"}`))
-		w.(http.Flusher).Flush()
-		<-r.Context().Done()
-	})
-	app, stdout, stderr := testApp(t, server.URL)
-	printSecret := func(args ...string) map[string]any {
-		t.Helper()
-		stdout.Reset()
-		if exit := app.Run(append([]string{"listen", "--print-secret", "--output", "json"}, args...)); exit != ExitOK || stderr.Len() != 0 {
-			t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
-		}
-		var envelope struct {
-			Data map[string]any `json:"data"`
-		}
-		if err := json.Unmarshal(stdout.Bytes(), &envelope); err != nil {
-			t.Fatalf("print-secret output %q: %v", stdout, err)
-		}
-		return envelope.Data
-	}
-	first := printSecret()
-	secret, _ := first["signing_secret"].(string)
-	if _, err := webhooksigning.StandardWebhookSigningKey(secret); err != nil || first["source"] != "generated" {
-		t.Fatalf("first secret = %#v: %v", first, err)
-	}
-	if second := printSecret(); second["signing_secret"] != secret || second["source"] != "saved" {
-		t.Fatalf("second secret = %#v, want the saved %q", second, secret)
-	}
-	path := filepath.Join(app.ConfigDir, listenSecretFile)
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
-		t.Fatalf("secret file mode = %v", info.Mode().Perm())
-	}
-	if config, err := os.ReadFile(filepath.Join(app.ConfigDir, "config.json")); err == nil && strings.Contains(string(config), secret) {
-		t.Fatal("the signing secret was written to config.json")
-	}
-
-	stdout.Reset()
-	if exit := app.Run([]string{"listen", "--print-secret"}); exit != ExitOK || stdout.String() != secret+"\n" {
-		t.Fatalf("human print-secret exit=%d output=%q", exit, stdout)
-	}
-
-	var signatureValid atomic.Bool
-	local := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		// Forwarding always uses the local HMAC secret, without a JWT or API credential.
-		if authorization := r.Header.Get("Authorization"); authorization != "" {
-			t.Error("forwarded request unexpectedly contains Authorization")
-		}
-		err := webhooksigning.VerifyStandardWebhook(secret, r.Header.Get("webhook-id"), r.Header.Get("webhook-timestamp"), r.Header.Get("webhook-signature"), body, time.Now(), time.Minute)
-		signatureValid.Store(err == nil)
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer local.Close()
-	stdout.Reset()
-	if exit := app.Run([]string{"listen", "--forward-to", local.URL, "--max-events", "1", "--output", "ndjson"}); exit != ExitOK || stderr.Len() != 0 {
-		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
-	}
-	listener := findListenRecord(t, stdout.String(), "listener")
-	if listener["signing_secret"] != secret || listener["signing_secret_source"] != "saved" || !signatureValid.Load() {
-		t.Fatalf("listener = %#v, signature valid = %t", listener, signatureValid.Load())
-	}
-}
-
-func TestListenWebhookSecretFlagAndEnvironment(t *testing.T) {
-	flagSecret, err := webhooksigning.GenerateSecret()
-	if err != nil {
-		t.Fatal(err)
-	}
-	environmentSecret, err := webhooksigning.GenerateSecret()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv(listenSecretEnv, environmentSecret)
-	server := listenAPI(t, func(http.ResponseWriter, *http.Request, int) {
-		t.Error("--print-secret opened the stream")
-	})
-	app, stdout, _ := testApp(t, server.URL)
-	for _, test := range []struct {
-		args   []string
-		secret string
-		source string
-	}{
-		{secret: environmentSecret, source: "environment"},
-		{args: []string{"--webhook-secret", flagSecret}, secret: flagSecret, source: "flag"},
-	} {
-		stdout.Reset()
-		if exit := app.Run(append([]string{"listen", "--print-secret", "--output", "json"}, test.args...)); exit != ExitOK {
-			t.Fatalf("exit=%d output=%s", exit, stdout)
-		}
-		want := fmt.Sprintf(`{"data":{"signing_secret":%q,"source":%q}}`, test.secret, test.source)
-		if strings.TrimSpace(stdout.String()) != want {
-			t.Fatalf("output = %s, want %s", stdout, want)
-		}
-	}
-	if _, err := os.Stat(filepath.Join(app.ConfigDir, listenSecretFile)); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("a supplied secret was saved: %v", err)
-	}
-
-	const invalid = "whsec_c2hvcnQ="
-	stdout.Reset()
-	if exit := app.Run([]string{"listen", "--print-secret", "--webhook-secret", invalid, "--output", "json"}); exit != ExitUsage || !strings.Contains(stdout.String(), `"code":"INVALID_WEBHOOK_SECRET"`) || strings.Contains(stdout.String(), invalid) {
-		t.Fatalf("invalid flag secret exit=%d output=%s", exit, stdout)
-	}
-	t.Setenv(listenSecretEnv, "not-a-secret")
-	stdout.Reset()
-	if exit := app.Run([]string{"listen", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", "1s", "--output", "json"}); exit != ExitUsage || !strings.Contains(stdout.String(), listenSecretEnv+" is not a valid signing secret") || strings.Contains(stdout.String(), "not-a-secret") {
-		t.Fatalf("invalid environment secret exit=%d output=%s", exit, stdout)
-	}
-}
-
-func TestListenRejectsInvalidSavedSecret(t *testing.T) {
-	t.Setenv(listenSecretEnv, "")
-	server := listenAPI(t, func(http.ResponseWriter, *http.Request, int) {
-		t.Error("an invalid saved secret opened the stream")
-	})
-	app, stdout, _ := testApp(t, server.URL)
-	if err := os.WriteFile(filepath.Join(app.ConfigDir, listenSecretFile), []byte("hand-edited\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if exit := app.Run([]string{"listen", "--print-secret", "--output", "json"}); exit != ExitAuth || !strings.Contains(stdout.String(), `"code":"LISTEN_SECRET_INVALID"`) || !strings.Contains(stdout.String(), "Delete the file") {
-		t.Fatalf("exit=%d output=%s", exit, stdout)
-	}
-}
-
-func TestListenSecretFallsBackWhenItCannotBeSaved(t *testing.T) {
-	t.Setenv(listenSecretEnv, "")
-	blocker := filepath.Join(t.TempDir(), "not-a-directory")
-	if err := os.WriteFile(blocker, nil, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	app := &App{ConfigDir: blocker}
-	secret, e := app.listenSigningSecret(Options{Raw: map[string][]string{}}, false)
-	if e != nil || secret.source != "temporary" || !strings.Contains(secret.warning, "changes on the next run") {
-		t.Fatalf("secret = %#v, error = %#v", secret, e)
-	}
-	if _, err := webhooksigning.StandardWebhookSigningKey(secret.value); err != nil {
-		t.Fatalf("temporary secret is invalid: %v", err)
-	}
-	if _, e := app.listenSigningSecret(Options{Raw: map[string][]string{}}, true); e == nil || e.Code != "LISTEN_SECRET_SAVE_FAILED" {
-		t.Fatalf("--print-secret with an unsavable secret = %#v", e)
-	}
-}
-
 func TestListenReportsFailedForwardsAndExitsNonZero(t *testing.T) {
 	const readyCursor = "whev_00ABCDEFGHIJKLMNOPQRSTUVWX"
 	const firstID = "whev_01ABCDEFGHIJKLMNOPQRSTUVWX"
@@ -780,14 +646,13 @@ func TestListenReportsFailedForwardsAndExitsNonZero(t *testing.T) {
 	})
 
 	app, stdout, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"listen", "--forward-to", local.URL, "--max-events", "2", "--output", "ndjson"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", local.URL, "--max-events", "2", "--output", "ndjson"})
 	if exit != ExitAPI || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
 	failed := findListenRecord(t, stdout.String(), "forward")
-	body, _ := failed["response_body"].(string)
-	if failed["ok"] != false || failed["status_code"] != float64(500) || failed["response_body_truncated"] != true || !strings.HasPrefix(body, "boom: [31m signature mismatch x") || len(body) > listenResponseExcerptBytes || strings.ContainsAny(body, "\x1b\n") {
-		t.Fatalf("failed forward record = %#v", failed)
+	if failed["ok"] != false || failed["status_code"] != float64(500) || failed["response_body"] != nil || strings.Contains(stdout.String(), "signature mismatch") {
+		t.Fatal("unexpected failed forward diagnostics")
 	}
 	checkpoint := findListenRecord(t, stdout.String(), "checkpoint")
 	if checkpoint["events"] != float64(2) || checkpoint["forwarded"] != float64(1) || checkpoint["failed"] != float64(1) || checkpoint["replay_cursor"] != readyCursor || checkpoint["cursor"] != secondID {
@@ -799,26 +664,13 @@ func TestListenReportsFailedForwardsAndExitsNonZero(t *testing.T) {
 	}
 
 	stdout.Reset()
-	exit = app.Run([]string{"listen", "--forward-to", local.URL, "--max-events", "2"})
+	exit = app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", local.URL, "--max-events", "2"})
 	human := stdout.String()
-	if exit != ExitAPI || !strings.Contains(human, "-> HTTP 500") || !strings.Contains(human, "delivery failed: boom:") || !strings.Contains(human, "forwarded=1 failed=1") || !strings.Contains(human, "flint listen --forward-to "+local.URL+" --cursor "+readyCursor) {
+	if exit != ExitAPI || !strings.Contains(human, "-> HTTP 500") || !strings.Contains(human, "delivery failed") || !strings.Contains(human, "forwarded=1 failed=1") || !strings.Contains(human, "flint listen --forward-to "+local.URL+" --cursor "+readyCursor) {
 		t.Fatalf("human exit=%d stdout=%s", exit, human)
 	}
 	if !strings.Contains(stderr.String(), "1 of 2 webhook events could not be delivered") {
 		t.Fatalf("human stderr = %s", stderr)
-	}
-}
-
-func TestListenResponseExcerptIsBoundedAndTerminalSafe(t *testing.T) {
-	text, truncated := listenResponseExcerpt([]byte("line one\r\n\x1b[2J\tline\x00two"))
-	if text != "line one [2J linetwo" || truncated {
-		t.Fatalf("excerpt = %q, truncated = %t", text, truncated)
-	}
-	// One ASCII byte shifts the multi-byte runes so the cut splits one.
-	long := []byte("x" + strings.Repeat("é", 300))
-	text, truncated = listenResponseExcerpt(long[:listenResponseExcerptBytes+1])
-	if !truncated || !utf8.ValidString(text) || strings.ContainsRune(text, utf8.RuneError) || len(text) != listenResponseExcerptBytes-1 {
-		t.Fatalf("excerpt = %q (%d bytes), truncated = %t", text, len(text), truncated)
 	}
 }
 
@@ -843,7 +695,7 @@ func TestListenSlowHandlerDoesNotCountAsStreamIdle(t *testing.T) {
 	app := &App{Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{}, Now: time.Now}
 	state := &listenStreamState{}
 	opts := Options{Output: "ndjson", Timeout: 400 * time.Millisecond}
-	if err := app.consumeListenStreamWithIdleTimeout(context.Background(), reader, opts, local.URL, "whsec_AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=", state); err != nil {
+	if err := app.consumeListenStreamWithIdleTimeout(context.Background(), reader, opts, local.URL, mockListenSource(t), state); err != nil {
 		t.Fatalf("stream error = %#v", err)
 	}
 	if state.forwarded != 2 || state.cursor != secondID {
@@ -888,7 +740,7 @@ func TestListenHandlerSlowerThanTimeoutDoesNotStopListener(t *testing.T) {
 	})
 
 	app, stdout, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"listen", "--forward-to", local.URL, "--max-events", "2", "--timeout", "300ms", "--output", "ndjson"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", local.URL, "--max-events", "2", "--timeout", "300ms", "--output", "ndjson"})
 	if exit != ExitAPI || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
@@ -937,7 +789,7 @@ func TestListenReportsRetryableStreamFailures(t *testing.T) {
 	})
 
 	app, stdout, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"listen", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", "400ms", "--output", "ndjson"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", "400ms", "--output", "ndjson"})
 	if exit != ExitNetwork || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
@@ -953,7 +805,7 @@ func TestListenReportsRetryableStreamFailures(t *testing.T) {
 	}
 
 	stdout.Reset()
-	exit = app.Run([]string{"listen", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", "400ms"})
+	exit = app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", "400ms"})
 	if exit != ExitNetwork || !strings.Contains(stderr.String(), "returned HTTP 503: Webhook streaming is temporarily unavailable. Reconnecting in 250ms (attempt 1).") || !strings.Contains(stderr.String(), "did not connect within --for 400ms") {
 		t.Fatalf("human exit=%d stderr=%s", exit, stderr)
 	}
@@ -977,27 +829,26 @@ func TestListenBoundedRunReportsMissingEvents(t *testing.T) {
 	})
 
 	app, stdout, _ := testApp(t, server.URL)
-	exit := app.Run([]string{"listen", "--forward-to", local.URL, "--max-events", "2", "--for", "200ms", "--output", "json"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", local.URL, "--max-events", "2", "--for", "200ms", "--output", "json"})
 	failure := listenErrorRecord(t, stdout.String())
 	if exit != ExitWait || failure["code"] != "EXPECTED_EVENTS_NOT_RECEIVED" || !strings.Contains(fmt.Sprint(failure["message"]), "Received 1 of 2 expected webhook events") || !strings.Contains(fmt.Sprint(failure["message"]), "--cursor "+eventID) {
 		t.Fatalf("exit=%d output=%s", exit, stdout)
 	}
 
 	stdout.Reset()
-	if exit := app.Run([]string{"listen", "--forward-to", local.URL, "--for", "200ms", "--output", "json"}); exit != ExitOK {
+	if exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", local.URL, "--for", "200ms", "--output", "json"}); exit != ExitOK {
 		t.Fatalf("--for alone exit=%d output=%s", exit, stdout)
 	}
 
 	// An explicit MCP event count is an expectation, including exactly 100.
 	stdout.Reset()
 	app.Context = context.WithValue(context.Background(), mcpSessionKey{}, newMCPSession(nil))
-	if exit := app.Run([]string{"listen", "--forward-to", local.URL, "--max-events", fmt.Sprint(mcpMaxStreamEvents), "--for", "200ms", "--output", "json"}); exit != ExitWait {
+	if exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", local.URL, "--max-events", fmt.Sprint(mcpMaxStreamEvents), "--for", "200ms", "--output", "json"}); exit != ExitWait {
 		t.Fatalf("MCP explicit count exit=%d output=%s", exit, stdout)
 	}
 }
 
 func TestListenWithoutForwardToPrintsEvents(t *testing.T) {
-	t.Setenv(listenSecretEnv, "")
 	const eventID = "whev_01ABCDEFGHIJKLMNOPQRSTUVWX"
 	payload := `{"data":{"customer":{"customer_id":"cus_1","email":"jane@example.com"}},"event_type":"customer.created"}`
 	server := listenAPI(t, func(w http.ResponseWriter, r *http.Request, _ int) {
@@ -1023,7 +874,7 @@ func TestListenWithoutForwardToPrintsEvents(t *testing.T) {
 	if checkpoint := findListenRecord(t, stdout.String(), "checkpoint"); checkpoint["events"] != float64(1) || checkpoint["forwarded"] != float64(0) {
 		t.Fatalf("checkpoint = %#v", checkpoint)
 	}
-	if _, err := os.Stat(filepath.Join(app.ConfigDir, listenSecretFile)); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(app.ConfigDir, "listen-signing-secret")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("print-only mode created a signing secret: %v", err)
 	}
 
@@ -1038,7 +889,6 @@ func TestListenWithoutForwardToPrintsEvents(t *testing.T) {
 }
 
 func TestListenHumanReadyBannerFollowsConnection(t *testing.T) {
-	t.Setenv(listenSecretEnv, "")
 	const eventID = "whev_01ABCDEFGHIJKLMNOPQRSTUVWX"
 	local := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
@@ -1053,14 +903,14 @@ func TestListenHumanReadyBannerFollowsConnection(t *testing.T) {
 	})
 
 	app, stdout, stderr := testApp(t, server.URL)
-	if exit := app.Run([]string{"listen", "--forward-to", local.URL, "--max-events", "1"}); exit != ExitOK || stderr.Len() != 0 {
+	if exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", local.URL, "--max-events", "1"}); exit != ExitOK || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
 	output := stdout.String()
 	ready := strings.Index(output, "Ready. Forwarding webhook events to "+local.URL+". Stops after 1 event; press Ctrl-C to stop sooner.")
-	secret := strings.Index(output, "Webhook signing secret: whsec_")
+	endpoint := strings.Index(output, "Endpoint: whep_fixture. Signed by Flint")
 	forward := strings.Index(output, "payment_intent.succeeded "+eventID+" -> HTTP 204")
-	if ready != 0 || secret < 0 || forward < secret || !strings.Contains(output, "(new; saved and reused by later runs)") || !strings.Contains(output, "processed=1 forwarded=1 failed=0 withheld=0") {
+	if ready != 0 || endpoint < 0 || forward < endpoint || strings.Contains(output, "signing secret") || !strings.Contains(output, "processed=1 forwarded=1 failed=0 withheld=0") {
 		t.Fatalf("human output = %s", output)
 	}
 }
@@ -1113,9 +963,6 @@ func TestListenErrorCatalogListsBoundedRunCodes(t *testing.T) {
 		"STREAM_NOT_CONNECTED":         ExitNetwork,
 		"INVALID_EVENT_TYPE":           ExitUsage,
 		"MULTIPLE_EVENT_TYPES":         ExitUsage,
-		"INVALID_WEBHOOK_SECRET":       ExitUsage,
-		"LISTEN_SECRET_INVALID":        ExitAuth,
-		"LISTEN_SECRET_SAVE_FAILED":    ExitAuth,
 	}
 	for _, entry := range entries {
 		code, _ := entry["code"].(string)
@@ -1137,11 +984,6 @@ func TestListenErrorCatalogListsBoundedRunCodes(t *testing.T) {
 // Current Flint servers stream the event itself, the envelope a webhook
 // delivery carries, with the resource under data and no payload field.
 func TestListenForwardsCurrentEventEnvelope(t *testing.T) {
-	secret, err := webhooksigning.GenerateSecret()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv(listenSecretEnv, secret)
 	const eventID = "whev_01ABCDEFGHIJKLMNOPQRSTUVWX"
 	envelope := `{"webhook_event_id":"` + eventID + `","event_type":"customer.created","payload_version":2,"api_version":"2026-09-07","mode":"test","data":{"object":{"customer_id":"cus_1"}}}`
 	var forwarded atomic.Value
@@ -1149,8 +991,7 @@ func TestListenForwardsCurrentEventEnvelope(t *testing.T) {
 	local := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		forwarded.Store(string(body))
-		err := webhooksigning.VerifyStandardWebhook(secret, r.Header.Get("webhook-id"), r.Header.Get("webhook-timestamp"), r.Header.Get("webhook-signature"), body, time.Now(), time.Minute)
-		signatureValid.Store(err == nil)
+		signatureValid.Store(r.Header.Get("Authorization") == "Bearer mock-token")
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer local.Close()
@@ -1163,10 +1004,10 @@ func TestListenForwardsCurrentEventEnvelope(t *testing.T) {
 	})
 
 	app, stdout, stderr := testApp(t, server.URL)
-	if exit := app.Run([]string{"listen", "--forward-to", local.URL, "--max-events", "1", "--output", "ndjson"}); exit != ExitOK || stderr.Len() != 0 {
+	if exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", local.URL, "--max-events", "1", "--output", "ndjson"}); exit != ExitOK || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
-	if got, _ := forwarded.Load().(string); got != envelope || !signatureValid.Load() {
+	if got, _ := forwarded.Load().(string); got != `{}` || !signatureValid.Load() {
 		t.Fatalf("forwarded body = %q (signature valid %t), want the event envelope", got, signatureValid.Load())
 	}
 	if forward := findListenRecord(t, stdout.String(), "forward"); forward["status_code"] != float64(204) {
@@ -1187,7 +1028,6 @@ func TestListenForwardsCurrentEventEnvelope(t *testing.T) {
 
 // A current-format event without data is one the key can't read.
 func TestListenWithholdsCurrentEventWithoutData(t *testing.T) {
-	t.Setenv(listenSecretEnv, "")
 	const eventID = "whev_01ABCDEFGHIJKLMNOPQRSTUVWX"
 	server := listenAPI(t, func(w http.ResponseWriter, r *http.Request, _ int) {
 		w.Header().Set("Content-Type", "text/event-stream")

@@ -297,7 +297,7 @@ Auth-context reads `mode`, falling back to `environment`, and accepts `access` a
 
 - Forwarded bodies are the merchant webhook envelope published for the event in the embedded spec, at the caller's API version, including `event_source` and `sandbox_id`. HMAC signs the exact bytes that are forwarded.
 - `--event-type` accepts repeated flags and comma-separated values, and passes newer event names through to the server. The listener record's `event_type` is now an array. In 0.14.x it was one string and a listener took one type. Update scripts that read `event_type` from the record.
-- `--webhook-endpoint-id` sets the `Flint-Webhook-Endpoint-Id` header. The default is `whep_cli_listen`.
+- In 0.15, `--webhook-endpoint-id` sets the `Flint-Webhook-Endpoint-Id` header. The default is `whep_cli_listen`.
 - Secrets supplied with `--webhook-secret` or `FLINT_WEBHOOK_SECRET` are no longer included in the listener record or the human banner. `--print-secret` still prints the selected secret.
 - Forwarding retries transport errors, timeouts, 429, and 5xx, up to three attempts with 1-second and 2-second delays. Other failures are not retried. Delivery is at-least-once, so handlers should deduplicate by webhook event ID.
 
@@ -319,3 +319,5 @@ These additions need no changes to existing scripts.
 - **`--credential-store keyring|file`** and `FLINT_CREDENTIAL_STORE` apply to every command that reads credentials, including `flint mcp serve`. They are unchanged from 0.14.3.
 
 The default total timeout of 150 seconds came in 0.14.3.
+
+Current listener forwarding requires `--webhook-endpoint-id` for a sandbox endpoint and uses server-signed deliveries. The local secret flags described above are retired. See [Use](../README.md#use) for the current setup.
