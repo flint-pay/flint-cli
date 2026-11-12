@@ -964,7 +964,7 @@ func TestDurationBoundedEmptyListenExitsWithCheckpoint(t *testing.T) {
 	}))
 	defer server.Close()
 	app, stdout, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"listen", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", "25ms", "--output", "json"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", "25ms", "--output", "json"})
 	if exit != ExitOK || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
