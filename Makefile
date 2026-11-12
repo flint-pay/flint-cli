@@ -4,6 +4,7 @@ build:
 	go build -trimpath -buildvcs=false -o bin/flint ./cmd/flint
 
 test:
+	npm ci --prefix e2e/receiver --ignore-scripts --no-audit --no-fund
 	go test -race ./...
 
 contract: test

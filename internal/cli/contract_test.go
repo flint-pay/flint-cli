@@ -17,7 +17,6 @@ import (
 	"time"
 
 	apispec "github.com/flint-pay/flint-cli/internal/spec"
-	webhooksigning "github.com/flint-pay/flint-cli/internal/webhooksigning"
 )
 
 func TestRegistryContract(t *testing.T) {
@@ -876,7 +875,7 @@ func TestCommandRejectsMissingScopesBeforeAPIRequest(t *testing.T) {
 	}
 }
 
-func TestListenForwardsExactPayloadWithCanonicalSignatureAndCheckpoint(t *testing.T) {
+func TestListenForwardsServerSignedPayloadAndCheckpoint(t *testing.T) {
 	const eventID = "whev_01ABCDEFGHIJKLMNOPQRSTUVWX"
 	const payload = `{ "payment_intent_id" : "pi_123", "status" : "succeeded" }`
 	var forwardedBody []byte
@@ -895,6 +894,11 @@ func TestListenForwardsExactPayloadWithCanonicalSignatureAndCheckpoint(t *testin
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
+
+		if strings.HasSuffix(r.URL.Path, "/sign-delivery") {
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": listenSignedDelivery{EndpointID: "whep_fixture", EventID: eventID, Body: payload, ExpiresAt: time.Now().Add(5 * time.Minute), Headers: map[string]string{"Authorization": "Bearer mock-token", "webhook-id": eventID, "webhook-timestamp": "1700000000"}}})
+			return
+		}
 		if r.URL.Path != "/v1/webhook-events/stream" {
 			t.Errorf("unexpected path %s", r.URL.Path)
 			return
@@ -910,7 +914,7 @@ func TestListenForwardsExactPayloadWithCanonicalSignatureAndCheckpoint(t *testin
 	instant := time.Unix(1700000000, 0)
 	app.Now = func() time.Time { return instant }
 	app.Info.Version = "1.2.3"
-	exit := app.Run([]string{"listen", "--forward-to", local.URL, "--max-events", "1", "--output", "ndjson"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", local.URL, "--max-events", "1", "--output", "ndjson"})
 	if exit != ExitOK || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
@@ -925,13 +929,8 @@ func TestListenForwardsExactPayloadWithCanonicalSignatureAndCheckpoint(t *testin
 	if err := json.Unmarshal([]byte(lines[0]), &started); err != nil {
 		t.Fatal(err)
 	}
-	secret, _ := started["signing_secret"].(string)
-	if _, err := webhooksigning.StandardWebhookSigningKey(secret); err != nil {
-		t.Fatalf("signing secret = %q: %v", secret, err)
-	}
-	wantSignature := webhooksigning.StandardWebhookSignatureHeader(eventID, instant.Unix(), []byte(payload), secret)
-	if got := forwardedHeaders.Get("webhook-signature"); got != wantSignature {
-		t.Fatalf("webhook-signature = %q, want %q", got, wantSignature)
+	if started["signing_secret"] != nil || forwardedHeaders.Get("Authorization") != "Bearer mock-token" {
+		t.Fatal("server signature missing or local secret exposed")
 	}
 	if forwardedHeaders.Get("webhook-id") != eventID || forwardedHeaders.Get("webhook-timestamp") != "1700000000" {
 		t.Fatalf("forward headers = %#v", forwardedHeaders)
@@ -965,7 +964,7 @@ func TestDurationBoundedEmptyListenExitsWithCheckpoint(t *testing.T) {
 	}))
 	defer server.Close()
 	app, stdout, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"listen", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", "25ms", "--output", "json"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", "25ms", "--output", "json"})
 	if exit != ExitOK || stderr.Len() != 0 {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}

@@ -8,12 +8,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
-
-	webhooksigning "github.com/flint-pay/flint-cli/internal/webhooksigning"
 )
 
 func TestListenProjectsPublishedMerchantEnvelope(t *testing.T) {
@@ -32,10 +29,6 @@ func TestListenProjectsPublishedMerchantEnvelope(t *testing.T) {
 }
 
 func TestListenForwardsRetriesAndHeaders(t *testing.T) {
-	secret, err := webhooksigning.GenerateSecret()
-	if err != nil {
-		t.Fatal(err)
-	}
 	for _, scenario := range []struct {
 		name               string
 		status             int
@@ -55,12 +48,10 @@ func TestListenForwardsRetriesAndHeaders(t *testing.T) {
 			app.ForwardHTTPClient = &http.Client{Transport: listenRoundTripFunc(func(r *http.Request) (*http.Response, error) {
 				count++
 				body, _ := io.ReadAll(r.Body)
-				if !bytes.Equal(body, payload) || r.Header.Get("Flint-Webhook-Endpoint-Id") != "whep_custom" {
+				if string(body) != `{}` || r.Header.Get("Flint-Webhook-Endpoint-Id") != "whep_fixture" {
 					t.Errorf("body/header changed: %s %v", body, r.Header)
 				}
-				if err := webhooksigning.VerifyStandardWebhook(secret, r.Header.Get("webhook-id"), r.Header.Get("webhook-timestamp"), r.Header.Get("webhook-signature"), body, time.Now(), time.Minute); err != nil {
-					t.Error(err)
-				}
+
 				if count < scenario.want && scenario.transport {
 					return nil, errors.New("connection reset")
 				}
@@ -72,15 +63,15 @@ func TestListenForwardsRetriesAndHeaders(t *testing.T) {
 				if count == scenario.want && scenario.want > 1 {
 					status = 204
 				}
-				return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("")), Request: r}, nil
+				return &http.Response{StatusCode: status, Header: http.Header{"Retry-After": {"2"}}, Body: io.NopCloser(strings.NewReader("")), Request: r}, nil
 			})}
 			started := time.Now()
-			result := app.forwardListenPayload(context.Background(), 20*time.Millisecond, "http://127.0.0.1:1/hook", secret, listenWebhookEvent{WebhookEventID: "whev_fixture", Payload: payload, EndpointID: "whep_custom"})
+			result := app.forwardListenPayload(context.Background(), 20*time.Millisecond, "http://127.0.0.1:1/hook", mockListenSource(t), listenWebhookEvent{WebhookEventID: "whev_fixture", Payload: payload})
 			if count != scenario.want || result.attempts != scenario.want || result.delivered() != (scenario.want > 1) {
 				t.Fatalf("count=%d result=%+v", count, result)
 			}
 			if scenario.want == 3 && time.Since(started) < 3*time.Second {
-				t.Fatal("backoffs did not total 1s and 2s")
+				t.Fatal("Retry-After backoffs did not total at least 4s")
 			}
 		})
 	}
@@ -92,30 +83,9 @@ func TestListenForwardCancellationStopsRetries(t *testing.T) {
 	app.ForwardHTTPClient = &http.Client{Transport: listenRoundTripFunc(func(r *http.Request) (*http.Response, error) { count++; return nil, errors.New("connection reset") })}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
 	defer cancel()
-	result := app.forwardListenPayload(ctx, time.Second, "http://127.0.0.1:1/hook", "whsec_fixture", listenWebhookEvent{Payload: []byte(`{}`)})
+	result := app.forwardListenPayload(ctx, time.Second, "http://127.0.0.1:1/hook", mockListenSource(t), listenWebhookEvent{Payload: []byte(`{}`)})
 	if count != 1 || !errors.Is(result.err, context.DeadlineExceeded) {
 		t.Fatalf("count=%d result=%+v", count, result)
-	}
-}
-
-func TestListenSuppliedSecretsAreRedacted(t *testing.T) {
-	for _, source := range []string{"flag", "environment", "saved", "generated", "temporary"} {
-		for _, output := range []string{"json", "ndjson"} {
-			app, out, _ := testApp(t, "http://127.0.0.1:9")
-			secret := listenSecret{value: "secret-fixture-value", source: source}
-			opts := Options{Output: output, Raw: map[string][]string{"event-type": {"customer.created,order.paid", "new.event"}}}
-			if err := app.writeListenStarted(opts, "http://localhost/hook", secret); err != nil {
-				t.Fatal(err)
-			}
-			listener := findListenRecord(t, out.String(), "listener")
-			redact := source == "flag" || source == "environment"
-			if strings.Contains(out.String(), secret.value) == redact || strings.Contains(listenBanner(opts, "http://localhost/hook", secret), secret.value) == redact {
-				t.Fatalf("source=%s output=%s", source, out)
-			}
-			if listener["webhook_endpoint_id"] != "whep_cli_listen" || !reflect.DeepEqual(listener["event_type"], []any{"customer.created", "order.paid", "new.event"}) {
-				t.Fatal(listener)
-			}
-		}
 	}
 }
 
@@ -165,12 +135,12 @@ func TestListenMCPPassesNewEventTypes(t *testing.T) {
 
 func TestListenReplayRetainsEndpointAndFilters(t *testing.T) {
 	app, out, _ := testApp(t, "http://127.0.0.1:9")
-	opts := Options{Output: "human", Raw: map[string][]string{"forward-to": {"http://localhost/hook"}, "webhook-endpoint-id": {"whep_custom"}, "event-type": {"customer.created,order.paid", "invoice.created"}}}
+	opts := Options{Output: "human", Raw: map[string][]string{"forward-to": {"http://localhost/hook"}, "webhook-endpoint-id": {"whep_fixture"}, "event-type": {"customer.created,order.paid", "invoice.created"}}}
 	state := &listenStreamState{failed: 1, replayCursor: "whev_replay"}
 	if err := app.writeListenCheckpoint(opts, state); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"--webhook-endpoint-id whep_custom", "--event-type customer.created,order.paid,invoice.created", "--cursor whev_replay"} {
+	for _, want := range []string{"--webhook-endpoint-id whep_fixture", "--event-type customer.created,order.paid,invoice.created", "--cursor whev_replay"} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("missing %s in %s", want, out)
 		}

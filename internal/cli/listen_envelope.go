@@ -5,15 +5,8 @@ import (
 	"strings"
 )
 
-func (secret listenSecret) redacted() bool {
-	return secret.source == "flag" || secret.source == "environment"
-}
-
 func listenEndpointID(opts Options) string {
-	if id := lastRawOption(opts, "webhook-endpoint-id"); id != "" {
-		return id
-	}
-	return "whep_cli_listen"
+	return lastRawOption(opts, "webhook-endpoint-id")
 }
 
 func listenSelectedTypes(opts Options) []string {

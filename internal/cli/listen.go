@@ -8,40 +8,30 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"mime"
 	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
 	apispec "github.com/flint-pay/flint-cli/internal/spec"
-	webhooksigning "github.com/flint-pay/flint-cli/internal/webhooksigning"
 )
 
 const (
 	listenMaxSSELineBytes = 16 << 20
 	listenUserAgent       = "Flint-Webhooks/1.0"
-	// The generated signing secret lives in its own file beside config.json.
-	// Older CLI versions parse config.json strictly and reject unknown fields.
-	listenSecretFile = "listen-signing-secret"
-	listenSecretEnv  = "FLINT_WEBHOOK_SECRET"
 	// A listener running in a container reaches a handler on the Docker
 	// Desktop host through this name.
-	listenDockerHost           = "host.docker.internal"
-	listenResponseExcerptBytes = 512
-	listenPayloadSummaryRunes  = 200
+	listenDockerHost          = "host.docker.internal"
+	listenPayloadSummaryRunes = 200
 )
 
 var (
-	errListenMaxEventsReached   = errors.New("maximum webhook event count reached")
-	errListenSavedSecretInvalid = errors.New("the saved webhook signing secret is invalid")
+	errListenMaxEventsReached = errors.New("maximum webhook event count reached")
 )
 
 type listenSSEFrame struct {
@@ -56,9 +46,8 @@ type listenWebhookEvent struct {
 	// Payload is the delivery body. Flint servers before October 26, 2026 sent
 	// it under "payload"; current ones send the event itself, the same envelope
 	// a webhook delivery carries, with the resource under "data".
-	Payload    json.RawMessage `json:"payload"`
-	Data       json.RawMessage `json:"data"`
-	EndpointID string          `json:"-"`
+	Payload json.RawMessage `json:"payload"`
+	Data    json.RawMessage `json:"data"`
 }
 
 func listenRawPresent(raw json.RawMessage) bool {
@@ -99,11 +88,11 @@ func (s *listenStreamState) deliveryGrace(timeout time.Duration) time.Duration {
 	return 0
 }
 
-type listenSecret struct {
-	value string
-	// source is flag, environment, saved, generated, or temporary.
-	source  string
-	warning string
+// Signing credentials stay in memory for this stream, like its API credential.
+type listenDeliverySource struct {
+	baseURL    string
+	key        string
+	endpointID string
 }
 
 type listenOpenResult struct {
@@ -139,13 +128,6 @@ func (r listenActivityReader) Read(buffer []byte) (int, error) {
 }
 
 func (a *App) executeListen(ctx context.Context, _ *Command, opts Options, req preparedRequest, key, baseURL string) (any, *CLIError) {
-	if lastRawOption(opts, "print-secret") == "true" {
-		secret, e := a.listenSigningSecret(opts, true)
-		if e != nil {
-			return nil, e
-		}
-		return a.writeListenSecret(opts, secret)
-	}
 	if opts.Output == "json" && opts.MaxEvents == 0 && opts.For == 0 {
 		return nil, usageError("STREAM_BOUND_REQUIRED", "JSON streaming requires --max-events or --for so automation cannot hang indefinitely. Use --output ndjson for an intentionally unbounded stream.", "for")
 	}
@@ -163,20 +145,19 @@ func (a *App) executeListen(ctx context.Context, _ *Command, opts Options, req p
 		return nil, e
 	}
 	forwardTo := lastRawOption(opts, "forward-to")
-	var secret listenSecret
 	if len(opts.Raw["forward-to"]) > 0 {
 		if _, err := validateLocalForwardURL(forwardTo); err != nil {
 			return nil, usageError("INVALID_FORWARD_URL", err.Error(), "forward_to")
 		}
-		if secret, e = a.listenSigningSecret(opts, false); e != nil {
-			return nil, e
+		if listenEndpointID(opts) == "" {
+			return nil, usageError("WEBHOOK_ENDPOINT_REQUIRED", "Forwarding requires --webhook-endpoint-id. Create a sandbox endpoint with flint webhook-endpoints create, then pass its whep_ ID.", "webhook_endpoint_id")
 		}
 	}
-	if e := a.writeListenStarted(opts, forwardTo, secret); e != nil {
+	if e := a.writeListenStarted(opts, forwardTo); e != nil {
 		return nil, e
 	}
 
-	state := &listenStreamState{cursor: initialCursor, banner: listenBanner(opts, forwardTo, secret)}
+	state := &listenStreamState{cursor: initialCursor, banner: listenBanner(opts, forwardTo)}
 	returnWithCheckpoint := func(primary *CLIError) (any, *CLIError) {
 		if checkpointErr := a.writeListenCheckpoint(opts, state); checkpointErr != nil {
 			return nil, checkpointErr
@@ -225,7 +206,7 @@ func (a *App) executeListen(ctx context.Context, _ *Command, opts Options, req p
 		state.disconnect = ""
 		connectedAt := time.Now()
 		processedBefore := state.processed
-		consumeErr := a.consumeListenStreamWithIdleTimeout(streamCtx, resp.Body, opts, forwardTo, secret.value, state)
+		consumeErr := a.consumeListenStreamWithIdleTimeout(streamCtx, resp.Body, opts, forwardTo, listenDeliverySource{baseURL: baseURL, key: key, endpointID: listenEndpointID(opts)}, state)
 		if state.processed > processedBefore || time.Since(connectedAt) >= 2*listenReconnectDelay(5) {
 			reconnects = 0
 		}
@@ -439,128 +420,6 @@ func listenEventTypeSuggestions(known []string, input string) []string {
 	return nearby[:min(3, len(nearby))]
 }
 
-// listenSigningSecret resolves the local signing secret: --webhook-secret,
-// then FLINT_WEBHOOK_SECRET, then a secret saved on first use, so a handler
-// configured with it keeps verifying signatures across restarts. When the
-// secret cannot be saved, listening continues with a temporary one unless
-// mustSave is set.
-func (a *App) listenSigningSecret(opts Options, mustSave bool) (listenSecret, *CLIError) {
-	if values := opts.Raw["webhook-secret"]; len(values) > 0 {
-		value := strings.TrimSpace(values[len(values)-1])
-		if err := validateListenSecret(value); err != nil {
-			return listenSecret{}, usageError("INVALID_WEBHOOK_SECRET", "--webhook-secret "+err.Error(), "webhook_secret")
-		}
-		return listenSecret{value: value, source: "flag"}, nil
-	}
-	if value := strings.TrimSpace(os.Getenv(listenSecretEnv)); value != "" {
-		if err := validateListenSecret(value); err != nil {
-			return listenSecret{}, usageError("INVALID_WEBHOOK_SECRET", listenSecretEnv+" "+err.Error(), "webhook_secret")
-		}
-		return listenSecret{value: value, source: "environment"}, nil
-	}
-	value, created, err := a.loadOrCreateListenSecret()
-	switch {
-	case errors.Is(err, errListenSavedSecretInvalid):
-		return listenSecret{}, configError("LISTEN_SECRET_INVALID", terminalSafe(err.Error())+". Delete the file to generate a new secret, or pass --webhook-secret.", err)
-	case err != nil && mustSave:
-		return listenSecret{}, configError("LISTEN_SECRET_SAVE_FAILED", "Could not save the webhook signing secret: "+terminalSafe(err.Error())+". Pass --webhook-secret or set "+listenSecretEnv+" instead.", err)
-	case err != nil:
-		temporary, genErr := webhooksigning.GenerateSecret()
-		if genErr != nil {
-			return listenSecret{}, networkError("WEBHOOK_SECRET_GENERATION_FAILED", "Could not generate the local webhook signing secret.", genErr)
-		}
-		warning := "Could not save the webhook signing secret (" + terminalSafe(err.Error()) + "), so it changes on the next run. Pass --webhook-secret or set " + listenSecretEnv + " to keep it stable."
-		return listenSecret{value: temporary, source: "temporary", warning: warning}, nil
-	case created:
-		return listenSecret{value: value, source: "generated"}, nil
-	}
-	return listenSecret{value: value, source: "saved"}, nil
-}
-
-// validateListenSecret accepts the Standard Webhooks secrets Flint issues:
-// whsec_ followed by base64 of 32 bytes. The value is never echoed.
-func validateListenSecret(secret string) error {
-	if secret == "" {
-		return errors.New("must not be empty")
-	}
-	if _, err := webhooksigning.StandardWebhookSigningKey(secret); err != nil {
-		return fmt.Errorf("is not a valid signing secret (%v). Use whsec_ followed by base64 of 32 bytes, such as the value flint listen --print-secret prints", err)
-	}
-	return nil
-}
-
-func (a *App) loadOrCreateListenSecret() (string, bool, error) {
-	dir, err := a.configDirectory()
-	if err != nil {
-		return "", false, err
-	}
-	path := filepath.Join(dir, listenSecretFile)
-	secret, created := "", false
-	// The lock keeps two first runs from saving different secrets.
-	err = withLocalFileLock(a.commandContext(), path, func() error {
-		raw, readErr := os.ReadFile(path)
-		if readErr == nil {
-			secret = strings.TrimSpace(string(raw))
-			if keyErr := validateListenSecret(secret); keyErr != nil {
-				return fmt.Errorf("%w: %s %v", errListenSavedSecretInvalid, path, keyErr)
-			}
-			return nil
-		}
-		if !errors.Is(readErr, fs.ErrNotExist) {
-			return readErr
-		}
-		generated, genErr := webhooksigning.GenerateSecret()
-		if genErr != nil {
-			return genErr
-		}
-		if writeErr := writeListenSecretFile(path, generated); writeErr != nil {
-			return writeErr
-		}
-		secret, created = generated, true
-		return nil
-	})
-	return secret, created, err
-}
-
-func writeListenSecretFile(path, secret string) error {
-	tmp, err := os.CreateTemp(filepath.Dir(path), "listen-secret-*.tmp")
-	if err != nil {
-		return err
-	}
-	name := tmp.Name()
-	defer os.Remove(name)
-	if err := tmp.Chmod(0o600); err != nil {
-		tmp.Close()
-		return err
-	}
-	if _, err := tmp.WriteString(secret + "\n"); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Sync(); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	return os.Rename(name, path)
-}
-
-func (a *App) writeListenSecret(opts Options, secret listenSecret) (any, *CLIError) {
-	var err error
-	if opts.Output == "json" || opts.Output == "ndjson" {
-		err = writeJSON(a.Stdout, map[string]any{"data": map[string]any{"signing_secret": secret.value, "source": secret.source}})
-	} else {
-		// A bare line lets scripts capture it: SECRET=$(flint listen --print-secret).
-		_, err = fmt.Fprintln(a.Stdout, secret.value)
-	}
-	if err != nil {
-		return nil, networkError("OUTPUT_WRITE_FAILED", "Could not write listener output.", err)
-	}
-	return outputHandled{}, nil
-}
-
 func (a *App) openListenStream(ctx context.Context, baseURL, key, path, cursor string, timeout time.Duration, debug bool) (*http.Response, bool, *CLIError) {
 	if key != workloadCredential {
 		resp, retry, e := a.openListenStreamAttempt(ctx, baseURL, key, path, cursor, timeout, debug)
@@ -682,13 +541,13 @@ func (a *App) openListenStreamAttempt(ctx context.Context, baseURL, key, path, c
 	return resp, false, nil
 }
 
-func (a *App) consumeListenStreamWithIdleTimeout(ctx context.Context, body io.ReadCloser, opts Options, forwardTo, secret string, state *listenStreamState) *CLIError {
+func (a *App) consumeListenStreamWithIdleTimeout(ctx context.Context, body io.ReadCloser, opts Options, forwardTo string, source listenDeliverySource, state *listenStreamState) *CLIError {
 	activity := make(chan struct{}, 1)
 	result := make(chan *CLIError, 1)
 	consumerCtx, cancelConsumer := context.WithCancel(ctx)
 	defer cancelConsumer()
 	go func() {
-		result <- a.consumeListenStream(consumerCtx, listenActivityReader{reader: body, activity: activity}, opts, forwardTo, secret, state)
+		result <- a.consumeListenStream(consumerCtx, listenActivityReader{reader: body, activity: activity}, opts, forwardTo, source, state)
 	}()
 	stopConsumer := func() {
 		cancelConsumer()
@@ -728,7 +587,7 @@ func (a *App) consumeListenStreamWithIdleTimeout(ctx context.Context, body io.Re
 	}
 }
 
-func (a *App) consumeListenStream(ctx context.Context, body io.Reader, opts Options, forwardTo, secret string, state *listenStreamState) *CLIError {
+func (a *App) consumeListenStream(ctx context.Context, body io.Reader, opts Options, forwardTo string, source listenDeliverySource, state *listenStreamState) *CLIError {
 	err := readListenSSE(body, func(frame listenSSEFrame) error {
 		switch frame.Event {
 		case "ready":
@@ -819,7 +678,7 @@ func (a *App) consumeListenStream(ctx context.Context, body io.Reader, opts Opti
 			}
 			return nil
 		case "webhook.event":
-			if eventErr := a.consumeListenWebhookEvent(ctx, frame, opts, forwardTo, secret, state); eventErr != nil {
+			if eventErr := a.consumeListenWebhookEvent(ctx, frame, opts, forwardTo, source, state); eventErr != nil {
 				return eventErr
 			}
 			if opts.MaxEvents > 0 && state.processed >= opts.MaxEvents {
@@ -840,7 +699,7 @@ func (a *App) consumeListenStream(ctx context.Context, body io.Reader, opts Opti
 	return networkError("STREAM_READ_FAILED", "The webhook event stream could not be read.", err)
 }
 
-func (a *App) consumeListenWebhookEvent(ctx context.Context, frame listenSSEFrame, opts Options, forwardTo, secret string, state *listenStreamState) *CLIError {
+func (a *App) consumeListenWebhookEvent(ctx context.Context, frame listenSSEFrame, opts Options, forwardTo string, source listenDeliverySource, state *listenStreamState) *CLIError {
 	var event listenWebhookEvent
 	if err := json.Unmarshal(frame.Data, &event); err != nil {
 		return invalidResponseError("INVALID_STREAM_EVENT", "Flint returned an invalid webhook event.", err)
@@ -881,14 +740,17 @@ func (a *App) consumeListenWebhookEvent(ctx context.Context, frame listenSSEFram
 	}
 	cursorBefore := state.cursor
 	state.forwarding.Store(true)
-	event.EndpointID = listenEndpointID(opts)
-	result := a.forwardListenPayload(ctx, opts.Timeout, forwardTo, secret, event)
+	result := a.forwardListenPayload(ctx, opts.Timeout, forwardTo, source, event)
 	state.forwardEnded.Store(time.Now().UnixNano())
 	state.forwarding.Store(false)
 	if result.err != nil && ctx.Err() != nil {
 		// The listener stopped mid-delivery. Keep the cursor before this event
 		// so a resumed run delivers it again.
 		return nil
+	}
+	if result.signingError != nil {
+		// Keep the cursor before an event that could not be signed.
+		return result.signingError
 	}
 	state.processed++
 	state.events++
@@ -920,14 +782,6 @@ func (a *App) consumeListenWebhookEvent(ctx context.Context, frame listenSSEFram
 		human = fmt.Sprintf("%s -> delivery failed (%s): %s", eventLabel, latency, reason)
 	case !delivered:
 		human += ", delivery failed"
-		if result.body != "" {
-			record["response_body"] = result.body
-			human += ": " + result.body
-		}
-		if result.bodyTruncated {
-			record["response_body_truncated"] = true
-			human += "..."
-		}
 	}
 	return a.writeListenRecord(opts, record, human)
 }
@@ -937,7 +791,8 @@ func listenForwardErrorReason(err error, timeout time.Duration) string {
 	if errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &netErr) && netErr.Timeout()) {
 		return fmt.Sprintf("the handler did not respond within %s (--timeout)", timeout)
 	}
-	return transportErrorReason(err)
+	// A malformed HTTP response can reflect bearer material in the transport error.
+	return "could not connect to the local handler or read its response"
 }
 
 // listenPayloadSummary is a short, terminal-safe view of an event's data for
@@ -962,30 +817,34 @@ func listenPayloadSummary(payload json.RawMessage) string {
 }
 
 type listenForwardResult struct {
-	statusCode    int
-	attempts      int
-	latency       time.Duration
-	err           error
-	body          string
-	bodyTruncated bool
+	statusCode   int
+	attempts     int
+	latency      time.Duration
+	err          error
+	retryAfter   string
+	signingError *CLIError
 }
 
 func (r listenForwardResult) delivered() bool {
 	return r.err == nil && r.statusCode >= 200 && r.statusCode < 300
 }
 
-func (a *App) forwardListenPayload(ctx context.Context, timeout time.Duration, forwardTo, secret string, event listenWebhookEvent) listenForwardResult {
+func (a *App) forwardListenPayload(ctx context.Context, timeout time.Duration, forwardTo string, source listenDeliverySource, event listenWebhookEvent) listenForwardResult {
 	var result listenForwardResult
 	started := a.Now()
 	for attempt := 1; attempt <= 3; attempt++ {
-		result = a.forwardListenAttempt(ctx, timeout, forwardTo, secret, event)
+		result = a.forwardListenSignedAttempt(ctx, timeout, forwardTo, source, event)
 		result.attempts = attempt
 		result.latency = max(time.Duration(0), a.Now().Sub(started))
-		if result.delivered() || ctx.Err() != nil || result.err == nil && result.statusCode != 429 && result.statusCode < 500 {
+		if result.signingError != nil || result.delivered() || ctx.Err() != nil || result.err == nil && result.statusCode != 429 && result.statusCode < 500 {
 			return result
 		}
 		if attempt < 3 {
-			sleepContext(ctx, time.Duration(attempt)*time.Second)
+			delay := time.Duration(attempt) * time.Second
+			if d, ok := parseRetryAfter(result.retryAfter); ok {
+				delay = max(delay, d)
+			}
+			sleepContext(ctx, delay)
 		}
 		if ctx.Err() != nil {
 			result.err = ctx.Err()
@@ -995,24 +854,24 @@ func (a *App) forwardListenPayload(ctx context.Context, timeout time.Duration, f
 	return result
 }
 
-func (a *App) forwardListenAttempt(ctx context.Context, timeout time.Duration, forwardTo, secret string, event listenWebhookEvent) listenForwardResult {
+func (a *App) forwardListenSignedAttempt(ctx context.Context, timeout time.Duration, forwardTo string, source listenDeliverySource, event listenWebhookEvent) listenForwardResult {
+	frame, e := a.signListenDelivery(ctx, timeout, source, event.WebhookEventID)
+	if e != nil {
+		return listenForwardResult{signingError: e}
+	}
+	return a.forwardListenAttempt(ctx, timeout, forwardTo, frame)
+}
+
+func (a *App) forwardListenAttempt(ctx context.Context, timeout time.Duration, forwardTo string, frame listenSignedDelivery) listenForwardResult {
 	requestCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	timestamp := a.Now().Unix()
-	req, err := http.NewRequestWithContext(requestCtx, http.MethodPost, forwardTo, bytes.NewReader(event.Payload))
+	req, err := http.NewRequestWithContext(requestCtx, http.MethodPost, forwardTo, strings.NewReader(frame.Body))
 	if err != nil {
 		return listenForwardResult{err: err}
 	}
-	req.Header.Set("Content-Type", "application/json")
-	endpointID := event.EndpointID
-	if endpointID == "" {
-		endpointID = "whep_cli_listen"
+	for name, value := range frame.Headers {
+		req.Header.Set(name, value)
 	}
-	req.Header.Set("Flint-Webhook-Endpoint-Id", endpointID)
-	req.Header.Set("User-Agent", listenUserAgent)
-	req.Header.Set("webhook-id", event.WebhookEventID)
-	req.Header.Set("webhook-timestamp", fmt.Sprintf("%d", timestamp))
-	req.Header.Set("webhook-signature", webhooksigning.StandardWebhookSignatureHeader(event.WebhookEventID, timestamp, event.Payload, secret))
 
 	client := a.ForwardHTTPClient
 	if client == nil {
@@ -1035,28 +894,10 @@ func (a *App) forwardListenAttempt(ctx context.Context, timeout time.Duration, f
 		return listenForwardResult{latency: latency, err: err}
 	}
 	defer resp.Body.Close()
-	excerpt, _ := io.ReadAll(io.LimitReader(resp.Body, listenResponseExcerptBytes+1))
+	// A receiver may echo a signed request in an error response. Never retain
+	// or print its response body, even when delivery fails.
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
-	result := listenForwardResult{statusCode: resp.StatusCode, latency: latency}
-	if !result.delivered() {
-		result.body, result.bodyTruncated = listenResponseExcerpt(excerpt)
-	}
-	return result
-}
-
-// listenResponseExcerpt keeps the start of a handler's error response on one
-// terminal-safe line so failures show what the handler said.
-func listenResponseExcerpt(raw []byte) (string, bool) {
-	truncated := len(raw) > listenResponseExcerptBytes
-	if truncated {
-		raw = raw[:listenResponseExcerptBytes]
-		// Drop a rune the cut split rather than render a replacement for it.
-		for i := 0; i < utf8.UTFMax-1 && len(raw) > 0 && !utf8.Valid(raw); i++ {
-			raw = raw[:len(raw)-1]
-		}
-	}
-	text := strings.Join(strings.Fields(strings.ToValidUTF8(string(raw), "\uFFFD")), " ")
-	return terminalSafe(text), truncated
+	return listenForwardResult{statusCode: resp.StatusCode, latency: latency, retryAfter: resp.Header.Get("Retry-After")}
 }
 
 func validateLocalForwardURL(value string) (*url.URL, error) {
@@ -1215,32 +1056,21 @@ func listenReconnectDelay(attempt int) time.Duration {
 	return min(delay, 5*time.Second)
 }
 
-func (a *App) writeListenStarted(opts Options, forwardTo string, secret listenSecret) *CLIError {
+func (a *App) writeListenStarted(opts Options, forwardTo string) *CLIError {
 	if opts.Output == "json" || opts.Output == "ndjson" {
 		record := map[string]any{"type": "listener", "mode": "print"}
 		if forwardTo != "" {
-			record = map[string]any{"type": "listener", "mode": "forward", "forward_to": forwardTo, "webhook_endpoint_id": listenEndpointID(opts), "signing_secret_source": secret.source}
-		}
-		if forwardTo != "" && !secret.redacted() {
-			record["signing_secret"] = secret.value
+			record = map[string]any{"type": "listener", "mode": "forward", "forward_to": forwardTo, "webhook_endpoint_id": listenEndpointID(opts)}
 		}
 		record["event_type"] = listenSelectedTypes(opts)
-		if secret.warning != "" {
-			record["warning"] = secret.warning
-		}
 		return a.writeListenRecord(opts, record, "")
-	}
-	// Human output waits for the stream's ready record, so it never reports
-	// a listener that has not connected.
-	if secret.warning != "" && !opts.Quiet {
-		fmt.Fprintln(a.Stderr, "warning: "+secret.warning)
 	}
 	return nil
 }
 
 // listenBanner is the human ready text: what is being received, where it goes,
-// how the run stops, and the secret a handler must verify signatures with.
-func listenBanner(opts Options, forwardTo string, secret listenSecret) string {
+// and how the run stops.
+func listenBanner(opts Options, forwardTo string) string {
 	events := "webhook events"
 	if eventType := strings.Join(listenSelectedTypes(opts), ","); eventType != "" {
 		events = eventType + " events"
@@ -1266,19 +1096,7 @@ func listenBanner(opts Options, forwardTo string, secret listenSecret) string {
 		banner.WriteString(" Stops after " + strings.Join(bounds, " or ") + "; press Ctrl-C to stop sooner.")
 	}
 	if forwardTo != "" {
-		source := map[string]string{
-			"flag":        "from --webhook-secret",
-			"environment": "from " + listenSecretEnv,
-			"saved":       "saved; reused across runs",
-			"generated":   "new; saved and reused by later runs",
-			"temporary":   "temporary; could not be saved",
-		}[secret.source]
-		if secret.redacted() {
-			fmt.Fprintf(&banner, "\nWebhook signing secret: %s (not shown)", source)
-		} else {
-			fmt.Fprintf(&banner, "\nWebhook signing secret: %s (%s)", secret.value, source)
-		}
-		fmt.Fprintf(&banner, "\nEndpoint: %s. HMAC signed; delivery is at-least-once.", listenEndpointID(opts))
+		fmt.Fprintf(&banner, "\nEndpoint: %s. Signed by Flint; delivery is at-least-once.", listenEndpointID(opts))
 	}
 	return banner.String()
 }

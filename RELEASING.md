@@ -8,7 +8,7 @@ The CLI version is independent of the API version and SDK package versions. One 
 
 1. Keep `flint-pay/flint-cli` public. The manual installer and Homebrew download its GitHub Release assets anonymously; npm provenance also requires a public source repository. Merge `.github/workflows/cli-release.yml` before configuring publication.
 2. Create the public `flint-pay/homebrew-tap` repository with an initial README commit. The release workflow writes `Formula/flint.rb` to its default branch. Add `HOMEBREW_TAP_TOKEN` as a secret in the CLI repository: use a fine-grained GitHub token restricted to the tap with Contents read/write permission, authorized for the organization. The CLI repository's default `GITHUB_TOKEN` cannot write to another repository.
-3. Create the GitHub environment `cli-release-staging-sandbox`, require reviewer `athammer` with self-review allowed, and restrict deployment policies to the `main` branch and `cli/v*` tags. Add the environment secret `FLINT_TEST_API_KEY` with a disposable staging sandbox key. Both sandbox workflows run against `https://api.staging.withflintpay.com`; the listener check creates a customer and validates the forwarded webhook signature, and must never use a live key.
+3. Create the GitHub environment `cli-release-staging-sandbox`, require reviewer `athammer` with self-review allowed, and restrict deployment policies to the `main` branch and `cli/v*` tags. Add the environment secret `FLINT_TEST_API_KEY` with a disposable staging sandbox key. Both sandbox workflows run against `https://api.staging.withflintpay.com`; the listener check creates a disposable JWT endpoint and customer, validates a server-signed delivery with the Node SDK, and removes the endpoint. It must never use a live key.
 
    The old `cli-release-sandbox` environment is unused and can be deleted by a repository admin.
 4. Create the GitHub environment `npm`, using the same naming convention as the SDK repository. Restrict it to release tags, require maintainer approval, and prevent self-approval. The `publication-approval` job uses this environment as the shared barrier for npm, GitHub, Homebrew, and GHCR. Configure a GitHub Actions trusted publisher on **each** of these npm packages:
@@ -58,7 +58,7 @@ PR and main-branch CI also build snapshot archives and run the same macOS, Linux
 
 ## Publish the reviewed commit
 
-Run **CLI Sandbox Check** from `main` and approve its `cli-release-staging-sandbox` deployment before tagging. This checks the configured staging sandbox credential and webhook forwarding without publishing. Failures report CLI error codes without exposing the signing secret.
+Run **CLI Sandbox Check** from `main` and approve its `cli-release-staging-sandbox` deployment before tagging. This checks the configured staging sandbox credential and webhook forwarding without publishing. Failures report CLI error codes without exposing signed frames.
 
 Check that the version is unused on GitHub and all six npm packages. A registry authentication or network error does not establish that a version is available.
 

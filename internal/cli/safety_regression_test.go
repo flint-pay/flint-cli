@@ -11,8 +11,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"github.com/flint-pay/flint-cli/internal/webhooksigning"
 )
 
 func TestOAuthAuthorizationSafetyForRawCommands(t *testing.T) {
@@ -235,12 +233,8 @@ func TestLocalForwardingClosesItsPerDeliveryConnection(t *testing.T) {
 	server.Start()
 	defer server.Close()
 	app, _, _ := testApp(t, server.URL)
-	secret, err := webhooksigning.GenerateSecret()
-	if err != nil {
-		t.Fatal(err)
-	}
 	for i := 0; i < 4; i++ {
-		result := app.forwardListenPayload(t.Context(), time.Second, server.URL, secret, listenWebhookEvent{WebhookEventID: "whev_test", Payload: []byte(`{}`)})
+		result := app.forwardListenPayload(t.Context(), time.Second, server.URL, mockListenSource(t), listenWebhookEvent{WebhookEventID: "whev_test", Payload: []byte(`{}`)})
 		if result.err != nil || result.statusCode != http.StatusNoContent {
 			t.Fatalf("forward result: %+v", result)
 		}

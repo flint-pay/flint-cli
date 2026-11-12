@@ -8,6 +8,8 @@ export LISTENER_OUTPUT="$work_dir/listener.ndjson"
 export RECEIVER_RESULT="$work_dir/receiver.json"
 export RECEIVER_READY="$work_dir/receiver.ready"
 customer_output="$work_dir/customer.json"
+endpoint_output="$work_dir/endpoint.json"
+endpoint_id=""
 auth_output="$work_dir/auth.json"
 listener_pid=""
 receiver_pid=""
@@ -16,8 +18,8 @@ cleanup() {
   trap - EXIT
   if test "$result" -ne 0; then
     echo "Sandbox listener check failed (exit $result). CLI error codes:" >&2
-    # Never print raw listener records: they contain the signing secret.
-    for output in "$auth_output" "$LISTENER_OUTPUT" "$customer_output"; do
+    # Never print raw listener records: they can contain event data.
+    for output in "$auth_output" "$LISTENER_OUTPUT" "$customer_output" "$endpoint_output"; do
       if test -f "$output"; then
         jq -c 'select((.error | type) == "object") | .error | {type, code, request_id}' "$output" >&2 || true
       fi
@@ -33,6 +35,9 @@ cleanup() {
       wait "$child" 2>/dev/null || true
     fi
   done
+  if test -n "$endpoint_id"; then
+    "$FLINT_BIN" webhook-endpoints delete "$endpoint_id" --confirm --output json >/dev/null 2>&1 || echo "Could not remove disposable sandbox endpoint $endpoint_id." >&2
+  fi
   rm -rf "$work_dir"
   exit "$result"
 }
@@ -40,55 +45,24 @@ trap cleanup EXIT
 echo "Checking sandbox authentication..."
 "$FLINT_BIN" auth status --timeout 15s --debug --output json >"$auth_output"
 jq -e '.data.environment == "sandbox" or .data.environment == "test"' "$auth_output" >/dev/null
-echo "Sandbox authentication passed; opening event stream..."
-python3 - <<'PY' &
-import base64
-import hashlib
-import hmac
-import json
-import os
-import time
-from http.server import BaseHTTPRequestHandler, HTTPServer
-
-class Handler(BaseHTTPRequestHandler):
-    def do_POST(self):
-        body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
-        deadline = time.time() + 10
-        secret = ""
-        while time.time() < deadline and not secret:
-            try:
-                with open(os.environ["LISTENER_OUTPUT"], encoding="utf-8") as output:
-                    for line in output:
-                        record = json.loads(line)
-                        if record.get("type") == "listener":
-                            secret = record.get("signing_secret", "")
-                            break
-            except (FileNotFoundError, json.JSONDecodeError):
-                pass
-            if not secret:
-                time.sleep(0.05)
-        event_id = self.headers.get("webhook-id", "")
-        timestamp = self.headers.get("webhook-timestamp", "")
-        signatures = self.headers.get("webhook-signature", "").split()
-        signed = event_id.encode() + b"." + timestamp.encode() + b"." + body
-        expected = base64.b64encode(hmac.new(base64.b64decode(secret.removeprefix("whsec_")), signed, hashlib.sha256).digest()).decode()
-        valid = bool(event_id and timestamp and any(value == "v1," + expected for value in signatures))
-        with open(os.environ["RECEIVER_RESULT"], "w", encoding="utf-8") as result:
-            json.dump({"valid_signature": valid, "event_id": event_id, "body": json.loads(body)}, result)
-        self.send_response(204 if valid else 400)
-        self.end_headers()
-
-    def log_message(self, *_):
-        pass
-
-server = HTTPServer(("127.0.0.1", 18765), Handler)
-open(os.environ["RECEIVER_READY"], "w", encoding="utf-8").close()
-server.timeout = 120
-server.handle_request()
-PY
+echo "Creating a disposable sandbox JWT endpoint..."
+"$FLINT_BIN" webhook-endpoints create \
+  --url "https://cli-listener.invalid/webhooks" \
+  --status active \
+  --enabled-events customer.created \
+  --signing-methods jwt \
+  --output json >"$endpoint_output"
+endpoint_id="$(jq -er '.data.webhook_endpoint_id' "$endpoint_output")"
+export WEBHOOK_ENDPOINT_ID="$endpoint_id"
+export RECEIVER_PORT=18765
+export RECEIVER_ONCE=1
+# The published SDK checks the JWT with its default verification and trusted
+# staging JWKS discovery. Neither request frames nor JWTs are written to disk.
+node e2e/receiver/receiver.mjs >/dev/null &
 receiver_pid=$!
 "$FLINT_BIN" listen \
   --forward-to http://127.0.0.1:18765 \
+  --webhook-endpoint-id "$endpoint_id" \
   --event-type customer.created \
   --max-events 1 \
   --timeout 30s \
@@ -113,5 +87,5 @@ echo "Event stream ready; creating sandbox customer..."
   --output json >"$customer_output"
 wait "$listener_pid"
 wait "$receiver_pid"
-jq -e '.valid_signature == true and .event_id != "" and .body.event_type == "customer.created"' "$RECEIVER_RESULT"
+jq -e '.valid_signature == true and .event_id != "" and .event_type == "customer.created"' "$RECEIVER_RESULT"
 jq -s -e 'any(.[]; .type == "forward" and .status_code == 204) and any(.[]; .type == "checkpoint" and .cursor != "")' "$LISTENER_OUTPUT"

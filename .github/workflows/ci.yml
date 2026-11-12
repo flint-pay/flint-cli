@@ -67,6 +67,10 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+      - run: npm ci --prefix e2e/receiver --ignore-scripts --no-audit --no-fund
       - name: Test
         # Exhaustive subprocess catalogs exercise every generated command and flag.
         run: go test -race -timeout 20m ./...
