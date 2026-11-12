@@ -791,7 +791,8 @@ func listenForwardErrorReason(err error, timeout time.Duration) string {
 	if errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &netErr) && netErr.Timeout()) {
 		return fmt.Sprintf("the handler did not respond within %s (--timeout)", timeout)
 	}
-	return transportErrorReason(err)
+	// A malformed HTTP response can reflect bearer material in the transport error.
+	return "could not connect to the local handler or read its response"
 }
 
 // listenPayloadSummary is a short, terminal-safe view of an event's data for

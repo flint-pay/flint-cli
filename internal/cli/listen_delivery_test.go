@@ -194,3 +194,27 @@ func TestListenDailyQuotaStopsBeforeAdvancingCursor(t *testing.T) {
 		t.Fatalf("daily quota did not stop safely: %s", out.String())
 	}
 }
+
+func TestListenMalformedReceiverCannotLeakFrame(t *testing.T) {
+	const token = "Bearer sensitive-reflected-frame"
+	local := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		conn, _, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer conn.Close()
+		// An invalid status line makes net/http include remote bytes in its error.
+		_, _ = fmt.Fprint(conn, r.Header.Get("Authorization")+"\r\n\r\n")
+	}))
+	defer local.Close()
+	app, _, _ := testApp(t, "")
+	result := app.forwardListenAttempt(context.Background(), time.Second, local.URL, listenSignedDelivery{Body: `{}`, Headers: map[string]string{"Authorization": token}})
+	if result.err == nil || !strings.Contains(result.err.Error(), "sensitive-reflected-frame") {
+		t.Fatal("fixture did not reflect the frame in a transport error")
+	}
+	if strings.Contains(listenForwardErrorReason(result.err, time.Second), "sensitive-reflected-frame") {
+		t.Fatal("transport diagnostic leaked a signed frame")
+	}
+}
