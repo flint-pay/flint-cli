@@ -191,3 +191,27 @@ func flattenAssertNoKeywords(t *testing.T, value any) {
 		}
 	}
 }
+
+func TestFlattenKeepsInformativeIDDescriptions(t *testing.T) {
+	source := map[string]any{"type": "object", "properties": map[string]any{
+		"order_id":        map[string]any{"type": "string", "description": "Flint order ID."},
+		"product_id":      map[string]any{"type": "string", "description": "Product ID."},
+		"parent_order_id": map[string]any{"type": "string", "description": "Flint order ID. Must belong to the same customer."},
+	}}
+	flat, err := New(source).Flatten(source, 2, 600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	props := schemaMap(flat["properties"])
+	for _, name := range []string{"order_id", "product_id"} {
+		if schemaMap(props[name])["description"] != nil {
+			t.Fatalf("redundant description for %s", name)
+		}
+	}
+	if schemaMap(props["parent_order_id"])["description"] == nil {
+		t.Fatal("informative relationship description omitted")
+	}
+	if schemaMap(schemaMap(source["properties"])["order_id"])["description"] == nil {
+		t.Fatal("source schema mutated")
+	}
+}
