@@ -3893,6 +3893,13 @@
       "description": "Origin of the page that renders this headless checkout. Omitted when not set.",
       "type": "string"
      },
+     "pay_to_new_address_requires_verification": {
+      "description": "Whether at least one saved card this checkout lists would be refused for the current delivery destination because the paying credential last confirmed a code more than 15 minutes ago. Request a code with purpose pay_to_new_address, without email or channel, and confirm it with this credential before paying. A Flint wallet card can still pay to an address in that wallet while this is true for a store saved card. Pickup and orders that ship nothing never require this verification. Returned only to the checkout credential. Returned only to the checkout credential; never in webhook payloads.",
+      "type": "boolean",
+      "x-flint-omitted-for-auth": [
+       "BearerAuth"
+      ]
+     },
      "payment_collection": {
       "$ref": "#/components/schemas/BuyerPaymentCollection",
       "description": "Guidance for collecting a payment source. Checkout-credential reads include it only while the session is open. Returned only to the checkout credential; never in webhook payloads.",
@@ -19303,6 +19310,13 @@
       "description": "Origin of the page that renders this headless checkout. Omitted when not set.",
       "type": "string"
      },
+     "pay_to_new_address_requires_verification": {
+      "description": "Whether at least one saved card this checkout lists would be refused for the current delivery destination because the paying credential last confirmed a code more than 15 minutes ago. Request a code with purpose pay_to_new_address, without email or channel, and confirm it with this credential before paying. A Flint wallet card can still pay to an address in that wallet while this is true for a store saved card. Pickup and orders that ship nothing never require this verification. Returned only to the checkout credential. Returned only to the checkout credential; never in webhook payloads.",
+      "type": "boolean",
+      "x-flint-omitted-for-auth": [
+       "BearerAuth"
+      ]
+     },
      "payment_collection": {
       "$ref": "#/components/schemas/PaymentCollection",
       "description": "Guidance for collecting a payment source. Checkout-credential reads include it only while the session is open. Returned only to the checkout credential; never in webhook payloads.",
@@ -19643,7 +19657,7 @@
       "type": "string",
       "x-enum-descriptions": [
        "Flint emails the code.",
-       "Flint texts the code to the mobile number saved with the buyer's details."
+       "Flint texts the code to the mobile number saved with the buyer's details at this business or, in Flint's hosted checkout, to the number the buyer added to their Flint wallet."
       ],
       "x-flint-enum-kind": "extensible"
      },
@@ -19664,7 +19678,7 @@
       "type": "string"
      },
      "email": {
-      "description": "The address the code is for, lowercased: the email the buyer typed, or for an emailed confirm_saved_payment_method code, the customer's email masked to its first character and domain, such as a•••@example.com. Omitted for a texted confirm_saved_payment_method code. Only the create response carries the email as typed. Reads mask every email this way.",
+      "description": "The address the code is for, lowercased: the email the buyer typed, or for pay_to_new_address and emailed confirm_saved_payment_method codes, the customer's email masked to its first character and domain, such as a•••@example.com. Omitted for a texted confirm_saved_payment_method code. Only the create response carries the email as typed. Reads mask every email this way.",
       "type": "string"
      },
      "expires_at": {
@@ -19683,14 +19697,16 @@
        "gift_card_purchase",
        "save_payment_method",
        "use_saved_payment_methods",
-       "confirm_saved_payment_method"
+       "confirm_saved_payment_method",
+       "pay_to_new_address"
       ],
       "type": "string",
       "x-enum-descriptions": [
        "Confirm an email before funding a gift card purchase, without saving a payment method.",
        "Confirm an email before saving the card the buyer is paying with.",
        "Confirm an email or phone number before using the cards the buyer saved at this merchant.",
-       "Confirm the card a payment saved with a mobile number."
+       "Confirm the card a payment saved with a mobile number.",
+       "Confirm a fresh code before paying with a saved card to a new address."
       ],
       "x-flint-enum-kind": "extensible"
      },
@@ -23056,7 +23072,7 @@
       "type": "string",
       "x-enum-descriptions": [
        "Flint emails the code.",
-       "Flint texts the code to the mobile number saved with the buyer's details."
+       "Flint texts the code to the mobile number saved with the buyer's details at this business or, in Flint's hosted checkout, to the number the buyer added to their Flint wallet."
       ]
      },
      "purpose": {
@@ -23083,6 +23099,7 @@
      "mapping": {
       "confirm_saved_payment_method": "#/components/schemas/CreateCheckoutSessionConfirmSavedPaymentMethodVerificationRequest",
       "gift_card_purchase": "#/components/schemas/CreateCheckoutSessionGiftCardPurchaseVerificationRequest",
+      "pay_to_new_address": "#/components/schemas/CreateCheckoutSessionPayToNewAddressVerificationRequest",
       "save_payment_method": "#/components/schemas/CreateCheckoutSessionSavePaymentMethodVerificationRequest",
       "use_saved_payment_methods": "#/components/schemas/CreateCheckoutSessionUseSavedPaymentMethodsVerificationRequest"
      },
@@ -23097,6 +23114,9 @@
      },
      {
       "$ref": "#/components/schemas/CreateCheckoutSessionUseSavedPaymentMethodsVerificationRequest"
+     },
+     {
+      "$ref": "#/components/schemas/CreateCheckoutSessionPayToNewAddressVerificationRequest"
      },
      {
       "$ref": "#/components/schemas/CreateCheckoutSessionConfirmSavedPaymentMethodVerificationRequest"
@@ -23707,6 +23727,27 @@
      "order_id"
     ],
     "title": "CreateCheckoutSessionOrder",
+    "type": "object"
+   },
+   "CreateCheckoutSessionPayToNewAddressVerificationRequest": {
+    "additionalProperties": false,
+    "description": "Request a fresh code when pay_to_new_address_requires_verification is true. Send no email, channel, or remembered_buyer_token. The code follows the paying credential's proof, except that a wallet opened by text steps up by email. Returns 409 ACTION_NOT_ALLOWED with reason not_offered when no saved card needs step-up. Confirmation keeps the credential and its proof and refreshes it for 15 minutes.",
+    "properties": {
+     "purpose": {
+      "description": "What the buyer is confirming their email or number for.",
+      "enum": [
+       "pay_to_new_address"
+      ],
+      "type": "string",
+      "x-enum-descriptions": [
+       "Confirm a fresh code before paying with a saved card to a new address."
+      ]
+     }
+    },
+    "required": [
+     "purpose"
+    ],
+    "title": "Verify payment to a new address",
     "type": "object"
    },
    "CreateCheckoutSessionQuickPay": {
@@ -24893,7 +24934,7 @@
       "type": "string",
       "x-enum-descriptions": [
        "Flint emails the code.",
-       "Flint texts the code to the mobile number saved with the buyer's details.",
+       "Flint texts the code to the mobile number saved with the buyer's details at this business or, in Flint's hosted checkout, to the number the buyer added to their Flint wallet.",
        "Flint decides whether and how to send a code. Accepted with `use_saved_payment_methods`, and with `save_payment_method` on a checkout that starts a subscription."
       ]
      },
@@ -24938,7 +24979,7 @@
       "type": "string",
       "x-enum-descriptions": [
        "Flint emails the code.",
-       "Flint texts the code to the mobile number saved with the buyer's details.",
+       "Flint texts the code to the mobile number saved with the buyer's details at this business or, in Flint's hosted checkout, to the number the buyer added to their Flint wallet.",
        "Flint decides whether and how to send a code. Accepted with `use_saved_payment_methods`, and with `save_payment_method` on a checkout that starts a subscription."
       ]
      },
@@ -24991,7 +25032,7 @@
       "type": "string",
       "x-enum-descriptions": [
        "Flint emails the code.",
-       "Flint texts the code to the mobile number saved with the buyer's details.",
+       "Flint texts the code to the mobile number saved with the buyer's details at this business or, in Flint's hosted checkout, to the number the buyer added to their Flint wallet.",
        "Flint decides whether and how to send a code. Accepted with `use_saved_payment_methods`, and with `save_payment_method` on a checkout that starts a subscription."
       ]
      },
@@ -95935,77 +95976,321 @@
      "action_type": {
       "description": "Action to take next. Use its target resource and required_fields to prepare the request.",
       "enum": [
-       "get_operation",
-       "create_checkout_session_customer_verification",
-       "get_checkout_session",
-       "get_payment_intent",
-       "confirm_payment_intent",
-       "capture_payment_intent",
-       "cancel_payment_intent",
-       "get_order",
-       "update_order",
-       "update_invoice",
-       "pay_order",
-       "close_order",
        "add_line_items",
-       "update_checkout_session",
+       "cancel_payment_intent",
+       "capture_payment_intent",
        "close_checkout_session",
-       "create_refund",
-       "get_refund",
-       "get_payment_link_public",
-       "update_payment_link",
-       "update_inventory_allocation_policy",
-       "update_settings",
-       "update_location",
-       "update_delivery_profile",
-       "get_dispute",
-       "review_onboarding_state",
+       "close_order",
+       "complete_gift_card_challenge",
+       "confirm_payment_intent",
+       "create_checkout_session_customer_verification",
        "create_dispute_response_session",
-       "review_merchant_readiness",
-       "recreate_delivery_quote",
        "create_merchant_account_session",
-       "issue_developer_sandbox_test_key",
-       "start_new_image_ingestion",
+       "create_refund",
+       "get_api_key",
+       "get_bundle",
+       "get_category",
+       "get_checkout_session",
+       "get_credit_note",
+       "get_custom_domain",
+       "get_customer",
+       "get_customer_address",
+       "get_customer_deletion_request",
+       "get_customer_tax_exemption",
+       "get_customer_verification",
+       "get_delivery_location_set",
+       "get_delivery_method",
+       "get_delivery_profile",
+       "get_delivery_rate_callback",
+       "get_delivery_selection",
+       "get_delivery_zone",
+       "get_device",
+       "get_dispute",
+       "get_file",
+       "get_gift_card",
+       "get_gift_card_notification",
+       "get_gift_card_redemption",
+       "get_inventory_count",
+       "get_inventory_item",
+       "get_inventory_level",
+       "get_inventory_reservation",
+       "get_inventory_transfer",
+       "get_invoice",
+       "get_invoice_manual_payment",
+       "get_invoice_payment_term",
+       "get_location",
+       "get_me",
+       "get_me_address",
+       "get_me_email_preferences",
+       "get_me_gift_card",
+       "get_me_payment_method",
+       "get_me_return",
+       "get_me_subscription",
+       "get_merchant",
+       "get_merchant_signup",
+       "get_modifier_group",
+       "get_modifier_set",
+       "get_onboarding_state",
+       "get_operation",
+       "get_order",
+       "get_order_edit",
+       "get_order_payment_attempt",
+       "get_partner_app",
+       "get_partner_app_credential",
+       "get_partner_app_install",
+       "get_payment_intent",
+       "get_payment_link",
+       "get_payment_link_public",
+       "get_payment_method",
+       "get_payment_method_domain",
+       "get_payment_review",
+       "get_payout",
+       "get_payout_destination",
        "get_payout_settings",
+       "get_price_list",
+       "get_price_list_price",
+       "get_product",
+       "get_product_variant",
+       "get_promotion",
+       "get_promotion_code",
+       "get_reader",
+       "get_refund",
+       "get_return",
+       "get_return_line_item",
+       "get_return_policy",
+       "get_return_resolution",
+       "get_risk_list",
+       "get_risk_list_item",
+       "get_risk_rule",
+       "get_sandbox",
+       "get_settings",
+       "get_shipment",
+       "get_subscription",
+       "get_subscription_offer",
+       "get_subscription_plan",
+       "get_tax_calculation_callback",
+       "get_tax_connection",
+       "get_tax_registration",
+       "get_test_clock",
+       "get_ticket",
+       "get_webhook_delivery",
+       "get_webhook_endpoint",
+       "get_workload_identity",
+       "issue_developer_sandbox_test_key",
+       "list_credit_note_allocations",
+       "list_credit_notes",
+       "list_fulfillments",
+       "list_gift_card_funding_dispositions",
+       "list_gift_card_loads",
+       "list_gift_card_redemptions",
+       "list_gift_card_transactions",
+       "list_gift_cards",
+       "list_inventory_counts",
+       "list_inventory_movements",
+       "list_inventory_receipts",
+       "list_inventory_reservations",
+       "list_inventory_transfers",
+       "list_invoice_activities",
+       "list_invoice_manual_payments",
+       "list_invoice_payment_attempts",
+       "list_invoices",
+       "list_me_gift_cards",
+       "list_me_returns",
+       "list_me_subscription_payment_retries",
+       "list_merchant_partner_app_installs",
+       "list_order_charges",
+       "list_order_edits",
+       "list_order_line_items",
+       "list_order_payment_attempts",
+       "list_package_items",
+       "list_packages",
+       "list_payment_intent_activities",
+       "list_payment_intents",
+       "list_payouts",
+       "list_product_variants",
+       "list_refunds",
+       "list_return_dispositions",
+       "list_return_inspections",
+       "list_return_reasons",
+       "list_return_receipts",
+       "list_return_resolutions",
+       "list_returns",
+       "list_shipments",
+       "list_subscription_payment_retries",
+       "list_subscriptions",
+       "pay_order",
        "payment_authentication",
-       "complete_gift_card_challenge"
+       "recreate_delivery_quote",
+       "review_merchant_readiness",
+       "review_onboarding_state",
+       "start_new_image_ingestion",
+       "update_checkout_session",
+       "update_delivery_profile",
+       "update_inventory_allocation_policy",
+       "update_invoice",
+       "update_location",
+       "update_order",
+       "update_payment_link",
+       "update_settings"
       ],
       "type": "string",
       "x-enum-descriptions": [
-       "Read the operation to check whether it has finished.",
-       "Request a checkout verification code to confirm the buyer's identity before using saved payment methods.",
-       "Read the checkout session to check its current payment state.",
-       "Read the payment intent to check its current state.",
-       "Confirm the payment intent to start collecting payment.",
-       "Capture the authorized payment amount.",
-       "Cancel the payment intent to stop collecting payment.",
-       "Read the order to check its current state.",
-       "Update the order's required inputs with PATCH /v1/orders/{order_id}.",
-       "Update the draft invoice with PATCH /v1/invoices/{invoice_id}, then retry the refused action.",
-       "Start collecting payment for the order.",
-       "Close the order when no more payment will be collected.",
        "Add the items that the order needs before payment.",
-       "Update the checkout session with the required inputs.",
+       "Cancel the payment intent to stop collecting payment.",
+       "Capture the authorized payment amount.",
        "Close the checkout session to prevent further payment attempts.",
-       "Create a refund for the collected payment.",
-       "Read the refund to check its current state.",
-       "Read GET /v1/payment-links/{payment_link_id}/public and send its resolution_context when resolving the same link.",
-       "Update the payment link with the required configuration.",
-       "Update the inventory allocation policy with the required configuration.",
-       "Update the merchant settings with the required configuration.",
-       "Update the location with the required configuration.",
-       "Update the delivery profile with the required configuration.",
-       "Read the dispute to check its linked payment intent.",
-       "Read onboarding requirements to determine the next setup step.",
+       "Close the order when no more payment will be collected.",
+       "Show the gift card challenge at url to the buyer, then retry with its proof in Flint-Gift-Card-Challenge.",
+       "Confirm the payment intent to start collecting payment.",
+       "Request a checkout verification code to confirm the buyer's identity before using saved payment methods.",
        "Open a response session to respond to or accept the dispute.",
-       "Read merchant readiness on GET /v1/merchant to resolve the blocked capability.",
-       "Request a new delivery quote using the current checkout inputs.",
        "Open an account session to complete merchant setup or verification.",
+       "Create a refund for the collected payment.",
+       "Read current state with GET /v1/api-keys/{api_key_id} before sending a new operation.",
+       "Read current state with GET /v1/bundles/{bundle_id} before sending a new operation.",
+       "Read current state with GET /v1/categories/{category_id} before sending a new operation.",
+       "Read current state with GET /v1/checkout-sessions/{checkout_session_id} before sending a new operation.",
+       "Read current state with GET /v1/credit-notes/{credit_note_id} before sending a new operation.",
+       "Read current state with GET /v1/custom-domains/{custom_domain_id} before sending a new operation.",
+       "Read current state with GET /v1/customers/{customer_id} before sending a new operation.",
+       "Read current state with GET /v1/customers/{customer_id}/addresses/{customer_address_id} before sending a new operation.",
+       "Read current state with GET /v1/customer-deletion-requests/{customer_deletion_request_id} before sending a new operation.",
+       "Read current state with GET /v1/customers/{customer_id}/tax-exemptions/{customer_tax_exemption_id} before sending a new operation.",
+       "Read current state with GET /v1/customer-verifications/{customer_verification_id} before sending a new operation.",
+       "Read current state with GET /v1/delivery-location-sets/{delivery_location_set_id} before sending a new operation.",
+       "Read current state with GET /v1/delivery-methods/{delivery_method_id} before sending a new operation.",
+       "Read current state with GET /v1/delivery-profiles/{delivery_profile_id} before sending a new operation.",
+       "Read current state with GET /v1/delivery-rate-callbacks/{delivery_rate_callback_id} before sending a new operation.",
+       "Read current state with GET /v1/delivery-selections/{delivery_selection_id} before sending a new operation.",
+       "Read current state with GET /v1/delivery-zones/{delivery_zone_id} before sending a new operation.",
+       "Read current state with GET /v1/devices/{device_id} before sending a new operation.",
+       "Read current state with GET /v1/disputes/{dispute_id} before sending a new operation.",
+       "Read current state with GET /v1/files/{file_id} before sending a new operation.",
+       "Read current state with GET /v1/gift-cards/{gift_card_id} before sending a new operation.",
+       "Read current state with GET /v1/gift-card-notifications/{gift_card_notification_id} before sending a new operation.",
+       "Read current state with GET /v1/gift-card-redemptions/{gift_card_redemption_id} before sending a new operation.",
+       "Read current state with GET /v1/inventory-counts/{inventory_count_id} before sending a new operation.",
+       "Read current state with GET /v1/inventory-items/{inventory_item_id} before sending a new operation.",
+       "Read current state with GET /v1/inventory-levels/{inventory_level_id} before sending a new operation.",
+       "Read current state with GET /v1/inventory-reservations/{inventory_reservation_id} before sending a new operation.",
+       "Read current state with GET /v1/inventory-transfers/{inventory_transfer_id} before sending a new operation.",
+       "Read current state with GET /v1/invoices/{invoice_id} before sending a new operation.",
+       "Read current state with GET /v1/invoices/{invoice_id}/manual-payments/{invoice_manual_payment_id} before sending a new operation.",
+       "Read current state with GET /v1/invoice-payment-terms/{invoice_payment_term_id} before sending a new operation.",
+       "Read current state with GET /v1/locations/{location_id} before sending a new operation.",
+       "Read current state with GET /v1/me before sending a new operation.",
+       "Read current state with GET /v1/me/addresses/{customer_address_id} before sending a new operation.",
+       "Read current state with GET /v1/me/email-preferences before sending a new operation.",
+       "Read current state with GET /v1/me/gift-cards/{gift_card_id} before sending a new operation.",
+       "Read current state with GET /v1/me/payment-methods/{payment_method_id} before sending a new operation.",
+       "Read current state with GET /v1/me/returns/{return_id} before sending a new operation.",
+       "Read current state with GET /v1/me/subscriptions/{subscription_id} before sending a new operation.",
+       "Read current state with GET /v1/merchant before sending a new operation.",
+       "Read current state with GET /v1/merchant-signups/{merchant_signup_id} before sending a new operation.",
+       "Read current state with GET /v1/modifier-groups/{modifier_group_id} before sending a new operation.",
+       "Read current state with GET /v1/modifier-sets/{modifier_set_id} before sending a new operation.",
+       "Read current state with GET /v1/onboarding/state before sending a new operation.",
+       "Read the operation to check whether it has finished.",
+       "Read current state with GET /v1/orders/{order_id} before sending a new operation.",
+       "Read current state with GET /v1/orders/{order_id}/edits/{order_edit_id} before sending a new operation.",
+       "Read current state with GET /v1/orders/{order_id}/payment-attempts/{order_payment_attempt_id} before sending a new operation.",
+       "Read current state with GET /v1/partner-apps/{partner_app_id} before sending a new operation.",
+       "Read current state with GET /v1/partner-apps/{partner_app_id}/credentials/{partner_app_credential_id} before sending a new operation.",
+       "Read current state with GET /v1/partner-apps/{partner_app_id}/installs/{partner_app_install_id} before sending a new operation.",
+       "Read current state with GET /v1/payment-intents/{payment_intent_id} before sending a new operation.",
+       "Read current state with GET /v1/payment-links/{payment_link_id} before sending a new operation.",
+       "Read GET /v1/payment-links/{payment_link_id}/public and send its resolution_context when resolving the same link.",
+       "Read current state with GET /v1/payment-methods/{payment_method_id} before sending a new operation.",
+       "Read current state with GET /v1/payment-method-domains/{payment_method_domain_id} before sending a new operation.",
+       "Read current state with GET /v1/payment-reviews/{payment_review_id} before sending a new operation.",
+       "Read current state with GET /v1/payouts/{payout_id} before sending a new operation.",
+       "Read current state with GET /v1/payout-destinations/{payout_destination_id} before sending a new operation.",
+       "Read current state with GET /v1/payout-settings before sending a new operation.",
+       "Read current state with GET /v1/price-lists/{price_list_id} before sending a new operation.",
+       "Read current state with GET /v1/price-lists/{price_list_id}/prices/{price_list_price_id} before sending a new operation.",
+       "Read current state with GET /v1/products/{product_id} before sending a new operation.",
+       "Read current state with GET /v1/products/{product_id}/variants/{variant_id} before sending a new operation.",
+       "Read current state with GET /v1/promotions/{promotion_id} before sending a new operation.",
+       "Read current state with GET /v1/promotion-codes/{promotion_code_id} before sending a new operation.",
+       "Read current state with GET /v1/readers/{reader_id} before sending a new operation.",
+       "Read current state with GET /v1/refunds/{refund_id} before sending a new operation.",
+       "Read current state with GET /v1/returns/{return_id} before sending a new operation.",
+       "Read current state with GET /v1/returns/{return_id}/line-items/{return_line_item_id} before sending a new operation.",
+       "Read current state with GET /v1/return-policies/{return_policy_id} before sending a new operation.",
+       "Read current state with GET /v1/return-resolutions/{return_resolution_id} before sending a new operation.",
+       "Read current state with GET /v1/risk-lists/{risk_list_id} before sending a new operation.",
+       "Read current state with GET /v1/risk-lists/{risk_list_id}/items/{risk_list_item_id} before sending a new operation.",
+       "Read current state with GET /v1/risk-rules/{risk_rule_id} before sending a new operation.",
+       "Read current state with GET /v1/sandboxes/{sandbox_id} before sending a new operation.",
+       "Read current state with GET /v1/settings before sending a new operation.",
+       "Read current state with GET /v1/shipments/{shipment_id} before sending a new operation.",
+       "Read current state with GET /v1/subscriptions/{subscription_id} before sending a new operation.",
+       "Read current state with GET /v1/subscription-offers/{subscription_offer_id} before sending a new operation.",
+       "Read current state with GET /v1/subscription-plans/{subscription_plan_id} before sending a new operation.",
+       "Read current state with GET /v1/tax-calculation-callbacks/{tax_calculation_callback_id} before sending a new operation.",
+       "Read current state with GET /v1/tax-connection before sending a new operation.",
+       "Read current state with GET /v1/tax-connection/registrations/{tax_registration_id} before sending a new operation.",
+       "Read current state with GET /v1/test-clocks/{test_clock_id} before sending a new operation.",
+       "Read current state with GET /v1/tickets/{ticket_id} before sending a new operation.",
+       "Read current state with GET /v1/webhook-deliveries/{webhook_delivery_id} before sending a new operation.",
+       "Read current state with GET /v1/webhook-endpoints/{webhook_endpoint_id} before sending a new operation.",
+       "Read current state with GET /v1/workload-identities/{workload_identity_id} before sending a new operation.",
        "Create a test API key for the developer sandbox.",
-       "Create another image ingestion to retry the upload.",
-       "Read payout settings to resolve the payout restriction.",
+       "Read current state with GET /v1/credit-notes/{credit_note_id}/allocations before sending a new operation.",
+       "Read current state with GET /v1/credit-notes before sending a new operation.",
+       "Read current state with GET /v1/fulfillments before sending a new operation.",
+       "Read current state with GET /v1/gift-card-funding-dispositions before sending a new operation.",
+       "Read current state with GET /v1/gift-card-loads before sending a new operation.",
+       "Read current state with GET /v1/gift-card-redemptions before sending a new operation.",
+       "Read current state with GET /v1/gift-card-transactions before sending a new operation.",
+       "Read current state with GET /v1/gift-cards before sending a new operation.",
+       "Read current state with GET /v1/inventory-counts before sending a new operation.",
+       "Read current state with GET /v1/inventory-movements before sending a new operation.",
+       "Read current state with GET /v1/inventory-receipts before sending a new operation.",
+       "Read current state with GET /v1/inventory-reservations before sending a new operation.",
+       "Read current state with GET /v1/inventory-transfers before sending a new operation.",
+       "Read current state with GET /v1/invoices/{invoice_id}/activities before sending a new operation.",
+       "Read current state with GET /v1/invoices/{invoice_id}/manual-payments before sending a new operation.",
+       "Read current state with GET /v1/invoices/{invoice_id}/payment-attempts before sending a new operation.",
+       "Read current state with GET /v1/invoices before sending a new operation.",
+       "Read current state with GET /v1/me/gift-cards before sending a new operation.",
+       "Read current state with GET /v1/me/returns before sending a new operation.",
+       "Read current state with GET /v1/me/subscriptions/{subscription_id}/payment-retries before sending a new operation.",
+       "Read current state with GET /v1/partner-app-installs before sending a new operation.",
+       "Read current state with GET /v1/orders/{order_id}/charges before sending a new operation.",
+       "Read current state with GET /v1/orders/{order_id}/edits before sending a new operation.",
+       "Read current state with GET /v1/orders/{order_id}/line-items before sending a new operation.",
+       "Read current state with GET /v1/orders/{order_id}/payment-attempts before sending a new operation.",
+       "Read current state with GET /v1/packages/{package_id}/items before sending a new operation.",
+       "Read current state with GET /v1/packages before sending a new operation.",
+       "Read current state with GET /v1/payment-intents/{payment_intent_id}/activities before sending a new operation.",
+       "Read current state with GET /v1/payment-intents before sending a new operation.",
+       "Read current state with GET /v1/payouts before sending a new operation.",
+       "Read current state with GET /v1/products/{product_id}/variants before sending a new operation.",
+       "Read current state with GET /v1/refunds before sending a new operation.",
+       "Read current state with GET /v1/return-dispositions before sending a new operation.",
+       "Read current state with GET /v1/return-inspections before sending a new operation.",
+       "Read current state with GET /v1/return-reasons before sending a new operation.",
+       "Read current state with GET /v1/return-receipts before sending a new operation.",
+       "Read current state with GET /v1/return-resolutions before sending a new operation.",
+       "Read current state with GET /v1/returns before sending a new operation.",
+       "Read current state with GET /v1/shipments before sending a new operation.",
+       "Read current state with GET /v1/subscriptions/{subscription_id}/payment-retries before sending a new operation.",
+       "Read current state with GET /v1/subscriptions before sending a new operation.",
+       "Start collecting payment for the order.",
        "Complete the customer authentication required for payment.",
-       "Show the gift card challenge at url to the buyer, then retry with its proof in Flint-Gift-Card-Challenge."
+       "Request a new delivery quote using the current checkout inputs.",
+       "Read merchant readiness on GET /v1/merchant to resolve the blocked capability.",
+       "Read onboarding requirements to determine the next setup step.",
+       "Create another image ingestion to retry the upload.",
+       "Update the checkout session with the required inputs.",
+       "Update the delivery profile with the required configuration.",
+       "Update the inventory allocation policy with the required configuration.",
+       "Update the draft invoice with PATCH /v1/invoices/{invoice_id}, then retry the refused action.",
+       "Update the location with the required configuration.",
+       "Update the order's required inputs with PATCH /v1/orders/{order_id}.",
+       "Update the payment link with the required configuration.",
+       "Update the merchant settings with the required configuration."
       ],
       "x-flint-enum-kind": "extensible"
      },
@@ -96018,6 +96303,17 @@
      "merchant_account_session": {
       "$ref": "#/components/schemas/ReadinessMerchantAccountSession",
       "description": "Request body to send unchanged to POST /v1/merchant-account-sessions when action_type is create_merchant_account_session. When absent, GET merchant readiness and use its recommended session body."
+     },
+     "method": {
+      "description": "HTTP method for the recovery read.",
+      "enum": [
+       "GET"
+      ],
+      "type": "string",
+      "x-enum-descriptions": [
+       "Read current state without repeating the write."
+      ],
+      "x-flint-enum-kind": "extensible"
      },
      "reason_code": {
       "description": "Machine-readable reason this action is suggested.",
@@ -97909,7 +98205,7 @@
       ]
      },
      "support_email": {
-      "description": "Send null to clear it.",
+      "description": "Buyers see this address on receipts and in their account. A support email is required before initial live activation. Existing live merchants may clear it and receive a nonblocking prompt to add one. Send null to clear it.",
       "minLength": 1,
       "type": [
        "string",
@@ -109064,7 +109360,8 @@
       "type": "string"
      },
      "payment_source": {
-      "$ref": "#/components/schemas/PaymentSourceCredential"
+      "$ref": "#/components/schemas/PaymentSourceCredential",
+      "description": "A saved card on a checkout whose customer came from a code requires a code confirmed with this credential in the last 15 minutes when the order ships to a new address. Otherwise pay returns 409 ACTION_NOT_ALLOWED with reason verification_required and a next action to request purpose pay_to_new_address. Known addresses are saved addresses or destinations of earlier paid orders for this customer at this business; for a Flint wallet card, wallet addresses count too. Pickup and orders that ship nothing never require it. A merchant-named customer, typed card, Apple Pay, and Google Pay are unaffected."
      },
      "platform_fee": {
       "$ref": "#/components/schemas/PlatformFeeInput",
@@ -126790,7 +127087,7 @@
       ],
       "x-enum-descriptions": [
        "Flint emails the code.",
-       "Flint texts the code to the mobile number saved with the buyer's details.",
+       "Flint texts the code to the mobile number saved with the buyer's details at this business or, in Flint's hosted checkout, to the number the buyer added to their Flint wallet.",
        "This checkout cannot offer a recognition code, has no saved payment methods to open, or the remembered identity was revoked. Code caps are not considered."
       ],
       "x-flint-enum-kind": "extensible"
@@ -166241,7 +166538,7 @@
             "$ref": "#/components/schemas/CheckoutSession"
            }
           ],
-          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
           "x-flint-webhook-omitted-fields": [
            "url",
            "recovery_payment_attempt_id",
@@ -166249,6 +166546,7 @@
            "can_save_payment_method",
            "save_payment_method_types",
            "save_payment_method_requires_verification",
+           "pay_to_new_address_requires_verification",
            "can_save_payment_method_with_phone",
            "payment_method_save",
            "customer_prefill",
@@ -166377,7 +166675,7 @@
             "$ref": "#/components/schemas/CheckoutSession"
            }
           ],
-          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
           "x-flint-webhook-omitted-fields": [
            "url",
            "recovery_payment_attempt_id",
@@ -166385,6 +166683,7 @@
            "can_save_payment_method",
            "save_payment_method_types",
            "save_payment_method_requires_verification",
+           "pay_to_new_address_requires_verification",
            "can_save_payment_method_with_phone",
            "payment_method_save",
            "customer_prefill",
@@ -166442,7 +166741,7 @@
             "$ref": "#/components/schemas/CheckoutSession"
            }
           ],
-          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
           "x-flint-webhook-omitted-fields": [
            "url",
            "recovery_payment_attempt_id",
@@ -166450,6 +166749,7 @@
            "can_save_payment_method",
            "save_payment_method_types",
            "save_payment_method_requires_verification",
+           "pay_to_new_address_requires_verification",
            "can_save_payment_method_with_phone",
            "payment_method_save",
            "customer_prefill",
@@ -166569,7 +166869,7 @@
             "$ref": "#/components/schemas/CheckoutSession"
            }
           ],
-          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
           "x-flint-webhook-omitted-fields": [
            "url",
            "recovery_payment_attempt_id",
@@ -166577,6 +166877,7 @@
            "can_save_payment_method",
            "save_payment_method_types",
            "save_payment_method_requires_verification",
+           "pay_to_new_address_requires_verification",
            "can_save_payment_method_with_phone",
            "payment_method_save",
            "customer_prefill",
@@ -166625,7 +166926,7 @@
             "$ref": "#/components/schemas/CheckoutSession"
            }
           ],
-          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
           "x-flint-webhook-omitted-fields": [
            "url",
            "recovery_payment_attempt_id",
@@ -166633,6 +166934,7 @@
            "can_save_payment_method",
            "save_payment_method_types",
            "save_payment_method_requires_verification",
+           "pay_to_new_address_requires_verification",
            "can_save_payment_method_with_phone",
            "payment_method_save",
            "customer_prefill",
@@ -166761,7 +167063,7 @@
             "$ref": "#/components/schemas/CheckoutSession"
            }
           ],
-          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
           "x-flint-webhook-omitted-fields": [
            "url",
            "recovery_payment_attempt_id",
@@ -166769,6 +167071,7 @@
            "can_save_payment_method",
            "save_payment_method_types",
            "save_payment_method_requires_verification",
+           "pay_to_new_address_requires_verification",
            "can_save_payment_method_with_phone",
            "payment_method_save",
            "customer_prefill",
@@ -166826,7 +167129,7 @@
             "$ref": "#/components/schemas/CheckoutSession"
            }
           ],
-          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
           "x-flint-webhook-omitted-fields": [
            "url",
            "recovery_payment_attempt_id",
@@ -166834,6 +167137,7 @@
            "can_save_payment_method",
            "save_payment_method_types",
            "save_payment_method_requires_verification",
+           "pay_to_new_address_requires_verification",
            "can_save_payment_method_with_phone",
            "payment_method_save",
            "customer_prefill",
@@ -166962,7 +167266,7 @@
             "$ref": "#/components/schemas/CheckoutSession"
            }
           ],
-          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
           "x-flint-webhook-omitted-fields": [
            "url",
            "recovery_payment_attempt_id",
@@ -166970,6 +167274,7 @@
            "can_save_payment_method",
            "save_payment_method_types",
            "save_payment_method_requires_verification",
+           "pay_to_new_address_requires_verification",
            "can_save_payment_method_with_phone",
            "payment_method_save",
            "customer_prefill",
@@ -167027,7 +167332,7 @@
             "$ref": "#/components/schemas/CheckoutSession"
            }
           ],
-          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
           "x-flint-webhook-omitted-fields": [
            "url",
            "recovery_payment_attempt_id",
@@ -167035,6 +167340,7 @@
            "can_save_payment_method",
            "save_payment_method_types",
            "save_payment_method_requires_verification",
+           "pay_to_new_address_requires_verification",
            "can_save_payment_method_with_phone",
            "payment_method_save",
            "customer_prefill",
@@ -167163,7 +167469,7 @@
             "$ref": "#/components/schemas/CheckoutSession"
            }
           ],
-          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
           "x-flint-webhook-omitted-fields": [
            "url",
            "recovery_payment_attempt_id",
@@ -167171,6 +167477,7 @@
            "can_save_payment_method",
            "save_payment_method_types",
            "save_payment_method_requires_verification",
+           "pay_to_new_address_requires_verification",
            "can_save_payment_method_with_phone",
            "payment_method_save",
            "customer_prefill",
@@ -167228,7 +167535,7 @@
             "$ref": "#/components/schemas/CheckoutSession"
            }
           ],
-          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
           "x-flint-webhook-omitted-fields": [
            "url",
            "recovery_payment_attempt_id",
@@ -167236,6 +167543,7 @@
            "can_save_payment_method",
            "save_payment_method_types",
            "save_payment_method_requires_verification",
+           "pay_to_new_address_requires_verification",
            "can_save_payment_method_with_phone",
            "payment_method_save",
            "customer_prefill",
@@ -167364,7 +167672,7 @@
             "$ref": "#/components/schemas/CheckoutSession"
            }
           ],
-          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
           "x-flint-webhook-omitted-fields": [
            "url",
            "recovery_payment_attempt_id",
@@ -167372,6 +167680,7 @@
            "can_save_payment_method",
            "save_payment_method_types",
            "save_payment_method_requires_verification",
+           "pay_to_new_address_requires_verification",
            "can_save_payment_method_with_phone",
            "payment_method_save",
            "customer_prefill",
@@ -167429,7 +167738,7 @@
             "$ref": "#/components/schemas/CheckoutSession"
            }
           ],
-          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
           "x-flint-webhook-omitted-fields": [
            "url",
            "recovery_payment_attempt_id",
@@ -167437,6 +167746,7 @@
            "can_save_payment_method",
            "save_payment_method_types",
            "save_payment_method_requires_verification",
+           "pay_to_new_address_requires_verification",
            "can_save_payment_method_with_phone",
            "payment_method_save",
            "customer_prefill",
@@ -167565,7 +167875,7 @@
             "$ref": "#/components/schemas/CheckoutSession"
            }
           ],
-          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+          "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
           "x-flint-webhook-omitted-fields": [
            "url",
            "recovery_payment_attempt_id",
@@ -167573,6 +167883,7 @@
            "can_save_payment_method",
            "save_payment_method_types",
            "save_payment_method_requires_verification",
+           "pay_to_new_address_requires_verification",
            "can_save_payment_method_with_phone",
            "payment_method_save",
            "customer_prefill",
@@ -242105,7 +242416,7 @@
         }
        }
       },
-      "description": "The credential already acts for a customer, the checkout is no longer open, a payment is in progress, Flint cannot text a code for this email, or no saved card waits for confirmation. The resource's current state does not allow this action (`ACTION_NOT_ALLOWED`). The resource already reflects the action's outcome (reason `already_applied`). The resource does not offer this action or option (reason `not_offered`). The resource has not reached the status required for this action (reason `status_not_reached`). The resource's final status prevents this action (reason `terminal_status`). The resource's current state does not support this action (reason `unsupported_state`). A request with the same idempotency key is still in progress (`IDEMPOTENCY_KEY_IN_PROGRESS`). The idempotency key was reused with a different request body (`IDEMPOTENCY_KEY_REUSED`). A count prevents another request of this kind (`LIMIT_REACHED`). No more confirmation codes are available for this card on this channel (reason `saved_card_codes`). The checkout requested as many codes on this channel as it can: 5 emailed codes, or 6 texted-code requests (reason `verification_codes`). Flint is finishing other work on the resource (`OPERATION_IN_PROGRESS`). The resource changed and the request must be rebuilt from its current state (`VERSION_CONFLICT`).",
+      "description": "The credential already acts for a customer, the checkout is no longer open, a payment is in progress, Flint cannot text a code for this email, no saved card waits for confirmation, or no new-address verification is required. The resource's current state does not allow this action (`ACTION_NOT_ALLOWED`). The resource already reflects the action's outcome (reason `already_applied`). The resource does not offer this action or option (reason `not_offered`). The resource has not reached the status required for this action (reason `status_not_reached`). The resource's final status prevents this action (reason `terminal_status`). The resource's current state does not support this action (reason `unsupported_state`). A request with the same idempotency key is still in progress (`IDEMPOTENCY_KEY_IN_PROGRESS`). The idempotency key was reused with a different request body (`IDEMPOTENCY_KEY_REUSED`). A count prevents another request of this kind (`LIMIT_REACHED`). No more confirmation codes are available for this card on this channel (reason `saved_card_codes`). The checkout requested as many codes on this channel as it can: 5 emailed codes, or 6 texted-code requests (reason `verification_codes`). Flint is finishing other work on the resource (`OPERATION_IN_PROGRESS`). The resource changed and the request must be rebuilt from its current state (`VERSION_CONFLICT`).",
       "headers": {
        "Flint-Merchant-Id": {
         "description": "Flint merchant ID for the authenticated request context.",
@@ -243367,7 +243678,7 @@
   },
   "/v1/checkout-sessions/{checkout_session_id}/customer-verifications/{checkout_session_customer_verification_id}/confirm": {
    "post": {
-    "description": "Checks the code the buyer typed. A right code makes the checkout act for the customer with that email, and creates the customer, with a customer.created event, when none exists. The checkout can then save the buyer's card with save_payment_method on POST /v1/orders/{order_id}/pay, and list and pay with that customer's saved cards. The order's customer does not change until the payment succeeds. Only the checkout_auth_token in the response acts for that customer. Send it as the Bearer credential from then on. Every other credential for the session, including earlier checkout_auth_token values and hosted checkout links, keeps working for the checkout and acts for no customer, so it lists no saved cards and pays with none. A buyer who opens the link on another device confirms an email there to use them, and from then on only that device's new credential acts for a customer. If the response is lost after the code was accepted, the credential you sent still works. Send the same code again with it while the code is valid, which counts as another try and returns a new credential for the same customer, or request a new code. A wrong, expired, or replaced code fails with `INVALID_REQUEST` and an `INVALID_VALUE` detail on `code`, and so does a used code once the checkout was confirmed again, any code after its 5th try, any code for an email past its limit on wrong tries, or a code whose email's customer changed its email or was deleted after the code was sent. If the checkout stops offering saved payment details before the code is confirmed, such as when the merchant turns them off, the request fails with `ACTION_NOT_ALLOWED` and reason `not_offered`. A credential that already acts for a customer fails with `ACTION_NOT_ALLOWED` and reason `already_applied`, and confirming never replaces a customer the merchant named. Once the customer whose email the buyer confirmed changes that email or is deleted, the checkout acts for no customer, and the buyer can confirm the customer's new email or another one. A checkout opened from a checkout reminder link acts for no customer the buyer confirmed earlier, so its buyer confirms an email again. A texted code for saved details binds the checkout the same way, but the new credential opens only the cards saved with that number: it lists and pays with no card saved by email, and reads no customer details. A texted code checks once, so after a lost answer request a new code. A code for purpose confirm_saved_payment_method keeps the session's credential, so the response omits checkout_auth_token and carries payment_method_save on the checkout session. A texted code saves the card with the number when the number already opens the customer's saved details or the customer has none yet; otherwise payment_method_save.email_confirmation_required turns true, and an emailed code finishes the save. An emailed code alone saves the card by email. After success, a retry with the same idempotency key and code returns the stored answer and credential to any credential of the session. After failure, a retry checks the code again and counts as another try.",
+    "description": "Checks the code the buyer typed. A right code makes the checkout act for the customer with that email, and creates the customer, with a customer.created event, when none exists. The checkout can then save the buyer's card with save_payment_method on POST /v1/orders/{order_id}/pay, and list and pay with that customer's saved cards. The order's customer does not change until the payment succeeds. Only the checkout_auth_token in the response acts for that customer. Send it as the Bearer credential from then on. Every other credential for the session, including earlier checkout_auth_token values and hosted checkout links, keeps working for the checkout and acts for no customer, so it lists no saved cards and pays with none. A buyer who opens the link on another device confirms an email there to use them, and from then on only that device's new credential acts for a customer. If the response is lost after the code was accepted, the credential you sent still works. Send the same code again with it while the code is valid, which counts as another try and returns a new credential for the same customer, or request a new code. A wrong, expired, or replaced code fails with `INVALID_REQUEST` and an `INVALID_VALUE` detail on `code`, and so does a used code once the checkout was confirmed again, any code after its 5th try, any code for an email past its limit on wrong tries, or a code whose email's customer changed its email or was deleted after the code was sent. If the checkout stops offering saved payment details before the code is confirmed, such as when the merchant turns them off, the request fails with `ACTION_NOT_ALLOWED` and reason `not_offered`. A credential that already acts for a customer fails with `ACTION_NOT_ALLOWED` and reason `already_applied`, and confirming never replaces a customer the merchant named. Once the customer whose email the buyer confirmed changes that email or is deleted, the checkout acts for no customer, and the buyer can confirm the customer's new email or another one. A checkout opened from a checkout reminder link acts for no customer the buyer confirmed earlier, so its buyer confirms an email again. A texted code for saved details binds the checkout the same way, but the new credential opens only the cards saved with that number: it lists and pays with no card saved by email, and reads no customer details. A texted code checks once, so after a lost answer request a new code. A code for purpose pay_to_new_address keeps the credential and its proof, omits checkout_auth_token, and refreshes the last confirmed code for 15 minutes. A code for purpose confirm_saved_payment_method keeps the session's credential, so the response omits checkout_auth_token and carries payment_method_save on the checkout session. A texted code saves the card with the number when the number already opens the customer's saved details or the customer has none yet; otherwise payment_method_save.email_confirmation_required turns true, and an emailed code finishes the save. An emailed code alone saves the card by email. After success, a retry with the same idempotency key and code returns the stored answer and credential to any credential of the session. After failure, a retry checks the code again and counts as another try.",
     "operationId": "confirmCheckoutSessionCustomerVerification",
     "parameters": [
      {
@@ -557860,7 +558171,7 @@
           "summary": "A past-due subscription with two payment retries left",
           "value": {
            "data": {
-            "billing_anchor_day": 2,
+            "billing_anchor_day": 15,
             "billing_interval": "monthly",
             "billing_interval_count": 1,
             "billing_schedule_owner": "flint",
@@ -557952,10 +558263,10 @@
              }
             ],
             "cancel_at_period_end": false,
-            "completed_cycles": 4,
-            "created_at": "2026-04-02T00:00:00Z",
-            "current_period_end_at": "2026-09-02T00:00:00Z",
-            "current_period_start_at": "2026-08-02T00:00:00Z",
+            "completed_cycles": 0,
+            "created_at": "2026-03-17T14:30:00Z",
+            "current_period_end_at": "2026-04-17T14:30:00Z",
+            "current_period_start_at": "2026-03-17T14:30:00Z",
             "customer_id": "cus_01KEZF7C003ACYXT6Q5EQZ78EE",
             "deliveries_per_period": 1,
             "delivery_interval": null,
@@ -557970,18 +558281,16 @@
                "amount": 4500,
                "currency": "USD"
               },
-              "max_quantity": 9999,
-              "min_quantity": 1,
               "modifier_total_money": {
                "amount": 0,
                "currency": "USD"
               },
               "name": "Membership",
-              "product_id": "prod_3E6HXGCJES8FSP5RDWY9E6C4SS",
+              "product_id": "prod_01KEZF7C00027JTCXQ7TQF86X8",
               "quantity": 1,
               "subscription_id": "sub_01KEZF7C00XFDKARBRFQGP4ZCW",
               "subscription_line_item_id": "sli_01KEZF7C00VQ081BX7W2T96R71",
-              "subscription_plan_line_item_id": "spli_3E6HXGCJES8FSP5RDWY9E6C4SS",
+              "subscription_plan_line_item_id": "spli_01KEZF7C00CEPTZ7FN2H9F4SF9",
               "subtotal_money": {
                "amount": 4500,
                "currency": "USD"
@@ -557991,11 +558300,11 @@
                "amount": 4500,
                "currency": "USD"
               },
-              "variant_id": "var_3E6HXGCJES8FSP5RDWY9E6C4SS"
+              "variant_id": "var_01KEZF7C00SDPKNHP9DAVYBQZ9"
              }
             ],
             "merchant_id": "mer_01KEZF7C00MPP0T9S0KH5BB4CC",
-            "missed_billing_at": "2026-09-02T00:00:00Z",
+            "missed_billing_at": "2026-04-17T14:30:00Z",
             "next_delivery_at": null,
             "next_retry_at": null,
             "payment_method_due_at": null,
@@ -558017,15 +558326,39 @@
             "scheduled_resume_at": null,
             "status": "past_due",
             "subscription_id": "sub_01KEZF7C00XFDKARBRFQGP4ZCW",
-            "subscription_plan_id": "plan_3E6HXGCJES8FSP5RDWY9E6C4SS",
+            "subscription_plan": {
+             "billing_interval": "monthly",
+             "billing_interval_count": 1,
+             "created_at": "2026-03-17T14:30:00Z",
+             "currency": "USD",
+             "line_items": [
+              {
+               "allow_quantity_adjustment": false,
+               "name": "Membership",
+               "quantity": 1,
+               "subscription_plan_line_item_id": "spli_01KEZF7C00CEPTZ7FN2H9F4SF9",
+               "swap_variant_ids": [],
+               "type": "custom",
+               "unit_price_money": {
+                "amount": 2500,
+                "currency": "USD"
+               }
+              }
+             ],
+             "name": "Monthly Membership",
+             "status": "active",
+             "subscription_plan_id": "plan_01KEZF7C00S177Q3KK6BKXGXV7",
+             "updated_at": "2026-03-17T14:30:00Z"
+            },
+            "subscription_plan_id": "plan_01KEZF7C00S177Q3KK6BKXGXV7",
             "terms_type": "subscription_plan",
-            "updated_at": "2026-08-02T00:00:00Z",
-            "version": 1
+            "updated_at": "2026-03-17T14:30:00Z",
+            "version": 0
            },
            "meta": {
             "api_version": "2026-09-07"
            },
-           "request_id": "req_01KWM6WAHG3N9Q8T2V5XRZ7C4D"
+           "request_id": "req_01KWM6D9Q35HGA0B1DFFN82FN6"
           }
          }
         },
@@ -1059149,7 +1059482,7 @@
         "$ref": "#/components/schemas/CheckoutSession"
        }
       ],
-      "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+      "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
       "x-flint-webhook-omitted-fields": [
        "url",
        "recovery_payment_attempt_id",
@@ -1059157,6 +1059490,7 @@
        "can_save_payment_method",
        "save_payment_method_types",
        "save_payment_method_requires_verification",
+       "pay_to_new_address_requires_verification",
        "can_save_payment_method_with_phone",
        "payment_method_save",
        "customer_prefill",
@@ -1059193,7 +1059527,7 @@
         "$ref": "#/components/schemas/CheckoutSession"
        }
       ],
-      "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+      "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
       "x-flint-webhook-omitted-fields": [
        "url",
        "recovery_payment_attempt_id",
@@ -1059201,6 +1059535,7 @@
        "can_save_payment_method",
        "save_payment_method_types",
        "save_payment_method_requires_verification",
+       "pay_to_new_address_requires_verification",
        "can_save_payment_method_with_phone",
        "payment_method_save",
        "customer_prefill",
@@ -1059228,7 +1059563,7 @@
         "$ref": "#/components/schemas/CheckoutSession"
        }
       ],
-      "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+      "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
       "x-flint-webhook-omitted-fields": [
        "url",
        "recovery_payment_attempt_id",
@@ -1059236,6 +1059571,7 @@
        "can_save_payment_method",
        "save_payment_method_types",
        "save_payment_method_requires_verification",
+       "pay_to_new_address_requires_verification",
        "can_save_payment_method_with_phone",
        "payment_method_save",
        "customer_prefill",
@@ -1059272,7 +1059608,7 @@
         "$ref": "#/components/schemas/CheckoutSession"
        }
       ],
-      "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+      "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
       "x-flint-webhook-omitted-fields": [
        "url",
        "recovery_payment_attempt_id",
@@ -1059280,6 +1059616,7 @@
        "can_save_payment_method",
        "save_payment_method_types",
        "save_payment_method_requires_verification",
+       "pay_to_new_address_requires_verification",
        "can_save_payment_method_with_phone",
        "payment_method_save",
        "customer_prefill",
@@ -1059316,7 +1059653,7 @@
         "$ref": "#/components/schemas/CheckoutSession"
        }
       ],
-      "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+      "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
       "x-flint-webhook-omitted-fields": [
        "url",
        "recovery_payment_attempt_id",
@@ -1059324,6 +1059661,7 @@
        "can_save_payment_method",
        "save_payment_method_types",
        "save_payment_method_requires_verification",
+       "pay_to_new_address_requires_verification",
        "can_save_payment_method_with_phone",
        "payment_method_save",
        "customer_prefill",
@@ -1059360,7 +1059698,7 @@
         "$ref": "#/components/schemas/CheckoutSession"
        }
       ],
-      "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+      "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
       "x-flint-webhook-omitted-fields": [
        "url",
        "recovery_payment_attempt_id",
@@ -1059368,6 +1059706,7 @@
        "can_save_payment_method",
        "save_payment_method_types",
        "save_payment_method_requires_verification",
+       "pay_to_new_address_requires_verification",
        "can_save_payment_method_with_phone",
        "payment_method_save",
        "customer_prefill",
@@ -1059404,7 +1059743,7 @@
         "$ref": "#/components/schemas/CheckoutSession"
        }
       ],
-      "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
+      "description": "The resource snapshot, without expansions. Webhooks omit these fields: `url`, `recovery_payment_attempt_id`, `recovery_expires_at`, `can_save_payment_method`, `save_payment_method_types`, `save_payment_method_requires_verification`, `pay_to_new_address_requires_verification`, `can_save_payment_method_with_phone`, `payment_method_save`, `customer_prefill`, `merchant_support`, `merchant_name`, `show_flint_mark`, `merchant_logo`, `merchant_icon`, `payment_link_image`, `platform_fee`.",
       "x-flint-webhook-omitted-fields": [
        "url",
        "recovery_payment_attempt_id",
@@ -1059412,6 +1059751,7 @@
        "can_save_payment_method",
        "save_payment_method_types",
        "save_payment_method_requires_verification",
+       "pay_to_new_address_requires_verification",
        "can_save_payment_method_with_phone",
        "payment_method_save",
        "customer_prefill",
