@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
@@ -6,6 +7,31 @@ const workflow = readFileSync(new URL("../.github/workflows/cli-release.yml", im
 // Job-level blocks have two-space indentation; nested steps cannot match.
 const jobs = new Map([...workflow.matchAll(/^  ([\w-]+):\n([\s\S]*?)(?=^  [\w-]+:|$(?![\s\S]))/gm)]
   .map(([, name, body]) => [name, body]));
+
+test("sandbox identity guard accepts API test mode and refuses unsafe contexts", () => {
+  const sandbox = readFileSync(new URL("../.github/workflows/cli-sandbox-check.yml", import.meta.url), "utf8");
+  const script = sandbox.match(/python3 - <<'PYTHON'\n([\s\S]*?)          PYTHON/)[1].replace(/^ {10}/gm, "");
+  const valid = {mode: "test", merchant_id: "mer_fixture", sandbox_id: "test_fixture", auth_type: "api_key"};
+  for (const [name, context, accepted] of [
+    ["test", valid, true],
+    ["live despite legacy field", {...valid, mode: "live", environment: "sandbox"}, false],
+    ["missing mode", {...valid, mode: undefined, environment: "sandbox"}, false],
+    ["unknown mode", {...valid, mode: "sandbox"}, false],
+    ["missing merchant", {...valid, merchant_id: undefined}, false],
+    ["missing sandbox", {...valid, sandbox_id: undefined}, false],
+  ]) {
+    const result = spawnSync("python3", ["-c", `
+import io, json, urllib.request
+urllib.request.urlopen = lambda request, timeout: io.StringIO(json.dumps({"data": ${JSON.stringify(context)}}))
+${script}`], {
+      encoding: "utf8",
+      env: {...process.env, FLINT_BASE_URL: "https://api.staging.withflintpay.com", FLINT_API_KEY: "flint_test_fixture"},
+    });
+    assert.equal(result.status, accepted ? 0 : 1, `${name}: ${result.stderr}`);
+    if (accepted) assert.deepEqual(JSON.parse(result.stdout), valid);
+    else assert.match(result.stderr, /A configured staging sandbox identity is required/);
+  }
+});
 
 test("GitHub update discovery waits for public npm installation readiness", () => {
   const github = jobs.get("publish-github");
