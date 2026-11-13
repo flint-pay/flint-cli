@@ -14,7 +14,7 @@ var argumentReader = sync.OnceValue(func() *schemaview.Reader {
 	return schemaview.NewLazy(nil, resolveComponentReference)
 })
 
-const queryTimeGuidance = "Also accepts today, this_week, yesterday, a date, or a duration such as 7d; calendar values use the reporting timezone."
+const queryTimeGuidance = "Also: today/this_week/yesterday, dates, 7d; calendar values use reporting timezone."
 
 func queryTimeDescription(description string) string {
 	description = strings.TrimSpace(description)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -621,13 +622,26 @@ func TestMCPToolsMatchCanonicalRegistryAndInputSchemas(t *testing.T) {
 			t.Errorf("MCP schema differs for %s", cmd.CanonicalName)
 		}
 		annotations, ok := tool["annotations"].(map[string]any)
+		if !ok {
+			t.Fatalf("MCP annotations missing for %s", cmd.CanonicalName)
+		}
+		annotations = maps.Clone(annotations)
+		// Compare effective protocol values, including omitted defaults.
+		for name, value := range map[string]any{"readOnlyHint": false, "idempotentHint": false, "openWorldHint": true} {
+			if _, present := annotations[name]; !present {
+				annotations[name] = value
+			}
+		}
+		if _, present := annotations["title"]; !present {
+			annotations["title"] = tool["title"]
+		}
 		expected := mcpToolAnnotations(cmd)
 		entry, _ := index.Lookup(cmd.CanonicalName)
 		expected["title"] = entry.Title
 		expected["readOnlyHint"] = entry.Kind == "read"
 		expected["destructiveHint"] = entry.Kind == "write" && entry.Irreversible
 		expected["idempotentHint"] = entry.Kind == "read" || entry.Method == "PUT" || entry.Method == "DELETE" || entry.Idempotency == "required"
-		if !ok || fmt.Sprint(annotations) != fmt.Sprint(expected) {
+		if fmt.Sprint(annotations) != fmt.Sprint(expected) {
 			t.Errorf("MCP annotations differ for %s: %#v", cmd.CanonicalName, tool["annotations"])
 		}
 	}

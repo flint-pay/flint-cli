@@ -153,12 +153,12 @@ func TestHelpTreeSectionsAndCatalog(t *testing.T) {
 			active = sectionDeveloper
 		case line == "Merchant resources:":
 			active = sectionMerchant
-		case strings.HasPrefix(line, "Buyer session ("):
+		case line == "Buyer session:":
 			active = sectionBuyer
 		case line == "Scripts and AI agents:":
 			active = ""
 		}
-		if active == "" || !strings.HasPrefix(line, "  ") || strings.HasPrefix(line, "  Shortcuts:") {
+		if active == "" || !strings.HasPrefix(line, "  ") || strings.HasPrefix(line, "  Shortcuts:") || strings.HasPrefix(line, "  Set FLINT_ACCESS_TOKEN") {
 			continue
 		}
 		words := strings.Fields(line)
