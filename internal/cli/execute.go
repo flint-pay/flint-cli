@@ -131,6 +131,9 @@ func previewRequest(req preparedRequest, cmd *Command, authContext AuthContext, 
 }
 
 func permissionPreview(cmd *Command, authContext AuthContext) map[string]any {
+	if authContext.AuthType == "none" {
+		return map[string]any{"status": "unknown", "reason": "No credential is configured, so scope checks were skipped."}
+	}
 	if !credentialScopesKnown(authContext) {
 		return map[string]any{"status": "unknown", "reason": "This credential's scopes cannot be checked locally."}
 	}
