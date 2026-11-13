@@ -79,9 +79,9 @@ func (a *App) writeError(err *CLIError, opts Options) {
 					e["remediation"] = remediation
 				}
 			}
-		} else if e["details"] != nil {
+		} else if e["details"] != nil && err.Code != "INSUFFICIENT_SCOPE" {
 			e["details"] = map[string]any{"problems": e["details"]}
-		} else {
+		} else if e["details"] == nil {
 			e["details"] = map[string]any{}
 		}
 		writer := a.Stdout
@@ -489,6 +489,13 @@ func renderChecksHuman(w io.Writer, checks []map[string]any) {
 			keys = append(keys, "fix")
 		}
 		for _, key := range keys {
+			if key == "scope_access" {
+				fmt.Fprintln(w, "  Scope access:")
+				if value, e := normalizeOutput(check[key]); e == nil {
+					renderHumanValue(w, value, "", time.Time{}, 2)
+				}
+				continue
+			}
 			label := humanLabel(key)
 			if key == "fix" {
 				label = "Next"

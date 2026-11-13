@@ -35,7 +35,7 @@ func TestCachedScopeDenialRevalidatesOnce(t *testing.T) {
 		wantCode    string
 	}{
 		{name: "granted", wantExit: ExitOK},
-		{name: "still denied", change: func(auth *AuthContext) { auth.Scopes = nil }, wantExit: ExitAuth, wantCode: "MISSING_REQUIRED_SCOPES"},
+		{name: "still denied", change: func(auth *AuthContext) { auth.Scopes = nil }, wantExit: ExitAuth, wantCode: "INSUFFICIENT_SCOPE"},
 		{name: "revoked", status: http.StatusUnauthorized, wantExit: ExitAuth, wantCode: "INVALID_CREDENTIAL"},
 		{name: "invalid response", invalidBody: true, wantExit: ExitAPI, wantCode: "INVALID_RESPONSE"},
 		{name: "unknown environment", change: func(auth *AuthContext) { auth.Environment = "unknown" }, wantExit: ExitAuth, wantCode: "UNKNOWN_CREDENTIAL_ENVIRONMENT"},
@@ -74,7 +74,7 @@ func TestCachedScopeDenialRevalidatesOnce(t *testing.T) {
 			defer server.Close()
 			first, stdout, stderr := testApp(t, server.URL)
 			args := []string{"customers", "create", "--name", "Cache test", "--output", "json"}
-			if exit := first.Run(args); exit != ExitAuth || !strings.Contains(stdout.String(), "MISSING_REQUIRED_SCOPES") {
+			if exit := first.Run(args); exit != ExitAuth || !strings.Contains(stdout.String(), "INSUFFICIENT_SCOPE") {
 				t.Fatalf("warm cache: exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 			}
 			if authCalls != 1 || targetCalls != 0 {

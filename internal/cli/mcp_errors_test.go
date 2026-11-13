@@ -401,7 +401,18 @@ func TestMCPErrorsLocalCatalogDoesNotReuseAPICodes(t *testing.T) {
 				code, err := strconv.Unquote(literal.Value)
 				if err == nil {
 					found[code] = true
-					if code != "INVALID_REQUEST" && apiCodes[code] {
+					// The terminal scope precheck intentionally implements the public
+					// authorization error (FLI-734). Its detail shape is checked by
+					// TestTerminalScopeErrorUsesPublicRepresentation. MCP skips it.
+					publicScopePrecheck := false
+					if path == "execute.go" && code == "INSUFFICIENT_SCOPE" {
+						for _, declaration := range file.Decls {
+							if function, ok := declaration.(*ast.FuncDecl); ok && function.Name.Name == "commandPermissionError" && literal.Pos() >= function.Pos() && literal.End() <= function.End() {
+								publicScopePrecheck = true
+							}
+						}
+					}
+					if code != "INVALID_REQUEST" && !publicScopePrecheck && apiCodes[code] {
 						t.Errorf("local emitter in %s reuses API code %s", path, code)
 					}
 				}
@@ -409,7 +420,7 @@ func TestMCPErrorsLocalCatalogDoesNotReuseAPICodes(t *testing.T) {
 			return true
 		})
 	}
-	for _, code := range []string{"INVALID_REQUEST", "UNKNOWN_OPERATION", "OPERATION_NOT_AVAILABLE", "RESULT_TOO_LARGE", "MCP_COMMAND_FAILED"} {
+	for _, code := range []string{"INVALID_REQUEST", "INSUFFICIENT_SCOPE", "UNKNOWN_OPERATION", "OPERATION_NOT_AVAILABLE", "RESULT_TOO_LARGE", "MCP_COMMAND_FAILED"} {
 		if !found[code] {
 			t.Errorf("missing local emitter coverage for %s", code)
 		}

@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/flint-pay/flint-cli/internal/opindex"
 )
 
 type outputHandled struct{}
@@ -131,137 +134,140 @@ func permissionPreview(cmd *Command, authContext AuthContext) map[string]any {
 	if authContext.AuthType == "none" {
 		return map[string]any{"status": "unknown", "reason": "No credential is configured, so scope checks were skipped."}
 	}
-	if authContext.AuthType == "session" {
-		return map[string]any{"status": "unknown", "reason": "Session credential permissions are validated by the API and cannot be checked locally."}
+	if !credentialScopesKnown(authContext) {
+		return map[string]any{"status": "unknown", "reason": "This credential's scopes cannot be checked locally."}
 	}
 	if cmd == nil || cmd.OperationID == "" {
 		return map[string]any{"status": "unknown", "reason": "The raw API command has no fixed operation contract."}
 	}
-	operation, ok := openAPIOperationByID(cmd.OperationID)
-	if !ok {
+	if _, ok := openAPIOperationByID(cmd.OperationID); !ok {
 		return map[string]any{"status": "unknown", "reason": "The operation is missing from the embedded public API contract."}
 	}
-	granted := make(map[string]bool, len(authContext.Scopes))
-	for _, scope := range authContext.Scopes {
-		granted[strings.TrimSpace(scope)] = true
+	requirement := commandScopeRequirement(cmd)
+	if requirement == nil {
+		return map[string]any{"status": "pass", "missing_scopes": []string{}}
 	}
-	mode := operation.FlintScopesMode
-	if mode == "" {
-		mode = "all"
+	index, err := scopeRequirementIndex()
+	if err != nil {
+		return map[string]any{"status": "unknown", "reason": "The embedded scope metadata could not be read."}
 	}
-	satisfied := len(operation.FlintRequiredScopes) == 0
-	missing := make([]string, 0)
-	if mode == "any" {
-		for _, scope := range operation.FlintRequiredScopes {
-			if granted[scope] {
-				satisfied = true
-				break
-			}
-		}
-		if !satisfied {
-			missing = append(missing, operation.FlintRequiredScopes...)
-		}
-	} else {
-		satisfied = true
-		for _, scope := range operation.FlintRequiredScopes {
-			if !granted[scope] {
-				satisfied = false
-				missing = append(missing, scope)
-			}
-		}
-	}
+	missing := index.MissingScopes(opindex.Entry{ScopeRequirement: requirement}, authContext.Scopes, true)
 	status := "pass"
-	if !satisfied {
+	if len(missing) > 0 {
 		status = "fail"
 	}
-	return map[string]any{
-		"status":          status,
-		"scope_mode":      mode,
-		"required_scopes": append([]string(nil), operation.FlintRequiredScopes...),
-		"missing_scopes":  missing,
-	}
+	return map[string]any{"status": status, "scope_requirement": requirement, "missing_scopes": missing}
 }
 
 func commandPermissionError(cmd *Command, authContext AuthContext, profile string) *CLIError {
-	if !authContext.isCLILogin() && authContext.AuthType != "api_key" {
-		return nil
-	}
 	check := permissionPreview(cmd, authContext)
 	if check["status"] != "fail" {
 		return nil
 	}
-	missing, _ := check["missing_scopes"].([]string)
-	mode, _ := check["scope_mode"].(string)
+	required := check["scope_requirement"].(*opindex.ScopeRequirement)
+	missing := check["missing_scopes"].([]string)
 	eligible, liveOnly := missingScopeGuidance(missing, authContext.Environment)
-	liveRequired := len(liveOnly) > 0 && (mode != "any" || len(eligible) == 0)
-	requirement := "requires these scopes: "
-	required, _ := check["required_scopes"].([]string)
-	remediation := "Create an API key with all required scopes: " + strings.Join(required, ", ") + "."
-	if mode == "any" {
-		requirement = "requires at least one of these scopes: "
-		remediation = "Create an API key with at least one of these scopes: " + strings.Join(eligible, ", ") + "."
+	liveRequired := len(liveOnly) > 0 && (required.Mode != "any" || len(eligible) == 0)
+	requirementText := "requires these scopes: "
+	if required.Mode == "any" {
+		requirementText = "requires at least one of these scopes: "
 	}
-	guidanceScopes := missing
-	if mode == "any" && !liveRequired {
-		guidanceScopes = eligible
-	}
-	message := "The active credential " + requirement + strings.Join(guidanceScopes, ", ") + "."
-	actions := []any{map[string]any{"reason_message": remediation}}
+	message := "The active credential " + requirementText + strings.Join(missing, ", ") + "."
 	if liveRequired {
 		message += " The missing scopes require live mode: " + strings.Join(liveOnly, ", ") + "."
-		actions = []any{map[string]any{"reason_message": "Use a live key with the required scopes. These scopes cannot be added to a sandbox key or browser context."}}
-	} else if authContext.isCLILogin() {
-		requestScopes := eligible
-		if mode == "any" && len(requestScopes) > 1 {
-			requestScopes = requestScopes[:1]
-		}
-		command := "flint reauth"
-		if authContext.OAuthSessionID == "" || authContext.ContextID == "" {
-			command = "flint login --new-session"
-			if authContext.Environment == "live" {
-				command += " --live"
-			}
-		} else {
-			command += " --context " + quoteRemediationArgument(authContext.ContextID)
-		}
-		if profile != "" {
-			command += " --profile " + quoteRemediationArgument(profile)
-		}
-		for _, scope := range requestScopes {
-			command += " --scope " + scope
-		}
-		message = "The current browser login " + requirement + strings.Join(guidanceScopes, ", ") + ". Approve additional access in the browser."
-		actions = []any{
-			map[string]any{"reason_message": "Approve the additional scope access for this context."},
-			map[string]any{"command": command},
-		}
-	} else {
-		if credentialFromEnvironment() != "" {
-			actions = append(actions, map[string]any{
-				"reason_message": "Replace FLINT_API_KEY with the new key, or unset it before using an imported key. FLINT_API_KEY overrides saved credentials.",
-			})
-		}
-		if profile != "" {
-			actions = append(actions, map[string]any{
-				"reason_message": fmt.Sprintf("When importing the key, set --profile to %q to update the profile used by this command.", profile),
-			})
-		}
-		actions = append(actions, map[string]any{"command": "flint auth import", "url": dashboardAPIKeysURL})
 	}
-	err := cliError(ExitAuth, errorTypeAuthorization, "MISSING_REQUIRED_SCOPES", message)
-	err.Details = map[string]any{
-		"auth_type":       authContext.AuthType,
-		"command":         cmd.CanonicalName,
-		"operation_id":    cmd.OperationID,
-		"scope_mode":      mode,
-		"required_scopes": check["required_scopes"],
-		"missing_scopes":  missing,
-		"remediation":     map[string]any{"next_actions": actions},
+	actions := scopeRemediation(authContext, profile, required, eligible, liveOnly, liveRequired)
+	detail := map[string]any{
+		"code": "INSUFFICIENT_SCOPE", "message": message, "reason": "scope_not_granted",
+		"scope_requirement": required, "missing_scopes": missing,
 	}
 	if liveRequired {
-		err.Details.(map[string]any)["reason"] = "live_mode_required"
+		detail["allowed_key_modes"] = []string{"live"}
+	}
+	err := cliError(ExitAuth, errorTypeAuthorization, "INSUFFICIENT_SCOPE", message)
+	err.Details = map[string]any{
+		"type": err.Type, "code": err.Code, "message": message,
+		"details": []any{detail}, "remediation": map[string]any{"next_actions": actions},
 	}
 	return err
+}
+
+func scopeRemediation(auth AuthContext, profile string, required *opindex.ScopeRequirement, eligible, liveOnly []string, liveRequired bool) []any {
+	if auth.AuthType == "workload_identity" || auth.WorkloadIdentityID != "" {
+		message := "Grant this workload identity the required scopes: " + strings.Join(required.Scopes, ", ") + "."
+		if required.Mode == "any" {
+			message = "Grant this workload identity at least one required scope: " + strings.Join(eligible, ", ") + "."
+		}
+		if liveRequired {
+			message = "Use a live workload identity grant with the required scopes: " + strings.Join(required.Scopes, ", ") + "."
+		}
+		return []any{map[string]any{"reason_message": message}, map[string]any{"reason_message": "If FLINT_OIDC_SCOPE narrows this token, include the required scopes or unset it to use the grant's scopes, then obtain a new workload token. For an explicit FLINT_ACCESS_TOKEN, replace it with the new token."}}
+	}
+	var actions []any
+	if override := activeScopeCredentialOverride(); override != "" {
+		actions = append(actions, map[string]any{"reason_message": "Replace " + override + " with a credential that has the required scopes, or unset it before using a saved login or imported key. " + override + " overrides saved credentials."})
+	}
+	importCommand := scopeProfileCommand("flint auth import", profile)
+	if liveRequired || normalizeEnvironment(auth.Environment) == "live" {
+		importCommand += " --live"
+	}
+	if liveRequired {
+		return append(actions, map[string]any{"reason_message": "Use a live key with the required scopes. These scopes cannot be added to a sandbox key or browser context."}, map[string]any{"command": importCommand, "url": scopeDashboardURL(liveOnly)})
+	}
+	if auth.isCLILogin() && auth.OAuthSessionID != "" && auth.ContextID != "" {
+		command := scopeProfileCommand("flint reauth --context "+quoteRemediationArgument(auth.ContextID), profile)
+		return append(actions, map[string]any{"reason_message": "Approve the additional scope access for this context."}, map[string]any{"command": appendScopeArguments(command, required.Mode, eligible)})
+	}
+	// A new session cannot inherit the old credential's scopes. Request the
+	// complete all-mode requirement, including scopes the old credential held.
+	loginScopes, _ := missingScopeGuidance(required.Scopes, auth.Environment)
+	command := "flint login --new-session"
+	if normalizeEnvironment(auth.Environment) == "live" {
+		command += " --live"
+	}
+	command = appendScopeArguments(scopeProfileCommand(command, profile), required.Mode, loginScopes)
+	if !auth.isCLILogin() {
+		message := "Create an API key with all required scopes: " + strings.Join(required.Scopes, ", ") + "."
+		if required.Mode == "any" {
+			message = "Create an API key with at least one of these scopes: " + strings.Join(loginScopes, ", ") + "."
+		}
+		actions = append(actions, map[string]any{"reason_message": message}, map[string]any{"command": importCommand, "url": scopeDashboardURL(loginScopes)})
+	}
+	return append(actions, map[string]any{"command": command})
+}
+
+func scopeProfileCommand(command, profile string) string {
+	if profile != "" {
+		command += " --profile " + quoteRemediationArgument(profile)
+	}
+	return command
+}
+
+func appendScopeArguments(command, mode string, scopes []string) string {
+	if mode == "any" && len(scopes) > 1 {
+		scopes = scopes[:1]
+	}
+	for _, scope := range scopes {
+		command += " --scope " + quoteRemediationArgument(scope)
+	}
+	return command
+}
+
+func scopeDashboardURL(scopes []string) string {
+	if len(scopes) > 0 {
+		return dashboardAPIKeysURL + "?create=true&scope=" + url.QueryEscape(scopes[0])
+	}
+	return dashboardAPIKeysURL
+}
+
+func activeScopeCredentialOverride() string {
+	if strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")) != "" {
+		return "FLINT_ACCESS_TOKEN"
+	}
+	if credentialFromEnvironment() != "" {
+		return "FLINT_API_KEY"
+	}
+	return ""
 }
 
 func quoteRemediationArgument(value string) string {

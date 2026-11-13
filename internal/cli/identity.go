@@ -14,7 +14,8 @@ type cliIdentity struct {
 
 type authStatusData struct {
 	AuthContext
-	CLI cliIdentity `json:"cli"`
+	CLI         cliIdentity        `json:"cli"`
+	ScopeAccess scopeAccessSummary `json:"scope_access"`
 }
 
 // Sources describe the credential the CLI selected, never its secret value.
@@ -58,5 +59,5 @@ func identityOutputProperties() map[string]any {
 	for _, field := range []string{"api_base_url", "credential_source", "profile", "profile_source"} {
 		properties[field] = map[string]any{"type": "string"}
 	}
-	return map[string]any{"cli": map[string]any{"type": "object", "properties": properties}, "mode": map[string]any{"type": "string"}, "access": map[string]any{"type": "string"}}
+	return map[string]any{"cli": map[string]any{"type": "object", "properties": properties}, "mode": map[string]any{"type": "string"}, "access": map[string]any{"type": "string"}, "scope_access": scopeAccessOutputSchema()}
 }

@@ -750,12 +750,12 @@ func TestCheckoutHumanOutputPrintsURLOnce(t *testing.T) {
 
 func TestPreviewReportsActualEmbeddedPermissionCheck(t *testing.T) {
 	cmd := &Command{OperationID: "createCustomer"}
-	failed := permissionPreview(cmd, AuthContext{Scopes: []string{"customers.read"}})
+	failed := permissionPreview(cmd, AuthContext{AuthType: "api_key", Scopes: []string{"customers.read"}})
 	missing, _ := failed["missing_scopes"].([]string)
 	if failed["status"] != "fail" || !slices.Equal(missing, []string{"customers.write"}) {
 		t.Fatalf("failed permission preview = %#v", failed)
 	}
-	passed := permissionPreview(cmd, AuthContext{Scopes: []string{"customers.write"}})
+	passed := permissionPreview(cmd, AuthContext{AuthType: "api_key", Scopes: []string{"customers.write"}})
 	missing, _ = passed["missing_scopes"].([]string)
 	if passed["status"] != "pass" || len(missing) != 0 {
 		t.Fatalf("passed permission preview = %#v", passed)
@@ -769,21 +769,22 @@ func TestPreviewReportsActualEmbeddedPermissionCheck(t *testing.T) {
 func TestCommandPermissionErrorExplainsMissingScopes(t *testing.T) {
 	cmd := &Command{CanonicalName: "subscriptions.list", OperationID: "listSubscriptions"}
 	oauthErr := commandPermissionError(cmd, AuthContext{AuthType: "oauth", OAuthSessionID: "session_123", ContextID: "ctx_123", Scopes: []string{"customers.read"}}, "default")
-	if oauthErr == nil || oauthErr.ExitCode != ExitAuth || oauthErr.Type != "authorization_error" || oauthErr.Code != "MISSING_REQUIRED_SCOPES" {
+	if oauthErr == nil || oauthErr.ExitCode != ExitAuth || oauthErr.Type != "authorization_error" || oauthErr.Code != "INSUFFICIENT_SCOPE" {
 		t.Fatalf("OAuth permission error = %#v", oauthErr)
 	}
 	if !strings.Contains(oauthErr.Message, "requires at least one") || !strings.Contains(oauthErr.Message, "commerce.subscriptions.read") {
 		t.Fatalf("OAuth permission message = %q", oauthErr.Message)
 	}
-	details, _ := oauthErr.Details.(map[string]any)
+	body := oauthErr.Details.(map[string]any)
+	details := scopeErrorDetail(t, oauthErr)
 	missing, _ := details["missing_scopes"].([]string)
 	if !slices.Equal(missing, []string{"commerce.subscriptions.read", "commerce.subscriptions.write"}) {
 		t.Fatalf("missing scopes = %#v", missing)
 	}
-	if details["command"] != "subscriptions.list" || details["operation_id"] != "listSubscriptions" || details["scope_mode"] != "any" {
+	if got, _ := json.Marshal(details["scope_requirement"]); !strings.Contains(string(got), `"mode":"any"`) || details["reason"] != "scope_not_granted" {
 		t.Fatalf("permission details = %#v", details)
 	}
-	oauthActions := details["remediation"].(map[string]any)["next_actions"].([]any)
+	oauthActions := body["remediation"].(map[string]any)["next_actions"].([]any)
 	if got := oauthActions[len(oauthActions)-1].(map[string]any)["command"]; got != "flint reauth --context ctx_123 --profile default --scope commerce.subscriptions.read" {
 		t.Fatalf("OAuth remediation command = %#v", got)
 	}
@@ -876,7 +877,7 @@ func TestCommandRejectsMissingScopesBeforeAPIRequest(t *testing.T) {
 			if exit := app.Run(argv); exit != ExitAuth || stderr.Len() != 0 {
 				t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 			}
-			for _, want := range []string{`"code":"MISSING_REQUIRED_SCOPES"`, `"scope_mode":"any"`, `"commerce.subscriptions.read"`} {
+			for _, want := range []string{`"code":"INSUFFICIENT_SCOPE"`, `"scope_requirement":{"mode":"any"`, `"commerce.subscriptions.read"`} {
 				if !strings.Contains(stdout.String(), want) {
 					t.Errorf("missing %q in %s", want, stdout)
 				}

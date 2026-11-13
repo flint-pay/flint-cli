@@ -57,15 +57,15 @@ func TestScopeKeyModesGeneratedCommands(t *testing.T) {
 				t.Run(name+"/"+authType+"/"+environment, func(t *testing.T) {
 					auth := AuthContext{AuthType: authType, Environment: environment, OAuthSessionID: "session_test", ContextID: "ctx_test", Scopes: []string{"customers.read"}}
 					e := commandPermissionError(cmd, auth, "default")
-					if e == nil || e.Code != "MISSING_REQUIRED_SCOPES" || e.ExitCode != ExitAuth {
+					if e == nil || e.Code != "INSUFFICIENT_SCOPE" || e.ExitCode != ExitAuth {
 						t.Fatalf("permission error = %#v", e)
 					}
-					details := e.Details.(map[string]any)
+					details := scopeErrorDetail(t, e)
 					liveRequired := name == "partner-apps.list" && (environment == "sandbox" || environment == "test")
-					if (details["reason"] == "live_mode_required") != liveRequired {
+					if (details["allowed_key_modes"] != nil) != liveRequired {
 						t.Fatalf("details = %#v", details)
 					}
-					actions, _ := json.Marshal(details["remediation"])
+					actions, _ := json.Marshal(e.Details.(map[string]any)["remediation"])
 					if liveRequired {
 						if !strings.Contains(string(actions), "live key") || strings.Contains(string(actions), "flint reauth") || strings.Contains(string(actions), "flint login") || strings.Contains(string(actions), "Create an API key") {
 							t.Fatalf("impossible sandbox guidance: %s", actions)
@@ -116,12 +116,12 @@ func TestScopeKeyModesMixedRequirements(t *testing.T) {
 					if e == nil {
 						t.Fatal("missing permission error")
 					}
-					details := e.Details.(map[string]any)
+					details := scopeErrorDetail(t, e)
 					liveRequired := mode == "all" && !grantedLive
-					if (details["reason"] == "live_mode_required") != liveRequired {
+					if (details["allowed_key_modes"] != nil) != liveRequired {
 						t.Fatalf("details = %#v", details)
 					}
-					actions, _ := json.Marshal(details["remediation"])
+					actions, _ := json.Marshal(e.Details.(map[string]any)["remediation"])
 					if liveRequired {
 						if !strings.Contains(string(actions), "live key") || strings.Contains(string(actions), "flint reauth") {
 							t.Fatalf("guidance = %s", actions)
@@ -171,14 +171,14 @@ func TestScopeKeyModesStopGeneratedRequests(t *testing.T) {
 				}
 				var result struct {
 					Error struct {
-						Code    string         `json:"code"`
-						Details map[string]any `json:"details"`
+						Code    string           `json:"code"`
+						Details []map[string]any `json:"details"`
 					} `json:"error"`
 				}
 				if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 					t.Fatal(err)
 				}
-				if result.Error.Code != "MISSING_REQUIRED_SCOPES" || (result.Error.Details["reason"] == "live_mode_required") != (environment == "sandbox" && args[0] == "partner-apps") || targetRequests != 0 {
+				if result.Error.Code != "INSUFFICIENT_SCOPE" || (result.Error.Details[0]["allowed_key_modes"] != nil) != (environment == "sandbox" && args[0] == "partner-apps") || targetRequests != 0 {
 					t.Fatalf("incorrect permission result: %s", stdout)
 				}
 			})
@@ -220,7 +220,7 @@ func TestDoctorScopeKeyModes(t *testing.T) {
 		}
 	}
 	initialCLIScopes = []string{"developer.partner_apps.write"}
-	check := doctorScopeCheck(AuthContext{Environment: "sandbox"})
+	check := doctorScopeCheck(AuthContext{AuthType: "api_key", Environment: "sandbox"})
 	if fix := fmt.Sprint(check["fix"]); !strings.Contains(fix, "live key") || strings.Contains(fix, "Sign in again") {
 		t.Fatalf("impossible empty-scope guidance: %#v", check)
 	}
@@ -237,11 +237,11 @@ func TestScopeKeyModesSandboxReadAlternative(t *testing.T) {
 			if e == nil {
 				t.Fatal("missing permission error")
 			}
-			details := e.Details.(map[string]any)
-			if details["reason"] != nil {
+			details := scopeErrorDetail(t, e)
+			if details["reason"] != "scope_not_granted" || details["allowed_key_modes"] != nil {
 				t.Fatalf("eligible read alternative requires live: %#v", details)
 			}
-			guidance, _ := json.Marshal(details["remediation"])
+			guidance, _ := json.Marshal(e.Details.(map[string]any)["remediation"])
 			if !strings.Contains(string(guidance), "developer.sandboxes.read") {
 				t.Fatalf("read alternative omitted: %s", guidance)
 			}
