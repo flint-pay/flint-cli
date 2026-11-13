@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/flint-pay/flint-cli/internal/schemaview"
 )
 
 func TestMCPToolNamesAreAcceptedByModelAPIs(t *testing.T) {
@@ -264,9 +266,20 @@ func TestMCPQueryParametersKeepTheirContract(t *testing.T) {
 	if enums < 20 {
 		t.Fatalf("only %d list tools keep a status item enum", enums)
 	}
-	get, _ := schemaForMCPTool(mustMCPTool(t, app, "customers.get"), mcpPolicy{})
-	if description := fmt.Sprint(lookupPathValue(get, "properties.customer_id.description")); description == "" || description == "<nil>" {
-		t.Fatalf("customer_id description = %s", description)
+	getCommand := mustMCPTool(t, app, "customers.get")
+	get, _ := schemaForMCPTool(getCommand, mcpPolicy{})
+	if lookupPathValue(get, "properties.customer_id.type") != "string" {
+		t.Fatal("typed customer ID field lost")
+	}
+	// The compact typed schema may omit text that only repeats the field name.
+	// Discovery still documents the field when the caller opens the operation.
+	reader, original, _ := commandDiscoverySchema(getCommand, true)
+	view, err := reader.Describe(original, schemaview.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if description, _ := discoveryField(t, view, "customer_id")["description"].(string); description == "" {
+		t.Fatal("customer ID discovery description lost")
 	}
 }
 
