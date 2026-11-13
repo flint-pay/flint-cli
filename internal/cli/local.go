@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/flint-pay/flint-cli/internal/opindex"
 )
 
 func (a *App) runLocal(cmd *Command, opts Options) int {
@@ -877,6 +879,11 @@ func (a *App) doctorChecks(opts Options) (checks []map[string]any, exit int, inf
 		map[string]any{"name": "merchant", "status": "pass", "value": authContext.MerchantID},
 	)
 	scopeCheck := doctorScopeCheck(authContext)
+	access := a.scopeAccess(authContext)
+	scopeCheck["scope_access"] = access
+	if len(access.BlockedCommands) > 0 {
+		scopeCheck["limited"] = true
+	}
 	checks = append(checks, scopeCheck)
 	if scopeCheck["status"] == "fail" {
 		return checks, ExitAuth, info
@@ -885,15 +892,12 @@ func (a *App) doctorChecks(opts Options) (checks []map[string]any, exit int, inf
 }
 
 func doctorScopeCheck(authContext AuthContext) map[string]any {
-	grantedScopes := make(map[string]bool, len(authContext.Scopes))
-	for _, scope := range authContext.Scopes {
-		grantedScopes[strings.TrimSpace(scope)] = true
+	if !credentialScopesKnown(authContext) {
+		return map[string]any{"name": "scopes", "status": "info", "note": "This credential does not expose a scope list. The API validates its permissions."}
 	}
-	missing := []string{}
-	for _, scope := range initialCLIScopes {
-		if !grantedScopes[scope] {
-			missing = append(missing, scope)
-		}
+	missing := append([]string(nil), initialCLIScopes...)
+	if index, err := scopeRequirementIndex(); err == nil {
+		missing = index.MissingScopes(opindex.Entry{ScopeRequirement: &opindex.ScopeRequirement{Mode: "all", Scopes: initialCLIScopes}}, authContext.Scopes, true)
 	}
 	missingBaselineScopes, liveOnly := missingScopeGuidance(missing, authContext.Environment)
 	scopeCheck := map[string]any{"name": "scopes", "status": "pass", "count": len(authContext.Scopes)}
@@ -918,6 +922,9 @@ func doctorScopeCheck(authContext AuthContext) map[string]any {
 		} else if len(liveOnly) > 0 {
 			scopeCheck["fix"] = "Use a live key with the required scopes."
 		}
+	}
+	if (authContext.AuthType == "workload_identity" || authContext.WorkloadIdentityID != "") && scopeCheck["status"] == "fail" {
+		scopeCheck["fix"] = "Grant the workload identity the scopes required by your commands and check FLINT_OIDC_SCOPE token narrowing."
 	}
 	if len(liveOnly) > 0 {
 		scopeCheck["live_required_scopes"] = liveOnly

@@ -226,6 +226,9 @@ func commandDocument(c *Command, requested string) map[string]any {
 		expansions = []string{}
 	}
 	out["expansions"] = expansions
+	if requirement := commandScopeRequirement(c); requirement != nil {
+		out["scope_requirement"] = requirement
+	}
 	if requested != "" && requested != c.CanonicalName {
 		out["name"] = requested
 		out["canonical_name"] = c.CanonicalName

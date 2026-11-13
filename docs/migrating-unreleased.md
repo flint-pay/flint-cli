@@ -51,3 +51,11 @@ The refreshed server snapshot also removes the commands below. Inspect current o
 Use the current checkout session delivery commands for delivery choices. Organization administration has moved out of the merchant credential API.
 
 The refreshed snapshot also updates request and response schemas. Run `flint schema input COMMAND` for current required fields, union variants, and allowed values. `coverage.json` records every current public operation and its CLI classification.
+
+## Scope diagnostics
+
+Local terminal scope refusals now use `INSUFFICIENT_SCOPE`, matching the API. The local error's `details` is an array. Each local scope detail has `reason: "scope_not_granted"`, `scope_requirement: {mode, scopes}`, and `missing_scopes`. Replace checks for `MISSING_REQUIRED_SCOPES`, `scope_mode`, and `required_scopes` with this representation. Client permission previews also publish `scope_requirement`.
+
+`flint schema command COMMAND --output json` publishes the same `scope_requirement` before a call. `flint auth status` and `flint doctor` include `scope_access`, with scoped-command counts, blocked commands, and blocked resource groups. Each group includes its total scoped commands and the blocked subset, so a partially accessible group stays visible. These counts cover scoped commands accepted by the credential class. Credentials that do not expose scopes report `status: "unknown"`.
+
+Scope remediation names the active credential override and preserves the selected profile. Browser sessions use context reauthorization when available; a fresh login requests the complete requirement. Workload tokens use workload grants and `FLINT_OIDC_SCOPE` narrowing. MCP continues to pass API errors through unchanged.
