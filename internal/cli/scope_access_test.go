@@ -42,6 +42,7 @@ func TestTerminalScopeErrorUsesPublicRepresentation(t *testing.T) {
 					Code    string `json:"code"`
 					Details []struct {
 						Code             string                   `json:"code"`
+						Message          string                   `json:"message"`
 						Reason           string                   `json:"reason"`
 						ScopeRequirement opindex.ScopeRequirement `json:"scope_requirement"`
 						MissingScopes    []string                 `json:"missing_scopes"`
@@ -55,7 +56,7 @@ func TestTerminalScopeErrorUsesPublicRepresentation(t *testing.T) {
 				t.Fatal(out.String())
 			}
 			detail := body.Error.Details[0]
-			if detail.Code != body.Error.Code || detail.Reason != "scope_not_granted" || !reflect.DeepEqual(detail.ScopeRequirement, *commandScopeRequirement(cmd)) || len(detail.MissingScopes) == 0 {
+			if detail.Code != body.Error.Code || detail.Message != e.Message || detail.Reason != "scope_not_granted" || !reflect.DeepEqual(detail.ScopeRequirement, *commandScopeRequirement(cmd)) || len(detail.MissingScopes) == 0 {
 				t.Fatalf("scope facts: %#v", detail)
 			}
 			for _, obsolete := range []string{"MISSING_REQUIRED_SCOPES", `"scope_mode"`, `"required_scopes"`, `"problems"`, `"facts"`} {

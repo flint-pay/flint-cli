@@ -175,7 +175,7 @@ func commandPermissionError(cmd *Command, authContext AuthContext, profile strin
 	}
 	actions := scopeRemediation(authContext, profile, required, eligible, liveOnly, liveRequired)
 	detail := map[string]any{
-		"code": "INSUFFICIENT_SCOPE", "reason": "scope_not_granted",
+		"code": "INSUFFICIENT_SCOPE", "message": message, "reason": "scope_not_granted",
 		"scope_requirement": required, "missing_scopes": missing,
 	}
 	if liveRequired {
