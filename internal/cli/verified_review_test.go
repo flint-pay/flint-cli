@@ -134,7 +134,7 @@ func TestVerifiedListenErrorBodyTimeout(t *testing.T) {
 func TestVerifiedMCPPreservesFlagLikeValues(t *testing.T) {
 	a, _, _ := testApp(t, "")
 	for _, name := range []string{"--help", "--live", "--", "--name=value"} {
-		result := mcpCall(t, a, defaultOptions(), "flint_write", map[string]any{"operation": "organizations.create", "arguments": map[string]any{"name": name, "parent_organization_id": "org_parent"}, "dry_run": true, "idempotency_key": "flag-like-fixture"})
+		result := mcpCall(t, a, defaultOptions(), "flint_write", map[string]any{"operation": "customers.create", "arguments": map[string]any{"name": name}, "dry_run": true, "idempotency_key": "flag-like-fixture"})
 		if got := lookupPathValue(mcpResultJSON(t, result), "data.body.name"); got != name {
 			t.Fatalf("%q: %#v", name, result)
 		}

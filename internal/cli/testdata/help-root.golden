@@ -29,10 +29,12 @@ Developer tools:
   init                             Write or validate .flint/config.json project guards; commit this file with your project
   listen                           Print Flint webhook events or forward exact signed deliveries locally. Forwarding requires --webhook-endpoint-id for a sandbox endpoint owned by your merchant and sandbox, JWT signing, webhooks.write and resource read scopes. Delivery is at-least-once
   mcp                              Serve Flint operations to AI agents over MCP
+  merchant-signups                 A platform's requests to create merchants for owners, who confirm them with a code Flint emails them.
   openapi                          API metadata.
   partner-app-installs             Partner apps installed on your account.
   partner-apps                     Partner app registration and install management.
   resource-timelines               get
+  sandboxes                        Developer sandboxes and sandbox-bound test keys.
   schema                           Command, input, output, error, and event schemas as JSON
   signup                           Create an account and sandbox key. Without a code, email a verification code and save progress; finish with --verification-code. MCP and --no-input use two calls.
   support                          Start a Flint Help thread with your context prefilled
@@ -49,38 +51,42 @@ Merchant resources:
   customer-deletion-requests          customer-sessions                   customer-verifications
   customers                           delivery-location-sets              delivery-methods
   delivery-previews                   delivery-profiles                   delivery-quotes
-  delivery-rate-callbacks             delivery-revocations                delivery-zones
-  devices                             discount-previews                   disputes
-  email-preference-links              email-preferences                   files
-  fraud-warnings                      fulfillment-events                  fulfillment-notifications
-  fulfillments                        gift-card-funding-dispositions      gift-card-loads
-  gift-card-notifications             gift-card-redemptions               gift-card-transactions
-  gift-cards                          inventory-adjustments               inventory-allocation-policies
-  inventory-counts                    inventory-items                     inventory-levels
-  inventory-movements                 inventory-receipts                  inventory-reservations
-  inventory-transfers                 invoice-payment-terms               invoices
-  locations                           merchant                            merchant-account-session-refreshes
-  merchant-account-sessions           merchant-billing-balances           merchant-billing-entries
-  merchant-billing-invoices           modifier-groups                     modifier-sets
-  onboarding                          order-edit-previews                 orders
-  organizations                       packages                            payment-intents
+  delivery-rate-callbacks             delivery-revocations                delivery-selections
+  delivery-zones                      devices                             discount-previews
+  disputes                            email-preference-links              email-preferences
+  files                               fraud-warnings                      fulfillment-events
+  fulfillment-notifications           fulfillments                        gift-card-funding-dispositions
+  gift-card-loads                     gift-card-notifications             gift-card-redemptions
+  gift-card-transactions              gift-cards                          inventory-adjustments
+  inventory-allocation-policies       inventory-counts                    inventory-items
+  inventory-levels                    inventory-movements                 inventory-receipts
+  inventory-reservations              inventory-transfers                 invoice-payment-terms
+  invoices                            locations                           merchant
+  merchant-account-session-refreshes  merchant-account-sessions           merchant-billing-balances
+  merchant-billing-entries            merchant-billing-invoices           modifier-groups
+  modifier-sets                       onboarding                          order-edit-previews
+  orders                              packages                            payment-intents
   payment-links                       payment-method-domains              payment-methods
-  payment-reviews                     payout-destinations                 payout-settings
-  payouts                             price-lists                         products
-  promotion-codes                     promotions                          refunds
+  payment-reviews                     payment-splits                      payout-destinations
+  payout-settings                     payouts                             platform-fee-balance-transactions
+  platform-fee-balances               platform-fee-payouts                platform-fees
+  price-lists                         products                            promotion-codes
+  promotions                          readers                             refunds
   report-downloads                    reports                             return-dispositions
   return-inspections                  return-policies                     return-previews
   return-reasons                      return-receipts                     return-resolutions
   returns                             risk-lists                          risk-previews
-  risk-rules                          sandboxes                           settings
-  shipments                           subscription-delivery-migrations    subscription-offers
-  subscription-plans                  subscription-previews               subscriptions
+  risk-rules                          settings                            shipments
+  subscription-delivery-migrations    subscription-offers                 subscription-plans
+  subscription-previews               subscriptions                       tax-calculation-callbacks
   tax-connection                      tickets                             webhook-deliveries
   webhook-endpoints                   webhook-event-types                 webhook-events
   workload-identities
 
-Buyer session (set FLINT_ACCESS_TOKEN to a customer session secret, flint_cses_...):
+Buyer session:
+  Set FLINT_ACCESS_TOKEN to the session credential named in command help: a customer session secret (flint_cses_...) or checkout session token (ckat_v1.).
   me                               Customer-session endpoints for a customer to manage their own account, commerce data, and sign-out.
+  remembered-buyers                Remembered email identities that let checkout offer a code, without authorizing saved cards.
 
 Scripts and AI agents:
   --output json (or FLINT_OUTPUT=json) prints JSON results and errors on stdout and never prompts.

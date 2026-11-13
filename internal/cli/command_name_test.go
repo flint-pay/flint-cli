@@ -66,7 +66,7 @@ func TestCommandNamesFollowPathRule(t *testing.T) {
 			}
 		}
 	}
-	if generated != 656 || excluded != 14 || len(registry.Commands) != 688 {
+	if generated != 698 || excluded != 14 || len(registry.Commands) != 730 {
 		t.Fatalf("generated=%d excluded=%d total=%d", generated, excluded, len(registry.Commands))
 	}
 	for _, command := range curatedCommandDefinitions() {
@@ -236,7 +236,7 @@ func TestCommandTreeInvariants(t *testing.T) {
 		t.Fatal(err)
 	}
 	doc, _ := loadOpenAPI()
-	exceptions := map[string]bool{"createOnboardingAPIKey": false}
+	exceptions := map[string]bool{}
 	for _, c := range commands {
 		if c.Method != "POST" || c.Kind != "collection" {
 			continue

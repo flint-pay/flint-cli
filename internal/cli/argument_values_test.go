@@ -121,7 +121,7 @@ func TestArgumentValueHelpRendering(t *testing.T) {
 		command := &Command{CanonicalName: "fixture", Arguments: []Arg{{Name: "created_after", Flag: "--created-after", Type: "time", Query: query}}}
 		applyArgumentValues(command)
 		printArgumentHelp(&output, command, command.Arguments[0])
-		if got := strings.Contains(output.String(), "Also accepts today"); got != (query != "") {
+		if got := strings.Contains(output.String(), queryTimeGuidance); got != (query != "") {
 			t.Fatalf("query=%q: %s", query, output.String())
 		}
 	}

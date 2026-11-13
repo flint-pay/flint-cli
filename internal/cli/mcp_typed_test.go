@@ -10,9 +10,7 @@ import (
 
 func TestMCPTypedBudgetsAndContract(t *testing.T) {
 	app := discoveryFixture(t)
-	// 591 typed tools (670 operations) plus wait_for/wait_seconds controls and
-	// operation _meta. The 2026-11 refresh added about 48 tools, so the all and
-	// orders caps grow in proportion; the per-tool cap stays fixed.
+	// Aggregate and per-tool discovery budgets remain fixed as the catalog grows.
 	for _, scope := range []struct {
 		name   string
 		budget int
@@ -69,7 +67,9 @@ func TestMCPTypedBudgetsAndContract(t *testing.T) {
 				}
 			}
 			hints := tool["annotations"].(map[string]any)
-			if hints["readOnlyHint"] != (entry.Kind == "read") || hints["idempotentHint"] != (entry.Kind == "read" || entry.Method == "PUT" || entry.Method == "DELETE" || entry.Idempotency == "required") {
+			readOnly, _ := hints["readOnlyHint"].(bool)
+			idempotent, _ := hints["idempotentHint"].(bool)
+			if readOnly != (entry.Kind == "read") || idempotent != (entry.Kind == "read" || entry.Method == "PUT" || entry.Method == "DELETE" || entry.Idempotency == "required") {
 				t.Fatal(tool)
 			}
 		}

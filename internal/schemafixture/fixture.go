@@ -134,6 +134,27 @@ func (g *generator) flatten(schema map[string]any, depth int, refs *[]string) ma
 			}
 		}
 	}
+	// Public schemas encode at-least-one required field as not(allOf(not(required))).
+	// Choose a required branch rather than generating the empty, forbidden object.
+	if negated, ok := schema["not"].(map[string]any); ok && len(negated) == 1 {
+		if all, ok := negated["allOf"].([]any); ok && len(all) > 0 {
+			alternatives := []map[string]any{}
+			for _, raw := range all {
+				branch, _ := raw.(map[string]any)
+				not, _ := branch["not"].(map[string]any)
+				required, ok := not["required"].([]any)
+				if !ok || len(required) == 0 || len(branch) != 1 || len(not) > 2 || len(not) == 2 && not["properties"] == nil {
+					alternatives = nil
+					break
+				}
+				alternatives = append(alternatives, not)
+			}
+			if len(alternatives) > 0 {
+				branches = append(branches, alternatives[g.choose(len(alternatives))])
+			}
+		}
+	}
+
 	for _, keyword := range []string{"oneOf", "anyOf"} {
 		if options, ok := schema[keyword].([]any); ok && len(options) > 0 {
 			if branch, ok := options[g.choose(len(options))].(map[string]any); ok {
@@ -290,7 +311,7 @@ func stringValue(schema map[string]any) string {
 	candidates = append(candidates, map[any]string{
 		"date-time": "2026-01-01T00:00:00Z", "date": "2026-01-01", "email": "dev@example.com",
 		"uri": "https://example.com/test", "hostname": "example.com",
-	}[schema["format"]], "test")
+	}[schema["format"]], "test", "example.com")
 	text := "test"
 	for _, candidate := range candidates {
 		if candidate != "" && matches(candidate) {

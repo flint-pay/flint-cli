@@ -70,7 +70,7 @@ func TestRawAPIBodiesDoNotUseNamedCommandConveniences(t *testing.T) {
 		{"post", "/v1/payment-links"},
 		{"post", "/v1/api-keys"},
 		{"patch", "/v1/api-keys/key_review"},
-		{"post", "/v1/sandboxes/test_review/api-keys"},
+		{"post", "/v1/api-keys"},
 		{"post", "/v1/sandboxes"},
 		{"post", "/v1/invoices"},
 		{"post", "/v1/payment-intents"},

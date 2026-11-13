@@ -148,7 +148,7 @@ The route is the naming source: use `merchant get`, `api-request-logs list`,
 `resource-timelines get RESOURCE_ID`, and `webhook-endpoints test-events create`.
 Only `login`, `logout`, `reauth`, and `whoami` remain shortcuts. Use
 `checkout-sessions create|get|list`, `payment-intents create`,
-`sandboxes api-keys create`, `invoices late-fees create`, and `upgrade` in scripts.
+`api-keys create --sandbox-id`, `invoices late-fees create`, and `upgrade` in scripts.
 OAuth protocol routes are available through `flint api`; sign-in commands handle
 the browser protocol for you. Flint-hosted account operations need Flint's hosted
 account sign-in and are excluded from the CLI and from MCP discovery. `trigger`
@@ -495,6 +495,8 @@ Local commands are operations reached through read or write, including `version`
 0.11.0 refreshes the embedded public API snapshot, which renames and removes commands; for example, `reviews` commands are now `payment-reviews` and `flint sandboxes test-key` became `flint sandboxes api-keys create`. The old alias remained available through 0.14.x; current versions require the canonical command. See [the 0.11.0 migration notes](docs/migrating-0.11.md) for the command and MCP tool changes.
 
 If upgrading from 0.9.0, also follow [the 0.10.0 migration notes](docs/migrating-0.10.md) for required idempotency keys, retry rules, and error fields. If upgrading from 0.8.0, also follow [the 0.9.0 migration notes](docs/migrating-0.9.md) for the public API refresh's command and MCP tool lists, parameter changes, and schema field inventory. In particular, use `flint gift-cards adjust-balance`, `flint gift-cards cash-out`, and `flint webhook-deliveries list --webhook-event-id whev_123`; create refunds with an explicit `--refund-type full|amount|targets`.
+
+The next release includes an API snapshot migration. See the [unreleased migration notes](docs/migrating-unreleased.md) before updating scripts or MCP operation IDs.
 
 ## Develop
 

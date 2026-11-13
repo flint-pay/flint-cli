@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -151,7 +152,6 @@ func TestFulfillmentLifecycleResourcesHaveTypedCommands(t *testing.T) {
 		"fulfillments.cancel",
 		"shipments.list",
 		"shipments.get",
-		"shipments.packages.create",
 		"shipments.void",
 		"packages.list",
 		"packages.get",
@@ -622,13 +622,26 @@ func TestMCPToolsMatchCanonicalRegistryAndInputSchemas(t *testing.T) {
 			t.Errorf("MCP schema differs for %s", cmd.CanonicalName)
 		}
 		annotations, ok := tool["annotations"].(map[string]any)
+		if !ok {
+			t.Fatalf("MCP annotations missing for %s", cmd.CanonicalName)
+		}
+		annotations = maps.Clone(annotations)
+		// Compare effective protocol values, including omitted defaults.
+		for name, value := range map[string]any{"readOnlyHint": false, "idempotentHint": false, "openWorldHint": true} {
+			if _, present := annotations[name]; !present {
+				annotations[name] = value
+			}
+		}
+		if _, present := annotations["title"]; !present {
+			annotations["title"] = tool["title"]
+		}
 		expected := mcpToolAnnotations(cmd)
 		entry, _ := index.Lookup(cmd.CanonicalName)
 		expected["title"] = entry.Title
 		expected["readOnlyHint"] = entry.Kind == "read"
 		expected["destructiveHint"] = entry.Kind == "write" && entry.Irreversible
 		expected["idempotentHint"] = entry.Kind == "read" || entry.Method == "PUT" || entry.Method == "DELETE" || entry.Idempotency == "required"
-		if !ok || fmt.Sprint(annotations) != fmt.Sprint(expected) {
+		if fmt.Sprint(annotations) != fmt.Sprint(expected) {
 			t.Errorf("MCP annotations differ for %s: %#v", cmd.CanonicalName, tool["annotations"])
 		}
 	}
@@ -778,9 +791,9 @@ func TestCommandPermissionErrorExplainsMissingScopes(t *testing.T) {
 	if err := commandPermissionError(cmd, AuthContext{AuthType: "api_key", Scopes: []string{"commerce.subscriptions.write"}}, "default"); err != nil {
 		t.Fatalf("write-capable API key failed any-scope requirement: %v", err)
 	}
-	allErr := commandPermissionError(&Command{CanonicalName: "sandboxes.api-keys.create", OperationID: "createSandboxAPIKey"}, AuthContext{
+	allErr := commandPermissionError(&Command{CanonicalName: "orders.edits.create", OperationID: "createOrderEdit"}, AuthContext{
 		AuthType: "api_key",
-		Scopes:   []string{"accounts.api_keys.write"},
+		Scopes:   []string{"commerce.orders.write"},
 	}, "default")
 	if allErr == nil || !strings.Contains(allErr.Message, "requires these scopes") || strings.Contains(allErr.Message, "requires at least one") {
 		t.Fatalf("all-scope permission error = %#v", allErr)
@@ -788,7 +801,7 @@ func TestCommandPermissionErrorExplainsMissingScopes(t *testing.T) {
 	allDetails := allErr.Details.(map[string]any)
 	actions := allDetails["remediation"].(map[string]any)["next_actions"].([]any)
 	replacementAdvice := actions[0].(map[string]any)["reason_message"].(string)
-	for _, scope := range []string{"accounts.api_keys.write", "developer.sandboxes.write"} {
+	for _, scope := range []string{"commerce.orders.write", "commerce.refunds.write"} {
 		if !strings.Contains(replacementAdvice, scope) {
 			t.Errorf("replacement key advice omits %s: %s", scope, replacementAdvice)
 		}

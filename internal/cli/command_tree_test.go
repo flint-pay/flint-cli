@@ -121,11 +121,11 @@ func TestHelpTreeSectionsAndCatalog(t *testing.T) {
 	for _, section := range actual {
 		sort.Strings(section)
 	}
-	expectedDeveloper := []string{"api-request-logs", "demo-sessions", "openapi", "partner-app-installs", "partner-apps", "resource-timelines", "test-clocks"}
+	expectedDeveloper := []string{"api-request-logs", "demo-sessions", "merchant-signups", "openapi", "partner-app-installs", "partner-apps", "resource-timelines", "sandboxes", "test-clocks"}
 	if !reflect.DeepEqual(actual[sectionDeveloper], expectedDeveloper) {
 		t.Fatal(actual[sectionDeveloper])
 	}
-	if !reflect.DeepEqual(actual[sectionBuyer], []string{"me"}) {
+	if !reflect.DeepEqual(actual[sectionBuyer], []string{"me", "remembered-buyers"}) {
 		t.Fatal(actual[sectionBuyer])
 	}
 	for _, cmd := range tree.Commands {
@@ -153,12 +153,12 @@ func TestHelpTreeSectionsAndCatalog(t *testing.T) {
 			active = sectionDeveloper
 		case line == "Merchant resources:":
 			active = sectionMerchant
-		case strings.HasPrefix(line, "Buyer session ("):
+		case line == "Buyer session:":
 			active = sectionBuyer
 		case line == "Scripts and AI agents:":
 			active = ""
 		}
-		if active == "" || !strings.HasPrefix(line, "  ") || strings.HasPrefix(line, "  Shortcuts:") {
+		if active == "" || !strings.HasPrefix(line, "  ") || strings.HasPrefix(line, "  Shortcuts:") || strings.HasPrefix(line, "  Set FLINT_ACCESS_TOKEN") {
 			continue
 		}
 		words := strings.Fields(line)

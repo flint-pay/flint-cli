@@ -74,8 +74,24 @@ type authorizedContext struct {
 	Name        string `json:"name"`
 	MerchantID  string `json:"merchant_id"`
 	Environment string `json:"environment"`
+	Mode        string `json:"mode,omitempty"`
 	SandboxID   string `json:"sandbox_id,omitempty"`
 }
+
+// Prefer mode while retaining compatibility with older servers and saved data.
+func (c *authorizedContext) UnmarshalJSON(data []byte) error {
+	type fields authorizedContext
+	var value fields
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	*c = authorizedContext(value)
+	if c.Mode != "" {
+		c.Environment = normalizeEnvironment(c.Mode)
+	}
+	return nil
+}
+
 type contextList struct {
 	SessionID string              `json:"oauth_session_id"`
 	Contexts  []authorizedContext `json:"contexts"`

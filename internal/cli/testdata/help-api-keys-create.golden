@@ -4,13 +4,15 @@ Usage:
   flint api-keys create [flags]
 
 Arguments and flags:
-  --access full|read_only|restricted     Key access. Full and read_only resolve from the current scope catalog for the key's mode; restricted holds only its listed scopes. Granting full or read_only requires a freshly verified authorized user session or a full-access API key. (required; --scopes alone selects restricted)
+  --access full|read_only|restricted     Key access. Full and read_only resolve from the current scope catalog for the key's mode; restricted holds only its listed scopes. Granting full or read_only requires a freshly verified authorized user session, or a full-access API key in the key's mode or a live full-access key granting a test key. (required; --scopes alone selects restricted)
   --expires-at TIME                      RFC3339 timestamp. Accepts RFC3339, calendar dates in the reporting timezone, now, +30d or -2h; relative body times require a sign.
   --name TEXT                            Set name. (required)
   --partner-app-install-id pinst_ID      Links this key to a connected app's install. Revoking the install or its grant for this key's environment revokes the key. The install must be active and authorized for that environment. Set only at creation; it never changes. Omit for an unlinked key. Keys created by a linked key inherit its link. Each install can have up to 25 linked keys that have not been revoked per environment.
     Accepts @last.pinst for the most recent resource this profile created or changed.
-  --scopes TEXT[,TEXT...]                The scopes to grant. Required only with access restricted; forbidden with full or read_only. (required for --access restricted)
-    98 values: flint schema command api-keys.create --output json
+  --sandbox-id test_ID                   Public ID of the sandbox the new test key is bound to. A live credential or a user session sends it to create a test key in that sandbox, and omits it for a live key. A sandbox-bound credential, such as a test key, may name only its own sandbox and gets a test key there either way; any other sandbox returns 404. A Dashboard or onboarding session may name any of the merchant's active sandboxes, and an onboarding session must send it: its first key goes to default_sandbox_id. Storage generation IDs are never accepted.
+    Accepts @last.test for the most recent resource this profile created or changed.
+  --scopes TEXT[,TEXT...]                The scopes to grant. Required only with access restricted; forbidden with full or read_only. For a test key, use only scopes whose key_modes includes test in x-flint-scopes. The developer.sandboxes.read and developer.sandboxes.write scopes are valid on test keys; developer.partner_apps.read and developer.partner_apps.write are live-only. (required for --access restricted)
+    102 values: flint schema command api-keys.create --output json
     Repeat this flag for multiple values.
   --input TEXT                           JSON body: FILE.json, - for stdin, or inline JSON
 

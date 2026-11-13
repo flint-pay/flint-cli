@@ -9,6 +9,7 @@ Commands:
   addresses get <customer_address_id>          Get one of the current buyer's addresses (customer session secret) GET /v1/me/addresses/{customer_address_id}
   addresses list                               List the current buyer's addresses (customer session secret) GET /v1/me/addresses
   addresses update <customer_address_id>       Update one of the current buyer's addresses (customer session secret) PATCH /v1/me/addresses/{customer_address_id}
+  checkout-sessions create                     Create a checkout session for the current buyer (invoice access token) POST /v1/me/checkout-sessions
   deletion-requests create                     Request deletion of the current buyer's account (customer session secret) POST /v1/me/deletion-requests
   deletion-requests get <customer_deletion_request_id> Get the current buyer's deletion request (customer session secret) GET /v1/me/deletion-requests/{customer_deletion_request_id}
   deletion-requests list                       List the current buyer's deletion requests (customer session secret) GET /v1/me/deletion-requests
@@ -25,7 +26,6 @@ Commands:
   gift-cards delete <gift_card_id>             Remove a saved gift card (customer session secret) DELETE /v1/me/gift-cards/{gift_card_id}
   gift-cards get <gift_card_id>                Get a saved gift card (customer session secret) GET /v1/me/gift-cards/{gift_card_id}
   gift-cards list                              List your saved gift cards (customer session secret) GET /v1/me/gift-cards
-  invoices checkout-sessions create <invoice_id> Create an invoice checkout session for the current buyer (invoice access token) POST /v1/me/invoices/{invoice_id}/checkout-sessions
   invoices credit-notes get <invoice_id> <credit_note_id> Get a credit note for one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}/credit-notes/{credit_note_id}
   invoices credit-notes list <invoice_id>      List credit notes for one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}/credit-notes
   invoices credit-notes pdf get <invoice_id> <credit_note_id> Download a credit note for one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}/credit-notes/{credit_note_id}/pdf
@@ -48,7 +48,6 @@ Commands:
   refunds get <refund_id>                      Get one of the current buyer's refunds (customer session secret) GET /v1/me/refunds/{refund_id}
   refunds list                                 List the current buyer's refunds (customer session secret) GET /v1/me/refunds
   return-previews create                       Preview Return eligibility or resolution amounts for the current buyer (customer session secret) POST /v1/me/return-previews
-  return-resolutions checkout-sessions create <return_resolution_id> Create a Return resolution checkout session for the current buyer (customer session secret) POST /v1/me/return-resolutions/{return_resolution_id}/checkout-sessions
   return-resolutions get <return_resolution_id> Get one of the current buyer's Return resolutions (customer session secret) GET /v1/me/return-resolutions/{return_resolution_id}
   returns cancel <return_id>                   Cancel one of the current buyer's Returns (customer session secret) POST /v1/me/returns/{return_id}/cancel
   returns create                               Create a Return for the current buyer (customer session secret) POST /v1/me/returns
@@ -60,6 +59,7 @@ Commands:
   subscription-previews create                 Preview subscription (customer session secret) POST /v1/me/subscription-previews
   subscriptions cancel <subscription_id>       Cancel one of the current buyer's subscriptions (customer session secret) POST /v1/me/subscriptions/{subscription_id}/cancel
   subscriptions change-plan <subscription_id>  Change subscription plan (customer session secret) POST /v1/me/subscriptions/{subscription_id}/change-plan
+  subscriptions change-quantity <subscription_id> Change subscription quantity (customer session secret) POST /v1/me/subscriptions/{subscription_id}/change-quantity
   subscriptions get <subscription_id>          Get one of the current buyer's subscriptions (customer session secret) GET /v1/me/subscriptions/{subscription_id}
   subscriptions line-items update <subscription_id> <subscription_line_item_id> Swap subscription variant (customer session secret) PATCH /v1/me/subscriptions/{subscription_id}/line-items/{subscription_line_item_id}
   subscriptions list                           List the current buyer's subscriptions (customer session secret) GET /v1/me/subscriptions
@@ -71,6 +71,7 @@ Commands:
   subscriptions resume <subscription_id>       Resume one of the current buyer's subscriptions (customer session secret) POST /v1/me/subscriptions/{subscription_id}/resume
   subscriptions skip-cycle <subscription_id>   Skip subscription cycle (customer session secret) POST /v1/me/subscriptions/{subscription_id}/skip-cycle
   subscriptions update <subscription_id>       Update subscription (customer session secret) PATCH /v1/me/subscriptions/{subscription_id}
+  tickets list                                 List the current buyer's tickets (customer session secret) GET /v1/me/tickets
   update                                       Update the current buyer profile (customer session secret) PATCH /v1/me
 
 Run flint me <command> --help for flags and examples.

@@ -36,7 +36,7 @@ func TestGeneratedBodyFlagsInventory(t *testing.T) {
 	if total < 900 || shortcuts != 14 {
 		t.Fatalf("body flags=%d shortcuts=%d", total, shortcuts)
 	}
-	for _, name := range []string{"api-keys.create", "api-keys.update", "sandboxes.api-keys.create"} {
+	for _, name := range []string{"api-keys.create", "api-keys.update"} {
 		cmd, _ := registry.ByName(name)
 		found := false
 		for _, arg := range cmd.Arguments {
@@ -45,7 +45,7 @@ func TestGeneratedBodyFlagsInventory(t *testing.T) {
 			}
 		}
 		t.Logf("%s expires-at=%v", name, found)
-		if name != "sandboxes.api-keys.create" && !found {
+		if !found {
 			t.Fatal(name)
 		}
 	}

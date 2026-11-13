@@ -29,6 +29,25 @@ func (r *Reader) flattenNode(schema map[string]any, depth, budget int, path stri
 	}
 	schema = resolved.Schema
 	out := flattenScalars(schema)
+	if !root {
+		name := path[strings.LastIndex(path, ".")+1:]
+		normalize := func(text string) string {
+			return strings.Map(func(r rune) rune {
+				if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
+					return r
+				}
+				return -1
+			}, strings.ToLower(text))
+		}
+		// IDs often repeat their field name, such as "Flint order ID."
+		// Keep descriptions that add any other information.
+		if description, ok := out["description"].(string); ok {
+			text, field := normalize(description), normalize(name)
+			if text == field || text == "flint"+field {
+				delete(out, "description")
+			}
+		}
+	}
 	types := stringsOf(out["type"])
 	if t, ok := out["type"].(string); ok {
 		types = []string{t}
@@ -62,10 +81,9 @@ func (r *Reader) flattenNode(schema map[string]any, depth, budget int, path stri
 		}
 		out["properties"] = flatProperties
 		required := stringsOf(schema["required"])
-		if required == nil {
-			required = []string{}
+		if len(required) > 0 {
+			out["required"] = required
 		}
-		out["required"] = required
 		if root || schema["additionalProperties"] == false {
 			out["additionalProperties"] = false
 		}

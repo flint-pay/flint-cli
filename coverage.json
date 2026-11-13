@@ -270,6 +270,15 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/customer-verifications",
+    "operation_id": "listCheckoutSessionCustomerVerifications",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.customer-verifications.list"
+    ]
+  },
+  {
     "method": "POST",
     "path": "/v1/checkout-sessions/{checkout_session_id}/customer-verifications",
     "operation_id": "createCheckoutSessionCustomerVerification",
@@ -279,75 +288,21 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/checkout-sessions/{checkout_session_id}/customer-verifications/{checkout_session_customer_verification_id}",
+    "operation_id": "getCheckoutSessionCustomerVerification",
+    "classification": "resource",
+    "commands": [
+      "checkout-sessions.customer-verifications.get"
+    ]
+  },
+  {
     "method": "POST",
     "path": "/v1/checkout-sessions/{checkout_session_id}/customer-verifications/{checkout_session_customer_verification_id}/confirm",
     "operation_id": "confirmCheckoutSessionCustomerVerification",
     "classification": "resource",
     "commands": [
       "checkout-sessions.customer-verifications.confirm"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-quotes",
-    "operation_id": "createCheckoutSessionDeliveryQuote",
-    "classification": "resource",
-    "commands": [
-      "checkout-sessions.delivery-quotes.create"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-quotes/{delivery_quote_id}",
-    "operation_id": "getCheckoutSessionDeliveryQuote",
-    "classification": "resource",
-    "commands": [
-      "checkout-sessions.delivery-quotes.get"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections",
-    "operation_id": "listCheckoutSessionDeliverySelections",
-    "classification": "resource",
-    "commands": [
-      "checkout-sessions.delivery-selections.list"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections",
-    "operation_id": "createCheckoutSessionDeliverySelection",
-    "classification": "resource",
-    "commands": [
-      "checkout-sessions.delivery-selections.create"
-    ]
-  },
-  {
-    "method": "DELETE",
-    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections/current",
-    "operation_id": "deleteCheckoutSessionCurrentDeliverySelection",
-    "classification": "resource",
-    "commands": [
-      "checkout-sessions.delivery-selections.current.delete"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections/current",
-    "operation_id": "getCheckoutSessionCurrentDeliverySelection",
-    "classification": "resource",
-    "commands": [
-      "checkout-sessions.delivery-selections.current.get"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/checkout-sessions/{checkout_session_id}/delivery-selections/{delivery_selection_id}",
-    "operation_id": "getCheckoutSessionDeliverySelection",
-    "classification": "resource",
-    "commands": [
-      "checkout-sessions.delivery-selections.get"
     ]
   },
   {
@@ -558,12 +513,30 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/customer-verifications",
+    "operation_id": "listCustomerVerifications",
+    "classification": "resource",
+    "commands": [
+      "customer-verifications.list"
+    ]
+  },
+  {
     "method": "POST",
     "path": "/v1/customer-verifications",
     "operation_id": "createCustomerVerification",
     "classification": "resource",
     "commands": [
       "customer-verifications.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customer-verifications/{customer_verification_id}",
+    "operation_id": "getCustomerVerification",
+    "classification": "resource",
+    "commands": [
+      "customer-verifications.get"
     ]
   },
   {
@@ -900,6 +873,15 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/delivery-quotes",
+    "operation_id": "createDeliveryQuote",
+    "classification": "resource",
+    "commands": [
+      "delivery-quotes.create"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/delivery-quotes/{delivery_quote_id}",
     "operation_id": "getDeliveryQuote",
@@ -965,7 +947,7 @@
   {
     "method": "POST",
     "path": "/v1/delivery-rate-callbacks/{delivery_rate_callback_id}/rotate-secret",
-    "operation_id": "rotateDeliveryRateCallbackSigningKey",
+    "operation_id": "rotateDeliveryRateCallbackSecret",
     "classification": "resource",
     "commands": [
       "delivery-rate-callbacks.rotate-secret"
@@ -1005,6 +987,42 @@
     "classification": "resource",
     "commands": [
       "delivery-revocations.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-selections",
+    "operation_id": "listDeliverySelections",
+    "classification": "resource",
+    "commands": [
+      "delivery-selections.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-selections",
+    "operation_id": "createDeliverySelection",
+    "classification": "resource",
+    "commands": [
+      "delivery-selections.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/delivery-selections/{delivery_selection_id}",
+    "operation_id": "getDeliverySelection",
+    "classification": "resource",
+    "commands": [
+      "delivery-selections.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/delivery-selections/{delivery_selection_id}/release",
+    "operation_id": "releaseDeliverySelection",
+    "classification": "resource",
+    "commands": [
+      "delivery-selections.release"
     ]
   },
   {
@@ -1272,6 +1290,15 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/fulfillment-events",
+    "operation_id": "createFulfillmentEvent",
+    "classification": "resource",
+    "commands": [
+      "fulfillment-events.create"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/fulfillment-events/{fulfillment_event_id}",
     "operation_id": "getFulfillmentEvent",
@@ -1305,6 +1332,15 @@
     "classification": "resource",
     "commands": [
       "fulfillments.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/fulfillments",
+    "operation_id": "createFulfillment",
+    "classification": "resource",
+    "commands": [
+      "fulfillments.create"
     ]
   },
   {
@@ -1359,15 +1395,6 @@
     "classification": "resource",
     "commands": [
       "fulfillments.dispatch"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/fulfillments/{fulfillment_id}/events",
-    "operation_id": "createFulfillmentEvent",
-    "classification": "resource",
-    "commands": [
-      "fulfillments.events.create"
     ]
   },
   {
@@ -1449,15 +1476,6 @@
     "classification": "resource",
     "commands": [
       "fulfillments.schedule"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/fulfillments/{fulfillment_id}/shipments",
-    "operation_id": "createShipment",
-    "classification": "resource",
-    "commands": [
-      "fulfillments.shipments.create"
     ]
   },
   {
@@ -1840,11 +1858,20 @@
   },
   {
     "method": "POST",
-    "path": "/v1/inventory-counts/{inventory_count_id}/transitions",
-    "operation_id": "transitionInventoryCount",
+    "path": "/v1/inventory-counts/{inventory_count_id}/apply",
+    "operation_id": "applyInventoryCount",
     "classification": "resource",
     "commands": [
-      "inventory-counts.transitions.create"
+      "inventory-counts.apply"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-counts/{inventory_count_id}/cancel",
+    "operation_id": "cancelInventoryCount",
+    "classification": "resource",
+    "commands": [
+      "inventory-counts.cancel"
     ]
   },
   {
@@ -2002,11 +2029,29 @@
   },
   {
     "method": "POST",
-    "path": "/v1/inventory-reservations/{inventory_reservation_id}/transitions",
-    "operation_id": "transitionInventoryReservation",
+    "path": "/v1/inventory-reservations/{inventory_reservation_id}/commit",
+    "operation_id": "commitInventoryReservation",
     "classification": "resource",
     "commands": [
-      "inventory-reservations.transitions.create"
+      "inventory-reservations.commit"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-reservations/{inventory_reservation_id}/consume",
+    "operation_id": "consumeInventoryReservation",
+    "classification": "resource",
+    "commands": [
+      "inventory-reservations.consume"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-reservations/{inventory_reservation_id}/release",
+    "operation_id": "releaseInventoryReservation",
+    "classification": "resource",
+    "commands": [
+      "inventory-reservations.release"
     ]
   },
   {
@@ -2047,11 +2092,47 @@
   },
   {
     "method": "POST",
-    "path": "/v1/inventory-transfers/{inventory_transfer_id}/transitions",
-    "operation_id": "transitionInventoryTransfer",
+    "path": "/v1/inventory-transfers/{inventory_transfer_id}/cancel",
+    "operation_id": "cancelInventoryTransfer",
     "classification": "resource",
     "commands": [
-      "inventory-transfers.transitions.create"
+      "inventory-transfers.cancel"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-transfers/{inventory_transfer_id}/depart",
+    "operation_id": "departInventoryTransfer",
+    "classification": "resource",
+    "commands": [
+      "inventory-transfers.depart"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-transfers/{inventory_transfer_id}/receive",
+    "operation_id": "receiveInventoryTransfer",
+    "classification": "resource",
+    "commands": [
+      "inventory-transfers.receive"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-transfers/{inventory_transfer_id}/report-loss",
+    "operation_id": "reportInventoryTransferLoss",
+    "classification": "resource",
+    "commands": [
+      "inventory-transfers.report-loss"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/inventory-transfers/{inventory_transfer_id}/return-to-origin",
+    "operation_id": "returnInventoryTransferToOrigin",
+    "classification": "resource",
+    "commands": [
+      "inventory-transfers.return-to-origin"
     ]
   },
   {
@@ -2142,15 +2223,6 @@
     "classification": "resource",
     "commands": [
       "invoices.activities.list"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/invoices/{invoice_id}/checkout-sessions",
-    "operation_id": "createInvoiceCheckoutSession",
-    "classification": "resource",
-    "commands": [
-      "invoices.checkout-sessions.create"
     ]
   },
   {
@@ -2415,6 +2487,15 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/me/checkout-sessions",
+    "operation_id": "createMeCheckoutSession",
+    "classification": "resource",
+    "commands": [
+      "me.checkout-sessions.create"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/me/deletion-requests",
     "operation_id": "listMeDeletionRequests",
@@ -2579,15 +2660,6 @@
     "classification": "resource",
     "commands": [
       "me.invoices.get"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/me/invoices/{invoice_id}/checkout-sessions",
-    "operation_id": "createMeInvoiceCheckoutSession",
-    "classification": "resource",
-    "commands": [
-      "me.invoices.checkout-sessions.create"
     ]
   },
   {
@@ -2780,15 +2852,6 @@
     ]
   },
   {
-    "method": "POST",
-    "path": "/v1/me/return-resolutions/{return_resolution_id}/checkout-sessions",
-    "operation_id": "createMeReturnResolutionCheckoutSession",
-    "classification": "resource",
-    "commands": [
-      "me.return-resolutions.checkout-sessions.create"
-    ]
-  },
-  {
     "method": "GET",
     "path": "/v1/me/returns",
     "operation_id": "listMeReturns",
@@ -2906,6 +2969,15 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/me/subscriptions/{subscription_id}/change-quantity",
+    "operation_id": "changeMeSubscriptionQuantity",
+    "classification": "resource",
+    "commands": [
+      "me.subscriptions.change-quantity"
+    ]
+  },
+  {
     "method": "PATCH",
     "path": "/v1/me/subscriptions/{subscription_id}/line-items/{subscription_line_item_id}",
     "operation_id": "updateMeSubscriptionLineItem",
@@ -2975,6 +3047,15 @@
     "classification": "resource",
     "commands": [
       "me.subscriptions.skip-cycle"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/tickets",
+    "operation_id": "listMeTickets",
+    "classification": "resource",
+    "commands": [
+      "me.tickets.list"
     ]
   },
   {
@@ -3056,6 +3137,69 @@
     "classification": "resource",
     "commands": [
       "merchant-billing-invoices.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/merchant-signups",
+    "operation_id": "listMerchantSignups",
+    "classification": "resource",
+    "commands": [
+      "merchant-signups.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/merchant-signups",
+    "operation_id": "createMerchantSignup",
+    "classification": "resource",
+    "commands": [
+      "merchant-signups.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/merchant-signups/{merchant_signup_id}",
+    "operation_id": "getMerchantSignup",
+    "classification": "resource",
+    "commands": [
+      "merchant-signups.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/merchant-signups/{merchant_signup_id}/cancel",
+    "operation_id": "cancelMerchantSignup",
+    "classification": "resource",
+    "commands": [
+      "merchant-signups.cancel"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/merchant-signups/{merchant_signup_id}/resend-code",
+    "operation_id": "resendMerchantSignupCode",
+    "classification": "resource",
+    "commands": [
+      "merchant-signups.resend-code"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/merchant-signups/{merchant_signup_id}/rotate-authorization-codes",
+    "operation_id": "rotateMerchantSignupAuthorizationCodes",
+    "classification": "resource",
+    "commands": [
+      "merchant-signups.rotate-authorization-codes"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/merchant-signups/{merchant_signup_id}/verify",
+    "operation_id": "verifyMerchantSignup",
+    "classification": "resource",
+    "commands": [
+      "merchant-signups.verify"
     ]
   },
   {
@@ -3199,20 +3343,20 @@
   },
   {
     "method": "POST",
+    "path": "/v1/onboarding/access-links",
+    "operation_id": "createOnboardingAccessLink",
+    "classification": "resource",
+    "commands": [
+      "onboarding.access-links.create"
+    ]
+  },
+  {
+    "method": "POST",
     "path": "/v1/onboarding/advance",
     "operation_id": "advanceOnboarding",
     "classification": "resource",
     "commands": [
       "onboarding.advance"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/onboarding/api-key",
-    "operation_id": "createOnboardingAPIKey",
-    "classification": "resource",
-    "commands": [
-      "onboarding.api-key.create"
     ]
   },
   {
@@ -3315,6 +3459,15 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/orders/{order_id}/charges",
+    "operation_id": "listOrderCharges",
+    "classification": "resource",
+    "commands": [
+      "orders.charges.list"
+    ]
+  },
+  {
     "method": "POST",
     "path": "/v1/orders/{order_id}/charges",
     "operation_id": "createOrderCharge",
@@ -3348,15 +3501,6 @@
     "classification": "resource",
     "commands": [
       "orders.close"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/orders/{order_id}/delivery-selections/current",
-    "operation_id": "getOrderCurrentDeliverySelection",
-    "classification": "resource",
-    "commands": [
-      "orders.delivery-selections.current.get"
     ]
   },
   {
@@ -3424,15 +3568,6 @@
   },
   {
     "method": "POST",
-    "path": "/v1/orders/{order_id}/fulfillments",
-    "operation_id": "createFulfillment",
-    "classification": "resource",
-    "commands": [
-      "orders.fulfillments.create"
-    ]
-  },
-  {
-    "method": "POST",
     "path": "/v1/orders/{order_id}/gift-cards",
     "operation_id": "applyOrderGiftCard",
     "classification": "resource",
@@ -3447,6 +3582,15 @@
     "classification": "resource",
     "commands": [
       "orders.gift-cards.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders/{order_id}/line-items",
+    "operation_id": "listOrderLineItems",
+    "classification": "resource",
+    "commands": [
+      "orders.line-items.list"
     ]
   },
   {
@@ -3550,83 +3694,20 @@
   },
   {
     "method": "GET",
-    "path": "/v1/organizations",
-    "operation_id": "listOrganizations",
-    "classification": "resource",
-    "commands": [
-      "organizations.list"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/organizations",
-    "operation_id": "createOrganization",
-    "classification": "resource",
-    "commands": [
-      "organizations.create"
-    ]
-  },
-  {
-    "method": "DELETE",
-    "path": "/v1/organizations/{organization_id}",
-    "operation_id": "deleteOrganization",
-    "classification": "resource",
-    "commands": [
-      "organizations.delete"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/organizations/{organization_id}",
-    "operation_id": "getOrganization",
-    "classification": "resource",
-    "commands": [
-      "organizations.get"
-    ]
-  },
-  {
-    "method": "PATCH",
-    "path": "/v1/organizations/{organization_id}",
-    "operation_id": "updateOrganization",
-    "classification": "resource",
-    "commands": [
-      "organizations.update"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/organizations/{organization_id}/memberships",
-    "operation_id": "listOrganizationMemberships",
-    "classification": "resource",
-    "commands": [
-      "organizations.memberships.list"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/organizations/{organization_id}/memberships",
-    "operation_id": "grantOrganizationMembership",
-    "classification": "resource",
-    "commands": [
-      "organizations.memberships.create"
-    ]
-  },
-  {
-    "method": "DELETE",
-    "path": "/v1/organizations/{organization_id}/memberships/{user_id}",
-    "operation_id": "removeOrganizationMembership",
-    "classification": "resource",
-    "commands": [
-      "organizations.memberships.delete"
-    ]
-  },
-  {
-    "method": "GET",
     "path": "/v1/packages",
     "operation_id": "listPackages",
     "classification": "resource",
     "commands": [
       "packages.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/packages",
+    "operation_id": "createPackage",
+    "classification": "resource",
+    "commands": [
+      "packages.create"
     ]
   },
   {
@@ -3834,6 +3915,15 @@
     "classification": "resource",
     "commands": [
       "partner-apps.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/partner-apps/{partner_app_id}/accept-platform-terms",
+    "operation_id": "acceptPartnerAppPlatformTerms",
+    "classification": "resource",
+    "commands": [
+      "partner-apps.accept-platform-terms"
     ]
   },
   {
@@ -4162,6 +4252,24 @@
   },
   {
     "method": "GET",
+    "path": "/v1/payment-splits",
+    "operation_id": "listPaymentSplits",
+    "classification": "resource",
+    "commands": [
+      "payment-splits.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/payment-splits/{payment_split_id}",
+    "operation_id": "getPaymentSplit",
+    "classification": "resource",
+    "commands": [
+      "payment-splits.get"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/payout-destinations",
     "operation_id": "listPayoutDestinations",
     "classification": "resource",
@@ -4248,6 +4356,69 @@
     "classification": "resource",
     "commands": [
       "payouts.cancel"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/platform-fee-balance-transactions",
+    "operation_id": "listPlatformFeeBalanceTransactions",
+    "classification": "resource",
+    "commands": [
+      "platform-fee-balance-transactions.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/platform-fee-balance-transactions/{platform_fee_balance_transaction_id}",
+    "operation_id": "getPlatformFeeBalanceTransaction",
+    "classification": "resource",
+    "commands": [
+      "platform-fee-balance-transactions.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/platform-fee-balances",
+    "operation_id": "listPlatformFeeBalances",
+    "classification": "resource",
+    "commands": [
+      "platform-fee-balances.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/platform-fee-payouts",
+    "operation_id": "listPlatformFeePayouts",
+    "classification": "resource",
+    "commands": [
+      "platform-fee-payouts.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/platform-fee-payouts/{platform_fee_payout_id}",
+    "operation_id": "getPlatformFeePayout",
+    "classification": "resource",
+    "commands": [
+      "platform-fee-payouts.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/platform-fees",
+    "operation_id": "listPlatformFees",
+    "classification": "resource",
+    "commands": [
+      "platform-fees.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/platform-fees/{platform_fee_id}",
+    "operation_id": "getPlatformFee",
+    "classification": "resource",
+    "commands": [
+      "platform-fees.get"
     ]
   },
   {
@@ -4540,6 +4711,69 @@
   },
   {
     "method": "GET",
+    "path": "/v1/readers",
+    "operation_id": "listReaders",
+    "classification": "resource",
+    "commands": [
+      "readers.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/readers",
+    "operation_id": "createReader",
+    "classification": "resource",
+    "commands": [
+      "readers.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/readers/{reader_id}",
+    "operation_id": "deleteReader",
+    "classification": "resource",
+    "commands": [
+      "readers.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/readers/{reader_id}",
+    "operation_id": "getReader",
+    "classification": "resource",
+    "commands": [
+      "readers.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/readers/{reader_id}",
+    "operation_id": "updateReader",
+    "classification": "resource",
+    "commands": [
+      "readers.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/readers/{reader_id}/connection-sessions",
+    "operation_id": "createReaderConnectionSession",
+    "classification": "resource",
+    "commands": [
+      "readers.connection-sessions.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/readers/{reader_id}/simulate",
+    "operation_id": "simulateReader",
+    "classification": "resource",
+    "commands": [
+      "readers.simulate"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/refunds",
     "operation_id": "listRefunds",
     "classification": "resource",
@@ -4572,6 +4806,24 @@
     "classification": "resource",
     "commands": [
       "refunds.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/remembered-buyers/lookup",
+    "operation_id": "lookupRememberedBuyer",
+    "classification": "resource",
+    "commands": [
+      "remembered-buyers.lookup"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/remembered-buyers/revoke",
+    "operation_id": "revokeRememberedBuyer",
+    "classification": "resource",
+    "commands": [
+      "remembered-buyers.revoke"
     ]
   },
   {
@@ -4869,15 +5121,6 @@
     "classification": "resource",
     "commands": [
       "return-resolutions.cancel"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/return-resolutions/{return_resolution_id}/checkout-sessions",
-    "operation_id": "createReturnResolutionCheckoutSession",
-    "classification": "resource",
-    "commands": [
-      "return-resolutions.checkout-sessions.create"
     ]
   },
   {
@@ -5287,15 +5530,6 @@
   },
   {
     "method": "POST",
-    "path": "/v1/sandboxes/{sandbox_id}/api-keys",
-    "operation_id": "createSandboxAPIKey",
-    "classification": "resource",
-    "commands": [
-      "sandboxes.api-keys.create"
-    ]
-  },
-  {
-    "method": "POST",
     "path": "/v1/sandboxes/{sandbox_id}/reset",
     "operation_id": "resetSandbox",
     "classification": "resource",
@@ -5340,6 +5574,15 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/shipments",
+    "operation_id": "createShipment",
+    "classification": "resource",
+    "commands": [
+      "shipments.create"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/shipments/{shipment_id}",
     "operation_id": "getShipment",
@@ -5355,15 +5598,6 @@
     "classification": "resource",
     "commands": [
       "shipments.update"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/shipments/{shipment_id}/packages",
-    "operation_id": "createPackage",
-    "classification": "resource",
-    "commands": [
-      "shipments.packages.create"
     ]
   },
   {
@@ -5647,6 +5881,24 @@
   },
   {
     "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/promotions",
+    "operation_id": "applySubscriptionPromotion",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.promotions.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/subscriptions/{subscription_id}/promotions/remove",
+    "operation_id": "removeSubscriptionPromotions",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.promotions.remove"
+    ]
+  },
+  {
+    "method": "POST",
     "path": "/v1/subscriptions/{subscription_id}/renew",
     "operation_id": "renewSubscription",
     "classification": "resource",
@@ -5670,6 +5922,78 @@
     "classification": "resource",
     "commands": [
       "subscriptions.skip-cycle"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tax-calculation-callbacks",
+    "operation_id": "listTaxCalculationCallbacks",
+    "classification": "resource",
+    "commands": [
+      "tax-calculation-callbacks.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/tax-calculation-callbacks",
+    "operation_id": "createTaxCalculationCallback",
+    "classification": "resource",
+    "commands": [
+      "tax-calculation-callbacks.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/tax-calculation-callbacks/{tax_calculation_callback_id}",
+    "operation_id": "deleteTaxCalculationCallback",
+    "classification": "resource",
+    "commands": [
+      "tax-calculation-callbacks.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tax-calculation-callbacks/{tax_calculation_callback_id}",
+    "operation_id": "getTaxCalculationCallback",
+    "classification": "resource",
+    "commands": [
+      "tax-calculation-callbacks.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/tax-calculation-callbacks/{tax_calculation_callback_id}",
+    "operation_id": "updateTaxCalculationCallback",
+    "classification": "resource",
+    "commands": [
+      "tax-calculation-callbacks.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/tax-calculation-callbacks/{tax_calculation_callback_id}/check-connection",
+    "operation_id": "checkTaxCalculationCallbackConnection",
+    "classification": "resource",
+    "commands": [
+      "tax-calculation-callbacks.check-connection"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/tax-calculation-callbacks/{tax_calculation_callback_id}/rotate-secret",
+    "operation_id": "rotateTaxCalculationCallbackSecret",
+    "classification": "resource",
+    "commands": [
+      "tax-calculation-callbacks.rotate-secret"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/tax-calculation-callbacks/{tax_calculation_callback_id}/test-deliveries",
+    "operation_id": "createTaxCalculationCallbackTestDelivery",
+    "classification": "resource",
+    "commands": [
+      "tax-calculation-callbacks.test-deliveries.create"
     ]
   },
   {
@@ -5817,6 +6141,51 @@
     ]
   },
   {
+    "method": "PATCH",
+    "path": "/v1/tickets/{ticket_id}",
+    "operation_id": "updateTicket",
+    "classification": "resource",
+    "commands": [
+      "tickets.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/tickets/{ticket_id}/check-in",
+    "operation_id": "checkInTicket",
+    "classification": "resource",
+    "commands": [
+      "tickets.check-in"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/tickets/{ticket_id}/rotate-code",
+    "operation_id": "rotateTicketCode",
+    "classification": "resource",
+    "commands": [
+      "tickets.rotate-code"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/tickets/{ticket_id}/undo-check-in",
+    "operation_id": "undoTicketCheckIn",
+    "classification": "resource",
+    "commands": [
+      "tickets.undo-check-in"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/tickets/{ticket_id}/void",
+    "operation_id": "voidTicket",
+    "classification": "resource",
+    "commands": [
+      "tickets.void"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/webhook-deliveries",
     "operation_id": "listWebhookDeliveries",
@@ -5913,6 +6282,15 @@
     "classification": "resource",
     "commands": [
       "webhook-endpoints.rotate-secret"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/webhook-endpoints/{webhook_endpoint_id}/sign-delivery",
+    "operation_id": "signWebhookEndpointDelivery",
+    "classification": "resource",
+    "commands": [
+      "webhook-endpoints.sign-delivery"
     ]
   },
   {

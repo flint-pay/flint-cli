@@ -33,7 +33,7 @@ func TestScopeKeyModesMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, scope := range []string{"accounts.organizations.write", "developer.partner_apps.read", "developer.partner_apps.write", "developer.sandboxes.read", "developer.sandboxes.write"} {
+	for _, scope := range []string{"developer.partner_apps.read", "developer.partner_apps.write"} {
 		if !embedded.scopeNeedsLiveKey(scope, "sandbox") {
 			t.Errorf("embedded scope %s is not live-only", scope)
 		}
@@ -47,7 +47,7 @@ func TestScopeKeyModesMetadata(t *testing.T) {
 
 func TestScopeKeyModesGeneratedCommands(t *testing.T) {
 	registry := NewRegistry()
-	for _, name := range []string{"partner-apps.list", "sandboxes.list", "organizations.create", "sandboxes.api-keys.create"} {
+	for _, name := range []string{"partner-apps.list", "sandboxes.list"} {
 		cmd, ok := registry.ByName(name)
 		if !ok {
 			t.Fatalf("missing generated command %s", name)
@@ -61,7 +61,7 @@ func TestScopeKeyModesGeneratedCommands(t *testing.T) {
 						t.Fatalf("permission error = %#v", e)
 					}
 					details := e.Details.(map[string]any)
-					liveRequired := environment == "sandbox" || environment == "test"
+					liveRequired := name == "partner-apps.list" && (environment == "sandbox" || environment == "test")
 					if (details["reason"] == "live_mode_required") != liveRequired {
 						t.Fatalf("details = %#v", details)
 					}
@@ -97,14 +97,14 @@ func TestScopeKeyModesMixedRequirements(t *testing.T) {
 	for _, mode := range []string{"any", "all"} {
 		openAPIOperations[operationID] = openAPIOperation{
 			FlintScopesMode:     mode,
-			FlintRequiredScopes: []string{"developer.sandboxes.write", "customers.write", "customers.read"},
+			FlintRequiredScopes: []string{"developer.partner_apps.write", "customers.write", "customers.read"},
 		}
 		for _, authType := range []string{"api_key", "oauth"} {
 			for _, grantedLive := range []bool{false, true} {
 				t.Run(fmt.Sprintf("%s/%s/grantedLive=%t", mode, authType, grantedLive), func(t *testing.T) {
 					auth := AuthContext{AuthType: authType, Environment: "sandbox", OAuthSessionID: "session_test", ContextID: "ctx_test"}
 					if grantedLive {
-						auth.Scopes = []string{"developer.sandboxes.write"}
+						auth.Scopes = []string{"developer.partner_apps.write"}
 					}
 					e := commandPermissionError(cmd, auth, "default")
 					if mode == "any" && grantedLive {
@@ -127,7 +127,7 @@ func TestScopeKeyModesMixedRequirements(t *testing.T) {
 							t.Fatalf("guidance = %s", actions)
 						}
 					} else {
-						if (mode == "any" || authType == "oauth") && strings.Contains(string(actions), "developer.sandboxes.write") {
+						if (mode == "any" || authType == "oauth") && strings.Contains(string(actions), "developer.partner_apps.write") {
 							t.Fatalf("unavailable alternative suggested: %s", actions)
 						}
 						if !strings.Contains(string(actions), "customers.write") {
@@ -137,7 +137,7 @@ func TestScopeKeyModesMixedRequirements(t *testing.T) {
 							t.Fatalf("wrong OAuth scopes: %s", actions)
 						}
 					}
-					if mode == "any" && !strings.Contains(strings.Join(details["missing_scopes"].([]string), ","), "developer.sandboxes.write") {
+					if mode == "any" && !strings.Contains(strings.Join(details["missing_scopes"].([]string), ","), "developer.partner_apps.write") {
 						t.Fatal("lost complete missing scope facts")
 					}
 				})
@@ -148,7 +148,7 @@ func TestScopeKeyModesMixedRequirements(t *testing.T) {
 
 func TestScopeKeyModesStopGeneratedRequests(t *testing.T) {
 	for _, environment := range []string{"sandbox", "live"} {
-		for _, args := range [][]string{{"partner-apps", "list"}, {"sandboxes", "list"}, {"organizations", "create", "--name", "Scope test", "--parent-organization-id", "org_test"}, {"sandboxes", "api-keys", "create", "test_123"}} {
+		for _, args := range [][]string{{"partner-apps", "list"}, {"sandboxes", "list"}} {
 			t.Run(environment+"/"+strings.Join(args, "."), func(t *testing.T) {
 				targetRequests := 0
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -178,7 +178,7 @@ func TestScopeKeyModesStopGeneratedRequests(t *testing.T) {
 				if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 					t.Fatal(err)
 				}
-				if result.Error.Code != "MISSING_REQUIRED_SCOPES" || (result.Error.Details["reason"] == "live_mode_required") != (environment == "sandbox") || targetRequests != 0 {
+				if result.Error.Code != "MISSING_REQUIRED_SCOPES" || (result.Error.Details["reason"] == "live_mode_required") != (environment == "sandbox" && args[0] == "partner-apps") || targetRequests != 0 {
 					t.Fatalf("incorrect permission result: %s", stdout)
 				}
 			})
@@ -188,20 +188,20 @@ func TestScopeKeyModesStopGeneratedRequests(t *testing.T) {
 
 func TestDoctorScopeKeyModes(t *testing.T) {
 	original := initialCLIScopes
-	initialCLIScopes = []string{"customers.read", "developer.sandboxes.write"}
+	initialCLIScopes = []string{"customers.read", "developer.partner_apps.write"}
 	defer func() { initialCLIScopes = original }()
 	for _, authType := range []string{"api_key", "oauth"} {
 		for _, environment := range []string{"sandbox", "live", ""} {
-			for _, scopes := range [][]string{nil, {"customers.write"}, {"customers.read"}, {"customers.read", "developer.sandboxes.write"}} {
+			for _, scopes := range [][]string{nil, {"customers.write"}, {"customers.read"}, {"customers.read", "developer.partner_apps.write"}} {
 				check := doctorScopeCheck(AuthContext{AuthType: authType, Environment: environment, Scopes: scopes})
 				missing, _ := check["missing_cli_baseline"].([]string)
 				liveOnly, _ := check["live_required_scopes"].([]string)
 				if environment == "sandbox" {
-					if slices.Contains(missing, "developer.sandboxes.write") {
+					if slices.Contains(missing, "developer.partner_apps.write") {
 						t.Fatalf("impossible missing baseline: %#v", check)
 					}
-					wantLive := !slices.Contains(scopes, "developer.sandboxes.write")
-					if slices.Contains(liveOnly, "developer.sandboxes.write") != wantLive {
+					wantLive := !slices.Contains(scopes, "developer.partner_apps.write")
+					if slices.Contains(liveOnly, "developer.partner_apps.write") != wantLive {
 						t.Fatalf("live-only facts = %#v", check)
 					}
 					if !strings.Contains(fmt.Sprint(check["note"]), "live key") {
@@ -219,17 +219,17 @@ func TestDoctorScopeKeyModes(t *testing.T) {
 			}
 		}
 	}
-	initialCLIScopes = []string{"developer.sandboxes.write"}
+	initialCLIScopes = []string{"developer.partner_apps.write"}
 	check := doctorScopeCheck(AuthContext{Environment: "sandbox"})
 	if fix := fmt.Sprint(check["fix"]); !strings.Contains(fix, "live key") || strings.Contains(fix, "Sign in again") {
 		t.Fatalf("impossible empty-scope guidance: %#v", check)
 	}
 }
 
-func TestScopeKeyModesOrganizationReadAlternative(t *testing.T) {
-	cmd, ok := NewRegistry().ByName("organizations.list")
+func TestScopeKeyModesSandboxReadAlternative(t *testing.T) {
+	cmd, ok := NewRegistry().ByName("sandboxes.list")
 	if !ok {
-		t.Fatal("missing organizations.list")
+		t.Fatal("missing sandboxes.list")
 	}
 	for _, authType := range []string{"api_key", "oauth"} {
 		for _, environment := range []string{"sandbox", "live"} {
@@ -242,13 +242,10 @@ func TestScopeKeyModesOrganizationReadAlternative(t *testing.T) {
 				t.Fatalf("eligible read alternative requires live: %#v", details)
 			}
 			guidance, _ := json.Marshal(details["remediation"])
-			if !strings.Contains(string(guidance), "accounts.organizations.read") {
+			if !strings.Contains(string(guidance), "developer.sandboxes.read") {
 				t.Fatalf("read alternative omitted: %s", guidance)
 			}
-			if environment == "sandbox" && (strings.Contains(string(guidance), "accounts.organizations.write") || strings.Contains(e.Message, "accounts.organizations.write")) {
-				t.Fatalf("ineligible alternative suggested: %s / %s", e.Message, guidance)
-			}
-			if !slices.Equal(details["missing_scopes"].([]string), []string{"accounts.organizations.read", "accounts.organizations.write"}) {
+			if !slices.Equal(details["missing_scopes"].([]string), []string{"developer.sandboxes.read", "developer.sandboxes.write"}) {
 				t.Fatalf("missing scope facts changed: %#v", details)
 			}
 		}

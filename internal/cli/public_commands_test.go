@@ -466,7 +466,7 @@ func TestFulfillmentEventInputSchemasPreserveCustomerOrderScope(t *testing.T) {
 	}{
 		{"me.fulfillment-events.list", map[string]any{}, false},
 		{"me.fulfillment-events.list", map[string]any{"fulfillment_id": "ful_test"}, false},
-		{"me.fulfillment-events.list", map[string]any{"order_id": "ord_test"}, true},
+		{"me.fulfillment-events.list", map[string]any{"order_id": "ord_01KEZF7C0054GQKJ142A8X367A"}, true},
 		{"fulfillment-events.list", map[string]any{}, true},
 	} {
 		command, ok := NewRegistry().ByName(scenario.command)
@@ -637,13 +637,13 @@ func TestHistoryDoesNotPersistCredentialShapedStrings(t *testing.T) {
 
 func TestRawOperationMatchingPrefersLiteralSubresources(t *testing.T) {
 	for i := 0; i < 100; i++ {
-		operation, ok := matchPublicOperation("GET", "/v1/checkout-sessions/cs_test/delivery-selections/current")
-		if !ok || operation.OperationID != "getCheckoutSessionCurrentDeliverySelection" {
+		operation, ok := matchPublicOperation("GET", "/v1/risk-rules/attributes")
+		if !ok || operation.OperationID != "getRiskRuleAttributes" {
 			t.Fatalf("matched %s", operation.OperationID)
 		}
 	}
-	operation, ok := matchPublicOperation("GET", "/v1/checkout-sessions/cs_test/delivery-selections/dsel_test")
-	if !ok || operation.OperationID != "getCheckoutSessionDeliverySelection" {
+	operation, ok := matchPublicOperation("GET", "/v1/risk-rules/rule_test")
+	if !ok || operation.OperationID != "getRiskRule" {
 		t.Fatalf("matched history as %s", operation.OperationID)
 	}
 }

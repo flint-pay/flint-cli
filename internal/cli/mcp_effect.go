@@ -215,7 +215,9 @@ func mcpOwnIDField(cmd *Command) string {
 		}
 		properties, _ := node["properties"].(map[string]any)
 		if data, ok := properties["data"].(map[string]any); ok {
-			return identity(data, "", depth+1)
+			if field := identity(data, "", depth+1); field != "" {
+				return field
+			}
 		}
 		if items, ok := node["items"].(map[string]any); ok {
 			return identity(items, "", depth+1)

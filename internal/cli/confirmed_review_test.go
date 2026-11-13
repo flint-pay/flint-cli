@@ -53,7 +53,7 @@ func TestMCPDryRunsReturnJSONEnvelopeWithoutNetwork(t *testing.T) {
 		arguments             map[string]any
 		irreversible          bool
 	}{
-		{"create dry run", "organizations.create", "/v1/organizations", map[string]any{"name": "Audit", "parent_organization_id": "org_parent"}, false},
+		{"create dry run", "customers.create", "/v1/customers", map[string]any{"name": "Audit"}, false},
 		{"destructive dry run", "payment-intents.cancel", "/v1/payment-intents/pi_test/cancel", map[string]any{"payment_intent_id": "pi_test"}, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
