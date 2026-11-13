@@ -58,8 +58,8 @@ func rootHelpSections(tree *CommandTree, all bool) []map[string]any {
 			section["credential"] = "merchant"
 		}
 		if definition.id == sectionBuyer {
-			section["credential"] = "customer_session"
-			section["credential_hint"] = "Set FLINT_ACCESS_TOKEN to a customer session secret (flint_cses_...)."
+			section["credential"] = "buyer_session"
+			section["credential_hint"] = "Set FLINT_ACCESS_TOKEN to the session credential named in command help: a customer session secret (flint_cses_...) or checkout session token (ckat_v1.)."
 		}
 		sections = append(sections, section)
 	}
@@ -101,10 +101,10 @@ func (a *App) printTreeRootHelp(all bool) {
 	}
 	for _, section := range rootHelpSections(tree, all) {
 		title := section["title"].(string)
-		if section["id"] == sectionBuyer {
-			title += " (set FLINT_ACCESS_TOKEN to a customer session secret, flint_cses_...)"
-		}
 		fmt.Fprintln(a.Stdout, "\n"+title+":")
+		if hint, _ := section["credential_hint"].(string); hint != "" {
+			fmt.Fprintln(a.Stdout, "  "+hint)
+		}
 		entries := section["entries"].([]map[string]any)
 		if all {
 			for _, entry := range entries {

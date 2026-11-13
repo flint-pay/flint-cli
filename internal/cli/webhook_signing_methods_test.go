@@ -198,7 +198,7 @@ func testSigningMethodMCPValidation(t *testing.T, family signingMethodFamily, ac
 			}
 			valid := methods == nil || reflect.DeepEqual(methods, []any{"jwt"}) || reflect.DeepEqual(methods, []any{"hmac"}) || reflect.DeepEqual(methods, []any{"jwt", "hmac"})
 			valid = valid && (action == "create" || methods == nil || withVersion)
-			valid = valid && (action == "create" || methods != nil || family.emptyUpdateValid)
+			valid = valid && (action == "create" || methods != nil || family.emptyUpdateValid && withVersion)
 			if err := validateMCPArguments(cmd, args); (err == nil) != valid {
 				t.Errorf("%s.%s methods=%v version=%v valid=%v: %v", family.group, action, methods, withVersion, valid, err)
 			}
@@ -252,7 +252,7 @@ func TestDeliveryRateCallbackCreateOutputSchemaAllowsAbsentSecret(t *testing.T) 
 	}
 	for _, withSecret := range []bool{false, true} {
 		data := map[string]any{
-			"delivery_rate_callback_id": "dcb_test", "current_delivery_rate_callback_revision_id": "dcbr_test",
+			"delivery_rate_callback_id": "dcb_test", "delivery_revocation_id": "drv_example", "current_delivery_rate_callback_revision_id": "dcbr_test",
 			"name": "Synthetic rates", "status": "inactive", "version": float64(1),
 			"configuration": map[string]any{"url": "https://example.com/delivery-rates"},
 			"created_at":    "2026-10-28T00:00:00Z", "updated_at": "2026-10-28T00:00:00Z",
@@ -336,7 +336,7 @@ func TestSigningHelpAndMCPDescriptions(t *testing.T) {
 		"webhook-endpoints.rotate-secret":       {"issue the first one and enable hmac"},
 		"delivery-rate-callbacks.create":        {"signing_methods defaults to [jwt]", "Authorization: Bearer <token>", "aud set to the delivery_rate_callback_id", "save them if present"},
 		"delivery-rate-callbacks.update":        {"replaces the set", "409 ACTION_NOT_ALLOWED with reason secret_not_issued", "expected_version is required when sending", "signing_methods"},
-		"delivery-rate-callbacks.rotate-secret": {"issue the first one and enable hmac", "secret and key_id"},
+		"delivery-rate-callbacks.rotate-secret": {"delivery_rate_callback_signing_key_id once"},
 		"listen":                                {"JWT", "at-least-once", "webhook_endpoint_id", "sandbox endpoint"},
 	} {
 		cmd, _ := NewRegistry().ByName(name)

@@ -38,7 +38,7 @@ func TestSpecMetadataAuthoritative(t *testing.T) {
 			}
 		}
 	}
-	if marked != 125 {
+	if marked != 133 {
 		t.Errorf("published destructive count=%d", marked)
 	}
 	for _, name := range []string{"orders.pay", "payment-intents.confirm", "payment-intents.capture", "invoices.collect"} {

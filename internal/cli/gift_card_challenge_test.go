@@ -12,18 +12,14 @@ import (
 	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-func TestEmbeddedCheckoutOriginJSONInput(t *testing.T) {
+func TestHeadlessCheckoutOriginJSONInput(t *testing.T) {
 	for _, fixture := range []struct {
 		command, resourceID, path string
 	}{
 		{"checkout-sessions.create", "", "/v1/checkout-sessions"},
-		{"invoices.checkout-sessions.create", "inv_test", "/v1/invoices/inv_test/checkout-sessions"},
-		{"me.invoices.checkout-sessions.create", "inv_test", "/v1/me/invoices/inv_test/checkout-sessions"},
-		{"return-resolutions.checkout-sessions.create", "rres_test", "/v1/return-resolutions/rres_test/checkout-sessions"},
-		{"me.return-resolutions.checkout-sessions.create", "rres_test", "/v1/me/return-resolutions/rres_test/checkout-sessions"},
 	} {
 		t.Run(fixture.command, func(t *testing.T) {
-			body := map[string]any{"surface": "embedded", "page_origin": "https://shop.example.com"}
+			body := map[string]any{"surface": "headless", "page_origin": "https://shop.example.com"}
 			if fixture.resourceID == "" {
 				body["type"] = "order"
 				body["order_id"] = "ord_test"
@@ -87,7 +83,6 @@ func TestEmbeddedCheckoutOriginJSONInput(t *testing.T) {
 
 func TestCustomerAccountJSONInputPreservesSparseUpdates(t *testing.T) {
 	for _, input := range []string{
-		`{"expected_version":7,"customer_account":null}`,
 		`{"expected_version":7}`,
 		`{"expected_version":7,"customer_account":{"mode":"flint_hosted"}}`,
 	} {

@@ -662,7 +662,8 @@ Merchant resources:
   flint workload-identities list                                    List workload identities
   flint workload-identities update <workload_identity_id>           Update a workload identity
 
-Buyer session (set FLINT_ACCESS_TOKEN to a customer session secret, flint_cses_...):
+Buyer session:
+  Set FLINT_ACCESS_TOKEN to the session credential named in command help: a customer session secret (flint_cses_...) or checkout session token (ckat_v1.).
   flint me addresses create                                         Create an address for the current buyer
   flint me addresses delete <customer_address_id>                   Delete one of the current buyer's addresses
   flint me addresses get <customer_address_id>                      Get one of the current buyer's addresses

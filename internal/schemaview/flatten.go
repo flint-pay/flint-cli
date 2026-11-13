@@ -62,10 +62,9 @@ func (r *Reader) flattenNode(schema map[string]any, depth, budget int, path stri
 		}
 		out["properties"] = flatProperties
 		required := stringsOf(schema["required"])
-		if required == nil {
-			required = []string{}
+		if len(required) > 0 {
+			out["required"] = required
 		}
-		out["required"] = required
 		if root || schema["additionalProperties"] == false {
 			out["additionalProperties"] = false
 		}

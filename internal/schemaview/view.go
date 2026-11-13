@@ -109,7 +109,7 @@ func (r *Reader) field(name string, schema map[string]any, required bool, depth 
 		field["nullable"] = true
 	}
 	if description, _ := node["description"].(string); description != "" {
-		field["description"] = compactText(description, 2, 300)
+		field["description"] = compactText(description, 2, 120)
 	}
 	for _, key := range []string{"default", "minimum", "maximum", "minLength", "maxLength", "minItems", "maxItems", "format"} {
 		if v, ok := node[key]; ok {

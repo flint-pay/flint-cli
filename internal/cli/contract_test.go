@@ -151,7 +151,6 @@ func TestFulfillmentLifecycleResourcesHaveTypedCommands(t *testing.T) {
 		"fulfillments.cancel",
 		"shipments.list",
 		"shipments.get",
-		"shipments.packages.create",
 		"shipments.void",
 		"packages.list",
 		"packages.get",

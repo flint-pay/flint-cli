@@ -311,10 +311,22 @@ func (a *App) mcpAdvertisedTools(policy mcpPolicy, version string) ([]map[string
 		}
 		if version >= "2025-03-26" {
 			hints := mcpToolAnnotations(cmd)
-			hints["title"] = entry.Title
+			if version < "2025-06-18" {
+				hints["title"] = entry.Title
+			}
 			hints["readOnlyHint"] = entry.Kind == "read"
 			hints["destructiveHint"] = entry.Kind == "write" && entry.Irreversible
 			hints["idempotentHint"] = entry.Kind == "read" || entry.Method == "PUT" || entry.Method == "DELETE" || entry.Idempotency == "required"
+			// Omit protocol defaults and the title already present on modern tools.
+			// Keep destructiveHint explicit for every operation.
+			for _, name := range []string{"readOnlyHint", "idempotentHint"} {
+				if hints[name] == false {
+					delete(hints, name)
+				}
+			}
+			if hints["openWorldHint"] == true {
+				delete(hints, "openWorldHint")
+			}
 			tool["annotations"] = hints
 		}
 		tools = append(tools, tool)

@@ -55,9 +55,9 @@ func TestMCPScopeActionsChooseCredentialSource(t *testing.T) {
 
 func TestMCPScopeActionsHonorLiveOnlyMetadata(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	cmd := mustMCPTool(t, app, "organizations.create")
+	cmd := mustMCPTool(t, app, "partner-apps.create")
 	for _, facts := range []map[string]any{
-		{"missing_scopes": []any{"accounts.organizations.write"}},
+		{"missing_scopes": []any{"developer.partner_apps.write"}},
 		{"reason": "live_mode_required", "missing_scopes": []any{"future.scope"}},
 		{"key_modes": []any{"live"}, "missing_scopes": []any{"future.scope"}},
 	} {
@@ -168,9 +168,9 @@ func TestMCPRefreshAndReadRetriesDoNotLoseTheirResource(t *testing.T) {
 
 func TestMCPScopeAnyAndFutureModesDoNotForceLive(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	cmd := mustMCPTool(t, app, "organizations.get")
+	cmd := mustMCPTool(t, app, "customers.get")
 	for _, facts := range []map[string]any{
-		{"missing_scopes": []any{"accounts.organizations.write", "customers.read"}, "scope_mode": "any"},
+		{"missing_scopes": []any{"developer.partner_apps.write", "customers.read"}, "scope_mode": "any"},
 		{"missing_scopes": []any{"future.scope"}, "key_modes": []any{"live", "future"}},
 	} {
 		e := mcpActionAPIError("INSUFFICIENT_SCOPE", "none", []any{facts})

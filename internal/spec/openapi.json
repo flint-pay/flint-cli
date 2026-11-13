@@ -214305,6 +214305,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getAPIKey",
+     "parameters": {
+      "api_key_id": "$request.path.api_key_id"
+     }
+    },
     "x-flint-required-scopes": [
      "accounts.api_keys.write"
     ],
@@ -215416,6 +215422,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getAPIKey",
+     "parameters": {
+      "api_key_id": "$request.path.api_key_id"
+     }
+    },
     "x-flint-required-scopes": [
      "accounts.api_keys.write"
     ],
@@ -225622,6 +225634,12 @@
      "commerce.bundles.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getBundle",
+     "parameters": {
+      "bundle_id": "$request.path.bundle_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.bundles.write"
     ],
@@ -228033,6 +228051,12 @@
      "commerce.bundles.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getBundle",
+     "parameters": {
+      "bundle_id": "$request.path.bundle_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.bundles.write"
     ],
@@ -231977,6 +232001,12 @@
      "commerce.catalog.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getCategory",
+     "parameters": {
+      "category_id": "$request.path.category_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.catalog.write"
     ],
@@ -234001,6 +234031,12 @@
      "commerce.catalog.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getCategory",
+     "parameters": {
+      "category_id": "$request.path.category_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.catalog.write"
     ],
@@ -239563,6 +239599,12 @@
      "checkouts.checkout_sessions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getCheckoutSession",
+     "parameters": {
+      "checkout_session_id": "$request.path.checkout_session_id"
+     }
+    },
     "x-flint-required-scopes": [
      "checkouts.checkout_sessions.write"
     ],
@@ -240794,6 +240836,12 @@
      "checkouts.checkout_sessions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getCheckoutSession",
+     "parameters": {
+      "checkout_session_id": "$request.path.checkout_session_id"
+     }
+    },
     "x-flint-required-scopes": [
      "checkouts.checkout_sessions.write"
     ],
@@ -249005,6 +249053,12 @@
      "commerce.credit_notes.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getCreditNote",
+     "parameters": {
+      "credit_note_id": "$request.path.credit_note_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.credit_notes.write"
     ],
@@ -251426,6 +251480,13 @@
      "commerce.credit_notes.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listCreditNoteAllocations",
+     "parameters": {
+      "credit_note_id": "$request.path.credit_note_id",
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.credit_notes.write"
     ],
@@ -253830,6 +253891,12 @@
      "commerce.credit_notes.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listCreditNoteAllocations",
+     "parameters": {
+      "credit_note_id": "$request.path.credit_note_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.credit_notes.write"
     ],
@@ -255393,6 +255460,12 @@
      "commerce.credit_notes.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listCreditNotes",
+     "parameters": {
+      "query": "$request.path.credit_note_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.credit_notes.write"
     ],
@@ -257466,6 +257539,12 @@
      "commerce.credit_notes.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listCreditNotes",
+     "parameters": {
+      "query": "$request.path.credit_note_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.credit_notes.write"
     ],
@@ -260562,6 +260641,12 @@
      "settings.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getCustomDomain",
+     "parameters": {
+      "custom_domain_id": "$request.path.custom_domain_id"
+     }
+    },
     "x-flint-required-scopes": [
      "settings.write"
     ],
@@ -262540,6 +262625,12 @@
      "settings.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getCustomDomain",
+     "parameters": {
+      "custom_domain_id": "$request.path.custom_domain_id"
+     }
+    },
     "x-flint-required-scopes": [
      "settings.write"
     ],
@@ -266752,6 +266843,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getCustomerDeletionRequest",
+     "parameters": {
+      "customer_deletion_request_id": "$request.path.customer_deletion_request_id"
+     }
+    },
     "x-flint-required-scopes": [
      "customers.write"
     ],
@@ -273369,6 +273466,12 @@
      "UNSUPPORTED_CONTENT_TYPE"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getCustomerVerification",
+     "parameters": {
+      "customer_verification_id": "$request.path.customer_verification_id"
+     }
+    },
     "x-flint-required-scopes": [
      "customers.write"
     ],
@@ -278017,6 +278120,12 @@
      "customers.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getCustomer",
+     "parameters": {
+      "customer_id": "$request.path.customer_id"
+     }
+    },
     "x-flint-required-scopes": [
      "customers.write"
     ],
@@ -282201,6 +282310,13 @@
      "customers.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getCustomerAddress",
+     "parameters": {
+      "customer_address_id": "$request.path.customer_address_id",
+      "customer_id": "$request.path.customer_id"
+     }
+    },
     "x-flint-required-scopes": [
      "customers.write"
     ],
@@ -284297,6 +284413,13 @@
      "customers.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getCustomerAddress",
+     "parameters": {
+      "customer_address_id": "$request.path.customer_address_id",
+      "customer_id": "$request.path.customer_id"
+     }
+    },
     "x-flint-required-scopes": [
      "customers.write"
     ],
@@ -290322,6 +290445,13 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getCustomerTaxExemption",
+     "parameters": {
+      "customer_id": "$request.path.customer_id",
+      "customer_tax_exemption_id": "$request.path.customer_tax_exemption_id"
+     }
+    },
     "x-flint-required-scopes": [
      "customers.write"
     ],
@@ -292388,6 +292518,13 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getCustomerTaxExemption",
+     "parameters": {
+      "customer_id": "$request.path.customer_id",
+      "customer_tax_exemption_id": "$request.path.customer_tax_exemption_id"
+     }
+    },
     "x-flint-required-scopes": [
      "customers.write"
     ],
@@ -295468,6 +295605,12 @@
      "commerce.delivery.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getDeliveryLocationSet",
+     "parameters": {
+      "delivery_location_set_id": "$request.path.delivery_location_set_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.delivery.write"
     ],
@@ -297519,6 +297662,12 @@
      "commerce.delivery.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getDeliveryLocationSet",
+     "parameters": {
+      "delivery_location_set_id": "$request.path.delivery_location_set_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.delivery.write"
     ],
@@ -300967,6 +301116,12 @@
      "commerce.delivery.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getDeliveryMethod",
+     "parameters": {
+      "delivery_method_id": "$request.path.delivery_method_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.delivery.write"
     ],
@@ -303179,6 +303334,12 @@
      "commerce.delivery.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getDeliveryMethod",
+     "parameters": {
+      "delivery_method_id": "$request.path.delivery_method_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.delivery.write"
     ],
@@ -307550,6 +307711,12 @@
      "commerce.delivery.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getDeliveryProfile",
+     "parameters": {
+      "delivery_profile_id": "$request.path.delivery_profile_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.delivery.write"
     ],
@@ -309609,6 +309776,12 @@
      "commerce.delivery.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getDeliveryProfile",
+     "parameters": {
+      "delivery_profile_id": "$request.path.delivery_profile_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.delivery.write"
     ],
@@ -310743,6 +310916,12 @@
      "commerce.delivery.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getDeliveryProfile",
+     "parameters": {
+      "delivery_profile_id": "$request.path.delivery_profile_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.delivery.write"
     ],
@@ -317131,6 +317310,12 @@
      "commerce.delivery.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getDeliveryRateCallback",
+     "parameters": {
+      "delivery_rate_callback_id": "$request.path.delivery_rate_callback_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.delivery.write"
     ],
@@ -319193,6 +319378,12 @@
      "commerce.delivery.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getDeliveryRateCallback",
+     "parameters": {
+      "delivery_rate_callback_id": "$request.path.delivery_rate_callback_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.delivery.write"
     ],
@@ -321176,6 +321367,12 @@
      "commerce.delivery.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getDeliveryRateCallback",
+     "parameters": {
+      "delivery_rate_callback_id": "$request.path.delivery_rate_callback_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.delivery.write"
     ],
@@ -330271,6 +330468,12 @@
      "commerce.delivery.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getDeliverySelection",
+     "parameters": {
+      "delivery_selection_id": "$request.path.delivery_selection_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.delivery.write"
     ],
@@ -333359,6 +333562,12 @@
      "commerce.delivery.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getDeliveryZone",
+     "parameters": {
+      "delivery_zone_id": "$request.path.delivery_zone_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.delivery.write"
     ],
@@ -335414,6 +335623,12 @@
      "commerce.delivery.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getDeliveryZone",
+     "parameters": {
+      "delivery_zone_id": "$request.path.delivery_zone_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.delivery.write"
     ],
@@ -339395,6 +339610,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getDevice",
+     "parameters": {
+      "device_id": "$request.path.device_id"
+     }
+    },
     "x-flint-required-scopes": [
      "accounts.devices.write"
     ],
@@ -341383,6 +341604,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getDevice",
+     "parameters": {
+      "device_id": "$request.path.device_id"
+     }
+    },
     "x-flint-required-scopes": [
      "accounts.devices.write"
     ],
@@ -346169,6 +346396,12 @@
      "payments.disputes.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getDispute",
+     "parameters": {
+      "dispute_id": "$request.path.dispute_id"
+     }
+    },
     "x-flint-required-scopes": [
      "payments.disputes.write"
     ],
@@ -348440,6 +348673,12 @@
      "payments.disputes.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getDispute",
+     "parameters": {
+      "dispute_id": "$request.path.dispute_id"
+     }
+    },
     "x-flint-required-mode": "test",
     "x-flint-required-scopes": [
      "payments.disputes.write"
@@ -357520,6 +357759,12 @@
      "merchants.profile.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getFile",
+     "parameters": {
+      "file_id": "$request.path.file_id"
+     }
+    },
     "x-flint-required-scopes": [
      "checkouts.payment_links.write",
      "commerce.bundles.write",
@@ -368077,6 +368322,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listFulfillments",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -370444,6 +370695,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listFulfillments",
+     "parameters": {
+      "query": "$request.path.fulfillment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -371638,6 +371895,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listFulfillments",
+     "parameters": {
+      "query": "$request.path.fulfillment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -372832,6 +373095,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listFulfillments",
+     "parameters": {
+      "query": "$request.path.fulfillment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -374025,6 +374294,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listFulfillments",
+     "parameters": {
+      "query": "$request.path.fulfillment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -375218,6 +375493,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listFulfillments",
+     "parameters": {
+      "query": "$request.path.fulfillment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -376412,6 +376693,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listFulfillments",
+     "parameters": {
+      "query": "$request.path.fulfillment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -377606,6 +377893,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listFulfillments",
+     "parameters": {
+      "query": "$request.path.fulfillment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -378800,6 +379093,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listFulfillments",
+     "parameters": {
+      "query": "$request.path.fulfillment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -379993,6 +380292,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listFulfillments",
+     "parameters": {
+      "query": "$request.path.fulfillment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -381186,6 +381491,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listFulfillments",
+     "parameters": {
+      "query": "$request.path.fulfillment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -382379,6 +382690,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listFulfillments",
+     "parameters": {
+      "query": "$request.path.fulfillment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -383572,6 +383889,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listFulfillments",
+     "parameters": {
+      "query": "$request.path.fulfillment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -384765,6 +385088,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listFulfillments",
+     "parameters": {
+      "query": "$request.path.fulfillment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -385961,6 +386290,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listFulfillments",
+     "parameters": {
+      "query": "$request.path.fulfillment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -387154,6 +387489,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listFulfillments",
+     "parameters": {
+      "query": "$request.path.fulfillment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -389202,6 +389543,12 @@
      "commerce.gift_cards.adjustments.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listGiftCardFundingDispositions",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.gift_cards.adjustments.write"
     ],
@@ -392370,6 +392717,12 @@
      "commerce.gift_cards.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listGiftCardLoads",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.gift_cards.write"
     ],
@@ -397414,6 +397767,12 @@
      "commerce.gift_cards.secrets.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getGiftCardNotification",
+     "parameters": {
+      "gift_card_notification_id": "$request.path.gift_card_notification_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.gift_cards.secrets.write"
     ],
@@ -399618,6 +399977,12 @@
      "commerce.gift_cards.redemptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listGiftCardRedemptions",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.gift_cards.redemptions.write"
     ],
@@ -401757,6 +402122,12 @@
      "commerce.gift_cards.redemptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getGiftCardRedemption",
+     "parameters": {
+      "gift_card_redemption_id": "$request.path.gift_card_redemption_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.gift_cards.redemptions.write"
     ],
@@ -402969,6 +403340,12 @@
      "commerce.gift_cards.redemptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getGiftCardRedemption",
+     "parameters": {
+      "gift_card_redemption_id": "$request.path.gift_card_redemption_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.gift_cards.redemptions.write"
     ],
@@ -406190,6 +406567,12 @@
      "commerce.gift_cards.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listGiftCards",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.gift_cards.write"
     ],
@@ -409411,6 +409794,12 @@
      "commerce.gift_cards.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getGiftCard",
+     "parameters": {
+      "gift_card_id": "$request.path.gift_card_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.gift_cards.write"
     ],
@@ -410635,6 +411024,13 @@
      "commerce.gift_cards.adjustments.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listGiftCardTransactions",
+     "parameters": {
+      "gift_card_id": "$request.path.gift_card_id",
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.gift_cards.adjustments.write"
     ],
@@ -411818,6 +412214,13 @@
      "commerce.gift_cards.adjustments.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listGiftCardTransactions",
+     "parameters": {
+      "gift_card_id": "$request.path.gift_card_id",
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.gift_cards.adjustments.write"
     ],
@@ -412962,6 +413365,12 @@
      "commerce.gift_cards.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getGiftCard",
+     "parameters": {
+      "gift_card_id": "$request.path.gift_card_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.gift_cards.write"
     ],
@@ -414115,6 +414524,12 @@
      "commerce.gift_cards.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getGiftCard",
+     "parameters": {
+      "gift_card_id": "$request.path.gift_card_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.gift_cards.write"
     ],
@@ -415269,6 +415684,12 @@
      "commerce.gift_cards.secrets.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getGiftCard",
+     "parameters": {
+      "gift_card_id": "$request.path.gift_card_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.gift_cards.secrets.write"
     ],
@@ -416416,6 +416837,12 @@
      "commerce.gift_cards.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getGiftCard",
+     "parameters": {
+      "gift_card_id": "$request.path.gift_card_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.gift_cards.write"
     ],
@@ -418716,6 +419143,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listInventoryMovements",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -428966,6 +429399,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listInventoryCounts",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -431080,6 +431519,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInventoryCount",
+     "parameters": {
+      "inventory_count_id": "$request.path.inventory_count_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -432263,6 +432708,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInventoryCount",
+     "parameters": {
+      "inventory_count_id": "$request.path.inventory_count_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -433425,6 +433876,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInventoryCount",
+     "parameters": {
+      "inventory_count_id": "$request.path.inventory_count_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -436525,6 +436982,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInventoryItem",
+     "parameters": {
+      "inventory_item_id": "$request.path.inventory_item_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -438588,6 +439051,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInventoryItem",
+     "parameters": {
+      "inventory_item_id": "$request.path.inventory_item_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -442000,6 +442469,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInventoryLevel",
+     "parameters": {
+      "inventory_level_id": "$request.path.inventory_level_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -446866,6 +447341,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listInventoryReceipts",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -450152,6 +450633,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listInventoryReservations",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -452260,6 +452747,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInventoryReservation",
+     "parameters": {
+      "inventory_reservation_id": "$request.path.inventory_reservation_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -453452,6 +453945,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInventoryReservation",
+     "parameters": {
+      "inventory_reservation_id": "$request.path.inventory_reservation_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -454649,6 +455148,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInventoryReservation",
+     "parameters": {
+      "inventory_reservation_id": "$request.path.inventory_reservation_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -455840,6 +456345,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInventoryReservation",
+     "parameters": {
+      "inventory_reservation_id": "$request.path.inventory_reservation_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -458131,6 +458642,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listInventoryTransfers",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -460224,6 +460741,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInventoryTransfer",
+     "parameters": {
+      "inventory_transfer_id": "$request.path.inventory_transfer_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -461457,6 +461980,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInventoryTransfer",
+     "parameters": {
+      "inventory_transfer_id": "$request.path.inventory_transfer_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -462689,6 +463218,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInventoryTransfer",
+     "parameters": {
+      "inventory_transfer_id": "$request.path.inventory_transfer_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -463921,6 +464456,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInventoryTransfer",
+     "parameters": {
+      "inventory_transfer_id": "$request.path.inventory_transfer_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -465153,6 +465694,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInventoryTransfer",
+     "parameters": {
+      "inventory_transfer_id": "$request.path.inventory_transfer_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -466385,6 +466932,12 @@
      "commerce.inventory.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInventoryTransfer",
+     "parameters": {
+      "inventory_transfer_id": "$request.path.inventory_transfer_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.inventory.write"
     ],
@@ -469453,6 +470006,12 @@
      "commerce.invoices.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInvoicePaymentTerm",
+     "parameters": {
+      "invoice_payment_term_id": "$request.path.invoice_payment_term_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.invoices.write"
     ],
@@ -471535,6 +472094,12 @@
      "commerce.invoices.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInvoicePaymentTerm",
+     "parameters": {
+      "invoice_payment_term_id": "$request.path.invoice_payment_term_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.invoices.write"
     ],
@@ -474925,6 +475490,12 @@
      "commerce.invoices.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listInvoices",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.invoices.write"
     ],
@@ -477933,6 +478504,12 @@
      "commerce.invoices.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInvoice",
+     "parameters": {
+      "invoice_id": "$request.path.invoice_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.invoices.write"
     ],
@@ -480516,6 +481093,13 @@
      "commerce.invoices.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listInvoicePaymentAttempts",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key",
+      "invoice_id": "$request.path.invoice_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.invoices.write"
     ],
@@ -482978,6 +483562,12 @@
      "commerce.invoices.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInvoice",
+     "parameters": {
+      "invoice_id": "$request.path.invoice_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.invoices.write"
     ],
@@ -485705,6 +486295,12 @@
      "commerce.invoices.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInvoice",
+     "parameters": {
+      "invoice_id": "$request.path.invoice_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.invoices.write"
     ],
@@ -488034,6 +488630,13 @@
      "commerce.invoices.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listInvoiceManualPayments",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key",
+      "invoice_id": "$request.path.invoice_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.invoices.write"
     ],
@@ -490344,6 +490947,13 @@
      "commerce.invoices.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInvoiceManualPayment",
+     "parameters": {
+      "invoice_id": "$request.path.invoice_id",
+      "invoice_manual_payment_id": "$request.path.invoice_manual_payment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.invoices.write"
     ],
@@ -491705,6 +492315,12 @@
      "commerce.invoices.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInvoice",
+     "parameters": {
+      "invoice_id": "$request.path.invoice_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.invoices.write"
     ],
@@ -494698,6 +495314,12 @@
      "commerce.invoices.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listInvoicePaymentAttempts",
+     "parameters": {
+      "invoice_id": "$request.path.invoice_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.invoices.write"
     ],
@@ -496938,6 +497560,12 @@
      "commerce.invoices.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInvoice",
+     "parameters": {
+      "invoice_id": "$request.path.invoice_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.invoices.write"
     ],
@@ -498203,6 +498831,12 @@
      "commerce.invoices.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listInvoiceActivities",
+     "parameters": {
+      "invoice_id": "$request.path.invoice_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.invoices.write"
     ],
@@ -499568,6 +500202,12 @@
      "commerce.invoices.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getInvoice",
+     "parameters": {
+      "invoice_id": "$request.path.invoice_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.invoices.write"
     ],
@@ -502697,6 +503337,12 @@
      "merchants.locations.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getLocation",
+     "parameters": {
+      "location_id": "$request.path.location_id"
+     }
+    },
     "x-flint-required-scopes": [
      "merchants.locations.write"
     ],
@@ -504786,6 +505432,12 @@
      "merchants.locations.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getLocation",
+     "parameters": {
+      "location_id": "$request.path.location_id"
+     }
+    },
     "x-flint-required-scopes": [
      "merchants.locations.write"
     ],
@@ -506516,6 +507168,10 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMe",
+     "parameters": {}
+    },
     "x-flint-route-class": "write"
    }
   },
@@ -509079,6 +509735,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMeAddress",
+     "parameters": {
+      "customer_address_id": "$request.path.customer_address_id"
+     }
+    },
     "x-flint-route-class": "write"
    },
    "get": {
@@ -510826,6 +511488,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMeAddress",
+     "parameters": {
+      "customer_address_id": "$request.path.customer_address_id"
+     }
+    },
     "x-flint-route-class": "write"
    }
   },
@@ -518133,6 +518801,10 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMeEmailPreferences",
+     "parameters": {}
+    },
     "x-flint-route-class": "write"
    }
   },
@@ -524922,6 +525594,10 @@
      "UNSUPPORTED_CONTENT_TYPE"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "listMeGiftCards",
+     "parameters": {}
+    },
     "x-flint-route-class": "sensitive_write"
    }
   },
@@ -525797,6 +526473,12 @@
      "SERVICE_UNAVAILABLE"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMeGiftCard",
+     "parameters": {
+      "gift_card_id": "$request.path.gift_card_id"
+     }
+    },
     "x-flint-route-class": "write"
    },
    "get": {
@@ -543366,6 +544048,12 @@
      "SERVICE_UNAVAILABLE"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMePaymentMethod",
+     "parameters": {
+      "payment_method_id": "$request.path.payment_method_id"
+     }
+    },
     "x-flint-route-class": "external_provider_action"
    },
    "get": {
@@ -550076,6 +550764,12 @@
      "UNSUPPORTED_CONTENT_TYPE"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "listMeReturns",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-route-class": "write"
    }
   },
@@ -552088,6 +552782,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMeReturn",
+     "parameters": {
+      "return_id": "$request.path.return_id"
+     }
+    },
     "x-flint-route-class": "write"
    }
   },
@@ -559285,6 +559985,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMeSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-route-class": "write"
    }
   },
@@ -560450,6 +561156,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMeSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-route-class": "external_provider_action"
    }
   },
@@ -561639,6 +562351,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMeSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-route-class": "external_provider_action"
    }
   },
@@ -562832,6 +563550,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMeSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-route-class": "external_provider_action"
    }
   },
@@ -564068,6 +564792,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMeSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-route-class": "write"
    }
   },
@@ -565249,6 +565979,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMeSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-route-class": "external_provider_action"
    }
   },
@@ -567008,6 +567744,13 @@
      "SERVICE_UNAVAILABLE"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "listMeSubscriptionPaymentRetries",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key",
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-route-class": "external_provider_action"
    }
   },
@@ -569286,6 +570029,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMeSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-route-class": "external_provider_action"
    }
   },
@@ -570548,6 +571297,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMeSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-route-class": "external_provider_action"
    }
   },
@@ -571665,6 +572420,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMeSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-route-class": "write"
    }
   },
@@ -574896,6 +575657,10 @@
      "merchants.profile.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getMerchant",
+     "parameters": {}
+    },
     "x-flint-required-scopes": [
      "merchants.profile.write"
     ],
@@ -586269,6 +587034,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMerchantSignup",
+     "parameters": {
+      "merchant_signup_id": "$request.path.merchant_signup_id"
+     }
+    },
     "x-flint-required-scopes": [
      "developer.merchant_signups.write"
     ],
@@ -587435,6 +588206,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMerchantSignup",
+     "parameters": {
+      "merchant_signup_id": "$request.path.merchant_signup_id"
+     }
+    },
     "x-flint-required-scopes": [
      "developer.merchant_signups.write"
     ],
@@ -588605,6 +589382,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMerchantSignup",
+     "parameters": {
+      "merchant_signup_id": "$request.path.merchant_signup_id"
+     }
+    },
     "x-flint-required-scopes": [
      "developer.merchant_signups.write"
     ],
@@ -589783,6 +590566,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getMerchantSignup",
+     "parameters": {
+      "merchant_signup_id": "$request.path.merchant_signup_id"
+     }
+    },
     "x-flint-required-scopes": [
      "developer.merchant_signups.write"
     ],
@@ -592896,6 +593685,12 @@
      "commerce.catalog.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getModifierGroup",
+     "parameters": {
+      "modifier_group_id": "$request.path.modifier_group_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.catalog.write"
     ],
@@ -594972,6 +595767,12 @@
      "commerce.catalog.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getModifierGroup",
+     "parameters": {
+      "modifier_group_id": "$request.path.modifier_group_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.catalog.write"
     ],
@@ -598117,6 +598918,12 @@
      "commerce.catalog.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getModifierSet",
+     "parameters": {
+      "modifier_set_id": "$request.path.modifier_set_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.catalog.write"
     ],
@@ -600227,6 +601034,12 @@
      "commerce.catalog.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getModifierSet",
+     "parameters": {
+      "modifier_set_id": "$request.path.modifier_set_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.catalog.write"
     ],
@@ -602471,7 +603284,7 @@
       "content": {
        "application/json": {
         "example": {
-         "access_token": "fpat_3q2dO7xYp5tWvZbN8kLmA1cRfGhJ4sUeQ6iTwX9yB0o",
+         "access_token": "fpat_example",
          "environment_grant_id": "egrt_01KEZF7C009BJARGPV18R4BQX9",
          "expires_in": 900,
          "merchant_id": "mer_01KEZF7C00MPP0T9S0KH5BB4CC",
@@ -605191,6 +606004,10 @@
      "merchants.onboarding.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getOnboardingState",
+     "parameters": {}
+    },
     "x-flint-required-scopes": [
      "merchants.onboarding.write"
     ],
@@ -615252,6 +616069,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getOrder",
+     "parameters": {
+      "order_id": "$request.path.order_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -620958,6 +621781,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listOrderCharges",
+     "parameters": {
+      "order_id": "$request.path.order_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -622439,6 +623268,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listOrderCharges",
+     "parameters": {
+      "order_id": "$request.path.order_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -624038,6 +624873,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getOrder",
+     "parameters": {
+      "order_id": "$request.path.order_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -625513,6 +626354,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getOrder",
+     "parameters": {
+      "order_id": "$request.path.order_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -626986,6 +627833,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getOrder",
+     "parameters": {
+      "order_id": "$request.path.order_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -628457,6 +629310,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getOrder",
+     "parameters": {
+      "order_id": "$request.path.order_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -631023,6 +631882,12 @@
      "commerce.refunds.write"
     ],
     "x-flint-partner-required-scopes-mode": "all",
+    "x-flint-recovery": {
+     "operation_id": "listOrderEdits",
+     "parameters": {
+      "order_id": "$request.path.order_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write",
      "commerce.refunds.write"
@@ -633300,6 +634165,13 @@
      "commerce.refunds.write"
     ],
     "x-flint-partner-required-scopes-mode": "all",
+    "x-flint-recovery": {
+     "operation_id": "getOrderEdit",
+     "parameters": {
+      "order_edit_id": "$request.path.order_edit_id",
+      "order_id": "$request.path.order_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write",
      "commerce.refunds.write"
@@ -634691,6 +635563,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getOrder",
+     "parameters": {
+      "order_id": "$request.path.order_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -635871,6 +636749,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getOrder",
+     "parameters": {
+      "order_id": "$request.path.order_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -639576,6 +640460,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listOrderLineItems",
+     "parameters": {
+      "order_id": "$request.path.order_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -641066,6 +641956,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getOrder",
+     "parameters": {
+      "order_id": "$request.path.order_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -642682,6 +643578,13 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listOrderPaymentAttempts",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key",
+      "order_id": "$request.path.order_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -646140,6 +647043,13 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getOrderPaymentAttempt",
+     "parameters": {
+      "order_id": "$request.path.order_id",
+      "order_payment_attempt_id": "$request.path.order_payment_attempt_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -647518,6 +648428,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getOrder",
+     "parameters": {
+      "order_id": "$request.path.order_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -649694,6 +650610,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getOrder",
+     "parameters": {
+      "order_id": "$request.path.order_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -655850,6 +656772,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listPackages",
+     "parameters": {
+      "query": "$request.path.package_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -659056,6 +659984,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listPackageItems",
+     "parameters": {
+      "package_id": "$request.path.package_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -661300,6 +662234,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listPackageItems",
+     "parameters": {
+      "package_id": "$request.path.package_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -662489,6 +663429,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listPackages",
+     "parameters": {
+      "query": "$request.path.package_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -663678,6 +664624,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listPackages",
+     "parameters": {
+      "query": "$request.path.package_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -664867,6 +665819,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listPackages",
+     "parameters": {
+      "query": "$request.path.package_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -666056,6 +667014,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listPackages",
+     "parameters": {
+      "query": "$request.path.package_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -667245,6 +668209,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listPackages",
+     "parameters": {
+      "query": "$request.path.package_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -668434,6 +669404,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listPackages",
+     "parameters": {
+      "query": "$request.path.package_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -669623,6 +670599,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listPackages",
+     "parameters": {
+      "query": "$request.path.package_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -670812,6 +671794,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listPackages",
+     "parameters": {
+      "query": "$request.path.package_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -671998,6 +672986,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listPackages",
+     "parameters": {
+      "query": "$request.path.package_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -673955,6 +674949,10 @@
      "SERVICE_UNAVAILABLE"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "listMerchantPartnerAppInstalls",
+     "parameters": {}
+    },
     "x-flint-required-scopes": [
      "developer.partner_apps.write"
     ],
@@ -677277,6 +678275,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getPartnerApp",
+     "parameters": {
+      "partner_app_id": "$request.path.partner_app_id"
+     }
+    },
     "x-flint-required-scopes": [
      "developer.partner_apps.write"
     ],
@@ -679475,6 +680479,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getPartnerApp",
+     "parameters": {
+      "partner_app_id": "$request.path.partner_app_id"
+     }
+    },
     "x-flint-required-scopes": [
      "developer.partner_apps.write"
     ],
@@ -680700,6 +681710,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getPartnerApp",
+     "parameters": {
+      "partner_app_id": "$request.path.partner_app_id"
+     }
+    },
     "x-flint-required-scopes": [
      "developer.partner_apps.write"
     ],
@@ -683818,6 +684834,13 @@
      "SERVICE_UNAVAILABLE"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getPartnerAppCredential",
+     "parameters": {
+      "partner_app_credential_id": "$request.path.partner_app_credential_id",
+      "partner_app_id": "$request.path.partner_app_id"
+     }
+    },
     "x-flint-required-scopes": [
      "developer.partner_apps.write"
     ],
@@ -687820,6 +688843,13 @@
      "SERVICE_UNAVAILABLE"
     ],
     "x-flint-partner-access": "platform_scoped",
+    "x-flint-recovery": {
+     "operation_id": "getPartnerAppInstall",
+     "parameters": {
+      "partner_app_id": "$request.path.partner_app_id",
+      "partner_app_install_id": "$request.path.partner_app_install_id"
+     }
+    },
     "x-flint-required-scopes": [
      "developer.partner_apps.write"
     ],
@@ -688829,6 +689859,13 @@
      "SERVICE_UNAVAILABLE"
     ],
     "x-flint-partner-access": "platform_scoped",
+    "x-flint-recovery": {
+     "operation_id": "getPartnerAppInstall",
+     "parameters": {
+      "partner_app_id": "$request.path.partner_app_id",
+      "partner_app_install_id": "$request.path.partner_app_install_id"
+     }
+    },
     "x-flint-required-scopes": [
      "developer.partner_apps.write"
     ],
@@ -690029,6 +691066,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getPartnerApp",
+     "parameters": {
+      "partner_app_id": "$request.path.partner_app_id"
+     }
+    },
     "x-flint-required-scopes": [
      "developer.partner_apps.write"
     ],
@@ -693053,6 +694096,12 @@
      "payments.payment_intents.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listPaymentIntents",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "payments.payment_intents.write"
     ],
@@ -695626,6 +696675,12 @@
      "payments.payment_intents.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getPaymentIntent",
+     "parameters": {
+      "payment_intent_id": "$request.path.payment_intent_id"
+     }
+    },
     "x-flint-required-scopes": [
      "payments.payment_intents.write"
     ],
@@ -697914,6 +698969,12 @@
      "payments.payment_intents.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getPaymentIntent",
+     "parameters": {
+      "payment_intent_id": "$request.path.payment_intent_id"
+     }
+    },
     "x-flint-required-scopes": [
      "payments.payment_intents.write"
     ],
@@ -699229,6 +700290,12 @@
      "payments.payment_intents.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getPaymentIntent",
+     "parameters": {
+      "payment_intent_id": "$request.path.payment_intent_id"
+     }
+    },
     "x-flint-required-scopes": [
      "payments.payment_intents.write"
     ],
@@ -700572,6 +701639,12 @@
      "payments.payment_intents.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getPaymentIntent",
+     "parameters": {
+      "payment_intent_id": "$request.path.payment_intent_id"
+     }
+    },
     "x-flint-required-scopes": [
      "payments.payment_intents.write"
     ],
@@ -701807,6 +702880,12 @@
      "payments.payment_intents.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listPaymentIntentActivities",
+     "parameters": {
+      "payment_intent_id": "$request.path.payment_intent_id"
+     }
+    },
     "x-flint-required-scopes": [
      "payments.payment_intents.write"
     ],
@@ -707102,6 +708181,12 @@
      "checkouts.payment_links.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getPaymentLink",
+     "parameters": {
+      "payment_link_id": "$request.path.payment_link_id"
+     }
+    },
     "x-flint-required-scopes": [
      "checkouts.payment_links.write"
     ],
@@ -712693,6 +713778,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getPaymentMethodDomain",
+     "parameters": {
+      "payment_method_domain_id": "$request.path.payment_method_domain_id"
+     }
+    },
     "x-flint-required-scopes": [
      "payments.payment_method_domains.write"
     ],
@@ -716134,6 +717225,12 @@
      "payments.payment_methods.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getPaymentMethod",
+     "parameters": {
+      "payment_method_id": "$request.path.payment_method_id"
+     }
+    },
     "x-flint-required-scopes": [
      "payments.payment_methods.write"
     ],
@@ -720729,6 +721826,12 @@
      "risk.reviews.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getPaymentReview",
+     "parameters": {
+      "payment_review_id": "$request.path.payment_review_id"
+     }
+    },
     "x-flint-required-scopes": [
      "risk.reviews.write"
     ],
@@ -722110,6 +723213,12 @@
      "risk.reviews.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getPaymentReview",
+     "parameters": {
+      "payment_review_id": "$request.path.payment_review_id"
+     }
+    },
     "x-flint-required-scopes": [
      "risk.reviews.write"
     ],
@@ -725997,6 +727106,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getPayoutDestination",
+     "parameters": {
+      "payout_destination_id": "$request.path.payout_destination_id"
+     }
+    },
     "x-flint-required-scopes": [
      "money_movement.payout_settings.write"
     ],
@@ -728126,6 +729241,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getPayoutDestination",
+     "parameters": {
+      "payout_destination_id": "$request.path.payout_destination_id"
+     }
+    },
     "x-flint-required-scopes": [
      "money_movement.payout_settings.write"
     ],
@@ -730180,6 +731301,10 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getPayoutSettings",
+     "parameters": {}
+    },
     "x-flint-required-scopes": [
      "money_movement.payout_settings.write"
     ],
@@ -732669,6 +733794,12 @@
      "UNSUPPORTED_CONTENT_TYPE"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "listPayouts",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "money_movement.payouts.write"
     ],
@@ -735045,6 +736176,12 @@
      "UNSUPPORTED_CONTENT_TYPE"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getPayout",
+     "parameters": {
+      "payout_id": "$request.path.payout_id"
+     }
+    },
     "x-flint-required-scopes": [
      "money_movement.payouts.write"
     ],
@@ -744563,6 +745700,12 @@
      "commerce.catalog.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getPriceList",
+     "parameters": {
+      "price_list_id": "$request.path.price_list_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.catalog.write"
     ],
@@ -746581,6 +747724,12 @@
      "commerce.catalog.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getPriceList",
+     "parameters": {
+      "price_list_id": "$request.path.price_list_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.catalog.write"
     ],
@@ -749870,6 +751019,13 @@
      "commerce.catalog.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getPriceListPrice",
+     "parameters": {
+      "price_list_id": "$request.path.price_list_id",
+      "price_list_price_id": "$request.path.price_list_price_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.catalog.write"
     ],
@@ -751919,6 +753075,13 @@
      "commerce.catalog.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getPriceListPrice",
+     "parameters": {
+      "price_list_id": "$request.path.price_list_id",
+      "price_list_price_id": "$request.path.price_list_price_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.catalog.write"
     ],
@@ -755458,6 +756621,12 @@
      "commerce.products.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getProduct",
+     "parameters": {
+      "product_id": "$request.path.product_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.products.write"
     ],
@@ -757885,6 +759054,12 @@
      "commerce.products.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getProduct",
+     "parameters": {
+      "product_id": "$request.path.product_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.products.write"
     ],
@@ -763248,6 +764423,13 @@
      "commerce.products.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getProductVariant",
+     "parameters": {
+      "product_id": "$request.path.product_id",
+      "variant_id": "$request.path.variant_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.products.write"
     ],
@@ -765599,6 +766781,13 @@
      "commerce.products.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listProductVariants",
+     "parameters": {
+      "product_id": "$request.path.product_id",
+      "query": "$request.path.variant_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.products.write"
     ],
@@ -768825,6 +770014,12 @@
      "commerce.promotions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getPromotionCode",
+     "parameters": {
+      "promotion_code_id": "$request.path.promotion_code_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.promotions.write"
     ],
@@ -770846,6 +772041,12 @@
      "commerce.promotions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getPromotionCode",
+     "parameters": {
+      "promotion_code_id": "$request.path.promotion_code_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.promotions.write"
     ],
@@ -774118,6 +775319,12 @@
      "commerce.promotions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getPromotion",
+     "parameters": {
+      "promotion_id": "$request.path.promotion_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.promotions.write"
     ],
@@ -776203,6 +777410,12 @@
      "commerce.promotions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getPromotion",
+     "parameters": {
+      "promotion_id": "$request.path.promotion_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.promotions.write"
     ],
@@ -779412,6 +780625,12 @@
      "payments.readers.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getReader",
+     "parameters": {
+      "reader_id": "$request.path.reader_id"
+     }
+    },
     "x-flint-required-scopes": [
      "payments.readers.write"
     ],
@@ -781486,6 +782705,12 @@
      "payments.readers.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getReader",
+     "parameters": {
+      "reader_id": "$request.path.reader_id"
+     }
+    },
     "x-flint-required-scopes": [
      "payments.readers.write"
     ],
@@ -786642,6 +787867,12 @@
      "commerce.refunds.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listRefunds",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.refunds.write"
     ],
@@ -789034,6 +790265,12 @@
      "commerce.refunds.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getRefund",
+     "parameters": {
+      "refund_id": "$request.path.refund_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.refunds.write"
     ],
@@ -799162,6 +800399,12 @@
      "commerce.returns.operations.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listReturnDispositions",
+     "parameters": {
+      "query": "$request.path.return_disposition_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.operations.write"
     ],
@@ -800304,6 +801547,12 @@
      "commerce.returns.operations.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listReturnDispositions",
+     "parameters": {
+      "query": "$request.path.return_disposition_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.operations.write"
     ],
@@ -803594,6 +804843,12 @@
      "commerce.returns.operations.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listReturnInspections",
+     "parameters": {
+      "query": "$request.path.return_inspection_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.operations.write"
     ],
@@ -806867,6 +808122,12 @@
      "commerce.returns.policies.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getReturnPolicy",
+     "parameters": {
+      "return_policy_id": "$request.path.return_policy_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.policies.write"
     ],
@@ -809036,6 +810297,12 @@
      "commerce.returns.policies.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getReturnPolicy",
+     "parameters": {
+      "return_policy_id": "$request.path.return_policy_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.policies.write"
     ],
@@ -816426,6 +817693,12 @@
      "commerce.returns.reasons.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listReturnReasons",
+     "parameters": {
+      "query": "$request.path.return_reason_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.reasons.write"
     ],
@@ -818481,6 +819754,12 @@
      "commerce.returns.reasons.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listReturnReasons",
+     "parameters": {
+      "query": "$request.path.return_reason_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.reasons.write"
     ],
@@ -821753,6 +823032,12 @@
      "commerce.returns.operations.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listReturnReceipts",
+     "parameters": {
+      "query": "$request.path.return_receipt_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.operations.write"
     ],
@@ -825931,6 +827216,12 @@
      "commerce.returns.resolutions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getReturnResolution",
+     "parameters": {
+      "return_resolution_id": "$request.path.return_resolution_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.resolutions.write"
     ],
@@ -827111,6 +828402,12 @@
      "commerce.returns.resolutions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listReturnResolutions",
+     "parameters": {
+      "query": "$request.path.return_resolution_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.resolutions.write"
     ],
@@ -828298,6 +829595,12 @@
      "commerce.returns.resolutions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listReturnResolutions",
+     "parameters": {
+      "query": "$request.path.return_resolution_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.resolutions.write"
     ],
@@ -829483,6 +830786,12 @@
      "commerce.returns.resolutions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listReturnResolutions",
+     "parameters": {
+      "query": "$request.path.return_resolution_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.resolutions.write"
     ],
@@ -830670,6 +831979,12 @@
      "commerce.returns.resolutions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listReturnResolutions",
+     "parameters": {
+      "query": "$request.path.return_resolution_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.resolutions.write"
     ],
@@ -833735,6 +835050,12 @@
      "commerce.returns.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listReturns",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.write"
     ],
@@ -836597,6 +837918,12 @@
      "commerce.returns.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getReturn",
+     "parameters": {
+      "return_id": "$request.path.return_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.write"
     ],
@@ -839816,6 +841143,12 @@
      "commerce.returns.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getReturn",
+     "parameters": {
+      "return_id": "$request.path.return_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.write"
     ],
@@ -841098,6 +842431,12 @@
      "commerce.returns.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getReturn",
+     "parameters": {
+      "return_id": "$request.path.return_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.write"
     ],
@@ -842483,6 +843822,12 @@
      "commerce.returns.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getReturn",
+     "parameters": {
+      "return_id": "$request.path.return_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.write"
     ],
@@ -843642,6 +844987,13 @@
      "commerce.returns.operations.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listReturnDispositions",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key",
+      "return_id": "$request.path.return_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.operations.write"
     ],
@@ -844807,6 +846159,13 @@
      "commerce.returns.operations.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listReturnInspections",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key",
+      "return_id": "$request.path.return_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.operations.write"
     ],
@@ -848426,6 +849785,13 @@
      "commerce.returns.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getReturnLineItem",
+     "parameters": {
+      "return_id": "$request.path.return_id",
+      "return_line_item_id": "$request.path.return_line_item_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.write"
     ],
@@ -850706,6 +852072,13 @@
      "commerce.returns.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getReturnLineItem",
+     "parameters": {
+      "return_id": "$request.path.return_id",
+      "return_line_item_id": "$request.path.return_line_item_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.write"
     ],
@@ -851999,6 +853372,12 @@
      "commerce.returns.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getReturn",
+     "parameters": {
+      "return_id": "$request.path.return_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.write"
     ],
@@ -853302,6 +854681,12 @@
      "commerce.returns.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getReturn",
+     "parameters": {
+      "return_id": "$request.path.return_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.write"
     ],
@@ -854770,6 +856155,12 @@
      "commerce.returns.resolutions.write"
     ],
     "x-flint-partner-required-scopes-mode": "all",
+    "x-flint-recovery": {
+     "operation_id": "getReturn",
+     "parameters": {
+      "return_id": "$request.path.return_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.operations.write",
      "commerce.returns.resolutions.write",
@@ -855967,6 +857358,13 @@
      "commerce.returns.operations.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listReturnReceipts",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key",
+      "return_id": "$request.path.return_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.operations.write"
     ],
@@ -857244,6 +858642,12 @@
      "commerce.returns.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getReturn",
+     "parameters": {
+      "return_id": "$request.path.return_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.returns.write"
     ],
@@ -861607,6 +863011,12 @@
      "risk.controls.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getRiskList",
+     "parameters": {
+      "risk_list_id": "$request.path.risk_list_id"
+     }
+    },
     "x-flint-required-scopes": [
      "risk.controls.write"
     ],
@@ -863666,6 +865076,12 @@
      "risk.controls.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getRiskList",
+     "parameters": {
+      "risk_list_id": "$request.path.risk_list_id"
+     }
+    },
     "x-flint-required-scopes": [
      "risk.controls.write"
     ],
@@ -866855,6 +868271,13 @@
      "risk.controls.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getRiskListItem",
+     "parameters": {
+      "risk_list_id": "$request.path.risk_list_id",
+      "risk_list_item_id": "$request.path.risk_list_item_id"
+     }
+    },
     "x-flint-required-scopes": [
      "risk.controls.write"
     ],
@@ -873287,6 +874710,12 @@
      "risk.controls.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getRiskRule",
+     "parameters": {
+      "risk_rule_id": "$request.path.risk_rule_id"
+     }
+    },
     "x-flint-required-scopes": [
      "risk.controls.write"
     ],
@@ -875380,6 +876809,12 @@
      "risk.controls.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getRiskRule",
+     "parameters": {
+      "risk_rule_id": "$request.path.risk_rule_id"
+     }
+    },
     "x-flint-required-scopes": [
      "risk.controls.write"
     ],
@@ -878375,6 +879810,12 @@
      "SERVICE_UNAVAILABLE"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getSandbox",
+     "parameters": {
+      "sandbox_id": "$request.path.sandbox_id"
+     }
+    },
     "x-flint-required-scopes": [
      "developer.sandboxes.write"
     ],
@@ -880172,6 +881613,12 @@
      "SERVICE_UNAVAILABLE"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getSandbox",
+     "parameters": {
+      "sandbox_id": "$request.path.sandbox_id"
+     }
+    },
     "x-flint-required-scopes": [
      "developer.sandboxes.write"
     ],
@@ -882243,6 +883690,10 @@
      "settings.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSettings",
+     "parameters": {}
+    },
     "x-flint-required-scopes": [
      "settings.write"
     ],
@@ -887779,6 +889230,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getShipment",
+     "parameters": {
+      "shipment_id": "$request.path.shipment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -888967,6 +890424,12 @@
      "commerce.orders.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listShipments",
+     "parameters": {
+      "query": "$request.path.shipment_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.orders.write"
     ],
@@ -896079,6 +897542,12 @@
      "commerce.subscription_plans.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSubscriptionOffer",
+     "parameters": {
+      "subscription_offer_id": "$request.path.subscription_offer_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscription_plans.write"
     ],
@@ -898159,6 +899628,12 @@
      "commerce.subscription_plans.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSubscriptionOffer",
+     "parameters": {
+      "subscription_offer_id": "$request.path.subscription_offer_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscription_plans.write"
     ],
@@ -901448,6 +902923,12 @@
      "commerce.subscription_plans.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSubscriptionPlan",
+     "parameters": {
+      "subscription_plan_id": "$request.path.subscription_plan_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscription_plans.write"
     ],
@@ -903700,6 +905181,12 @@
      "commerce.subscription_plans.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSubscriptionPlan",
+     "parameters": {
+      "subscription_plan_id": "$request.path.subscription_plan_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscription_plans.write"
     ],
@@ -907741,6 +909228,12 @@
      "commerce.subscriptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listSubscriptions",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscriptions.write"
     ],
@@ -910237,6 +911730,12 @@
      "commerce.subscriptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscriptions.write"
     ],
@@ -912638,6 +914137,12 @@
      "commerce.subscriptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscriptions.write"
     ],
@@ -914038,6 +915543,12 @@
      "commerce.subscriptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscriptions.write"
     ],
@@ -915423,6 +916934,12 @@
      "commerce.subscriptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscriptions.write"
     ],
@@ -917968,6 +919485,12 @@
      "commerce.subscriptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscriptions.write"
     ],
@@ -919303,6 +920826,12 @@
      "commerce.subscriptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscriptions.write"
     ],
@@ -920585,6 +922114,12 @@
      "commerce.subscriptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscriptions.write"
     ],
@@ -922550,6 +924085,13 @@
      "commerce.subscriptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "listSubscriptionPaymentRetries",
+     "parameters": {
+      "idempotency_key": "$request.header.Idempotency-Key",
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscriptions.write"
     ],
@@ -924729,6 +926271,12 @@
      "commerce.subscriptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscriptions.write"
     ],
@@ -925915,6 +927463,12 @@
      "commerce.subscriptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscriptions.write"
     ],
@@ -927545,6 +929099,12 @@
      "commerce.subscriptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscriptions.write"
     ],
@@ -928919,6 +930479,12 @@
      "commerce.subscriptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscriptions.write"
     ],
@@ -930118,6 +931684,12 @@
      "commerce.subscriptions.write"
     ],
     "x-flint-partner-required-scopes-mode": "any",
+    "x-flint-recovery": {
+     "operation_id": "getSubscription",
+     "parameters": {
+      "subscription_id": "$request.path.subscription_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.subscriptions.write"
     ],
@@ -933181,6 +934753,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getTaxCalculationCallback",
+     "parameters": {
+      "tax_calculation_callback_id": "$request.path.tax_calculation_callback_id"
+     }
+    },
     "x-flint-required-scopes": [
      "settings.write"
     ],
@@ -935227,6 +936805,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getTaxCalculationCallback",
+     "parameters": {
+      "tax_calculation_callback_id": "$request.path.tax_calculation_callback_id"
+     }
+    },
     "x-flint-required-scopes": [
      "settings.write"
     ],
@@ -937182,6 +938766,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getTaxCalculationCallback",
+     "parameters": {
+      "tax_calculation_callback_id": "$request.path.tax_calculation_callback_id"
+     }
+    },
     "x-flint-required-scopes": [
      "settings.write"
     ],
@@ -940283,6 +941873,10 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getTaxConnection",
+     "parameters": {}
+    },
     "x-flint-required-scopes": [
      "settings.write"
     ],
@@ -941431,6 +943025,10 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getTaxConnection",
+     "parameters": {}
+    },
     "x-flint-required-scopes": [
      "settings.write"
     ],
@@ -944680,6 +946278,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getTaxRegistration",
+     "parameters": {
+      "tax_registration_id": "$request.path.tax_registration_id"
+     }
+    },
     "x-flint-required-scopes": [
      "settings.write"
     ],
@@ -946706,6 +948310,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getTaxRegistration",
+     "parameters": {
+      "tax_registration_id": "$request.path.tax_registration_id"
+     }
+    },
     "x-flint-required-scopes": [
      "settings.write"
     ],
@@ -949529,6 +951139,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getTestClock",
+     "parameters": {
+      "test_clock_id": "$request.path.test_clock_id"
+     }
+    },
     "x-flint-required-mode": "test",
     "x-flint-required-scopes": [
      "developer.test_clocks.write"
@@ -951548,6 +953164,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getTestClock",
+     "parameters": {
+      "test_clock_id": "$request.path.test_clock_id"
+     }
+    },
     "x-flint-required-mode": "test",
     "x-flint-required-scopes": [
      "developer.test_clocks.write"
@@ -956154,6 +957776,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getTicket",
+     "parameters": {
+      "ticket_id": "$request.path.ticket_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.tickets.write"
     ],
@@ -957279,6 +958907,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getTicket",
+     "parameters": {
+      "ticket_id": "$request.path.ticket_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.tickets.write"
     ],
@@ -958406,6 +960040,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getTicket",
+     "parameters": {
+      "ticket_id": "$request.path.ticket_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.tickets.write"
     ],
@@ -959531,6 +961171,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getTicket",
+     "parameters": {
+      "ticket_id": "$request.path.ticket_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.tickets.write"
     ],
@@ -960654,6 +962300,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getTicket",
+     "parameters": {
+      "ticket_id": "$request.path.ticket_id"
+     }
+    },
     "x-flint-required-scopes": [
      "commerce.tickets.write"
     ],
@@ -965701,6 +967353,12 @@
      "UNSUPPORTED_CONTENT_TYPE"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getWebhookDelivery",
+     "parameters": {
+      "webhook_delivery_id": "$request.path.webhook_delivery_id"
+     }
+    },
     "x-flint-required-scopes": [
      "webhooks.write"
     ],
@@ -968674,6 +970332,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getWebhookEndpoint",
+     "parameters": {
+      "webhook_endpoint_id": "$request.path.webhook_endpoint_id"
+     }
+    },
     "x-flint-required-scopes": [
      "webhooks.write"
     ],
@@ -970724,6 +972388,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getWebhookEndpoint",
+     "parameters": {
+      "webhook_endpoint_id": "$request.path.webhook_endpoint_id"
+     }
+    },
     "x-flint-required-scopes": [
      "webhooks.write"
     ],
@@ -971846,6 +973516,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getWebhookEndpoint",
+     "parameters": {
+      "webhook_endpoint_id": "$request.path.webhook_endpoint_id"
+     }
+    },
     "x-flint-required-scopes": [
      "webhooks.write"
     ],
@@ -982309,6 +983985,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getWorkloadIdentity",
+     "parameters": {
+      "workload_identity_id": "$request.path.workload_identity_id"
+     }
+    },
     "x-flint-required-scopes": [
      "accounts.workload_identities.write"
     ],
@@ -984366,6 +986048,12 @@
      "VERSION_CONFLICT"
     ],
     "x-flint-partner-access": "unsupported",
+    "x-flint-recovery": {
+     "operation_id": "getWorkloadIdentity",
+     "parameters": {
+      "workload_identity_id": "$request.path.workload_identity_id"
+     }
+    },
     "x-flint-required-scopes": [
      "accounts.workload_identities.write"
     ],

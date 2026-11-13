@@ -169,7 +169,11 @@ func TestCredentialClassStopsJSON(t *testing.T) {
 				}
 			}
 			accepted, _ := lookupPath(result, "error.details.accepted_schemes")
-			if !reflect.DeepEqual(accepted, []any{tc.scheme}) {
+			wantSchemes := []any{tc.scheme}
+			if tc.name == "buyer_status" || tc.name == "buyer_trigger" {
+				wantSchemes = append(wantSchemes, "OnboardingSessionBearer")
+			}
+			if !reflect.DeepEqual(accepted, wantSchemes) {
 				t.Errorf("accepted=%v", accepted)
 			}
 			if _, exists := lookupPath(result, "error.request_id"); exists {

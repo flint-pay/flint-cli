@@ -7,7 +7,7 @@ This change refreshes the embedded API snapshot to the Flint commit pinned in `i
 Mint sandbox keys with the single key route:
 
 ```sh
-flint api-keys create --sandbox-id test_123 --name sandbox-dev --access restricted --scopes customers.read --live
+flint api-keys create --sandbox-id test_01KEZF7C00JVWYYN2SBWFFSA36 --name sandbox-dev --access restricted --scopes customers.read --live
 ```
 
 Use a credential authorized to mint keys for that sandbox. `--live` acknowledges a live caller credential; the new key is still a test key because `sandbox_id` selects its sandbox. When the active credential already belongs to the target sandbox, omit `--live`.

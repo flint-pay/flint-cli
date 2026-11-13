@@ -186,7 +186,7 @@ func sandboxAPIKeyServer(t *testing.T, handler func(w http.ResponseWriter, r *ht
 
 func TestSandboxAPIKeysCreateRoutes(t *testing.T) {
 	const created = `{"data":{"api_key_id":"key_sandbox","secret_key":"flint_test_synthetic_sandbox"}}`
-	path := "/v1/sandboxes/test_123/api-keys"
+	path := "/v1/api-keys"
 	for _, test := range []struct {
 		name    string
 		argv    []string
@@ -197,7 +197,7 @@ func TestSandboxAPIKeysCreateRoutes(t *testing.T) {
 	}{
 		{
 			name: "api-keys create",
-			argv: []string{"sandboxes", "api-keys", "create", "test_123"},
+			argv: []string{"api-keys", "create", "--sandbox-id", "test_01KEZF7C00JVWYYN2SBWFFSA36"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, created)
 			},
@@ -206,7 +206,7 @@ func TestSandboxAPIKeysCreateRoutes(t *testing.T) {
 		},
 		{
 			name: "test-key alias",
-			argv: []string{"sandboxes", "api-keys", "create", "test_123"},
+			argv: []string{"api-keys", "create", "--sandbox-id", "test_01KEZF7C00JVWYYN2SBWFFSA36"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, created)
 			},
@@ -215,7 +215,7 @@ func TestSandboxAPIKeysCreateRoutes(t *testing.T) {
 		},
 		{
 			name: "missing sandbox",
-			argv: []string{"sandboxes", "api-keys", "create", "test_123"},
+			argv: []string{"api-keys", "create", "--sandbox-id", "test_01KEZF7C00JVWYYN2SBWFFSA36"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
 				fmt.Fprint(w, `{"error":{"type":"invalid_request_error","code":"SANDBOX_NOT_FOUND","message":"Sandbox not found."}}`)
@@ -226,7 +226,7 @@ func TestSandboxAPIKeysCreateRoutes(t *testing.T) {
 		},
 		{
 			name: "missing route is not retried",
-			argv: []string{"sandboxes", "api-keys", "create", "test_123"},
+			argv: []string{"api-keys", "create", "--sandbox-id", "test_01KEZF7C00JVWYYN2SBWFFSA36"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
 				fmt.Fprint(w, `{"error":{"type":"request_error","code":"ROUTE_NOT_FOUND","message":"No public API route matches this request."}}`)
@@ -255,8 +255,8 @@ func TestSandboxAPIKeysCreateDryRunShowsRoute(t *testing.T) {
 	server, requests := sandboxAPIKeyServer(t, func(w http.ResponseWriter, r *http.Request) {})
 	app, out, _ := testApp(t, server.URL)
 	t.Setenv("FLINT_API_KEY", "flint_live_synthetic")
-	exit, result := runJSON(t, app, out, "sandboxes", "api-keys", "create", "test_123", "--input", sandboxAPIKeyInput, "--live", "--dry-run", "client")
-	if exit != ExitOK || lookupPathValue(result, "data.path") != "/v1/sandboxes/test_123/api-keys" || len(*requests) != 0 {
+	exit, result := runJSON(t, app, out, "api-keys", "create", "--sandbox-id", "test_01KEZF7C00JVWYYN2SBWFFSA36", "--input", sandboxAPIKeyInput, "--live", "--dry-run", "client")
+	if exit != ExitOK || lookupPathValue(result, "data.path") != "/v1/api-keys" || len(*requests) != 0 {
 		t.Fatalf("exit=%d requests=%v result=%v", exit, *requests, result)
 	}
 }
