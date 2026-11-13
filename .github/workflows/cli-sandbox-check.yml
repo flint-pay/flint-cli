@@ -39,8 +39,8 @@ jobs:
           )
           with urllib.request.urlopen(request, timeout=15) as response:
               context = json.load(response)["data"]
-          identity = {key: context.get(key) for key in ("merchant_id", "sandbox_id", "environment", "auth_type")}
-          if identity["environment"] not in ("sandbox", "test") or not identity["merchant_id"] or not identity["sandbox_id"]:
+          identity = {key: context.get(key) for key in ("merchant_id", "sandbox_id", "mode", "auth_type")}
+          if identity["mode"] != "test" or not identity["merchant_id"] or not identity["sandbox_id"]:
               raise SystemExit("A configured staging sandbox identity is required.")
           print(json.dumps(identity))
           PYTHON
