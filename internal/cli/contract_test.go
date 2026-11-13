@@ -778,9 +778,9 @@ func TestCommandPermissionErrorExplainsMissingScopes(t *testing.T) {
 	if err := commandPermissionError(cmd, AuthContext{AuthType: "api_key", Scopes: []string{"commerce.subscriptions.write"}}, "default"); err != nil {
 		t.Fatalf("write-capable API key failed any-scope requirement: %v", err)
 	}
-	allErr := commandPermissionError(&Command{CanonicalName: "sandboxes.api-keys.create", OperationID: "createSandboxAPIKey"}, AuthContext{
+	allErr := commandPermissionError(&Command{CanonicalName: "orders.edits.create", OperationID: "createOrderEdit"}, AuthContext{
 		AuthType: "api_key",
-		Scopes:   []string{"accounts.api_keys.write"},
+		Scopes:   []string{"commerce.orders.write"},
 	}, "default")
 	if allErr == nil || !strings.Contains(allErr.Message, "requires these scopes") || strings.Contains(allErr.Message, "requires at least one") {
 		t.Fatalf("all-scope permission error = %#v", allErr)
@@ -788,7 +788,7 @@ func TestCommandPermissionErrorExplainsMissingScopes(t *testing.T) {
 	allDetails := allErr.Details.(map[string]any)
 	actions := allDetails["remediation"].(map[string]any)["next_actions"].([]any)
 	replacementAdvice := actions[0].(map[string]any)["reason_message"].(string)
-	for _, scope := range []string{"accounts.api_keys.write", "developer.sandboxes.write"} {
+	for _, scope := range []string{"commerce.orders.write", "commerce.refunds.write"} {
 		if !strings.Contains(replacementAdvice, scope) {
 			t.Errorf("replacement key advice omits %s: %s", scope, replacementAdvice)
 		}

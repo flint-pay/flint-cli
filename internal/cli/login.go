@@ -143,7 +143,7 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	if reauthorize && opts.ContextID != "" && previous.Version != 2 {
 		return a.fail(contextSessionRequired(), opts)
 	}
-	mode := "sandbox"
+	mode := "test"
 	if opts.Live {
 		mode = "live"
 	}
@@ -158,7 +158,7 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	if additive {
 		body.Set("scope_mode", "additive")
 	} else {
-		body.Set("environment", mode)
+		body.Set("mode", mode)
 		if resolved.MerchantGuard != "" {
 			body.Set("merchant_id", resolved.MerchantGuard)
 		}

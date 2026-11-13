@@ -239,53 +239,18 @@
     "audience": "buyer"
   },
   {
-    "name": "checkout-sessions.delivery-quotes.create",
-    "operation_id": "createCheckoutSessionDeliveryQuote",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "checkout-sessions.delivery-quotes.get",
-    "operation_id": "getCheckoutSessionDeliveryQuote",
+    "name": "checkout-sessions.customer-verifications.get",
+    "operation_id": "getCheckoutSessionCustomerVerification",
     "kind": "item",
     "section": "merchant_resources",
-    "audience": "merchant"
+    "audience": "buyer"
   },
   {
-    "name": "checkout-sessions.delivery-selections.create",
-    "operation_id": "createCheckoutSessionDeliverySelection",
+    "name": "checkout-sessions.customer-verifications.list",
+    "operation_id": "listCheckoutSessionCustomerVerifications",
     "kind": "collection",
     "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "checkout-sessions.delivery-selections.current.delete",
-    "operation_id": "deleteCheckoutSessionCurrentDeliverySelection",
-    "kind": "singleton",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "checkout-sessions.delivery-selections.current.get",
-    "operation_id": "getCheckoutSessionCurrentDeliverySelection",
-    "kind": "singleton",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "checkout-sessions.delivery-selections.get",
-    "operation_id": "getCheckoutSessionDeliverySelection",
-    "kind": "item",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "checkout-sessions.delivery-selections.list",
-    "operation_id": "listCheckoutSessionDeliverySelections",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
+    "audience": "buyer"
   },
   {
     "name": "checkout-sessions.get",
@@ -521,6 +486,20 @@
   {
     "name": "customer-verifications.create",
     "operation_id": "createCustomerVerification",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "customer-verifications.get",
+    "operation_id": "getCustomerVerification",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "customer-verifications.list",
+    "operation_id": "listCustomerVerifications",
     "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
@@ -771,6 +750,13 @@
     "audience": "merchant"
   },
   {
+    "name": "delivery-quotes.create",
+    "operation_id": "createDeliveryQuote",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "delivery-quotes.get",
     "operation_id": "getDeliveryQuote",
     "kind": "item",
@@ -821,7 +807,7 @@
   },
   {
     "name": "delivery-rate-callbacks.rotate-secret",
-    "operation_id": "rotateDeliveryRateCallbackSigningKey",
+    "operation_id": "rotateDeliveryRateCallbackSecret",
     "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"
@@ -858,6 +844,34 @@
     "name": "delivery-revocations.list",
     "operation_id": "listDeliveryRevocations",
     "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "delivery-selections.create",
+    "operation_id": "createDeliverySelection",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "delivery-selections.get",
+    "operation_id": "getDeliverySelection",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "delivery-selections.list",
+    "operation_id": "listDeliverySelections",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "delivery-selections.release",
+    "operation_id": "releaseDeliverySelection",
+    "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -1050,6 +1064,13 @@
     "audience": "merchant"
   },
   {
+    "name": "fulfillment-events.create",
+    "operation_id": "createFulfillmentEvent",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "fulfillment-events.get",
     "operation_id": "getFulfillmentEvent",
     "kind": "item",
@@ -1099,16 +1120,16 @@
     "audience": "merchant"
   },
   {
-    "name": "fulfillments.dispatch",
-    "operation_id": "dispatchFulfillment",
-    "kind": "action",
+    "name": "fulfillments.create",
+    "operation_id": "createFulfillment",
+    "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
   },
   {
-    "name": "fulfillments.events.create",
-    "operation_id": "createFulfillmentEvent",
-    "kind": "collection",
+    "name": "fulfillments.dispatch",
+    "operation_id": "dispatchFulfillment",
+    "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -1186,13 +1207,6 @@
     "name": "fulfillments.schedule",
     "operation_id": "scheduleFulfillment",
     "kind": "action",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "fulfillments.shipments.create",
-    "operation_id": "createShipment",
-    "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -1494,6 +1508,20 @@
     "audience": "merchant"
   },
   {
+    "name": "inventory-counts.apply",
+    "operation_id": "applyInventoryCount",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "inventory-counts.cancel",
+    "operation_id": "cancelInventoryCount",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "inventory-counts.create",
     "operation_id": "createInventoryCount",
     "kind": "collection",
@@ -1510,13 +1538,6 @@
   {
     "name": "inventory-counts.list",
     "operation_id": "listInventoryCounts",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "inventory-counts.transitions.create",
-    "operation_id": "transitionInventoryCount",
     "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
@@ -1620,6 +1641,20 @@
     "audience": "merchant"
   },
   {
+    "name": "inventory-reservations.commit",
+    "operation_id": "commitInventoryReservation",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "inventory-reservations.consume",
+    "operation_id": "consumeInventoryReservation",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "inventory-reservations.create",
     "operation_id": "createInventoryReservation",
     "kind": "collection",
@@ -1641,9 +1676,9 @@
     "audience": "merchant"
   },
   {
-    "name": "inventory-reservations.transitions.create",
-    "operation_id": "transitionInventoryReservation",
-    "kind": "collection",
+    "name": "inventory-reservations.release",
+    "operation_id": "releaseInventoryReservation",
+    "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -1655,9 +1690,23 @@
     "audience": "merchant"
   },
   {
+    "name": "inventory-transfers.cancel",
+    "operation_id": "cancelInventoryTransfer",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "inventory-transfers.create",
     "operation_id": "createInventoryTransfer",
     "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "inventory-transfers.depart",
+    "operation_id": "departInventoryTransfer",
+    "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -1676,9 +1725,23 @@
     "audience": "merchant"
   },
   {
-    "name": "inventory-transfers.transitions.create",
-    "operation_id": "transitionInventoryTransfer",
-    "kind": "collection",
+    "name": "inventory-transfers.receive",
+    "operation_id": "receiveInventoryTransfer",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "inventory-transfers.report-loss",
+    "operation_id": "reportInventoryTransferLoss",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "inventory-transfers.return-to-origin",
+    "operation_id": "returnInventoryTransferToOrigin",
+    "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -1727,13 +1790,6 @@
   {
     "name": "invoices.activities.list",
     "operation_id": "listInvoiceActivities",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "invoices.checkout-sessions.create",
-    "operation_id": "createInvoiceCheckoutSession",
     "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
@@ -1969,6 +2025,13 @@
     "audience": "buyer"
   },
   {
+    "name": "me.checkout-sessions.create",
+    "operation_id": "createMeCheckoutSession",
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
     "name": "me.deletion-requests.create",
     "operation_id": "createMeDeletionRequest",
     "kind": "collection",
@@ -2076,13 +2139,6 @@
   {
     "name": "me.gift-cards.list",
     "operation_id": "listMeGiftCards",
-    "kind": "collection",
-    "section": "buyer_session",
-    "audience": "buyer"
-  },
-  {
-    "name": "me.invoices.checkout-sessions.create",
-    "operation_id": "createMeInvoiceCheckoutSession",
     "kind": "collection",
     "section": "buyer_session",
     "audience": "buyer"
@@ -2242,13 +2298,6 @@
     "audience": "buyer"
   },
   {
-    "name": "me.return-resolutions.checkout-sessions.create",
-    "operation_id": "createMeReturnResolutionCheckoutSession",
-    "kind": "collection",
-    "section": "buyer_session",
-    "audience": "buyer"
-  },
-  {
     "name": "me.return-resolutions.get",
     "operation_id": "getMeReturnResolution",
     "kind": "item",
@@ -2321,6 +2370,13 @@
   {
     "name": "me.subscriptions.change-plan",
     "operation_id": "changeMeSubscriptionPlan",
+    "kind": "action",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
+    "name": "me.subscriptions.change-quantity",
+    "operation_id": "changeMeSubscriptionQuantity",
     "kind": "action",
     "section": "buyer_session",
     "audience": "buyer"
@@ -2403,6 +2459,13 @@
     "audience": "buyer"
   },
   {
+    "name": "me.tickets.list",
+    "operation_id": "listMeTickets",
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
     "name": "me.update",
     "operation_id": "updateMe",
     "kind": "singleton",
@@ -2456,6 +2519,55 @@
     "operation_id": "listMerchantBillingInvoices",
     "kind": "collection",
     "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "merchant-signups.cancel",
+    "operation_id": "cancelMerchantSignup",
+    "kind": "action",
+    "section": "developer_tools",
+    "audience": "merchant"
+  },
+  {
+    "name": "merchant-signups.create",
+    "operation_id": "createMerchantSignup",
+    "kind": "collection",
+    "section": "developer_tools",
+    "audience": "merchant"
+  },
+  {
+    "name": "merchant-signups.get",
+    "operation_id": "getMerchantSignup",
+    "kind": "item",
+    "section": "developer_tools",
+    "audience": "merchant"
+  },
+  {
+    "name": "merchant-signups.list",
+    "operation_id": "listMerchantSignups",
+    "kind": "collection",
+    "section": "developer_tools",
+    "audience": "merchant"
+  },
+  {
+    "name": "merchant-signups.resend-code",
+    "operation_id": "resendMerchantSignupCode",
+    "kind": "action",
+    "section": "developer_tools",
+    "audience": "merchant"
+  },
+  {
+    "name": "merchant-signups.rotate-authorization-codes",
+    "operation_id": "rotateMerchantSignupAuthorizationCodes",
+    "kind": "action",
+    "section": "developer_tools",
+    "audience": "merchant"
+  },
+  {
+    "name": "merchant-signups.verify",
+    "operation_id": "verifyMerchantSignup",
+    "kind": "action",
+    "section": "developer_tools",
     "audience": "merchant"
   },
   {
@@ -2543,16 +2655,16 @@
     "audience": "merchant"
   },
   {
-    "name": "onboarding.advance",
-    "operation_id": "advanceOnboarding",
-    "kind": "action",
+    "name": "onboarding.access-links.create",
+    "operation_id": "createOnboardingAccessLink",
+    "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
   },
   {
-    "name": "onboarding.api-key.create",
-    "operation_id": "createOnboardingAPIKey",
-    "kind": "collection",
+    "name": "onboarding.advance",
+    "operation_id": "advanceOnboarding",
+    "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -2620,6 +2732,13 @@
     "audience": "merchant"
   },
   {
+    "name": "orders.charges.list",
+    "operation_id": "listOrderCharges",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "orders.charges.update",
     "operation_id": "updateOrderCharge",
     "kind": "item",
@@ -2637,13 +2756,6 @@
     "name": "orders.create",
     "operation_id": "createOrder",
     "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "orders.delivery-selections.current.get",
-    "operation_id": "getOrderCurrentDeliverySelection",
-    "kind": "singleton",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -2697,13 +2809,6 @@
     "audience": "merchant"
   },
   {
-    "name": "orders.fulfillments.create",
-    "operation_id": "createFulfillment",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
     "name": "orders.get",
     "operation_id": "getOrder",
     "kind": "item",
@@ -2735,6 +2840,13 @@
     "name": "orders.line-items.delete",
     "operation_id": "deleteOrderLineItem",
     "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "orders.line-items.list",
+    "operation_id": "listOrderLineItems",
+    "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -2816,58 +2928,9 @@
     "audience": "merchant"
   },
   {
-    "name": "organizations.create",
-    "operation_id": "createOrganization",
+    "name": "packages.create",
+    "operation_id": "createPackage",
     "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "organizations.delete",
-    "operation_id": "deleteOrganization",
-    "kind": "item",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "organizations.get",
-    "operation_id": "getOrganization",
-    "kind": "item",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "organizations.list",
-    "operation_id": "listOrganizations",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "organizations.memberships.create",
-    "operation_id": "grantOrganizationMembership",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "organizations.memberships.delete",
-    "operation_id": "removeOrganizationMembership",
-    "kind": "item",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "organizations.memberships.list",
-    "operation_id": "listOrganizationMemberships",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "organizations.update",
-    "operation_id": "updateOrganization",
-    "kind": "item",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -3000,6 +3063,13 @@
   {
     "name": "partner-app-installs.revoke",
     "operation_id": "revokeMerchantPartnerAppInstall",
+    "kind": "action",
+    "section": "developer_tools",
+    "audience": "merchant"
+  },
+  {
+    "name": "partner-apps.accept-platform-terms",
+    "operation_id": "acceptPartnerAppPlatformTerms",
     "kind": "action",
     "section": "developer_tools",
     "audience": "merchant"
@@ -3292,6 +3362,20 @@
     "audience": "merchant"
   },
   {
+    "name": "payment-splits.get",
+    "operation_id": "getPaymentSplit",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "payment-splits.list",
+    "operation_id": "listPaymentSplits",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "payout-destinations.delete",
     "operation_id": "deletePayoutDestination",
     "kind": "item",
@@ -3357,6 +3441,55 @@
   {
     "name": "payouts.list",
     "operation_id": "listPayouts",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "platform-fee-balance-transactions.get",
+    "operation_id": "getPlatformFeeBalanceTransaction",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "platform-fee-balance-transactions.list",
+    "operation_id": "listPlatformFeeBalanceTransactions",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "platform-fee-balances.list",
+    "operation_id": "listPlatformFeeBalances",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "platform-fee-payouts.get",
+    "operation_id": "getPlatformFeePayout",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "platform-fee-payouts.list",
+    "operation_id": "listPlatformFeePayouts",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "platform-fees.get",
+    "operation_id": "getPlatformFee",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "platform-fees.list",
+    "operation_id": "listPlatformFees",
     "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
@@ -3586,6 +3719,55 @@
     "audience": "merchant"
   },
   {
+    "name": "readers.connection-sessions.create",
+    "operation_id": "createReaderConnectionSession",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "readers.create",
+    "operation_id": "createReader",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "readers.delete",
+    "operation_id": "deleteReader",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "readers.get",
+    "operation_id": "getReader",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "readers.list",
+    "operation_id": "listReaders",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "readers.simulate",
+    "operation_id": "simulateReader",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "readers.update",
+    "operation_id": "updateReader",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "refunds.create",
     "operation_id": "createRefund",
     "kind": "collection",
@@ -3612,6 +3794,20 @@
     "kind": "item",
     "section": "merchant_resources",
     "audience": "merchant"
+  },
+  {
+    "name": "remembered-buyers.lookup",
+    "operation_id": "lookupRememberedBuyer",
+    "kind": "action",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
+    "name": "remembered-buyers.revoke",
+    "operation_id": "revokeRememberedBuyer",
+    "kind": "action",
+    "section": "buyer_session",
+    "audience": "buyer"
   },
   {
     "name": "report-downloads.get",
@@ -3820,13 +4016,6 @@
     "name": "return-resolutions.cancel",
     "operation_id": "cancelReturnResolution",
     "kind": "action",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "return-resolutions.checkout-sessions.create",
-    "operation_id": "createReturnResolutionCheckoutSession",
-    "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -4139,45 +4328,38 @@
     "audience": "merchant"
   },
   {
-    "name": "sandboxes.api-keys.create",
-    "operation_id": "createSandboxAPIKey",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
     "name": "sandboxes.create",
     "operation_id": "createSandbox",
     "kind": "collection",
-    "section": "merchant_resources",
+    "section": "developer_tools",
     "audience": "merchant"
   },
   {
     "name": "sandboxes.delete",
     "operation_id": "deleteSandbox",
     "kind": "item",
-    "section": "merchant_resources",
+    "section": "developer_tools",
     "audience": "merchant"
   },
   {
     "name": "sandboxes.get",
     "operation_id": "getSandbox",
     "kind": "item",
-    "section": "merchant_resources",
+    "section": "developer_tools",
     "audience": "merchant"
   },
   {
     "name": "sandboxes.list",
     "operation_id": "listSandboxes",
     "kind": "collection",
-    "section": "merchant_resources",
+    "section": "developer_tools",
     "audience": "merchant"
   },
   {
     "name": "sandboxes.reset",
     "operation_id": "resetSandbox",
     "kind": "action",
-    "section": "merchant_resources",
+    "section": "developer_tools",
     "audience": "merchant"
   },
   {
@@ -4238,6 +4420,13 @@
     "audience": "merchant"
   },
   {
+    "name": "shipments.create",
+    "operation_id": "createShipment",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "shipments.get",
     "operation_id": "getShipment",
     "kind": "item",
@@ -4247,13 +4436,6 @@
   {
     "name": "shipments.list",
     "operation_id": "listShipments",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "shipments.packages.create",
-    "operation_id": "createPackage",
     "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
@@ -4482,6 +4664,20 @@
     "audience": "merchant"
   },
   {
+    "name": "subscriptions.promotions.create",
+    "operation_id": "applySubscriptionPromotion",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "subscriptions.promotions.remove",
+    "operation_id": "removeSubscriptionPromotions",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "subscriptions.renew",
     "operation_id": "renewSubscription",
     "kind": "action",
@@ -4514,6 +4710,62 @@
     "kind": "cli",
     "section": "developer_tools",
     "audience": "local"
+  },
+  {
+    "name": "tax-calculation-callbacks.check-connection",
+    "operation_id": "checkTaxCalculationCallbackConnection",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "tax-calculation-callbacks.create",
+    "operation_id": "createTaxCalculationCallback",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "tax-calculation-callbacks.delete",
+    "operation_id": "deleteTaxCalculationCallback",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "tax-calculation-callbacks.get",
+    "operation_id": "getTaxCalculationCallback",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "tax-calculation-callbacks.list",
+    "operation_id": "listTaxCalculationCallbacks",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "tax-calculation-callbacks.rotate-secret",
+    "operation_id": "rotateTaxCalculationCallbackSecret",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "tax-calculation-callbacks.test-deliveries.create",
+    "operation_id": "createTaxCalculationCallbackTestDelivery",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "tax-calculation-callbacks.update",
+    "operation_id": "updateTaxCalculationCallback",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "tax-connection.connect",
@@ -4607,6 +4859,13 @@
     "audience": "merchant"
   },
   {
+    "name": "tickets.check-in",
+    "operation_id": "checkInTicket",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "tickets.get",
     "operation_id": "getTicket",
     "kind": "item",
@@ -4623,6 +4882,34 @@
   {
     "name": "tickets.lookup",
     "operation_id": "lookupTicket",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "tickets.rotate-code",
+    "operation_id": "rotateTicketCode",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "tickets.undo-check-in",
+    "operation_id": "undoTicketCheckIn",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "tickets.update",
+    "operation_id": "updateTicket",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "tickets.void",
+    "operation_id": "voidTicket",
     "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"
@@ -4711,6 +4998,13 @@
   {
     "name": "webhook-endpoints.rotate-secret",
     "operation_id": "rotateWebhookEndpointSecret",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "webhook-endpoints.sign-delivery",
+    "operation_id": "signWebhookEndpointDelivery",
     "kind": "action",
     "section": "merchant_resources",
     "audience": "merchant"

@@ -236,7 +236,7 @@ func TestCommandTreeInvariants(t *testing.T) {
 		t.Fatal(err)
 	}
 	doc, _ := loadOpenAPI()
-	exceptions := map[string]bool{"createOnboardingAPIKey": false}
+	exceptions := map[string]bool{}
 	for _, c := range commands {
 		if c.Method != "POST" || c.Kind != "collection" {
 			continue

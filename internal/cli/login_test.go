@@ -47,7 +47,7 @@ func TestBrowserLoginSuccess(t *testing.T) {
 		switch r.URL.Path {
 		case loginDevicePath:
 			checkOAuthForm(t, r)
-			if r.Form.Get("environment") != "sandbox" || r.Form.Get("scope") == "" {
+			if r.Form.Get("mode") != "test" || r.Form.Has("environment") || r.Form.Get("scope") == "" {
 				t.Error("missing requested context/scopes")
 			}
 			if r.Form.Has("device_name") || r.Form.Has("platform") {
@@ -147,7 +147,7 @@ func TestBrowserLoginRequestsBaselineAndAdditionalScopes(t *testing.T) {
 		t.Fatalf("exit=%d out=%s stderr=%s", exit, out, stderr)
 	}
 	wantScopes := strings.Join(appendUniqueStrings(append([]string(nil), initialCLIScopes...), requested), " ")
-	if authorizeForm.Get("scope") != wantScopes || authorizeForm.Get("environment") != "sandbox" || authorizeForm.Has("scope_mode") {
+	if authorizeForm.Get("scope") != wantScopes || authorizeForm.Get("mode") != "test" || authorizeForm.Has("environment") || authorizeForm.Has("scope_mode") {
 		t.Fatalf("authorization form = %v", authorizeForm)
 	}
 	if !strings.Contains(out.String(), `"approved_scopes":["commerce.subscriptions.read"]`) || !strings.Contains(out.String(), `"partial_approval":false`) {

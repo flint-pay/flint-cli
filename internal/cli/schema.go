@@ -69,14 +69,7 @@ func missingScopeGuidance(scopes []string, environment string) (eligible, liveOn
 }
 
 func embeddedInitialCLIScopes() []string {
-	doc, err := loadOpenAPI()
-	if err != nil {
-		panic("load embedded OpenAPI bootstrap scopes: " + err.Error())
-	}
-	if len(doc.FlintCLIScopes) == 0 {
-		panic("embedded OpenAPI snapshot has no x-flint-cli-bootstrap-scopes")
-	}
-	return append([]string(nil), doc.FlintCLIScopes...)
+	return append([]string(nil), initialCLIScopes...)
 }
 
 func embeddedAllowedCLIScopes() []string {

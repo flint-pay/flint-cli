@@ -578,7 +578,7 @@ func TestDXEmbeddedMetadataMatchesSpec(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if apispec.APIVersion() != doc.FlintAPIVersion || !sameScopeSet(apispec.BootstrapScopes(), doc.FlintCLIScopes) {
+	if apispec.APIVersion() != doc.FlintAPIVersion {
 		t.Fatal("metadata extraction differs from full snapshot")
 	}
 	app := New(BuildInfo{})

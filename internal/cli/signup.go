@@ -9,11 +9,43 @@ import (
 	"net/url"
 	"sort"
 	"strings"
-
-	apispec "github.com/flint-pay/flint-cli/internal/spec"
 )
 
-var initialCLIScopes = apispec.BootstrapScopes()
+// Login defaults belong to the client. The API advertises allowed scopes,
+// but no longer publishes the retired bootstrap-scope extension.
+var initialCLIScopes = []string{
+	"accounts.api_keys.read",
+	"accounts.api_keys.write",
+	"checkouts.checkout_sessions.read",
+	"checkouts.checkout_sessions.write",
+	"checkouts.payment_links.read",
+	"checkouts.payment_links.write",
+	"commerce.invoices.read",
+	"commerce.invoices.write",
+	"merchants.profile.read",
+	"merchants.profile.write",
+	"merchants.onboarding.read",
+	"merchants.onboarding.write",
+	"merchants.account_sessions.write",
+	"commerce.orders.read",
+	"commerce.orders.write",
+	"commerce.delivery.read",
+	"commerce.delivery.write",
+	"commerce.refunds.read",
+	"commerce.refunds.write",
+	"customers.read",
+	"customers.write",
+	"developer.request_logs.read",
+	"developer.resource_timelines.read",
+	"payments.payment_intents.read",
+	"payments.payment_intents.write",
+	"payments.payment_methods.read",
+	"payments.payment_methods.write",
+	"payments.payment_method_domains.read",
+	"payments.payment_method_domains.write",
+	"webhooks.read",
+	"webhooks.write",
+}
 
 func (a *App) runSignup(opts Options) int {
 	opts.allowMissingProfile = true
