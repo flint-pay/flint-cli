@@ -470,6 +470,10 @@ Unverified credentials follow live confirmation rules, without the verified-live
 
 Local commands are operations reached through read or write, including `version`, read-only `doctor`, `history`, `history.clear`, and sandbox-only `trigger`. Trigger waits are capped at 60 seconds. Agents cannot change credential stores, update config, or log out through MCP.
 
+## Migrating from 0.17.x
+
+0.18.0 mints sandbox keys through `flint api-keys create --sandbox-id`, removes the retired sandbox and onboarding mint commands, and uses `mode` for device authorization. Local scope refusals now use the API’s `INSUFFICIENT_SCOPE` detail array. `flint schema command` exposes `scope_requirement`, and `flint auth status` and `flint doctor` show scope access and credential-specific remediation. The API snapshot also removes other commands and changes request schemas. See [the 0.18.0 migration notes](docs/migrating-0.18.md) before updating scripts or MCP operation IDs.
+
 ## Migrating from 0.16.x
 
 0.17.0 refreshes the embedded public API snapshot. `fulfillments transitions create` and `packages transitions create` are replaced by one command per action, such as `fulfillments mark-ready` and `packages mark-shipped`; `credit-notes refunds create` and `credit-notes refunds list` are replaced by `refunds create --refund-type credit_note` and `refunds list --credit-note-id`; and `orders inventory-exception resolve` is now `orders resolve-inventory-exception`. See [the 0.17.0 migration notes](docs/migrating-0.17.md) for the full command list.
@@ -496,7 +500,6 @@ Local commands are operations reached through read or write, including `version`
 
 If upgrading from 0.9.0, also follow [the 0.10.0 migration notes](docs/migrating-0.10.md) for required idempotency keys, retry rules, and error fields. If upgrading from 0.8.0, also follow [the 0.9.0 migration notes](docs/migrating-0.9.md) for the public API refresh's command and MCP tool lists, parameter changes, and schema field inventory. In particular, use `flint gift-cards adjust-balance`, `flint gift-cards cash-out`, and `flint webhook-deliveries list --webhook-event-id whev_123`; create refunds with an explicit `--refund-type full|amount|targets`.
 
-The next release includes an API snapshot migration. See the [unreleased migration notes](docs/migrating-unreleased.md) before updating scripts or MCP operation IDs.
 
 ## Develop
 

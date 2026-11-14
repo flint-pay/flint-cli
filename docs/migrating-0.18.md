@@ -1,6 +1,6 @@
-# API snapshot migration (unreleased)
+# Migrating to 0.18.0
 
-This change refreshes the embedded API snapshot to the Flint commit pinned in `internal/spec/provenance.json`. It has not been released. The next CLI release needs a minor version bump because generated commands and request schemas change.
+0.18.0 refreshes the embedded API snapshot to the Flint commit pinned in `internal/spec/provenance.json`. This minor release includes breaking changes to generated commands, request schemas, and local scope errors.
 
 ## API keys and login
 
