@@ -85,7 +85,7 @@ For `subscription-plans create` and `subscription-plans update`, the old embedde
 
 ## Response fields and statuses
 
-These response changes are breaking. Update JSON readers, MCP result projections, `--fields` paths, and scripts that inspect CLI output. Paths below are relative to each resource, without its response envelope.
+These response changes are breaking. Update JSON readers, MCP result projections, `--select` paths, and scripts that inspect CLI output. Paths below are relative to each resource, without its response envelope.
 
 | Resource and old path | Replacement or removal |
 | --- | --- |
@@ -102,7 +102,7 @@ These response changes are breaking. Update JSON readers, MCP result projections
 
 The invoice money paths apply to merchant and buyer invoices. Expanded invoice summaries also replace `total_money`, `paid_money`, `refunded_money`, and `outstanding_money` with the corresponding paths under `pricing_amounts` or `settlement_amounts`. Invoice activity and schedule entry `total_money`, `paid_money`, and `outstanding_money` retain their existing paths; do not apply the invoice-level nesting to those resources.
 
-For example, replace `flint invoices get INV_ID --fields invoice_id,outstanding_money` with `flint invoices get INV_ID --fields invoice_id,settlement_amounts.outstanding_money`. The invoice sandbox triggers use this current balance when recording manual payments.
+For example, replace `flint invoices get INV_ID --select invoice_id,outstanding_money` with `flint invoices get INV_ID --select invoice_id,settlement_amounts.outstanding_money`. The invoice sandbox triggers use this current balance when recording manual payments.
 
 ## Custom-line product types
 
