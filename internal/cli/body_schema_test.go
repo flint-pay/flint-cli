@@ -193,7 +193,7 @@ func TestSchemaInputDescribesTheInputBody(t *testing.T) {
 		}
 		properties, _ := schema["properties"].(map[string]any)
 		for _, leaked := range []string{"_flint", "customer_id", "order_id", "sandbox_id", "order", "amount", "currency"} {
-			if _, ok := properties[leaked]; ok && (leaked != "customer_id" || name != "payment-intents.create") {
+			if _, ok := properties[leaked]; ok && (name != "payment-intents.create" || (leaked != "customer_id" && leaked != "order_id")) {
 				t.Errorf("%s input schema contains CLI-only %s", name, leaked)
 			}
 		}
@@ -203,15 +203,15 @@ func TestSchemaInputDescribesTheInputBody(t *testing.T) {
 	}
 	command, _ := app.Registry.ByName("payment-intents.create")
 	body, _ := requestBodySchema(command)
-	if body["required"] == nil || body["oneOf"] != nil {
+	if body["allOf"] == nil || body["oneOf"] != nil {
 		t.Errorf("payment-intents.create body schema should keep the public request shape: %v", body)
 	}
 	// The MCP tool schema keeps execution controls and the public body.
-	// Standalone creation no longer advertises an alternate order operation.
+	// The one public operation supports both standalone and order-owned bodies.
 	tool, _ := schemaForMCPCommand(command)
 	properties, _ := tool["properties"].(map[string]any)
-	if properties["_flint"] == nil || properties["amount_money"] == nil || properties["order"] != nil || tool["oneOf"] != nil {
-		t.Errorf("MCP tool schema differs from the standalone operation: %v", properties)
+	if properties["_flint"] == nil || properties["amount_money"] == nil || properties["order_id"] == nil || properties["order"] != nil || tool["oneOf"] != nil {
+		t.Errorf("MCP tool schema differs from the public operation: %v", properties)
 	}
 }
 
