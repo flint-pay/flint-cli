@@ -82,9 +82,10 @@ func TestRetiredBuyerInvoiceCreditNoteCommandsMakeNoRequests(t *testing.T) {
 		{"me", "invoices", "credit-notes", "pdf", "get", "inv_test", "cn_test"},
 	} {
 		server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("retired command made an HTTP request") }))
-		app, _, _ := testApp(t, server.URL)
-		if code := app.Run(args); code == ExitOK {
-			t.Error("retired command was accepted")
+		app, out, _ := testApp(t, server.URL)
+		exit, result := runJSON(t, app, out, args...)
+		if code, _ := lookupPath(result, "error.code"); exit != ExitUsage || code != "UNKNOWN_COMMAND" {
+			t.Fatalf("exit=%d result=%v", exit, result)
 		}
 		server.Close()
 	}
