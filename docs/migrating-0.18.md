@@ -57,7 +57,6 @@ The table compares the 0.17.x request surface with 0.18.0. JSON examples are fra
 | Command or input | Before | After |
 | --- | --- | --- |
 | `checkout-sessions create` | `--surface embedded` or `"surface":"embedded"` | Use `--surface headless` or `"surface":"headless"`. The existing headless rules still apply: omit `redirects`, and provide `payment_return_url` when enabling Affirm. Hosted checkout still uses `hosted`. |
-| `checkout-sessions create --type quick_pay` or `--type subscription_plan` | `inventory_reservation_ids` could accompany these variants. | Remove it. Only the order variant accepts `--inventory-reservation-ids`. Do not mix the new invoice or return-resolution fields into order, quick-pay, or subscription-plan bodies. |
 | `orders line-items create ORDER_ID` and `orders charges create ORDER_ID` | `--expected-version 3` or `"expected_version":3` | Use `--expected-order-version 3` or `"expected_order_version":3`. |
 | `return-policies create` and `return-policies revisions create POLICY_ID` | `"revision":{"eligibility_result":"ineligible"}` could omit a reason. | Include `"revision":{"eligibility_result":"ineligible","ineligibility_reason":"final_sale"}`. Other allowed reasons are `product_excluded`, `category_excluded`, `market_restricted`, `channel_restricted`, `outside_return_window`, and `other`. |
 | Returnable policy revisions | `ineligibility_reason` could accompany `eligibility_result: "eligible"` or `"review_required"`. | Remove `ineligibility_reason` for these variants; it belongs only to `ineligible`. |
@@ -65,20 +64,12 @@ The table compares the 0.17.x request surface with 0.18.0. JSON examples are fra
 | `fulfillments update FUL_ID` | Pickup or local-delivery details could include `expires_at`. | Use `pickup_details.pickup_due_at` or `local_delivery_details.delivery_due_at`, respectively. For example, replace `"pickup_details":{"expires_at":"2026-12-01T16:00:00Z"}` with `"pickup_details":{"pickup_due_at":"2026-12-01T16:00:00Z"}`. Omit a due date when leaving it unchanged. |
 | `settings update` | `"invoices":{"timezone":"America/New_York"}` | Remove `invoices.timezone`. Set the merchant timezone with `flint merchant update --timezone America/New_York`; new invoices use the merchant timezone, falling back to UTC. |
 | API key create/update and workload identity create/update scopes | `accounts.organizations.read` and `accounts.organizations.write` | Remove these retired scopes from scope lists. Organization commands are unavailable through the merchant API. Remove `accounts.organizations.read` from sandbox test-key scope lists too. |
-| `sandboxes create` without test-key issuance | `test_key_expires_at` could appear while `issue_test_key` was false or omitted. | Remove `test_key_expires_at`, or request a test key with `issue_test_key: true` and its required access settings. |
 | `webhook-endpoints test-events create` | `delivery_location_set.activated` / `.deactivated`, `delivery_profile.activated` / `.deactivated`, or `delivery_zone.activated` / `.deactivated` | Use the corresponding `.updated` event type, such as `--event-type delivery_zone.updated`. |
 | `partner-apps create` and `partner-apps update APP_ID` | Names longer than 100 characters were accepted by the snapshot. | Shorten `--name` to at most 100 characters. |
 | `risk-rules create` and `risk-rules update RULE_ID` | Descriptions longer than 512 characters were accepted by the snapshot. | Shorten `--description` to at most 512 characters. |
 | `payment-method-domains create` | `domain_name` had no hostname pattern in the snapshot. | Use a dotted hostname such as `--domain-name checkout.example.com`, without a URL scheme, path, port, or wildcard. Each label must start and end with a letter or digit and contain at most 63 characters. |
 | Delivery method rate tables, including method overrides in `subscription-previews create` | A rate table could have zero or more than 100 `rates`. | Supply 1 to 100 rates. |
 | Delivery method tiered pricing, including method overrides in `subscription-previews create` | Tiered pricing could have zero or more than 25 `bands`. | Supply 1 to 25 bands. |
-| `inventory-adjustments create` with reason `counted` or `correction` | A line's `source_observation_sequence` did not require an external source in the snapshot. | Remove sequence numbers for manual observations. To retain them, send `source_system` with `type: "pos"`, `"wms"`, `"erp"`, or `"other"` and an `external_source_id`, plus the required `occurred_at`. |
-| `refunds create --refund-type targets` | `line_items`, `charges`, and `tax_breakdown_refunds` could all be absent or empty in the snapshot. | Include at least one nonempty target array, such as `"line_items":[{"order_line_item_id":"li_...","quantity":1}]`. |
-| `orders create`, `orders update ORDER_ID`, and `invoices create` tax locations | A full-address tax location could omit state or postal code. | Supply `state` for US/CA locations and `postal_code` for every country except IE. For example, `"tax":{"location":{"address_type":"tax_address","address":{"line1":"1 Main St","city":"New York","country":"US","state":"NY","postal_code":"10001"}}}`. |
-| Order and invoice tax input with `enabled: false` | `exemption` could accompany disabled tax in the snapshot. | Remove `tax.exemption` when `tax.enabled` is false; keep exemption settings only when tax is enabled. |
-| `orders line-items update ORDER_ID LINE_ITEM_ID` | `expected_ship_date` could be combined with quantity, name, price, description, tax, metadata, modifiers, gift-card details, or subscription changes. | Send the expected-ship-date update separately, then send other edits in a second request with the appropriate current version. |
-| `payment-intents create`, `orders payment-intents create ORDER_ID`, and `orders pay ORDER_ID` | Bodies could combine `splits` and `platform_fee`. | Choose one. Remove `platform_fee` when sending `splits`, or omit `splits` to use a platform fee. |
-| `orders pay ORDER_ID` | `splits` could accompany `save_payment_method: true` or a `payment_source` containing `token` / `payment_method_id`. | Omit `splits` for those flows; use a supported split-payment input when allocating payment parts. |
 | Update request bodies | An empty `{}` was accepted by many update schemas. | Send at least one field to change, such as `customers update CUSTOMER_ID --input '{"name":"New name"}'`, or skip the call when there is no update. Existing commands that already required a changed field keep that requirement. |
 | `products create` variant inputs | A variant could include both `inventory_item` and `inventory_item_id`. | Choose an inline `inventory_item` or an existing `inventory_item_id`, and remove the other field. |
 | `products variants update PRODUCT_ID VARIANT_ID` | An inline `inventory_item` could accompany a non-null `inventory_item_id`. | Choose one. `inventory_item_id: null` may still accompany `inventory_item` when replacing the link with an inline item. |
@@ -86,6 +77,24 @@ The table compares the 0.17.x request surface with 0.18.0. JSON examples are fra
 | `orders payment-intents create ORDER_ID` | Nonempty `payment_options` could accompany `payment_source_selection`. | Choose the payment options or the source selection, and omit the other field. |
 | `subscriptions update SUBSCRIPTION_ID` | `billing_schedule` could accompany other edits. | Send `billing_schedule` in its own request. Apply tax, end conditions, gift-recipient, plan-change, payment-method, cancellation, metadata, external-reference, delivery, interval, or quantity edits separately. |
 | `merchant get` and `fulfillments update FUL_ID` | The routes accepted an `expand` query parameter. | Remove `--expand` or the raw `expand` query parameter from these calls. |
+
+### Additions, relaxations, and unchanged restrictions
+
+The fields below are new in 0.18.0. They were absent from the closed 0.17.1 request schemas, so those releases rejected them:
+
+- Order and invoice tax inputs add `tax.exemption`. Send it only when tax is enabled; omit it when `tax.enabled` is false.
+- `orders line-items update ORDER_ID LINE_ITEM_ID` adds `--expected-ship-date`. Send it separately from quantity, name, price, description, tax, metadata, modifier, gift-card, or subscription edits. Apply those in a second request with the appropriate current version.
+- `payment-intents create`, `orders payment-intents create ORDER_ID`, and `orders pay ORDER_ID` add split-payment fields. Choose `splits` or `platform_fee`, never both. On `orders pay`, `splits` cannot accompany `save_payment_method: true` or a `payment_source` containing `token` or `payment_method_id`.
+- `sandboxes create` adds `test_key_expires_at`. Send it only when requesting test-key issuance with `issue_test_key: true` and the required access settings.
+- Checkout session creation adds invoice and return-resolution variants. Use their `type` and matching fields; do not add their fields to order, quick-pay, or subscription-plan bodies.
+
+Full-address tax locations are less restrictive in 0.18.0. In 0.17.1, `line1`, `city`, `state`, `postal_code`, and `country` were all required. `line1`, `city`, and `country` remain required. State is now required only for US/CA addresses, and postal code may be omitted for IE. This affects `orders create`, `orders update`, and `invoices create`. A US example remains `"tax":{"location":{"address_type":"tax_address","address":{"line1":"1 Main St","city":"New York","country":"US","state":"NY","postal_code":"10001"}}}`.
+
+These restrictions already applied in 0.17.1 and still apply:
+
+- Quick-pay and subscription-plan checkout variants reject `inventory_reservation_ids`. Only an order checkout accepts `--inventory-reservation-ids`.
+- For counted or correction inventory adjustments, line observation sequences require an external `source_system` (`pos`, `wms`, `erp`, or `other`) with `external_source_id` and `occurred_at`. Manual observations must omit sequence numbers.
+- `refunds create --refund-type targets` requires at least one nonempty `line_items`, `charges`, or `tax_breakdown_refunds` array. For example, keep `"line_items":[{"order_line_item_id":"li_...","quantity":1}]` along with the refund's other required fields.
 
 Run `flint schema input COMMAND` for the complete current body, including new variants. `coverage.json` records every current public operation and its CLI classification.
 
