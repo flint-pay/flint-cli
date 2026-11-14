@@ -19,7 +19,7 @@ func TestRequiredIdempotencyKeyFailsBeforeAnyRequest(t *testing.T) {
 		{"refunds", "create", "--payment-intent-id", "pi_test", "--refund-type", "full"},
 		{"orders", "pay", "ord_test", "--input", `{"action":"pay"}`},
 		{"payment-intents", "create", "--amount", "2500", "--currency", "USD", "--payment-options", "card"},
-		{"orders", "payment-intents", "create", "ord_test"},
+		{"payment-intents", "create", "--order-id", "ord_test"},
 		{"api", "POST", "/v1/refunds", "--input", `{}`},
 	} {
 		for _, dryRun := range []bool{false, true} {

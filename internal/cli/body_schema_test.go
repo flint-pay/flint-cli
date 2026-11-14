@@ -45,6 +45,13 @@ func exhaustiveInputBody(t testing.TB, command *Command) map[string]any {
 		// --payment-source-token supplies the whole confirm_payment_intents body.
 		return map[string]any{}
 	}
+	if command.CanonicalName == "payment-links.update" {
+		// Editing a custom line needs its complete patch and the parent fence.
+		return map[string]any{"expected_version": 1, "line_items": []any{map[string]any{
+			"type": "custom_fixed", "name": "Consulting",
+			"unit_price_money": map[string]any{"amount": 1000, "currency": "USD"},
+		}}}
+	}
 	// Mirror prepareRequest: body flags overwrite their paths in the input, and
 	// repeatable flags append to whatever list the input already holds.
 	withoutRepeats := func(value any) map[string]any {
@@ -186,7 +193,7 @@ func TestSchemaInputDescribesTheInputBody(t *testing.T) {
 		}
 		properties, _ := schema["properties"].(map[string]any)
 		for _, leaked := range []string{"_flint", "customer_id", "order_id", "sandbox_id", "order", "amount", "currency"} {
-			if _, ok := properties[leaked]; ok && (leaked != "customer_id" || name != "payment-intents.create") {
+			if _, ok := properties[leaked]; ok && (name != "payment-intents.create" || (leaked != "customer_id" && leaked != "order_id")) {
 				t.Errorf("%s input schema contains CLI-only %s", name, leaked)
 			}
 		}
@@ -196,15 +203,15 @@ func TestSchemaInputDescribesTheInputBody(t *testing.T) {
 	}
 	command, _ := app.Registry.ByName("payment-intents.create")
 	body, _ := requestBodySchema(command)
-	if body["required"] == nil || body["oneOf"] != nil {
+	if body["allOf"] == nil || body["oneOf"] != nil {
 		t.Errorf("payment-intents.create body schema should keep the public request shape: %v", body)
 	}
 	// The MCP tool schema keeps execution controls and the public body.
-	// Standalone creation no longer advertises an alternate order operation.
+	// The one public operation supports both standalone and order-owned bodies.
 	tool, _ := schemaForMCPCommand(command)
 	properties, _ := tool["properties"].(map[string]any)
-	if properties["_flint"] == nil || properties["amount_money"] == nil || properties["order"] != nil || tool["oneOf"] != nil {
-		t.Errorf("MCP tool schema differs from the standalone operation: %v", properties)
+	if properties["_flint"] == nil || properties["amount_money"] == nil || properties["order_id"] == nil || properties["order"] != nil || tool["oneOf"] != nil {
+		t.Errorf("MCP tool schema differs from the public operation: %v", properties)
 	}
 }
 
@@ -281,8 +288,8 @@ func TestUndocumentedBodyFieldsAreRejected(t *testing.T) {
 		}
 	}
 	app.Stdin = strings.NewReader(`{"tip_money":{"amount":1,"currency":"USD"}}`)
-	exit, result := runJSON(t, app, stdout, "orders", "payment-intents", "create", "ord_test", "--idempotency-key", "saved-test-action-1", "--input", "-", "--dry-run", "client")
-	if exit != ExitUsage || !strings.Contains(fmt.Sprint(result), "orders.payment-intents.create") {
+	exit, result := runJSON(t, app, stdout, "payment-intents", "create", "--order-id", "ord_01KEZF7C0054GQKJ142A8X367A", "--idempotency-key", "saved-test-action-1", "--input", "-", "--dry-run", "client")
+	if exit != ExitUsage || !strings.Contains(fmt.Sprint(result), "payment-intents.create") {
 		t.Fatalf("exit=%d result=%v", exit, result)
 	}
 }

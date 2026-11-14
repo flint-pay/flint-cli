@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -33,7 +34,7 @@ func triggerFixtures() map[string]any {
 		"subscription":   map[string]any{"subscription_id": "sub_01KEZF7C003ACYXT6Q5EQZ78EE"},
 		"active":         map[string]any{"status": "active", "next_billing_at": "2026-12-01T00:00:00Z"},
 		"advance":        map[string]any{"status": "advancing"}, "ready": map[string]any{"status": "ready"},
-		"invoice": map[string]any{"invoice_id": "inv_01KEZF7C003ACYXT6Q5EQZ78EE", "outstanding_money": money},
+		"invoice": map[string]any{"invoice_id": "inv_01KEZF7C003ACYXT6Q5EQZ78EE", "settlement_amounts": map[string]any{"outstanding_money": money}},
 		"payment": map[string]any{"invoice_manual_payment": map[string]any{"invoice_manual_payment_id": "imp_01KEZF7C003ACYXT6Q5EQZ78EE"}},
 	}
 	results := map[string]any{}
@@ -123,6 +124,30 @@ func TestTriggerRecipesMatchEmbeddedSpec(t *testing.T) {
 	}
 }
 
+// Check response references independently of fixtures, so stale mocks cannot hide
+// a removed or renamed field in the embedded public contract.
+func TestTriggerRecipeReferencesMatchResponseSchemas(t *testing.T) {
+	references := regexp.MustCompile(`"\{([a-z_]+)\.([^{}]+)\}"`)
+	for name, recipe := range triggerRecipes() {
+		t.Run(name, func(t *testing.T) {
+			sources := map[string]*Command{}
+			for _, step := range recipe.Steps {
+				encoded, err := json.Marshal(step)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, match := range references.FindAllSubmatch(encoded, -1) {
+					source, path := string(match[1]), string(match[2])
+					if !outputSchemaDeclaresPath(sources[source], path) {
+						t.Errorf("%s reference {%s.%s} is absent from its source response schema", step.Name, source, path)
+					}
+				}
+				sources[step.Name], _ = triggerOperation(step.OperationID)
+			}
+		})
+	}
+}
+
 func TestTriggerRecipeCallSequence(t *testing.T) {
 	for _, entry := range triggerEntries() {
 		t.Run(entry.Event, func(t *testing.T) {
@@ -191,6 +216,14 @@ func TestTriggerRecipeCallSequence(t *testing.T) {
 					text, _ := json.Marshal(body)
 					if strings.Contains(string(text), "{order.") {
 						t.Errorf("unresolved reference: %s", text)
+					}
+					if step.OperationID == "createInvoiceManualPayment" {
+						want, _ := triggerLookupPath(fixtures["invoice"], "settlement_amounts.outstanding_money")
+						wantJSON, _ := json.Marshal(want)
+						gotJSON, _ := json.Marshal(body["amount_money"])
+						if string(gotJSON) != string(wantJSON) {
+							t.Errorf("manual payment amount %v want current invoice balance %v", body["amount_money"], want)
+						}
 					}
 					for path, value := range entry.Set {
 						if path, ok := strings.CutPrefix(path, step.Name+"."); ok {

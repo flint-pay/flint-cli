@@ -453,7 +453,7 @@ func TestOrderPaymentBareTokenResolvesSingleAwaitingIntent(t *testing.T) {
 		t.Fatalf("paid body = %#v", paid)
 	}
 	selection := intents[0].(map[string]any)
-	if selection["credential_type"] != "token" || selection["payment_intent_id"] != "pi_ready" || selection["token"] != "pm_card_visa" {
+	if lookupPathValue(selection, "payment_source.credential_type") != "stripe_payment_method" || selection["payment_intent_id"] != "pi_ready" || lookupPathValue(selection, "payment_source.stripe.payment_method") != "pm_card_visa" {
 		t.Fatalf("selection = %#v", selection)
 	}
 }

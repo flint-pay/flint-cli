@@ -248,6 +248,9 @@ func builtInputBody(t *testing.T, bin string, command *cli.Command) string {
 	if command.CanonicalName == "orders.pay" {
 		return `{}` // --payment-source-token supplies the whole body.
 	}
+	if command.CanonicalName == "payment-links.update" {
+		return `{"expected_version":1,"line_items":[{"type":"custom_fixed","name":"Consulting","unit_price_money":{"amount":1000,"currency":"USD"}}]}`
+	}
 	output, err := exec.Command(bin, "schema", "input", command.CanonicalName, "--output", "json").Output()
 	if err != nil {
 		t.Fatalf("schema input %s: %v", command.CanonicalName, err)
@@ -306,6 +309,9 @@ func builtInputBody(t *testing.T, bin string, command *cli.Command) string {
 				value = values
 			}
 			body = setBuiltBodyPath(body, strings.Split(argument.BodyPath, "."), value).(map[string]any)
+			if argument.ShortcutTagPath != "" {
+				body = setBuiltBodyPath(body, strings.Split(argument.ShortcutTagPath, "."), argument.ShortcutTagValue).(map[string]any)
+			}
 		}
 		// Mirror the CLI: payment link item flags describe a custom_fixed line item.
 		if command.CanonicalName == "payment-links.create" {

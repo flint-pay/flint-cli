@@ -10,6 +10,9 @@ Commands:
   addresses list                               List the current buyer's addresses (customer session secret) GET /v1/me/addresses
   addresses update <customer_address_id>       Update one of the current buyer's addresses (customer session secret) PATCH /v1/me/addresses/{customer_address_id}
   checkout-sessions create                     Create a checkout session for the current buyer (invoice access token) POST /v1/me/checkout-sessions
+  credit-notes get <credit_note_id>            Get a credit note for one of the current buyer's invoices (invoice access token) GET /v1/me/credit-notes/{credit_note_id}
+  credit-notes list                            List credit notes for one of the current buyer's invoices (invoice access token) GET /v1/me/credit-notes
+  credit-notes pdf get <credit_note_id>        Download a credit note for one of the current buyer's invoices (invoice access token) GET /v1/me/credit-notes/{credit_note_id}/pdf
   deletion-requests create                     Request deletion of the current buyer's account (customer session secret) POST /v1/me/deletion-requests
   deletion-requests get <customer_deletion_request_id> Get the current buyer's deletion request (customer session secret) GET /v1/me/deletion-requests/{customer_deletion_request_id}
   deletion-requests list                       List the current buyer's deletion requests (customer session secret) GET /v1/me/deletion-requests
@@ -26,9 +29,6 @@ Commands:
   gift-cards delete <gift_card_id>             Remove a saved gift card (customer session secret) DELETE /v1/me/gift-cards/{gift_card_id}
   gift-cards get <gift_card_id>                Get a saved gift card (customer session secret) GET /v1/me/gift-cards/{gift_card_id}
   gift-cards list                              List your saved gift cards (customer session secret) GET /v1/me/gift-cards
-  invoices credit-notes get <invoice_id> <credit_note_id> Get a credit note for one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}/credit-notes/{credit_note_id}
-  invoices credit-notes list <invoice_id>      List credit notes for one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}/credit-notes
-  invoices credit-notes pdf get <invoice_id> <credit_note_id> Download a credit note for one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}/credit-notes/{credit_note_id}/pdf
   invoices get <invoice_id>                    Get one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}
   invoices list                                List the current buyer's invoices (customer session secret) GET /v1/me/invoices
   invoices pdf get <invoice_id>                Download one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}/pdf
@@ -47,6 +47,8 @@ Commands:
   payment-methods list                         List the current buyer's payment methods (customer session secret) GET /v1/me/payment-methods
   refunds get <refund_id>                      Get one of the current buyer's refunds (customer session secret) GET /v1/me/refunds/{refund_id}
   refunds list                                 List the current buyer's refunds (customer session secret) GET /v1/me/refunds
+  remembered-buyers list                       List the current buyer's remembered buyers (customer session secret) GET /v1/me/remembered-buyers
+  remembered-buyers revoke <remembered_buyer_id> Forget one of the current buyer's remembered buyers (customer session secret) POST /v1/me/remembered-buyers/{remembered_buyer_id}/revoke
   return-previews create                       Preview Return eligibility or resolution amounts for the current buyer (customer session secret) POST /v1/me/return-previews
   return-resolutions get <return_resolution_id> Get one of the current buyer's Return resolutions (customer session secret) GET /v1/me/return-resolutions/{return_resolution_id}
   returns cancel <return_id>                   Cancel one of the current buyer's Returns (customer session secret) POST /v1/me/returns/{return_id}/cancel

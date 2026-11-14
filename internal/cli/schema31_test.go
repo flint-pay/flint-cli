@@ -44,11 +44,11 @@ func TestPaymentIntentMCPInputPreservesStandaloneConditions(t *testing.T) {
 	}
 	// The order-specific API accepts omitted or empty payment_options and does
 	// not apply the standalone payment intent's ACH condition.
-	orderLinked, _ := registry.ByName("orders.payment-intents.create")
+	orderLinked, _ := registry.ByName("payment-intents.create")
 	for _, body := range []map[string]any{
-		{"order_id": "ord_123"},
-		{"order_id": "ord_123", "payment_options": []any{}},
-		{"order_id": "ord_123", "payment_options": []any{"ach_debit"}},
+		{"order_id": "ord_01KEZF7C0054GQKJ142A8X367A"},
+		{"order_id": "ord_01KEZF7C0054GQKJ142A8X367A", "payment_options": []any{}},
+		{"order_id": "ord_01KEZF7C0054GQKJ142A8X367A", "payment_options": []any{"ach_debit"}},
 	} {
 		body["idempotency_key"] = "saved-test-action-1"
 		if err := validateMCPArguments(orderLinked, body); err != nil {

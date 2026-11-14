@@ -640,6 +640,42 @@
   },
   {
     "method": "GET",
+    "path": "/v1/customers/{customer_id}/email-change-requests",
+    "operation_id": "listCustomerEmailChangeRequests",
+    "classification": "resource",
+    "commands": [
+      "customers.email-change-requests.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/email-change-requests",
+    "operation_id": "createCustomerEmailChangeRequest",
+    "classification": "resource",
+    "commands": [
+      "customers.email-change-requests.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customers/{customer_id}/email-change-requests/{email_change_request_id}",
+    "operation_id": "getCustomerEmailChangeRequest",
+    "classification": "resource",
+    "commands": [
+      "customers.email-change-requests.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/email-change-requests/{email_change_request_id}/cancel",
+    "operation_id": "cancelCustomerEmailChangeRequest",
+    "classification": "resource",
+    "commands": [
+      "customers.email-change-requests.cancel"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/customers/{customer_id}/email-preferences",
     "operation_id": "getCustomerEmailPreferences",
     "classification": "resource",
@@ -2253,6 +2289,15 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/late-fees",
+    "operation_id": "listInvoiceLateFees",
+    "classification": "resource",
+    "commands": [
+      "invoices.late-fees.list"
+    ]
+  },
+  {
     "method": "POST",
     "path": "/v1/invoices/{invoice_id}/late-fees",
     "operation_id": "createInvoiceLateFee",
@@ -2497,6 +2542,33 @@
   },
   {
     "method": "GET",
+    "path": "/v1/me/credit-notes",
+    "operation_id": "listMeCreditNotes",
+    "classification": "resource",
+    "commands": [
+      "me.credit-notes.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/credit-notes/{credit_note_id}",
+    "operation_id": "getMeCreditNote",
+    "classification": "resource",
+    "commands": [
+      "me.credit-notes.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/credit-notes/{credit_note_id}/pdf",
+    "operation_id": "getMeCreditNotePDF",
+    "classification": "resource",
+    "commands": [
+      "me.credit-notes.pdf.get"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/me/deletion-requests",
     "operation_id": "listMeDeletionRequests",
     "classification": "resource",
@@ -2664,33 +2736,6 @@
   },
   {
     "method": "GET",
-    "path": "/v1/me/invoices/{invoice_id}/credit-notes",
-    "operation_id": "listMeCreditNotes",
-    "classification": "resource",
-    "commands": [
-      "me.invoices.credit-notes.list"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/me/invoices/{invoice_id}/credit-notes/{credit_note_id}",
-    "operation_id": "getMeCreditNote",
-    "classification": "resource",
-    "commands": [
-      "me.invoices.credit-notes.get"
-    ]
-  },
-  {
-    "method": "GET",
-    "path": "/v1/me/invoices/{invoice_id}/credit-notes/{credit_note_id}/pdf",
-    "operation_id": "getMeCreditNotePDF",
-    "classification": "resource",
-    "commands": [
-      "me.invoices.credit-notes.pdf.get"
-    ]
-  },
-  {
-    "method": "GET",
     "path": "/v1/me/invoices/{invoice_id}/pdf",
     "operation_id": "getMeInvoicePDF",
     "classification": "resource",
@@ -2831,6 +2876,24 @@
     "classification": "resource",
     "commands": [
       "me.refunds.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/remembered-buyers",
+    "operation_id": "listMeRememberedBuyers",
+    "classification": "resource",
+    "commands": [
+      "me.remembered-buyers.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/remembered-buyers/{remembered_buyer_id}/revoke",
+    "operation_id": "revokeMeRememberedBuyer",
+    "classification": "resource",
+    "commands": [
+      "me.remembered-buyers.revoke"
     ]
   },
   {
@@ -3654,15 +3717,6 @@
     "classification": "resource",
     "commands": [
       "orders.payment-attempts.cancel"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/orders/{order_id}/payment-intents",
-    "operation_id": "createOrderPaymentIntent",
-    "classification": "resource",
-    "commands": [
-      "orders.payment-intents.create"
     ]
   },
   {
@@ -4881,6 +4935,15 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/return-dispositions",
+    "operation_id": "createReturnDisposition",
+    "classification": "resource",
+    "commands": [
+      "return-dispositions.create"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/return-dispositions/{return_disposition_id}",
     "operation_id": "getReturnDisposition",
@@ -4914,6 +4977,15 @@
     "classification": "resource",
     "commands": [
       "return-inspections.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-inspections",
+    "operation_id": "createReturnInspection",
+    "classification": "resource",
+    "commands": [
+      "return-inspections.create"
     ]
   },
   {
@@ -5070,6 +5142,15 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/return-receipts",
+    "operation_id": "createReturnReceipt",
+    "classification": "resource",
+    "commands": [
+      "return-receipts.create"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/return-receipts/{return_receipt_id}",
     "operation_id": "getReturnReceipt",
@@ -5094,6 +5175,15 @@
     "classification": "resource",
     "commands": [
       "return-resolutions.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-resolutions",
+    "operation_id": "createReturnResolution",
+    "classification": "resource",
+    "commands": [
+      "return-resolutions.create"
     ]
   },
   {
@@ -5232,24 +5322,6 @@
     ]
   },
   {
-    "method": "POST",
-    "path": "/v1/returns/{return_id}/dispositions",
-    "operation_id": "createReturnDisposition",
-    "classification": "resource",
-    "commands": [
-      "returns.dispositions.create"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/returns/{return_id}/inspections",
-    "operation_id": "createReturnInspection",
-    "classification": "resource",
-    "commands": [
-      "returns.inspections.create"
-    ]
-  },
-  {
     "method": "GET",
     "path": "/v1/returns/{return_id}/line-items",
     "operation_id": "listReturnLineItems",
@@ -5323,29 +5395,11 @@
   },
   {
     "method": "POST",
-    "path": "/v1/returns/{return_id}/receipts",
-    "operation_id": "createReturnReceipt",
-    "classification": "resource",
-    "commands": [
-      "returns.receipts.create"
-    ]
-  },
-  {
-    "method": "POST",
     "path": "/v1/returns/{return_id}/reopen",
     "operation_id": "reopenReturn",
     "classification": "resource",
     "commands": [
       "returns.reopen"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/returns/{return_id}/resolutions",
-    "operation_id": "createReturnResolution",
-    "classification": "resource",
-    "commands": [
-      "returns.resolutions.create"
     ]
   },
   {
@@ -5814,6 +5868,15 @@
     "classification": "resource",
     "commands": [
       "subscriptions.change-quantity"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscriptions/{subscription_id}/line-items",
+    "operation_id": "listSubscriptionLineItems",
+    "classification": "resource",
+    "commands": [
+      "subscriptions.line-items.list"
     ]
   },
   {

@@ -66,7 +66,8 @@ func TestSearchGolden(t *testing.T) {
 		{"refund an order", "refunds.create", 1}, {"refund", "refunds.list", 1}, {"refund status", "refunds.list", 1}, {"refund", "refunds.create", 3}, {"refund status", "refunds.create", 3}, {"orders", "orders.list", 1}, {"today orders", "orders.list", 1},
 		{"create customer", "customers.create", 1}, {"cancel payment intent", "payment-intents.cancel", 1}, {"capture payment", "payment-intents.capture", 1}, {"pay order", "orders.pay", 1},
 		{"webhook deliveries", "webhook-deliveries.list", 1}, {"resend webhook", "webhook-deliveries.resend", 1}, {"rotate webhook secret", "webhook-endpoints.rotate-secret", 1}, {"delete webhook endpoint", "webhook-endpoints.delete", 1},
-		{"payment succeeded event", "payment_intent.succeeded", 1}, {"test card", "test-cards", 1}, {"who am i", "auth.status", 1}, {"timeline of a payment", "resource-timelines.get", 1}, {"reset sandbox", "sandboxes.reset", 1},
+		{"payment succeeded event", "payment_intent.succeeded", 2}, {"payment succeeded event", "invoice_payment_attempt.succeeded", 2},
+		{"payment intent succeeded event", "payment_intent.succeeded", 1}, {"invoice payment attempt succeeded event", "invoice_payment_attempt.succeeded", 1}, {"test card", "test-cards", 1}, {"who am i", "auth.status", 1}, {"timeline of a payment", "resource-timelines.get", 1}, {"reset sandbox", "sandboxes.reset", 1},
 		{"api request logs", "api-request-logs.list", 1}, {"gift card balance", "gift-cards.adjust-balance", 2}, {"discount code", "promotion-codes.list", 1},
 		{"forward webhooks to localhost", "listen", 1}, {"exit codes", "exit-codes", 1}, {"api schema for a command", "schema.input", 3}, {"POST /v1/refunds", "refunds.create", 1},
 	} {

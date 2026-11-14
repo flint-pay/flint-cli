@@ -35,7 +35,11 @@ func TestHelpSearchOfflineOutput(t *testing.T) {
 		{"exit codes", "exit-codes", "topic", 1},
 		{"api schema for a command", "schema.input", "command", 3},
 		{"POST /v1/refunds", "refunds.create", "command", 1},
-		{"payment succeeded event", "payment_intent.succeeded", "event", 1},
+		// Both successful invoice attempts and payment intents match the broad query.
+		{"payment succeeded event", "payment_intent.succeeded", "event", 2},
+		{"payment succeeded event", "invoice_payment_attempt.succeeded", "event", 2},
+		{"payment intent succeeded event", "payment_intent.succeeded", "event", 1},
+		{"invoice payment attempt succeeded event", "invoice_payment_attempt.succeeded", "event", 1},
 		{"test card", "test-cards", "topic", 1},
 	} {
 		for _, jsonOutput := range []bool{false, true} {

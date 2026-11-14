@@ -1599,9 +1599,6 @@ func historyReferenceOptions(t *testing.T, registry *Registry, command *Command,
 		// A credential flag selects its own credential_type; otherwise confirm
 		// continues with the attached payment source.
 		options.Input = "{}"
-		if argument.Positional > 0 {
-			options.Input = `{"credential_type":"attached"}`
-		}
 	}
 	return options
 }

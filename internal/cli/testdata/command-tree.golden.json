@@ -554,6 +554,34 @@
     "audience": "merchant"
   },
   {
+    "name": "customers.email-change-requests.cancel",
+    "operation_id": "cancelCustomerEmailChangeRequest",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "customers.email-change-requests.create",
+    "operation_id": "createCustomerEmailChangeRequest",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "customers.email-change-requests.get",
+    "operation_id": "getCustomerEmailChangeRequest",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "customers.email-change-requests.list",
+    "operation_id": "listCustomerEmailChangeRequests",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "customers.email-preferences.get",
     "operation_id": "getCustomerEmailPreferences",
     "kind": "singleton",
@@ -1837,6 +1865,13 @@
     "audience": "merchant"
   },
   {
+    "name": "invoices.late-fees.list",
+    "operation_id": "listInvoiceLateFees",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "invoices.late-fees.waive",
     "operation_id": "waiveInvoiceLateFee",
     "kind": "action",
@@ -2032,6 +2067,27 @@
     "audience": "buyer"
   },
   {
+    "name": "me.credit-notes.get",
+    "operation_id": "getMeCreditNote",
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
+    "name": "me.credit-notes.list",
+    "operation_id": "listMeCreditNotes",
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
+    "name": "me.credit-notes.pdf.get",
+    "operation_id": "getMeCreditNotePDF",
+    "kind": "singleton",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
     "name": "me.deletion-requests.create",
     "operation_id": "createMeDeletionRequest",
     "kind": "collection",
@@ -2140,27 +2196,6 @@
     "name": "me.gift-cards.list",
     "operation_id": "listMeGiftCards",
     "kind": "collection",
-    "section": "buyer_session",
-    "audience": "buyer"
-  },
-  {
-    "name": "me.invoices.credit-notes.get",
-    "operation_id": "getMeCreditNote",
-    "kind": "item",
-    "section": "buyer_session",
-    "audience": "buyer"
-  },
-  {
-    "name": "me.invoices.credit-notes.list",
-    "operation_id": "listMeCreditNotes",
-    "kind": "collection",
-    "section": "buyer_session",
-    "audience": "buyer"
-  },
-  {
-    "name": "me.invoices.credit-notes.pdf.get",
-    "operation_id": "getMeCreditNotePDF",
-    "kind": "singleton",
     "section": "buyer_session",
     "audience": "buyer"
   },
@@ -2287,6 +2322,20 @@
     "name": "me.refunds.list",
     "operation_id": "listMeRefunds",
     "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
+    "name": "me.remembered-buyers.list",
+    "operation_id": "listMeRememberedBuyers",
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
+    "name": "me.remembered-buyers.revoke",
+    "operation_id": "revokeMeRememberedBuyer",
+    "kind": "action",
     "section": "buyer_session",
     "audience": "buyer"
   },
@@ -2888,13 +2937,6 @@
   {
     "name": "orders.payment-attempts.list",
     "operation_id": "listOrderPaymentAttempts",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "orders.payment-intents.create",
-    "operation_id": "createOrderPaymentIntent",
     "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
@@ -3852,6 +3894,13 @@
     "audience": "merchant"
   },
   {
+    "name": "return-dispositions.create",
+    "operation_id": "createReturnDisposition",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "return-dispositions.get",
     "operation_id": "getReturnDisposition",
     "kind": "item",
@@ -3869,6 +3918,13 @@
     "name": "return-dispositions.retry",
     "operation_id": "retryReturnDisposition",
     "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "return-inspections.create",
+    "operation_id": "createReturnInspection",
+    "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -3992,6 +4048,13 @@
     "audience": "merchant"
   },
   {
+    "name": "return-receipts.create",
+    "operation_id": "createReturnReceipt",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "return-receipts.get",
     "operation_id": "getReturnReceipt",
     "kind": "item",
@@ -4023,6 +4086,13 @@
     "name": "return-resolutions.confirm",
     "operation_id": "confirmReturnResolution",
     "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "return-resolutions.create",
+    "operation_id": "createReturnResolution",
+    "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -4104,23 +4174,9 @@
     "audience": "merchant"
   },
   {
-    "name": "returns.dispositions.create",
-    "operation_id": "createReturnDisposition",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
     "name": "returns.get",
     "operation_id": "getReturn",
     "kind": "item",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "returns.inspections.create",
-    "operation_id": "createReturnInspection",
-    "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -4188,23 +4244,9 @@
     "audience": "merchant"
   },
   {
-    "name": "returns.receipts.create",
-    "operation_id": "createReturnReceipt",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
     "name": "returns.reopen",
     "operation_id": "reopenReturn",
     "kind": "action",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "returns.resolutions.create",
-    "operation_id": "createReturnResolution",
-    "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -4618,6 +4660,13 @@
     "name": "subscriptions.line-items.delete",
     "operation_id": "deleteSubscriptionLineItem",
     "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "subscriptions.line-items.list",
+    "operation_id": "listSubscriptionLineItems",
+    "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
   },
