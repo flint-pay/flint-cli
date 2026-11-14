@@ -9,6 +9,11 @@
 - Add customer email-change requests, invoice late-fee lists, remembered-buyer management, and subscription line-item lists.
 - Add buyer next-renewal swap previews and allow buyer delivery-option previews without a destination.
 
+- Breaking: replace nested order payment-intent creation with `payment-intents create --order-id`, and nested return-child creation with `return-{inspections,receipts,dispositions,resolutions} create --return-id`.
+- Breaking: nest confirmation credentials under `payment_source`, replace token credentials with `stripe_payment_method`, and omit the source for attached continuation. Payment shortcuts and sandbox trigger recipes emit the new forms.
+- Breaking: update invoice sort keys, return resolution status filters, the invoice-payment-attempt success event, and return-policy input limits.
+- Add optional custom-line `product_type` flags and schema support for orders, quick-pay invoices, and fixed or variable payment links, including updates, edits, and previews.
+
 ## Installation and migration
 
 ```sh
@@ -18,4 +23,4 @@ brew upgrade flint
 flint version --output json
 ```
 
-Follow the [0.19.0 migration notes](migrating-0.19.md) for all three command migrations, request field replacements, subscription constraints, and MCP changes. Upgrades from 0.17.x or earlier should also follow the [0.18.0 migration notes](migrating-0.18.md).
+Follow the [0.19.0 migration notes](migrating-0.19.md) for the command migrations, request field replacements, subscription constraints, and MCP changes. Upgrades from 0.17.x or earlier should also follow the [0.18.0 migration notes](migrating-0.18.md).

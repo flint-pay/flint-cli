@@ -158,7 +158,7 @@ MCP operation IDs use these same dotted command names; typed tool names replace
 every dot and hyphen with an underscore.
 
 `payment-intents create --order` is removed. Use
-`orders payment-intents create ORDER_ID` for the order-scoped operation.
+`payment-intents create --order-id ORDER_ID` for an order-owned payment.
 
 ## Request flags
 
@@ -188,7 +188,7 @@ Variant-only flags infer an explicit schema discriminator: `api-keys create
 `--input` is rejected. Non-discriminated unions require explicit choices:
 `api-keys update --scopes X` needs `--access restricted`, and `sandboxes create
 --scopes X` needs both `--access restricted` and `--issue-test-key true`.
-`payment-intents confirm` with no credential flag needs `--credential-type attached`.
+`payment-intents confirm` with no credential flag continues with the attached source. Credential shortcuts fill the nested `payment_source` object.
 
 For readable, version-guarded PATCH routes, scalar arrays also have `--add-FIELD`
 and `--remove-FIELD`, for example `webhook-endpoints update ID --add-enabled-events
@@ -472,7 +472,7 @@ Local commands are operations reached through read or write, including `version`
 
 ## Migrating from 0.18.x
 
-0.19.0 moves buyer credit notes from `me invoices credit-notes` to `me credit-notes`, renames five request version fields to name their parent resource, and updates subscription quantity constraints. It also adds customer email-change requests, invoice late-fee lists, remembered-buyer management, and subscription line-item lists. See [the 0.19.0 migration notes](docs/migrating-0.19.md) before updating scripts or MCP calls.
+0.19.0 moves buyer credit notes from `me invoices credit-notes` to `me credit-notes`, renames five request version fields to name their parent resource, moves order payment-intent and return-child creation to their top-level collections, nests payment credentials, and updates quantity constraints and filter values. It adds custom-line `product_type` flags and customer email-change requests, invoice late-fee lists, remembered-buyer management, and subscription line-item lists. See [the 0.19.0 migration notes](docs/migrating-0.19.md) before updating scripts or MCP calls.
 
 ## Migrating from 0.17.x
 
@@ -492,7 +492,7 @@ Local commands are operations reached through read or write, including `version`
 
 ## Migrating from 0.12.0
 
-0.13.0 moves every command to Flint's canonical API paths, so it needs a Flint API that serves them; for example, it checks credentials with `GET /v1/auth-context`, `developer partner apps` commands are now `partner-apps`, and `me payments` commands are now `me payment-intents`. Convenience flags set the union tags request bodies now require, such as `credential_type` on `payment-intents confirm`, and bot-check tokens come from `FLINT_CHALLENGE_TOKEN`. It also adds webhook endpoint and delivery rate callback signing method flags, which default to JWT and return a shared secret only when HMAC is included, partner-app credential, tax-connection, and `disputes accept` commands, requires `--access` on `api-keys create`, and removes older subscription actions and the address `set-default` commands. See [the 0.13.0 migration notes](docs/migrating-0.13.md) for details.
+0.13.0 moves every command to Flint's canonical API paths, so it needs a Flint API that serves them; for example, it checks credentials with `GET /v1/auth-context`, `developer partner apps` commands are now `partner-apps`, and `me payments` commands are now `me payment-intents`. Convenience flags set the union tags request bodies now require, such as `credential_type` on `payment-intents confirm` (nested under `payment_source` since 0.19.0), and bot-check tokens come from `FLINT_CHALLENGE_TOKEN`. It also adds webhook endpoint and delivery rate callback signing method flags, which default to JWT and return a shared secret only when HMAC is included, partner-app credential, tax-connection, and `disputes accept` commands, requires `--access` on `api-keys create`, and removes older subscription actions and the address `set-default` commands. See [the 0.13.0 migration notes](docs/migrating-0.13.md) for details.
 
 ## Migrating from 0.11.0
 

@@ -14,13 +14,12 @@ func TestConvenienceFlagsSelectRequiredUnionTags(t *testing.T) {
 		path string
 		want string
 	}{
-		{[]string{"payment-intents", "confirm", "pi_test", "--confirmation-token", "ctoken_test"}, "credential_type", "stripe_confirmation_token"},
-		{[]string{"payment-intents", "confirm", "pi_test", "--payment-source-token", "pm_card_visa"}, "credential_type", "token"},
-		{[]string{"payment-intents", "confirm", "pi_test", "--payment-method-id", "pm_test"}, "credential_type", "payment_method"},
-		{[]string{"payment-intents", "confirm", "pi_test", "--credential-type", "attached"}, "credential_type", "attached"},
+		{[]string{"payment-intents", "confirm", "pi_test", "--confirmation-token", "ctoken_test"}, "payment_source.credential_type", "stripe_confirmation_token"},
+		{[]string{"payment-intents", "confirm", "pi_test", "--payment-source-token", "pm_card_visa"}, "payment_source.credential_type", "stripe_payment_method"},
+		{[]string{"payment-intents", "confirm", "pi_test", "--payment-method-id", "pm_test"}, "payment_source.credential_type", "payment_method"},
 		{[]string{"invoices", "create", "--order-id", "ord_test"}, "type", "order"},
 		{[]string{"payment-links", "create", "--name", "Tee", "--item-name", "Tee", "--amount", "2500", "--currency", "USD"}, "line_items.0.type", "custom_fixed"},
-		{[]string{"orders", "pay", "ord_test", "--payment-source-token", "pi_test=pm_card_visa"}, "payment_intents.0.credential_type", "token"},
+		{[]string{"orders", "pay", "ord_test", "--payment-source-token", "pi_test=pm_card_visa"}, "payment_intents.0.payment_source.credential_type", "stripe_payment_method"},
 	} {
 		t.Run(strings.Join(test.argv, " "), func(t *testing.T) {
 			app, stdout, _ := testApp(t, "")
@@ -32,7 +31,7 @@ func TestConvenienceFlagsSelectRequiredUnionTags(t *testing.T) {
 		})
 	}
 	for _, argv := range [][]string{
-		{"payment-intents", "confirm", "pi_test", "--payment-method-id", "pm_test", "--input", `{"credential_type":"token","payment_source_token":"pm_card_visa"}`},
+		{"payment-intents", "confirm", "pi_test", "--payment-method-id", "pm_test", "--input", `{"payment_source":{"credential_type":"stripe_payment_method","stripe":{"payment_method":"pm_card_visa"}}}`},
 		{"invoices", "create", "--order-id", "ord_test", "--input", `{"type":"quick_pay"}`},
 	} {
 		app, stdout, _ := testApp(t, "")
@@ -111,7 +110,7 @@ func TestRawAPIBodiesDoNotUseNamedCommandConveniences(t *testing.T) {
 	}
 }
 
-func TestNamedPaymentIntentConfirmRequiresExplicitAttached(t *testing.T) {
+func TestNamedPaymentIntentConfirmAllowsAttachedContinuation(t *testing.T) {
 	app, _, _ := testApp(t, "http://127.0.0.1:1")
 	app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(*http.Request) (*http.Response, error) {
 		t.Fatal("preparation must not send a request")
@@ -122,7 +121,7 @@ func TestNamedPaymentIntentConfirmRequiresExplicitAttached(t *testing.T) {
 		t.Fatal(err)
 	}
 	req, err := app.prepareRequest(t.Context(), cmd, opts, ResolvedConfig{}, "", "http://127.0.0.1:1")
-	if err == nil || err.Code != "INVALID_REQUEST_BODY" {
+	if err != nil || len(req.BodyValue) != 0 {
 		t.Fatalf("body=%s err=%v", req.Body, err)
 	}
 }

@@ -45,6 +45,13 @@ func exhaustiveInputBody(t testing.TB, command *Command) map[string]any {
 		// --payment-source-token supplies the whole confirm_payment_intents body.
 		return map[string]any{}
 	}
+	if command.CanonicalName == "payment-links.update" {
+		// Editing a custom line needs its complete patch and the parent fence.
+		return map[string]any{"expected_version": 1, "line_items": []any{map[string]any{
+			"type": "custom_fixed", "name": "Consulting",
+			"unit_price_money": map[string]any{"amount": 1000, "currency": "USD"},
+		}}}
+	}
 	// Mirror prepareRequest: body flags overwrite their paths in the input, and
 	// repeatable flags append to whatever list the input already holds.
 	withoutRepeats := func(value any) map[string]any {
@@ -281,8 +288,8 @@ func TestUndocumentedBodyFieldsAreRejected(t *testing.T) {
 		}
 	}
 	app.Stdin = strings.NewReader(`{"tip_money":{"amount":1,"currency":"USD"}}`)
-	exit, result := runJSON(t, app, stdout, "orders", "payment-intents", "create", "ord_test", "--idempotency-key", "saved-test-action-1", "--input", "-", "--dry-run", "client")
-	if exit != ExitUsage || !strings.Contains(fmt.Sprint(result), "orders.payment-intents.create") {
+	exit, result := runJSON(t, app, stdout, "payment-intents", "create", "--order-id", "ord_01KEZF7C0054GQKJ142A8X367A", "--idempotency-key", "saved-test-action-1", "--input", "-", "--dry-run", "client")
+	if exit != ExitUsage || !strings.Contains(fmt.Sprint(result), "payment-intents.create") {
 		t.Fatalf("exit=%d result=%v", exit, result)
 	}
 }

@@ -346,8 +346,8 @@ func TestPaymentIntentCreateRequiresOptionsOnlyForStandaloneRequests(t *testing.
 
 	stdout.Reset()
 	stderr.Reset()
-	exit = app.Run([]string{"orders", "payment-intents", "create", "ord_123", "--idempotency-key", "saved-test-action-1", "--dry-run=client", "--output", "json"})
-	if exit != ExitOK || stderr.Len() != 0 || !strings.Contains(stdout.String(), `"path":"/v1/orders/ord_123/payment-intents"`) {
+	exit = app.Run([]string{"payment-intents", "create", "--order-id", "ord_01KEZF7C0054GQKJ142A8X367A", "--idempotency-key", "saved-test-action-1", "--dry-run=client", "--output", "json"})
+	if exit != ExitOK || stderr.Len() != 0 || !strings.Contains(stdout.String(), `"path":"/v1/payment-intents"`) {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
 }
@@ -372,7 +372,7 @@ func TestPaymentIntentConfirmSendsConfirmationToken(t *testing.T) {
 
 	app, stdout, stderr := testApp(t, server.URL)
 	exit := app.Run([]string{"payment-intents", "confirm", "pi_123", "--confirmation-token", "ctoken_123", "--output", "json"})
-	if exit != ExitOK || stderr.Len() != 0 || body["credential_type"] != "stripe_confirmation_token" || body["stripe"].(map[string]any)["confirmation_token"] != "ctoken_123" {
+	if exit != ExitOK || stderr.Len() != 0 || lookupPathValue(body, "payment_source.credential_type") != "stripe_confirmation_token" || lookupPathValue(body, "payment_source.stripe.confirmation_token") != "ctoken_123" {
 		t.Fatalf("exit=%d body=%#v stdout=%s stderr=%s", exit, body, stdout, stderr)
 	}
 }
@@ -705,12 +705,12 @@ func TestMCPCallRejectsArgumentsOutsideAdvertisedSchema(t *testing.T) {
 
 func TestMCPOrderLinkedPaymentIntentUsesTypedAlternateInput(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	// MCP uses the public order-specific operation rather than the CLI's order convenience flag.
-	result := mcpCall(t, app, defaultOptions(), "flint_write", map[string]any{"operation": "orders.payment-intents.create", "arguments": map[string]any{"order_id": "ord_123"}, "dry_run": true, "idempotency_key": "saved-test-action-1"})
+	// Both owners use the public payment-intents.create operation.
+	result := mcpCall(t, app, defaultOptions(), "flint_write", map[string]any{"operation": "payment-intents.create", "arguments": map[string]any{"order_id": "ord_01KEZF7C0054GQKJ142A8X367A"}, "dry_run": true, "idempotency_key": "saved-test-action-1"})
 	if result["isError"] == true {
 		t.Fatal(mcpResultText(result))
 	}
-	if got := lookupPathValue(mcpResultJSON(t, result), "data.path"); got != "/v1/orders/ord_123/payment-intents" {
+	if got := lookupPathValue(mcpResultJSON(t, result), "data.path"); got != "/v1/payment-intents" {
 		t.Fatal(result)
 	}
 }
@@ -812,7 +812,7 @@ func TestCommandPermissionErrorExplainsMissingScopes(t *testing.T) {
 	}
 }
 
-func TestOrderPaymentIntentPermissionUsesOrderScope(t *testing.T) {
+func TestOrderPaymentIntentPermissionUsesPaymentIntentScope(t *testing.T) {
 	for _, scope := range []string{"commerce.orders.write", "payments.payment_intents.write"} {
 		for _, dryRun := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/dryRun=%t", scope, dryRun), func(t *testing.T) {
@@ -824,19 +824,19 @@ func TestOrderPaymentIntentPermissionUsesOrderScope(t *testing.T) {
 						return
 					}
 					requests++
-					if r.Method != "POST" || r.URL.Path != "/v1/orders/ord_123/payment-intents" {
+					if r.Method != "POST" || r.URL.Path != "/v1/payment-intents" {
 						t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 					}
 					fmt.Fprint(w, `{"data":{"payment_intent_id":"pi_123"}}`)
 				}))
 				defer server.Close()
 				app, stdout, stderr := testApp(t, server.URL)
-				argv := []string{"orders", "payment-intents", "create", "ord_123", "--idempotency-key", "saved-test-action-1", "--output", "json"}
+				argv := []string{"payment-intents", "create", "--order-id", "ord_01KEZF7C0054GQKJ142A8X367A", "--idempotency-key", "saved-test-action-1", "--output", "json"}
 				if dryRun {
 					argv = append(argv, "--dry-run=client")
 				}
 				wantExit, wantRequests := ExitOK, 1
-				if scope != "commerce.orders.write" {
+				if scope != "payments.payment_intents.write" {
 					wantExit, wantRequests = ExitAuth, 0
 				}
 				if dryRun {
@@ -848,7 +848,7 @@ func TestOrderPaymentIntentPermissionUsesOrderScope(t *testing.T) {
 				if requests != wantRequests {
 					t.Errorf("resource requests=%d, want %d", requests, wantRequests)
 				}
-				if dryRun && !strings.Contains(stdout.String(), `"path":"/v1/orders/ord_123/payment-intents"`) {
+				if dryRun && !strings.Contains(stdout.String(), `"path":"/v1/payment-intents"`) {
 					t.Errorf("wrong dry-run path: %s", stdout)
 				}
 			})
@@ -1257,8 +1257,8 @@ func TestPayOrderActionInputAndTokenShortcut(t *testing.T) {
 	for _, body := range []string{
 		`{"action":"pay"}`,
 		`{"action":"pay","payment_source":{"credential_type":"stripe_confirmation_token","stripe":{"confirmation_token":"ctoken_test"}}}`,
-		`{"action":"confirm_payment_intents","payment_intents":[{"credential_type":"attached","payment_intent_id":"pi_test"}],"completion_behavior":"partial_payment"}`,
-		`{"action":"setup","setup_payment_source":{"credential_type":"token","token":"src_test"}}`,
+		`{"action":"confirm_payment_intents","payment_intents":[{"payment_intent_id":"pi_test"}],"completion_behavior":"partial_payment"}`,
+		`{"action":"setup","setup_payment_source":{"credential_type":"stripe_payment_method","stripe":{"payment_method":"src_test"}}}`,
 		`{"action":"resume","order_payment_attempt_id":"opat_test"}`,
 	} {
 		t.Run(body, func(t *testing.T) {
@@ -1323,8 +1323,8 @@ func TestPayOrderMCPActionBranchesAcceptCLIArguments(t *testing.T) {
 	command, _ := NewRegistry().ByName("orders.pay")
 	for _, body := range []string{
 		`{"action":"pay"}`,
-		`{"action":"confirm_payment_intents","payment_intents":[{"credential_type":"attached","payment_intent_id":"pi_test"}]}`,
-		`{"action":"setup","setup_payment_source":{"credential_type":"token","token":"src_test"}}`,
+		`{"action":"confirm_payment_intents","payment_intents":[{"payment_intent_id":"pi_test"}]}`,
+		`{"action":"setup","setup_payment_source":{"credential_type":"stripe_payment_method","stripe":{"payment_method":"src_test"}}}`,
 		`{"action":"resume","order_payment_attempt_id":"opat_test"}`,
 	} {
 		var arguments map[string]any

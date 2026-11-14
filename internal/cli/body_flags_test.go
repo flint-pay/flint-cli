@@ -33,7 +33,7 @@ func TestGeneratedBodyFlagsInventory(t *testing.T) {
 			}
 		}
 	}
-	if total < 900 || shortcuts != 14 {
+	if total < 900 || shortcuts != 21 {
 		t.Fatalf("body flags=%d shortcuts=%d", total, shortcuts)
 	}
 	for _, name := range []string{"api-keys.create", "api-keys.update"} {

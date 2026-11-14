@@ -2942,13 +2942,6 @@
     "audience": "merchant"
   },
   {
-    "name": "orders.payment-intents.create",
-    "operation_id": "createOrderPaymentIntent",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
     "name": "orders.receipt-pdf.get",
     "operation_id": "getOrderReceiptPDF",
     "kind": "singleton",
@@ -3901,6 +3894,13 @@
     "audience": "merchant"
   },
   {
+    "name": "return-dispositions.create",
+    "operation_id": "createReturnDisposition",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "return-dispositions.get",
     "operation_id": "getReturnDisposition",
     "kind": "item",
@@ -3918,6 +3918,13 @@
     "name": "return-dispositions.retry",
     "operation_id": "retryReturnDisposition",
     "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "return-inspections.create",
+    "operation_id": "createReturnInspection",
+    "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -4041,6 +4048,13 @@
     "audience": "merchant"
   },
   {
+    "name": "return-receipts.create",
+    "operation_id": "createReturnReceipt",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "return-receipts.get",
     "operation_id": "getReturnReceipt",
     "kind": "item",
@@ -4072,6 +4086,13 @@
     "name": "return-resolutions.confirm",
     "operation_id": "confirmReturnResolution",
     "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "return-resolutions.create",
+    "operation_id": "createReturnResolution",
+    "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -4153,23 +4174,9 @@
     "audience": "merchant"
   },
   {
-    "name": "returns.dispositions.create",
-    "operation_id": "createReturnDisposition",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
     "name": "returns.get",
     "operation_id": "getReturn",
     "kind": "item",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "returns.inspections.create",
-    "operation_id": "createReturnInspection",
-    "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
   },
@@ -4237,23 +4244,9 @@
     "audience": "merchant"
   },
   {
-    "name": "returns.receipts.create",
-    "operation_id": "createReturnReceipt",
-    "kind": "collection",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
     "name": "returns.reopen",
     "operation_id": "reopenReturn",
     "kind": "action",
-    "section": "merchant_resources",
-    "audience": "merchant"
-  },
-  {
-    "name": "returns.resolutions.create",
-    "operation_id": "createReturnResolution",
-    "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
   },

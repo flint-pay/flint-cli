@@ -35,7 +35,7 @@ func triggerRecipes() map[string]triggerRecipe {
 	line := map[string]any{"type": "custom", "name": "Flint trigger item", "quantity": 1, "unit_price_money": map[string]any{"amount": 2500, "currency": "USD"}, "fulfillment": obj("requirement", "none")}
 	customer := step("customer", "createCustomer", obj("name", "Flint trigger customer"), map[string]string{"customer_id": "data.customer_id"})
 	order := step("order", "createOrder", map[string]any{"line_items": []any{line}, "tax": obj("enabled", false)}, map[string]string{"order_id": "data.order_id"})
-	pay := step("pay", "payOrder", map[string]any{"action": "pay", "payment_source": map[string]any{"credential_type": "token", "token": "pm_card_visa"}, "expected_outstanding_money": "{order.settlement_amounts.outstanding_money}"}, map[string]string{"order_id": "data.order.order_id", "payment_intent_id": "data.order_payment_attempt.payment_intents.0.payment_intent_id", "order_payment_attempt_id": "data.order_payment_attempt.order_payment_attempt_id"})
+	pay := step("pay", "payOrder", map[string]any{"action": "pay", "payment_source": map[string]any{"credential_type": "stripe_payment_method", "stripe": map[string]any{"payment_method": "pm_card_visa"}}, "expected_outstanding_money": "{order.settlement_amounts.outstanding_money}"}, map[string]string{"order_id": "data.order.order_id", "payment_intent_id": "data.order_payment_attempt.payment_intents.0.payment_intent_id", "order_payment_attempt_id": "data.order_payment_attempt.order_payment_attempt_id"})
 	pay.Path = map[string]string{"order_id": "{order.order_id}"}
 	refund := step("refund", "createRefund", map[string]any{"refund_type": "full", "order_id": "{order.order_id}", "reason": "requested_by_customer"}, map[string]string{"refund_id": "data.refund_id"})
 	session := step("session", "createCheckoutSession", map[string]any{"type": "order", "order_id": "{order.order_id}", "tip": obj("enabled", false)}, map[string]string{"checkout_session_id": "data.checkout_session_id"})
@@ -47,11 +47,11 @@ func triggerRecipes() map[string]triggerRecipe {
 	dispute.Until = []string{"data.0.status=needs_response"}
 	dispute.Accepted = []string{"needs_response", "under_review", "won", "lost"}
 	disputePay := pay
-	disputePay.Body = map[string]any{"action": "pay", "payment_source": map[string]any{"credential_type": "token", "token": "pm_card_createDispute"}, "expected_outstanding_money": "{order.settlement_amounts.outstanding_money}"}
+	disputePay.Body = map[string]any{"action": "pay", "payment_source": map[string]any{"credential_type": "stripe_payment_method", "stripe": map[string]any{"payment_method": "pm_card_createDispute"}}, "expected_outstanding_money": "{order.settlement_amounts.outstanding_money}"}
 	simulate := step("simulate", "simulateDispute", obj("outcome", "won"), nil)
 	simulate.Path = map[string]string{"dispute_id": "{dispute.dispute_id}"}
 	intent := step("intent", "createPaymentIntent", map[string]any{"amount_money": map[string]any{"amount": 2500, "currency": "USD"}, "payment_options": []any{"card"}, "customer_id": "{customer.customer_id}"}, map[string]string{"payment_intent_id": "data.payment_intent_id"})
-	confirm := step("confirm", "confirmPaymentIntent", map[string]any{"credential_type": "token", "payment_source_token": "pm_card_visa", "save_payment_method": true}, nil)
+	confirm := step("confirm", "confirmPaymentIntent", map[string]any{"payment_source": map[string]any{"credential_type": "stripe_payment_method", "stripe": map[string]any{"payment_method": "pm_card_visa"}}, "save_payment_method": true}, nil)
 	confirm.Path = map[string]string{"payment_intent_id": "{intent.payment_intent_id}"}
 	method := step("payment_method", "listPaymentMethods", nil, map[string]string{"payment_method_id": "data.0.payment_method_id"})
 	method.Query = map[string]string{"customer_id": "{customer.customer_id}", "status": "active"}
@@ -97,9 +97,9 @@ func triggerEntries() []triggerEntry {
 	add("customer", "", "customer.created")
 	add("order_payment", "order", "order.created")
 	add("order_payment", "", "order.paid", "order.closed", "payment_intent.created", "payment_intent.succeeded")
-	entries = append(entries, triggerEntry{Event: "payment_intent.payment_failed", Recipe: "order_payment", Set: map[string]any{"pay.payment_source.token": "pm_card_chargeDeclined"}})
+	entries = append(entries, triggerEntry{Event: "payment_intent.payment_failed", Recipe: "order_payment", Set: map[string]any{"pay.payment_source.stripe.payment_method": "pm_card_chargeDeclined"}})
 	add("refund", "", "refund.created", "refund.succeeded", "order.refunded")
-	entries = append(entries, triggerEntry{Event: "refund.failed", Recipe: "refund", Set: map[string]any{"pay.payment_source.token": "pm_card_refundFail"}})
+	entries = append(entries, triggerEntry{Event: "refund.failed", Recipe: "refund", Set: map[string]any{"pay.payment_source.stripe.payment_method": "pm_card_refundFail"}})
 	add("checkout_payment", "session", "checkout_session.created")
 	add("checkout_payment", "", "checkout_session.paid")
 	add("dispute", "dispute", "dispute.created", "dispute.needs_response")

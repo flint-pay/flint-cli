@@ -3720,15 +3720,6 @@
     ]
   },
   {
-    "method": "POST",
-    "path": "/v1/orders/{order_id}/payment-intents",
-    "operation_id": "createOrderPaymentIntent",
-    "classification": "resource",
-    "commands": [
-      "orders.payment-intents.create"
-    ]
-  },
-  {
     "method": "GET",
     "path": "/v1/orders/{order_id}/receipt-pdf",
     "operation_id": "getOrderReceiptPDF",
@@ -4944,6 +4935,15 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/return-dispositions",
+    "operation_id": "createReturnDisposition",
+    "classification": "resource",
+    "commands": [
+      "return-dispositions.create"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/return-dispositions/{return_disposition_id}",
     "operation_id": "getReturnDisposition",
@@ -4977,6 +4977,15 @@
     "classification": "resource",
     "commands": [
       "return-inspections.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-inspections",
+    "operation_id": "createReturnInspection",
+    "classification": "resource",
+    "commands": [
+      "return-inspections.create"
     ]
   },
   {
@@ -5133,6 +5142,15 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/return-receipts",
+    "operation_id": "createReturnReceipt",
+    "classification": "resource",
+    "commands": [
+      "return-receipts.create"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/return-receipts/{return_receipt_id}",
     "operation_id": "getReturnReceipt",
@@ -5157,6 +5175,15 @@
     "classification": "resource",
     "commands": [
       "return-resolutions.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/return-resolutions",
+    "operation_id": "createReturnResolution",
+    "classification": "resource",
+    "commands": [
+      "return-resolutions.create"
     ]
   },
   {
@@ -5295,24 +5322,6 @@
     ]
   },
   {
-    "method": "POST",
-    "path": "/v1/returns/{return_id}/dispositions",
-    "operation_id": "createReturnDisposition",
-    "classification": "resource",
-    "commands": [
-      "returns.dispositions.create"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/returns/{return_id}/inspections",
-    "operation_id": "createReturnInspection",
-    "classification": "resource",
-    "commands": [
-      "returns.inspections.create"
-    ]
-  },
-  {
     "method": "GET",
     "path": "/v1/returns/{return_id}/line-items",
     "operation_id": "listReturnLineItems",
@@ -5386,29 +5395,11 @@
   },
   {
     "method": "POST",
-    "path": "/v1/returns/{return_id}/receipts",
-    "operation_id": "createReturnReceipt",
-    "classification": "resource",
-    "commands": [
-      "returns.receipts.create"
-    ]
-  },
-  {
-    "method": "POST",
     "path": "/v1/returns/{return_id}/reopen",
     "operation_id": "reopenReturn",
     "classification": "resource",
     "commands": [
       "returns.reopen"
-    ]
-  },
-  {
-    "method": "POST",
-    "path": "/v1/returns/{return_id}/resolutions",
-    "operation_id": "createReturnResolution",
-    "classification": "resource",
-    "commands": [
-      "returns.resolutions.create"
     ]
   },
   {

@@ -1709,12 +1709,6 @@
     "classification": "resource"
   },
   {
-    "method": "POST",
-    "path": "/v1/orders/{order_id}/payment-intents",
-    "operation_id": "createOrderPaymentIntent",
-    "classification": "resource"
-  },
-  {
     "method": "GET",
     "path": "/v1/orders/{order_id}/receipt-pdf",
     "operation_id": "getOrderReceiptPDF",
@@ -2460,13 +2454,13 @@
   },
   {
     "method": "POST",
-    "path": "/v1/returns/{return_id}/dispositions",
+    "path": "/v1/return-dispositions",
     "operation_id": "createReturnDisposition",
     "classification": "resource"
   },
   {
     "method": "POST",
-    "path": "/v1/returns/{return_id}/inspections",
+    "path": "/v1/return-inspections",
     "operation_id": "createReturnInspection",
     "classification": "resource"
   },
@@ -2514,7 +2508,7 @@
   },
   {
     "method": "POST",
-    "path": "/v1/returns/{return_id}/receipts",
+    "path": "/v1/return-receipts",
     "operation_id": "createReturnReceipt",
     "classification": "resource"
   },
@@ -2526,7 +2520,7 @@
   },
   {
     "method": "POST",
-    "path": "/v1/returns/{return_id}/resolutions",
+    "path": "/v1/return-resolutions",
     "operation_id": "createReturnResolution",
     "classification": "resource"
   },

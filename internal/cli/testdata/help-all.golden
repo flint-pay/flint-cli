@@ -393,7 +393,6 @@ Merchant resources:
   flint orders payment-attempts cancel <order_id> <order_payment_attempt_id> Cancel order payment attempt
   flint orders payment-attempts get <order_id> <order_payment_attempt_id> Get order payment attempt
   flint orders payment-attempts list <order_id>                     List order payment attempts
-  flint orders payment-intents create <order_id>                    Create order payment intent
   flint orders receipt-pdf get <order_id>                           Download order receipt PDF
   flint orders resolve-inventory-exception <order_id>               Resolve order inventory exception
   flint orders send-receipt <order_id>                              Send an order receipt
@@ -420,7 +419,7 @@ Merchant resources:
   flint payment-intents cancel <payment_intent_id>                  Cancel payment intent
   flint payment-intents capture <payment_intent_id>                 Capture payment intent
   flint payment-intents confirm <payment_intent_id>                 Confirm payment intent
-  flint payment-intents create                                      Create standalone payment intent
+  flint payment-intents create                                      Create payment intent
   flint payment-intents get <payment_intent_id>                     Get payment intent
   flint payment-intents list                                        List payment intents
   flint payment-intents send-receipt <payment_intent_id>            Send a payment receipt
@@ -510,9 +509,11 @@ Merchant resources:
   flint reports get <report_id>                                     Get a report
   flint reports list                                                List reports
   flint return-dispositions cancel <return_disposition_id>          Cancel return disposition
+  flint return-dispositions create                                  Create return disposition
   flint return-dispositions get <return_disposition_id>             Get return disposition
   flint return-dispositions list                                    List return dispositions
   flint return-dispositions retry <return_disposition_id>           Retry return disposition
+  flint return-inspections create                                   Create return inspection
   flint return-inspections get <return_inspection_id>               Get return inspection
   flint return-inspections line-items decide <return_inspection_id> <return_inspection_line_item_id> Decide return inspection line item
   flint return-inspections list                                     List return inspections
@@ -530,11 +531,13 @@ Merchant resources:
   flint return-reasons get <return_reason_id>                       Get return reason
   flint return-reasons list                                         List return reasons
   flint return-reasons update <return_reason_id>                    Update return reason
+  flint return-receipts create                                      Create return receipt
   flint return-receipts get <return_receipt_id>                     Get return receipt
   flint return-receipts line-items verify <return_receipt_id> <return_receipt_line_item_id> Verify return receipt line item
   flint return-receipts list                                        List return receipts
   flint return-resolutions cancel <return_resolution_id>            Cancel return resolution
   flint return-resolutions confirm <return_resolution_id>           Confirm return resolution
+  flint return-resolutions create                                   Create return resolution
   flint return-resolutions get <return_resolution_id>               Get return resolution
   flint return-resolutions list                                     List return resolutions
   flint return-resolutions release <return_resolution_id>           Release return resolution
@@ -546,9 +549,7 @@ Merchant resources:
   flint returns complete <return_id>                                Complete return
   flint returns create                                              Create return
   flint returns decide <return_id>                                  Decide return
-  flint returns dispositions create <return_id>                     Create return disposition
   flint returns get <return_id>                                     Get return
-  flint returns inspections create <return_id>                      Create return inspection
   flint returns line-items cancel <return_id> <return_line_item_id> Cancel return line item
   flint returns line-items create <return_id>                       Add return line item
   flint returns line-items delete <return_id> <return_line_item_id> Delete return line item
@@ -558,9 +559,7 @@ Merchant resources:
   flint returns line-items waive-inspection <return_id> <return_line_item_id> Waive return line inspection
   flint returns list                                                List returns
   flint returns process <return_id>                                 Process existing return
-  flint returns receipts create <return_id>                         Create return receipt
   flint returns reopen <return_id>                                  Reopen return
-  flint returns resolutions create <return_id>                      Create return resolution
   flint returns update <return_id>                                  Update return
   flint risk-lists create                                           Create a risk list
   flint risk-lists delete <risk_list_id>                            Retire a risk list

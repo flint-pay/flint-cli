@@ -35,7 +35,7 @@ func operationOverlays() map[string]operationOverlay {
 		"createPaymentIntent":                  {Arguments: []Arg{flag("amount", "integer", "amount_money.amount", "", "Amount in the smallest currency unit", false), flag("currency", "string", "amount_money.currency", "", "Uppercase ISO 4217 currency code, such as USD", false), idFlag("customer", "cus_", "customer_id", "", "Customer ID", false), flag("capture_method", "string", "capture_method", "", "automatic or manual", false), {Name: "payment_option", Flag: "--payment-option", Type: "string", Repeat: true, BodyPath: "payment_options", Description: "Standalone payment option; repeat for multiple options"}, flag("transaction_purpose", "string", "transaction_purpose", "", "goods, services, or other; required for ach_debit", false)}, Examples: ex("flint payment-intents create --amount 2500 --currency USD --payment-option card")},
 		"getPaymentIntent":                     {Examples: ex("flint payment-intents get pi_123 --wait-for status=succeeded"), TerminalStates: map[string]bool{"succeeded": true, "canceled": true, "expired": true}},
 		"listPaymentIntents":                   {Examples: ex("flint payment-intents list --status succeeded")},
-		"confirmPaymentIntent":                 {Arguments: []Arg{flag("confirmation_token", "string", "stripe.confirmation_token", "", "Stripe confirmation token created with Stripe.js", false), flag("payment_source_token", "string", "payment_source_token", "", "Documented sandbox payment source token", false), idFlag("payment_method", "pm_", "payment_method_id", "", "Saved payment method ID", false)}, Examples: ex("flint payment-intents confirm pi_123 --confirmation-token ctoken_123")},
+		"confirmPaymentIntent":                 {Arguments: []Arg{flag("confirmation_token", "string", "payment_source.stripe.confirmation_token", "", "Stripe confirmation token created with Stripe.js", false), flag("payment_source_token", "string", "payment_source.stripe.payment_method", "", "Stripe test payment method, such as pm_card_visa", false), idFlag("payment_method_id", "pm_", "payment_source.payment_method_id", "", "Flint saved payment method ID", false)}, Examples: ex("flint payment-intents confirm pi_123 --confirmation-token ctoken_123")},
 		"capturePaymentIntent":                 {Arguments: []Arg{flag("amount", "integer", "amount_money.amount", "", "Optional capture amount", false), flag("currency", "string", "amount_money.currency", "", "Currency for capture amount", false)}, Examples: ex("flint payment-intents capture pi_123")},
 		"cancelPaymentIntent":                  {Arguments: []Arg{flag("cancellation_reason", "string", "cancellation_reason", "", "requested_by_customer, duplicate, fraudulent, or abandoned", false)}, Examples: ex("flint payment-intents cancel pi_123 --cancellation-reason abandoned --confirm")},
 		"createCheckoutSession":                {Arguments: []Arg{flag("quick_pay_name", "string", "quick_pay_item.name", "", "Quick-pay item name", false), flag("amount", "integer", "quick_pay_item.amount_money.amount", "", "Amount in the smallest currency unit", false), flag("currency", "string", "quick_pay_item.amount_money.currency", "", "Uppercase ISO 4217 currency code, such as USD", false)}, Examples: ex("flint checkout-sessions create --quick-pay-name T-shirt --amount 2500 --currency USD --open"), Render: "checkout", Open: true},
@@ -85,6 +85,17 @@ func operationOverlays() map[string]operationOverlay {
 		"listAPIKeys":                          {Examples: ex("flint api-keys list")},
 		"revokeAPIKey":                         {Arguments: []Arg{flag("expected_version", "integer", "expected_version", "", "Revoke only if the key is still at this version", false)}, Examples: ex("flint api-keys revoke key_123 --preview", "flint api-keys revoke key_123 --confirm")},
 	}
+	for id, path := range map[string]string{
+		"createOrder":          "line_items.0.product_type",
+		"createOrderLineItems": "line_items.0.product_type",
+		"createInvoice":        "quick_pay.line_items.0.product_type",
+		"createPaymentLink":    "line_items.0.product_type",
+		"updatePaymentLink":    "line_items.0.product_type",
+	} {
+		overlay := overlays[id]
+		overlay.Arguments = append(overlay.Arguments, Arg{Name: "product_type", Flag: "--product-type", Type: "string", BodyPath: path, Enum: []string{"physical", "service", "fee", "digital"}, Description: "Product type of the first custom line; use --input for additional lines"})
+		overlays[id] = overlay
+	}
 	for _, id := range []string{"updateProduct", "updateBundle"} {
 		overlay := overlays[id]
 		overlay.ArrayReads = map[string]arrayReadProjection{"category_handles": {Field: "categories", Item: "handle"}}
@@ -96,14 +107,30 @@ func operationOverlays() map[string]operationOverlay {
 			if strings.Contains(arg.BodyPath, ".") || id == "payOrder" && arg.Name == "payment_source_token" {
 				switch id {
 				case "createPaymentLink":
+					if arg.Name == "product_type" {
+						break
+					}
 					arg.ShortcutTagPath = "line_items.0.type"
 					arg.ShortcutTagValue = "custom_fixed"
 				case "createCheckoutSession":
 					arg.ShortcutTagPath = "type"
 					arg.ShortcutTagValue = "quick_pay"
+				case "createOrder", "createOrderLineItems":
+					arg.ShortcutTagPath = "line_items.0.type"
+					arg.ShortcutTagValue = "custom"
+				case "createInvoice":
+					arg.ShortcutTagPath = "type"
+					arg.ShortcutTagValue = "quick_pay"
 				case "confirmPaymentIntent":
-					arg.ShortcutTagPath = "credential_type"
-					arg.ShortcutTagValue = "stripe_confirmation_token"
+					arg.ShortcutTagPath = "payment_source.credential_type"
+					switch arg.Name {
+					case "confirmation_token":
+						arg.ShortcutTagValue = "stripe_confirmation_token"
+					case "payment_source_token":
+						arg.ShortcutTagValue = "stripe_payment_method"
+					case "payment_method_id":
+						arg.ShortcutTagValue = "payment_method"
+					}
 				}
 				shortcuts = append(shortcuts, arg)
 			}

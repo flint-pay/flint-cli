@@ -260,7 +260,7 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 	for _, expand := range opts.Expand {
 		query.Add("expand", expand)
 	}
-	if cmd.CanonicalName != "api" && cmd.OperationID == "createPaymentIntent" && opts.Input == "" {
+	if cmd.CanonicalName != "api" && cmd.OperationID == "createPaymentIntent" && opts.Input == "" && body["order_id"] == nil {
 		if len(opts.Raw["amount"]) == 0 || len(opts.Raw["currency"]) == 0 {
 			return req, usageError("MISSING_REQUIRED_ARGUMENT", "Standalone payment intents require --amount and --currency.", "amount")
 		}
@@ -611,7 +611,7 @@ func (a *App) prepareOrderPayment(ctx context.Context, body map[string]any, cmd 
 		if !strings.HasPrefix(intentID, "pi_") {
 			return usageError("INVALID_PAYMENT_INTENT_ID", "--payment-source-token map keys must be payment intent IDs.", "payment_source_token")
 		}
-		selections = append(selections, map[string]any{"credential_type": "token", "payment_intent_id": intentID, "token": token})
+		selections = append(selections, map[string]any{"payment_intent_id": intentID, "payment_source": map[string]any{"credential_type": "stripe_payment_method", "stripe": map[string]any{"payment_method": token}}})
 	}
 	body["payment_intents"] = selections
 	return nil
