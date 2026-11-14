@@ -139,6 +139,10 @@ Merchant resources:
   flint customers addresses list <customer_id>                      List customer addresses
   flint customers addresses update <customer_id> <customer_address_id> Update a customer address
   flint customers create                                            Create customer
+  flint customers email-change-requests cancel <customer_id> <email_change_request_id> Cancel a customer email change request
+  flint customers email-change-requests create <customer_id>        Request a customer email change
+  flint customers email-change-requests get <customer_id> <email_change_request_id> Get a customer email change request
+  flint customers email-change-requests list <customer_id>          List customer email change requests
   flint customers email-preferences get <customer_id>               Get a customer's email preferences
   flint customers get <customer_id>                                 Get customer
   flint customers link-guest-purchases <customer_id>                Link guest purchases to a customer
@@ -316,6 +320,7 @@ Merchant resources:
   flint invoices get <invoice_id>                                   Get invoice
   flint invoices issue <invoice_id>                                 Issue invoice
   flint invoices late-fees create <invoice_id>                      Assess an invoice late fee
+  flint invoices late-fees list <invoice_id>                        List invoice late fees
   flint invoices late-fees waive <invoice_id> <invoice_late_fee_id> Waive an unpaid invoice late fee
   flint invoices list                                               List invoices
   flint invoices manual-payments create <invoice_id>                Create invoice manual payment
@@ -604,6 +609,7 @@ Merchant resources:
   flint subscriptions get <subscription_id>                         Get subscription
   flint subscriptions line-items create <subscription_id>           Add subscription line item
   flint subscriptions line-items delete <subscription_id> <subscription_line_item_id> Remove subscription line item
+  flint subscriptions line-items list <subscription_id>             List subscription line items
   flint subscriptions line-items update <subscription_id> <subscription_line_item_id> Update subscription line item
   flint subscriptions list                                          List subscriptions
   flint subscriptions pause <subscription_id>                       Pause subscription
@@ -670,6 +676,9 @@ Buyer session:
   flint me addresses list                                           List the current buyer's addresses
   flint me addresses update <customer_address_id>                   Update one of the current buyer's addresses
   flint me checkout-sessions create                                 Create a checkout session for the current buyer
+  flint me credit-notes get <credit_note_id>                        Get a credit note for one of the current buyer's invoices
+  flint me credit-notes list                                        List credit notes for one of the current buyer's invoices
+  flint me credit-notes pdf get <credit_note_id>                    Download a credit note for one of the current buyer's invoices
   flint me deletion-requests create                                 Request deletion of the current buyer's account
   flint me deletion-requests get <customer_deletion_request_id>     Get the current buyer's deletion request
   flint me deletion-requests list                                   List the current buyer's deletion requests
@@ -686,9 +695,6 @@ Buyer session:
   flint me gift-cards delete <gift_card_id>                         Remove a saved gift card
   flint me gift-cards get <gift_card_id>                            Get a saved gift card
   flint me gift-cards list                                          List your saved gift cards
-  flint me invoices credit-notes get <invoice_id> <credit_note_id>  Get a credit note for one of the current buyer's invoices
-  flint me invoices credit-notes list <invoice_id>                  List credit notes for one of the current buyer's invoices
-  flint me invoices credit-notes pdf get <invoice_id> <credit_note_id> Download a credit note for one of the current buyer's invoices
   flint me invoices get <invoice_id>                                Get one of the current buyer's invoices
   flint me invoices list                                            List the current buyer's invoices
   flint me invoices pdf get <invoice_id>                            Download one of the current buyer's invoices
@@ -707,6 +713,8 @@ Buyer session:
   flint me payment-methods list                                     List the current buyer's payment methods
   flint me refunds get <refund_id>                                  Get one of the current buyer's refunds
   flint me refunds list                                             List the current buyer's refunds
+  flint me remembered-buyers list                                   List the current buyer's remembered buyers
+  flint me remembered-buyers revoke <remembered_buyer_id>           Forget one of the current buyer's remembered buyers
   flint me return-previews create                                   Preview Return eligibility or resolution amounts for the current buyer
   flint me return-resolutions get <return_resolution_id>            Get one of the current buyer's Return resolutions
   flint me returns cancel <return_id>                               Cancel one of the current buyer's Returns

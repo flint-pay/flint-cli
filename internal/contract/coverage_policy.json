@@ -1270,19 +1270,19 @@
   },
   {
     "method": "GET",
-    "path": "/v1/me/invoices/{invoice_id}/credit-notes",
+    "path": "/v1/me/credit-notes",
     "operation_id": "listMeCreditNotes",
     "classification": "resource"
   },
   {
     "method": "GET",
-    "path": "/v1/me/invoices/{invoice_id}/credit-notes/{credit_note_id}",
+    "path": "/v1/me/credit-notes/{credit_note_id}",
     "operation_id": "getMeCreditNote",
     "classification": "resource"
   },
   {
     "method": "GET",
-    "path": "/v1/me/invoices/{invoice_id}/credit-notes/{credit_note_id}/pdf",
+    "path": "/v1/me/credit-notes/{credit_note_id}/pdf",
     "operation_id": "getMeCreditNotePDF",
     "classification": "resource"
   },
@@ -3864,16 +3864,16 @@
     "classification": "resource"
   },
   {
-    "classification": "resource",
     "method": "GET",
     "path": "/v1/customers/{customer_id}/email-preferences",
-    "operation_id": "getCustomerEmailPreferences"
+    "operation_id": "getCustomerEmailPreferences",
+    "classification": "resource"
   },
   {
-    "classification": "resource",
     "method": "POST",
     "path": "/v1/email-preferences/lookup",
-    "operation_id": "lookupEmailPreferences"
+    "operation_id": "lookupEmailPreferences",
+    "classification": "resource"
   },
   {
     "method": "GET",
@@ -4281,6 +4281,54 @@
     "method": "POST",
     "path": "/v1/webhook-endpoints/{webhook_endpoint_id}/sign-delivery",
     "operation_id": "signWebhookEndpointDelivery",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customers/{customer_id}/email-change-requests",
+    "operation_id": "listCustomerEmailChangeRequests",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/email-change-requests",
+    "operation_id": "createCustomerEmailChangeRequest",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/customers/{customer_id}/email-change-requests/{email_change_request_id}",
+    "operation_id": "getCustomerEmailChangeRequest",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/customers/{customer_id}/email-change-requests/{email_change_request_id}/cancel",
+    "operation_id": "cancelCustomerEmailChangeRequest",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/invoices/{invoice_id}/late-fees",
+    "operation_id": "listInvoiceLateFees",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/remembered-buyers",
+    "operation_id": "listMeRememberedBuyers",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/remembered-buyers/{remembered_buyer_id}/revoke",
+    "operation_id": "revokeMeRememberedBuyer",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/subscriptions/{subscription_id}/line-items",
+    "operation_id": "listSubscriptionLineItems",
     "classification": "resource"
   }
 ]

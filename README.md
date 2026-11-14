@@ -470,6 +470,10 @@ Unverified credentials follow live confirmation rules, without the verified-live
 
 Local commands are operations reached through read or write, including `version`, read-only `doctor`, `history`, `history.clear`, and sandbox-only `trigger`. Trigger waits are capped at 60 seconds. Agents cannot change credential stores, update config, or log out through MCP.
 
+## Migrating from 0.18.x
+
+0.19.0 moves buyer credit notes from `me invoices credit-notes` to `me credit-notes`, renames five request version fields to name their parent resource, and updates subscription quantity constraints. It also adds customer email-change requests, invoice late-fee lists, remembered-buyer management, and subscription line-item lists. See [the 0.19.0 migration notes](docs/migrating-0.19.md) before updating scripts or MCP calls.
+
 ## Migrating from 0.17.x
 
 0.18.0 mints sandbox keys through `flint api-keys create --sandbox-id`, removes the retired sandbox and onboarding mint commands, and uses `mode` for device authorization. Local scope refusals now use the API’s `INSUFFICIENT_SCOPE` detail array. `flint schema command` exposes `scope_requirement`, and `flint auth status` and `flint doctor` show scope access and credential-specific remediation. The API snapshot also removes other commands and changes request schemas. See [the 0.18.0 migration notes](docs/migrating-0.18.md) before updating scripts or MCP operation IDs.
