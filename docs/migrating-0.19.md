@@ -1,6 +1,6 @@
 # Migrating to 0.19.0
 
-0.19.0 refreshes the embedded public API snapshot to the Flint commit pinned in `internal/spec/provenance.json`. Before 1.0, breaking changes require a minor version bump. This release changes buyer credit-note commands, request version fields, and subscription quantity constraints.
+0.19.0 refreshes the embedded public API snapshot to the Flint commit pinned in `internal/spec/provenance.json`. Before 1.0, breaking changes require a minor version bump. This release changes buyer credit-note commands, request version fields, response fields and statuses, and subscription quantity constraints.
 
 ## Buyer credit notes
 
@@ -82,6 +82,27 @@ For `subscription-plans create` and `subscription-plans update`, the old embedde
 - Return resolution filters rename `fulfilled` to `completed` and `partially_fulfilled` to `partially_completed`: update `--resolution-status` on `returns list` and `me returns list`, `--resolution-status fulfilled` to `--resolution-status completed` on `returns line-items list`, and `--status fulfilled` to `--status completed` on `return-resolutions list`.
 - Replace the webhook event `invoice_payment_attempt.settled` with `invoice_payment_attempt.succeeded` in event filters, listener subscriptions, and `webhook-endpoints test-events create --event-type`.
 - Return-policy revisions require nonnegative `priority`. Scope arrays allow at most 100 unique entries; channel, location, product, and variant entries have a maximum length of 255. Deduplicate and shorten inputs before sending them. A percentage restocking fee is from 1 through 100; a return window's `duration_seconds` is from 1 through 158112000. These constraints were absent from the 0.18.0 embedded schema.
+
+## Response fields and statuses
+
+These response changes are breaking. Update JSON readers, MCP result projections, `--fields` paths, and scripts that inspect CLI output. Paths below are relative to each resource, without its response envelope.
+
+| Resource and old path | Replacement or removal |
+| --- | --- |
+| Invoice `total_money` | `pricing_amounts.total_money` |
+| Invoice `paid_money`, `refunded_money`, `outstanding_money`, `currently_due_money`, `late_fee_money`, and merchant `written_off_money` | Move each field under `settlement_amounts`, for example `settlement_amounts.outstanding_money`. |
+| Invoice `credit_money` | `settlement_amounts.credited_money` |
+| Invoice `snapshot.pricing_amounts` | Use the invoice's top-level `pricing_amounts`; the snapshot no longer duplicates it. |
+| Invoice activity and schedule entry `credit_money` | `credited_money` on the activity or schedule entry. |
+| Subscription plan-change and quantity-change preview `credit_money` | `credit_adjustment_money` on the preview. |
+| Subscription payment retry `order_payment_attempt_id` | `payment_intent_id`, which identifies the payment intent and is omitted until one is created. |
+| Merchant `Subscription.buyer_actions` | Removed. Merchant `supported_actions` describes merchant actions; it is not a buyer-action replacement. |
+| `BuyerPaymentIntent.supported_actions` | Removed, with no replacement field on the buyer payment intent. |
+| Invoice payment attempt `status: "settled"` | `status: "succeeded"`. The success event is `invoice_payment_attempt.succeeded`; the timestamp remains `settled_at`. |
+
+The invoice money paths apply to merchant and buyer invoices. Expanded invoice summaries also replace `total_money`, `paid_money`, `refunded_money`, and `outstanding_money` with the corresponding paths under `pricing_amounts` or `settlement_amounts`. Invoice activity and schedule entry `total_money`, `paid_money`, and `outstanding_money` retain their existing paths; do not apply the invoice-level nesting to those resources.
+
+For example, replace `flint invoices get INV_ID --fields invoice_id,outstanding_money` with `flint invoices get INV_ID --fields invoice_id,settlement_amounts.outstanding_money`. The invoice sandbox triggers use this current balance when recording manual payments.
 
 ## Custom-line product types
 

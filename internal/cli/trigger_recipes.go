@@ -73,7 +73,7 @@ func triggerRecipes() map[string]triggerRecipe {
 	ready.Until = []string{"status=ready"}
 	ready.Accepted = []string{"ready"}
 	invoice := step("invoice", "createInvoice", map[string]any{"type": "quick_pay", "quick_pay": order.Body, "collection": obj("mode", "external"), "issue": obj("delivery_mode", "caller_managed")}, map[string]string{"invoice_id": "data.invoice_id"})
-	payment := step("payment", "createInvoiceManualPayment", obj("amount_money", "{invoice.outstanding_money}"), map[string]string{"invoice_manual_payment_id": "data.invoice_manual_payment.invoice_manual_payment_id"})
+	payment := step("payment", "createInvoiceManualPayment", obj("amount_money", "{invoice.settlement_amounts.outstanding_money}"), map[string]string{"invoice_manual_payment_id": "data.invoice_manual_payment.invoice_manual_payment_id"})
 	payment.Path = map[string]string{"invoice_id": "{invoice.invoice_id}"}
 	return map[string]triggerRecipe{
 		"customer":         {Resumable: true, Name: "customer", Steps: []triggerStep{customer}},
