@@ -1,5 +1,7 @@
 # Migrating to Flint CLI 0.12.0
 
+These notes describe the commands and schemas at this release. For current commands, also apply the [0.18.0 migration notes](migrating-0.18.md), which remove organization, nested checkout delivery, and sandbox key-mint commands and update request fields.
+
 This is a breaking change from CLI 0.11.0: the embedded API snapshot was refreshed against the current public API, which renames and removes commands. Before 1.0, breaking changes bump the minor version.
 
 The changes since `cli/v0.11.0` are in [#47](https://github.com/flint-pay/flint-cli/pull/47) and [#48](https://github.com/flint-pay/flint-cli/pull/48).

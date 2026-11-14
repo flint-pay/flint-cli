@@ -1,5 +1,7 @@
 # Migrating to Flint CLI 0.13.0
 
+These notes describe the commands and schemas at this release. For current commands, also apply the [0.18.0 migration notes](migrating-0.18.md), which remove organization, nested checkout delivery, and sandbox key-mint commands and update request fields.
+
 This release moves every command to Flint's canonical API paths and removes or renames commands, so it requires a minor version bump before 1.0.
 
 The embedded snapshot is copied byte-for-byte from [`web/apps/developers/src/generated/openapi.json`](https://github.com/flint-pay/flint/blob/0f83faf086dd659e279da39ae653918b38450ae5/web/apps/developers/src/generated/openapi.json) at Flint main `0f83faf086dd659e279da39ae653918b38450ae5`. SHA-256: `e8fff8a6422b34e3142deea2983568beb1a7cccc697f02368b4931e331c6dd1e`.

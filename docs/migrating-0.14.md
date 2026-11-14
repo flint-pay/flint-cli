@@ -1,5 +1,7 @@
 # Migrating to Flint CLI 0.14.3
 
+These notes describe the commands and schemas at this release. For current commands, also apply the [0.18.0 migration notes](migrating-0.18.md), which remove organization, nested checkout delivery, and sandbox key-mint commands and update request fields.
+
 This release adds API key access flags. Existing commands and `--input` bodies keep working. 0.14.0 was not released: its npm wrapper package never published, so install 0.14.3.
 
 ## 0.14.3 changes
