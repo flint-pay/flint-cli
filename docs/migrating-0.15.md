@@ -1,5 +1,7 @@
 # Migrating to Flint CLI 0.15.0
 
+These notes describe the commands and schemas at this release. For current commands, also apply the [0.18.0 migration notes](migrating-0.18.md), which remove organization, nested checkout delivery, and sandbox key-mint commands and update request fields.
+
 This release has two redesigns that break scripts and MCP clients: API commands and request flags now follow one rule derived from the API contract, and the MCP server exposes five discovery tools instead of a fixed set of typed tools. It also changes when the terminal asks for confirmation. Because the CLI is before 1.0, this is a minor version bump. Read the sections that apply to you; each one shows the old form, the new form, and what to do.
 
 `--input` bodies keep working. The embedded API snapshot was refreshed twice; the commands it adds and removes are listed under [Command names](#command-names).

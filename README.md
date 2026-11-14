@@ -141,7 +141,7 @@ without page tokens. Pagination flags appear only when the route accepts them.
 
 POST action routes keep their action, such as `orders pay` and
 `webhook-endpoints rotate-secret`. Nested collections include their verb:
-`orders discounts create`, `organizations memberships create`, and
+`orders discounts create`, `orders line-items create`, and
 `webhook-deliveries attempts list`.
 
 The route is the naming source: use `merchant get`, `api-request-logs list`,
@@ -420,7 +420,7 @@ Find an operation, inspect its public arguments, then call it:
 {"name":"flint_write","arguments":{"operation":"refunds.create","arguments":{"order_id":"ord_123","refund_type":"full"},"idempotency_key":"refund-ord-123-1","dry_run":true}}
 ```
 
-The default `tools/list` result is about 6 KB, compared with about 226 KB for the 0.14 default set. Operation IDs follow CLI commands, such as `orders.list` and `checkout-sessions.delivery-quotes.create`. Read and write calls also accept space-separated command names and typed tool names. Use public JSON argument names from `flint_describe`; CLI convenience flags are unavailable over MCP. Pass execution controls such as `select`, `idempotency_key`, and `dry_run` alongside `operation`, outside `arguments`. The former `_flint` object is removed.
+The default `tools/list` result is about 6 KB, compared with about 226 KB for the 0.14 default set. Operation IDs follow CLI commands, such as `orders.list` and `delivery-quotes.create`. Read and write calls also accept space-separated command names and typed tool names. Use public JSON argument names from `flint_describe`; CLI convenience flags are unavailable over MCP. Pass execution controls such as `select`, `idempotency_key`, and `dry_run` alongside `operation`, outside `arguments`. The former `_flint` object is removed.
 
 Successful results contain one compact JSON text block and, when needed, one notes block with the environment, notes, and warnings. No result is duplicated in `structuredContent`. Reads have a 49,152-byte cap; narrow larger results with `select`, filters, or a smaller `page_size`. MCP lists default to 10 items per page. `all: true` stops fetching as soon as the projected result exceeds the limit. Completed writes return their full result with a warning if oversized.
 
@@ -470,6 +470,10 @@ Unverified credentials follow live confirmation rules, without the verified-live
 
 Local commands are operations reached through read or write, including `version`, read-only `doctor`, `history`, `history.clear`, and sandbox-only `trigger`. Trigger waits are capped at 60 seconds. Agents cannot change credential stores, update config, or log out through MCP.
 
+## Migrating from 0.17.x
+
+0.18.0 mints sandbox keys through `flint api-keys create --sandbox-id`, removes the retired sandbox and onboarding mint commands, and uses `mode` for device authorization. Local scope refusals now use the API’s `INSUFFICIENT_SCOPE` detail array. `flint schema command` exposes `scope_requirement`, and `flint auth status` and `flint doctor` show scope access and credential-specific remediation. The API snapshot also removes other commands and changes request schemas. See [the 0.18.0 migration notes](docs/migrating-0.18.md) before updating scripts or MCP operation IDs.
+
 ## Migrating from 0.16.x
 
 0.17.0 refreshes the embedded public API snapshot. `fulfillments transitions create` and `packages transitions create` are replaced by one command per action, such as `fulfillments mark-ready` and `packages mark-shipped`; `credit-notes refunds create` and `credit-notes refunds list` are replaced by `refunds create --refund-type credit_note` and `refunds list --credit-note-id`; and `orders inventory-exception resolve` is now `orders resolve-inventory-exception`. See [the 0.17.0 migration notes](docs/migrating-0.17.md) for the full command list.
@@ -480,7 +484,7 @@ Local commands are operations reached through read or write, including `version`
 
 ## Migrating from 0.13.0
 
-0.14.1 adds `--access` and `--scope` to `api-keys create`, `api-keys update`, `sandboxes api-keys create`, and `sandboxes create`; `--scope` alone selects restricted access. 0.14.2 fixes `flint listen` withholding every event from current Flint servers. 0.14.3 raises the total timeout budget to 150 seconds, adds explicit file credential storage and NDJSON lists, and renames CLI-local error codes to `CLIENT_TIMEOUT`, `CLIENT_CANCELED`, and `CREDENTIAL_FORMAT_INVALID`. Scripts matching the old codes must be updated. See [the 0.14.3 migration notes](docs/migrating-0.14.md) for details.
+0.14.1 adds `--access` and `--scope` to `api-keys create`, `api-keys update`, `sandboxes api-keys create` (removed in 0.18.0), and `sandboxes create`; `--scope` alone selects restricted access. 0.14.2 fixes `flint listen` withholding every event from current Flint servers. 0.14.3 raises the total timeout budget to 150 seconds, adds explicit file credential storage and NDJSON lists, and renames CLI-local error codes to `CLIENT_TIMEOUT`, `CLIENT_CANCELED`, and `CREDENTIAL_FORMAT_INVALID`. Scripts matching the old codes must be updated. See [the 0.14.3 migration notes](docs/migrating-0.14.md) for details.
 
 ## Migrating from 0.12.0
 
@@ -488,15 +492,13 @@ Local commands are operations reached through read or write, including `version`
 
 ## Migrating from 0.11.0
 
-0.12.0 refreshes the embedded public API snapshot, which renames and removes commands; for example, `payout-settings destinations` commands are now `payout-destinations`, `merchant-account-sessions refresh` is now `merchant-account-session-refreshes create`, and `flint organizations create` requires `--parent-organization`. See [the 0.12.0 migration notes](docs/migrating-0.12.md) for the command and MCP tool changes.
+0.12.0 refreshes the embedded public API snapshot, which renames and removes commands; for example, `payout-settings destinations` commands are now `payout-destinations`, `merchant-account-sessions refresh` is now `merchant-account-session-refreshes create`, and organization creation in 0.12.x required `--parent-organization`. Organization commands were removed in 0.18.0. See [the 0.12.0 migration notes](docs/migrating-0.12.md) for the command and MCP tool changes.
 
 ## Migrating from 0.10.0
 
-0.11.0 refreshes the embedded public API snapshot, which renames and removes commands; for example, `reviews` commands are now `payment-reviews` and `flint sandboxes test-key` became `flint sandboxes api-keys create`. The old alias remained available through 0.14.x; current versions require the canonical command. See [the 0.11.0 migration notes](docs/migrating-0.11.md) for the command and MCP tool changes.
+0.11.0 refreshes the embedded public API snapshot, which renames and removes commands; for example, `reviews` commands are now `payment-reviews` and `flint sandboxes test-key` became `flint sandboxes api-keys create`, which was available from 0.11.0 through 0.17.x. The old alias remained available through 0.14.x. In 0.18.0, use `flint api-keys create --sandbox-id SANDBOX_ID`. See [the 0.11.0 migration notes](docs/migrating-0.11.md) for the command and MCP tool changes.
 
 If upgrading from 0.9.0, also follow [the 0.10.0 migration notes](docs/migrating-0.10.md) for required idempotency keys, retry rules, and error fields. If upgrading from 0.8.0, also follow [the 0.9.0 migration notes](docs/migrating-0.9.md) for the public API refresh's command and MCP tool lists, parameter changes, and schema field inventory. In particular, use `flint gift-cards adjust-balance`, `flint gift-cards cash-out`, and `flint webhook-deliveries list --webhook-event-id whev_123`; create refunds with an explicit `--refund-type full|amount|targets`.
-
-The next release includes an API snapshot migration. See the [unreleased migration notes](docs/migrating-unreleased.md) before updating scripts or MCP operation IDs.
 
 ## Develop
 

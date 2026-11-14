@@ -1,5 +1,7 @@
 # Migrating to Flint CLI 0.9.0
 
+These notes describe the commands and schemas at this release. For current commands, also apply the [0.18.0 migration notes](migrating-0.18.md), which remove organization, nested checkout delivery, and sandbox key-mint commands and update request fields.
+
 This is a breaking contract refresh from CLI 0.8.0. Use 0.9.0, rather than 0.8.1, because command names, parameters, and observable request and response fields change. Packaging stamps the release version; development package versions stay unchanged.
 
 The embedded snapshot is copied byte-for-byte from [`web/apps/developers/src/generated/openapi.json`](https://github.com/flint-pay/flint/blob/b998a315ad29c278cce9034545c7eb4b2d07bdbd/web/apps/developers/src/generated/openapi.json) at reviewed monorepo main `b998a315ad29c278cce9034545c7eb4b2d07bdbd`. SHA-256: `151b8c3f11a7b80612bd400f37c1155ec483128e7758d9b608e3ec8df8451396`.
