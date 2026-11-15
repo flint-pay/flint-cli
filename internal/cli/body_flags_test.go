@@ -23,7 +23,7 @@ func TestGeneratedBodyFlagsInventory(t *testing.T) {
 				t.Fatalf("duplicate body path %s %s", cmd.Name, arg.BodyPath)
 			}
 			paths[arg.BodyPath] = true
-			if strings.Contains(arg.BodyPath, ".") || cmd.OperationID == "payOrder" && arg.Name == "payment_source_token" {
+			if strings.Contains(arg.BodyPath, ".") || arg.Type == "line-quantity" || cmd.OperationID == "payOrder" && arg.Name == "payment_source_token" {
 				shortcuts++
 				continue
 			}
@@ -33,7 +33,7 @@ func TestGeneratedBodyFlagsInventory(t *testing.T) {
 			}
 		}
 	}
-	if total < 900 || shortcuts != 21 {
+	if total < 900 || shortcuts != 23 {
 		t.Fatalf("body flags=%d shortcuts=%d", total, shortcuts)
 	}
 	for _, name := range []string{"api-keys.create", "api-keys.update"} {

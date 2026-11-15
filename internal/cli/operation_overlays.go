@@ -85,6 +85,15 @@ func operationOverlays() map[string]operationOverlay {
 		"listAPIKeys":                          {Examples: ex("flint api-keys list")},
 		"revokeAPIKey":                         {Arguments: []Arg{flag("expected_version", "integer", "expected_version", "", "Revoke only if the key is still at this version", false)}, Examples: ex("flint api-keys revoke key_123 --preview", "flint api-keys revoke key_123 --confirm")},
 	}
+	for _, operation := range []struct{ id, command string }{
+		{"changeSubscriptionQuantity", "subscriptions change-quantity"},
+		{"changeMeSubscriptionQuantity", "me subscriptions change-quantity"},
+	} {
+		overlays[operation.id] = operationOverlay{
+			Arguments: []Arg{{Name: "line_item", Flag: "--line-item", Type: "line-quantity", BodyPath: "line_items", Repeat: true, Description: "Existing subscription line ID and quantity as sli_ID=QUANTITY; repeat for 1 to 50 distinct lines. Replaces line_items from --input."}},
+			Examples:  ex("flint " + operation.command + " sub_123 --billing-starts period_end --line-item sli_01KEZF7C00PPWVJ2N321V84ASA=137 --idempotency-key saved-action-1"),
+		}
+	}
 	for id, path := range map[string]string{
 		"createOrder":          "line_items.0.product_type",
 		"createOrderLineItems": "line_items.0.product_type",
@@ -104,7 +113,7 @@ func operationOverlays() map[string]operationOverlay {
 	for id, overlay := range overlays {
 		var shortcuts []Arg
 		for _, arg := range overlay.Arguments {
-			if strings.Contains(arg.BodyPath, ".") || id == "payOrder" && arg.Name == "payment_source_token" {
+			if strings.Contains(arg.BodyPath, ".") || arg.Type == "line-quantity" || id == "payOrder" && arg.Name == "payment_source_token" {
 				switch id {
 				case "createPaymentLink":
 					if arg.Name == "product_type" {

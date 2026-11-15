@@ -2123,6 +2123,20 @@
     "audience": "buyer"
   },
   {
+    "name": "me.email-change-requests.get",
+    "operation_id": "getMeEmailChangeRequest",
+    "kind": "item",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
+    "name": "me.email-change-requests.list",
+    "operation_id": "listMeEmailChangeRequests",
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
     "name": "me.email-preferences.get",
     "operation_id": "getMeEmailPreferences",
     "kind": "singleton",

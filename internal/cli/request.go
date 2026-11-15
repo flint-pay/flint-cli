@@ -179,6 +179,14 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 				if arg.Repeat && !(arg.Nullable && value == "null") {
 					existing, _ := lookupPath(body, arg.BodyPath)
 					list, _ := existing.([]any)
+					if arg.Type == "line-quantity" {
+						id := converted.(map[string]any)["subscription_line_item_id"]
+						for _, item := range list {
+							if item.(map[string]any)["subscription_line_item_id"] == id {
+								return req, usageError("INVALID_ARGUMENT", "Each --line-item must select a distinct subscription line.", arg.Name)
+							}
+						}
+					}
 					list = append(list, converted)
 					if e := setBodyPath(body, arg.BodyPath, list); e != nil {
 						return req, usageError("CONFLICTING_ARGUMENTS", e.Error(), arg.Name)
@@ -458,6 +466,16 @@ func invalidInputJSON(raw []byte, err error, position int64) *CLIError {
 
 func convertValue(value, typ string) (any, error) {
 	switch typ {
+	case "line-quantity":
+		id, quantity, ok := strings.Cut(value, "=")
+		if !ok || id == "" {
+			return nil, fmt.Errorf("use sli_ID=QUANTITY")
+		}
+		n, err := strconv.ParseInt(quantity, 10, 64)
+		if err != nil || n < 1 || n > 9999 {
+			return nil, fmt.Errorf("quantity must be a whole number from 1 to 9999")
+		}
+		return map[string]any{"subscription_line_item_id": id, "quantity": n}, nil
 	case "integer":
 		n, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
