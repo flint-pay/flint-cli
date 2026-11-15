@@ -1677,7 +1677,8 @@ func exhaustiveRemoteInvocation(command *Command) []string {
 			argv = append(argv, argument.Flag, value)
 		}
 	}
-	argv = append(argv, "--output", "json", "--timeout", "2s")
+	// Allow cold schema initialization under race instrumentation. Timeout behavior has dedicated tests.
+	argv = append(argv, "--output", "json", "--timeout", "10s")
 	if command.CanonicalName == "api" {
 		argv = append(argv, "--confirm", "--idempotency-key", "saved-raw-action-1")
 	}
@@ -1809,6 +1810,14 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 				continue
 			}
 			for i := range values {
+				if argument.Type == "line-quantity" {
+					id, quantity, _ := strings.Cut(values[i], "=")
+					line, ok := items[i].(map[string]any)
+					if !ok || len(line) != 2 || line["subscription_line_item_id"] != id || fmt.Sprint(line["quantity"]) != quantity {
+						t.Errorf("line_items[%d] = %v, want subscription line %s with quantity %s", i, items[i], id, quantity)
+					}
+					continue
+				}
 				if fmt.Sprint(items[i]) != values[i] {
 					t.Errorf("body path %s[%d] = %v, want %s", argument.BodyPath, i, items[i], values[i])
 				}

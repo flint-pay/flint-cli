@@ -20,7 +20,7 @@ func discoveryField(t *testing.T, v schemaview.View, name string) map[string]any
 func TestSchemaViewRealVariants(t *testing.T) {
 	registry := NewRegistry()
 	for _, tc := range []struct{ name, discriminator, variant, required, absent string }{
-		{"orders.pay", "action", "setup", "setup_payment_source", "order_payment_attempt_id"},
+		{"orders.pay", "action", "resume", "order_payment_attempt_id", "setup_payment_source"},
 		{"inventory-adjustments.create", "reason", "correction", "note", ""},
 		{"checkout-sessions.create", "type", "order", "order_id", "quick_pay_item"},
 		{"products.create", "variant_mode", "simple", "default_variant", "options"},
