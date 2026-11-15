@@ -472,6 +472,8 @@ Local commands are operations reached through read or write, including `version`
 
 ## Migrating from 0.18.x
 
+0.20.0 removes subscription quantity multipliers and plan quantity options. Change seats with repeatable `--line-item sli_ID=QUANTITY` flags on `subscriptions change-quantity`; signup quantities use plan-line IDs in JSON input. See [the 0.20.0 migration notes](docs/migrating-0.20.md) before updating scripts or MCP calls.
+
 0.19.0 moves buyer credit notes from `me invoices credit-notes` to `me credit-notes`, renames five request version fields to name their parent resource, moves order payment-intent and return-child creation to their top-level collections, nests payment credentials, and updates quantity constraints and filter values. It adds custom-line `product_type` flags and customer email-change requests, invoice late-fee lists, remembered-buyer management, and subscription line-item lists. See [the 0.19.0 migration notes](docs/migrating-0.19.md) before updating scripts or MCP calls.
 
 ## Migrating from 0.17.x

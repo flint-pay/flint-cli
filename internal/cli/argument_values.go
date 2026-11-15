@@ -155,6 +155,8 @@ func argumentValueLabel(arg Arg) string {
 	switch {
 	case arg.IDPrefix != "":
 		return arg.IDPrefix + "ID"
+	case arg.Type == "line-quantity":
+		return "sli_ID=QUANTITY"
 	case arg.Type == "integer":
 		return "N"
 	case arg.Type == "number":

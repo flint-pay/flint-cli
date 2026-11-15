@@ -5,7 +5,7 @@ build:
 
 test:
 	npm ci --prefix e2e/receiver --ignore-scripts --no-audit --no-fund
-	go test -race ./...
+	go test -race -timeout 20m ./...
 
 contract: test
 	@report=$$(mktemp); trap 'rm -f "$$report"' EXIT; \

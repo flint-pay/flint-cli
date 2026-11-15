@@ -2595,12 +2595,30 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/me/email-change-requests",
+    "operation_id": "listMeEmailChangeRequests",
+    "classification": "resource",
+    "commands": [
+      "me.email-change-requests.list"
+    ]
+  },
+  {
     "method": "POST",
     "path": "/v1/me/email-change-requests",
     "operation_id": "createMeEmailChangeRequest",
     "classification": "resource",
     "commands": [
       "me.email-change-requests.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/email-change-requests/{email_change_request_id}",
+    "operation_id": "getMeEmailChangeRequest",
+    "classification": "resource",
+    "commands": [
+      "me.email-change-requests.get"
     ]
   },
   {

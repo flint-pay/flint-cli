@@ -683,6 +683,8 @@ Buyer session:
   flint me deletion-requests list                                   List the current buyer's deletion requests
   flint me email-change-requests confirm <email_change_request_id>  Confirm an email change
   flint me email-change-requests create                             Request an email change
+  flint me email-change-requests get <email_change_request_id>      Get an email change request
+  flint me email-change-requests list                               List pending email changes
   flint me email-preferences get                                    Get the current buyer's email preferences
   flint me email-preferences update                                 Update the current buyer's email preferences
   flint me fulfillment-events list                                  List the current buyer's fulfillment events

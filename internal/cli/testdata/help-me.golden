@@ -18,6 +18,8 @@ Commands:
   deletion-requests list                       List the current buyer's deletion requests (customer session secret) GET /v1/me/deletion-requests
   email-change-requests confirm <email_change_request_id> Confirm an email change (customer session secret) POST /v1/me/email-change-requests/{email_change_request_id}/confirm
   email-change-requests create                 Request an email change (customer session secret) POST /v1/me/email-change-requests
+  email-change-requests get <email_change_request_id> Get an email change request (customer session secret) GET /v1/me/email-change-requests/{email_change_request_id}
+  email-change-requests list                   List pending email changes (customer session secret) GET /v1/me/email-change-requests
   email-preferences get                        Get the current buyer's email preferences (customer session secret) GET /v1/me/email-preferences
   email-preferences update                     Update the current buyer's email preferences (customer session secret) PATCH /v1/me/email-preferences
   fulfillment-events list                      List the current buyer's fulfillment events (customer session secret) GET /v1/me/fulfillment-events

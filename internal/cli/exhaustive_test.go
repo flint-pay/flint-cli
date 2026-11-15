@@ -1677,7 +1677,8 @@ func exhaustiveRemoteInvocation(command *Command) []string {
 			argv = append(argv, argument.Flag, value)
 		}
 	}
-	argv = append(argv, "--output", "json", "--timeout", "2s")
+	// Allow cold schema initialization under race instrumentation. Timeout behavior has dedicated tests.
+	argv = append(argv, "--output", "json", "--timeout", "10s")
 	if command.CanonicalName == "api" {
 		argv = append(argv, "--confirm", "--idempotency-key", "saved-raw-action-1")
 	}
@@ -1809,6 +1810,14 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 				continue
 			}
 			for i := range values {
+				if argument.Type == "line-quantity" {
+					id, quantity, _ := strings.Cut(values[i], "=")
+					line, ok := items[i].(map[string]any)
+					if !ok || len(line) != 2 || line["subscription_line_item_id"] != id || fmt.Sprint(line["quantity"]) != quantity {
+						t.Errorf("line_items[%d] = %v, want subscription line %s with quantity %s", i, items[i], id, quantity)
+					}
+					continue
+				}
 				if fmt.Sprint(items[i]) != values[i] {
 					t.Errorf("body path %s[%d] = %v, want %s", argument.BodyPath, i, items[i], values[i])
 				}
@@ -1833,7 +1842,7 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 }
 
 func generatedBodyArgument(argument Arg) bool {
-	return argument.BodyPath != "" && !strings.Contains(argument.BodyPath, ".") && argument.Name != "payment_source_token"
+	return argument.BodyPath != "" && !strings.Contains(argument.BodyPath, ".") && argument.Name != "payment_source_token" && argument.Type != "line-quantity"
 }
 
 func exhaustiveArgumentValues(argument Arg) []string {
@@ -1913,6 +1922,8 @@ func exhaustiveArgumentValues(argument Arg) []string {
 		value = "2026-01-02T03:04:05Z"
 	case "created_before":
 		value = "2026-07-23T11:00:00Z"
+	case "line_item":
+		value = "sli_01KEZF7C00PPWVJ2N321V84ASA=137"
 	case "payment_source_token":
 		value = "pi_test=pm_card_visa"
 	case "confirmation_token":
@@ -1963,6 +1974,8 @@ func exhaustiveArgumentValues(argument Arg) []string {
 	}
 	second := value + "_second"
 	switch argument.Name {
+	case "line_item":
+		second = "sli_01KEZF7C00PPWVJ2N321V84ASB=2"
 	case "payment_source_token":
 		second = "pi_second=pm_card_mastercard"
 	case "payment_option":

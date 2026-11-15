@@ -66,7 +66,7 @@ func TestCommandNamesFollowPathRule(t *testing.T) {
 			}
 		}
 	}
-	if generated != 705 || excluded != 14 || len(registry.Commands) != 737 {
+	if generated != 707 || excluded != 14 || len(registry.Commands) != 739 {
 		t.Fatalf("generated=%d excluded=%d total=%d", generated, excluded, len(registry.Commands))
 	}
 	for _, command := range curatedCommandDefinitions() {
@@ -445,7 +445,7 @@ func TestNamingSuggestionsResolveAndNeverEcho(t *testing.T) {
 func TestBodyShortcutsAreNested(t *testing.T) {
 	for id, overlay := range publicOperationOverlays {
 		for _, arg := range overlay.Arguments {
-			if !strings.Contains(arg.BodyPath, ".") && !(id == "payOrder" && arg.Name == "payment_source_token") {
+			if !strings.Contains(arg.BodyPath, ".") && arg.Type != "line-quantity" && !(id == "payOrder" && arg.Name == "payment_source_token") {
 				t.Fatal(id, arg)
 			}
 		}
