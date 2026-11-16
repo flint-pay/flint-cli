@@ -56,7 +56,7 @@ func TestReportingTimezoneCacheAndOfflineFallback(t *testing.T) {
 			fmt.Fprint(w, `{"error":{"code":"INSUFFICIENT_SCOPE","message":"No profile read scope"}}`)
 			return
 		}
-		fmt.Fprintf(w, `{"data":{"reporting_timezone":%q}}`, zone)
+		fmt.Fprintf(w, `{"data":{"timezone":%q}}`, zone)
 	}))
 	defer server.Close()
 	app, _, _ := testApp(t, server.URL)
@@ -127,7 +127,7 @@ func TestReportingTimeRequestUsesMerchantZone(t *testing.T) {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 		case "/v1/merchant":
 			merchantCalls++
-			fmt.Fprint(w, `{"data":{"reporting_timezone":"America/New_York"}}`)
+			fmt.Fprint(w, `{"data":{"timezone":"America/New_York"}}`)
 		case "/v1/customers":
 			filters = append(filters, r.URL.Query().Get("created_after"))
 			fmt.Fprint(w, `{"data":[],"next_page_token":""}`)
@@ -145,5 +145,15 @@ func TestReportingTimeRequestUsesMerchantZone(t *testing.T) {
 	}
 	if merchantCalls != 1 || len(filters) != 2 || filters[0] != "2026-03-08T05:00:00Z" || filters[1] != filters[0] || !strings.Contains(stderr.String(), "America/New_York") {
 		t.Fatalf("merchant calls %d filters %v notes %s", merchantCalls, filters, stderr)
+	}
+}
+
+func TestReportingTimezoneMissingProfileTimezone(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, `{"data":{"timezone":null}}`) }))
+	defer server.Close()
+	app, _, _ := testApp(t, server.URL)
+	loc, note := app.reportingTimezone(context.Background(), defaultOptions(), ResolvedConfig{}, "example", server.URL)
+	if loc != time.UTC || !strings.Contains(note, "account has no timezone") || strings.Contains(note, "scope") {
+		t.Fatalf("%v %s", loc, note)
 	}
 }

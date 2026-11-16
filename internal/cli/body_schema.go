@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/flint-pay/flint-cli/internal/schemaview"
+
 	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/santhosh-tekuri/jsonschema/v6/kind"
 )
@@ -36,6 +38,24 @@ func requestBodyValidator(c *Command) (*bodyValidator, *CLIError) {
 	invalid := func(err error) *CLIError {
 		return cliError(ExitUsage, errorTypeInternal, "SCHEMA_SNAPSHOT_INVALID", "Request body schema for "+c.CanonicalName+" is invalid: "+err.Error())
 	}
+	// Compile the documented attribute matrix into local constraints, so CLI
+	// and MCP dry runs reject names the API cannot evaluate.
+	walkJSONSchemas(schema, func(node map[string]any) {
+		matrix, ok := node["x-flint-rule-attributes"].([]any)
+		if !ok {
+			return
+		}
+		names := []string{}
+		for _, raw := range matrix {
+			row, _ := raw.(map[string]any)
+			if name, ok := row["attribute"].(string); ok && name != "metadata.<key>" {
+				names = append(names, name)
+			}
+		}
+		if len(names) > 0 {
+			node["anyOf"] = []any{map[string]any{"enum": names}, map[string]any{"pattern": `^metadata\..+$`}}
+		}
+	})
 	raw, err := json.Marshal(schema)
 	if err != nil {
 		return nil, invalid(err)
@@ -152,7 +172,7 @@ func validateRequestBody(c *Command, label string, body map[string]any) ([]map[s
 	reported, seen := map[any]bool{}, map[string]bool{}
 	var schemaProblems []map[string]any
 	if validationErr != nil {
-		schemaProblems = bodyViolations(validationErr, v.declared)
+		schemaProblems = bodyViolations(validationErr, v.declared, mcpInputTranslator{document: v.document, instance: instance})
 	}
 	for _, violation := range schemaProblems {
 		if key := fmt.Sprint(violation["path"], "\x00", violation["message"]); !seen[key] {
@@ -188,7 +208,7 @@ func validateRequestBody(c *Command, label string, body map[string]any) ([]map[s
 	return nil, invalid
 }
 
-func bodyViolations(e *jsonschema.ValidationError, declared []string) []map[string]any {
+func bodyViolations(e *jsonschema.ValidationError, declared []string, translator mcpInputTranslator) []map[string]any {
 	switch k := e.ErrorKind.(type) {
 	case *kind.Required:
 		out := make([]map[string]any, 0, len(k.Missing))
@@ -210,10 +230,25 @@ func bodyViolations(e *jsonschema.ValidationError, declared []string) []map[stri
 		}
 		return out
 	case *kind.OneOf, *kind.AnyOf:
+		node := translator.schemaAt(e.SchemaURL)
+		if _, anyOf := e.ErrorKind.(*kind.AnyOf); anyOf && node["oneOf"] != nil {
+			node = deepCopyMap(node)
+			delete(node, "oneOf")
+			delete(node, "discriminator")
+		}
+		name, labels, _, _ := mcpInputUnionMetadata(node, schemaview.New(translator.document))
+		if object, ok := mcpInputValue(translator.instance, e.InstanceLocation).(map[string]any); ok && name != "" {
+			tag, _ := object[name].(string)
+			for i, values := range labels {
+				if containsString(values, tag) && i < len(e.Causes) {
+					return bodyViolations(e.Causes[i], declared, translator)
+				}
+			}
+		}
 		// Report the closest alternative instead of every branch's failures.
 		var best []map[string]any
 		for _, cause := range e.Causes {
-			candidate := bodyViolations(cause, declared)
+			candidate := bodyViolations(cause, declared, translator)
 			if best == nil || len(candidate) < len(best) {
 				best = candidate
 			}
@@ -225,7 +260,7 @@ func bodyViolations(e *jsonschema.ValidationError, declared []string) []map[stri
 	if len(e.Causes) > 0 {
 		var out []map[string]any
 		for _, cause := range e.Causes {
-			out = append(out, bodyViolations(cause, declared)...)
+			out = append(out, bodyViolations(cause, declared, translator)...)
 		}
 		return out
 	}

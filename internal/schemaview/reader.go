@@ -208,7 +208,7 @@ func (r *Reader) resolve(schema map[string]any, variant string, seen map[string]
 		delete(result.Schema, key)
 	}
 	for key := range result.Schema {
-		if strings.HasPrefix(key, "x-") {
+		if strings.HasPrefix(key, "x-") && key != "x-flint-rule-attributes" {
 			delete(result.Schema, key)
 		}
 	}

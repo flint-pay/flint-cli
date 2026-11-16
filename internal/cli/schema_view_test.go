@@ -135,3 +135,21 @@ func TestSchemaViewDescribeBudgets(t *testing.T) {
 		t.Fatalf("only %d commands checked", operations)
 	}
 }
+
+func TestPromotionAttributeDiscoveryReturnsFullMatrix(t *testing.T) {
+	cmd, _ := NewRegistry().ByName("promotions.create")
+	reader, schema, e := commandDiscoverySchema(cmd, true)
+	if e != nil {
+		t.Fatal(e)
+	}
+	view, err := reader.Describe(schema, schemaview.Options{Path: "eligibility_rules.all.attribute"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	field := discoveryField(t, view, "attribute")
+	attrs, _ := field["x-flint-rule-attributes"].([]any)
+	description, _ := field["description"].(string)
+	if len(attrs) < 20 || len(description) < 1200 {
+		t.Fatalf("truncated discovery: %#v", field)
+	}
+}

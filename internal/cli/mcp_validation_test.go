@@ -257,3 +257,14 @@ func TestMCPInputValidationLegacyWarningPathCollision(t *testing.T) {
 		t.Fatalf("ambiguous legacy path must not reject the declared nested field: %#v", got)
 	}
 }
+
+func TestMCPPromotionDryRunRejectsUnknownAttribute(t *testing.T) {
+	cmd, _ := NewRegistry().ByName("promotions.create")
+	body := minimalRequestBody(t, cmd)
+	body["eligibility_rules"] = map[string]any{"all": []any{map[string]any{"attribute": "order.quantity", "operator": "gte", "values": []any{2}}}}
+	_, e := mcpValidateInputs(cmd, opindex.Entry{ID: "promotions.create", Kind: "write", Idempotency: "required"}, body, map[string]any{"dry_run": true, "idempotency_key": "example"}, mcpPolicy{})
+	details := mcpValidationDetails(t, e)
+	if details[0]["param"] != "eligibility_rules.all[0].attribute" {
+		t.Fatalf("wrong attribute error: %#v", details)
+	}
+}

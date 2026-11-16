@@ -83,7 +83,7 @@ type reportingTimezoneCache struct {
 // Store only the public timezone and a timestamp, alongside the auth-context
 // cache. Hash the credential and selected context so profiles cannot cross over.
 func (a *App) reportingTimezone(ctx context.Context, opts Options, resolved ResolvedConfig, key, baseURL string) (*time.Location, string) {
-	fallback := "Reporting timezone unavailable; using UTC (requires merchants.profile.read, or a cached timezone for offline dry runs)."
+	fallback := "Merchant timezone unavailable; using UTC. Calendar filters need access to the merchant profile or a cached timezone for offline dry runs."
 	cachePath := ""
 	if dir, err := a.configDirectory(); err == nil && key != "" {
 		digest := sha256.Sum256([]byte(baseURL + "\x00" + key + "\x00" + resolved.ContextID + "\x00" + resolved.MerchantID + "\x00" + resolved.SandboxID))
@@ -108,13 +108,13 @@ func (a *App) reportingTimezone(ctx context.Context, opts Options, resolved Reso
 	if err != nil {
 		return time.UTC, fallback
 	}
-	zone, ok := lookupPath(response.Value, "data.reporting_timezone")
+	zone, ok := lookupPath(response.Value, "data.timezone")
 	if !ok {
-		return time.UTC, fallback
+		return time.UTC, "Your account has no timezone; using UTC. Set it with flint merchant update --timezone IANA_ZONE using a live context, or in the Dashboard."
 	}
 	name, ok := zone.(string)
 	if !ok || name == "" {
-		return time.UTC, fallback
+		return time.UTC, "Your account has no timezone; using UTC. Set it with flint merchant update --timezone IANA_ZONE using a live context, or in the Dashboard."
 	}
 	location, loadErr := time.LoadLocation(name)
 	if loadErr != nil {
