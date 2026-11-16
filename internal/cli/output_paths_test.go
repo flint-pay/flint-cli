@@ -95,3 +95,16 @@ func TestOutputPathsUnknownAndRootCodes(t *testing.T) {
 		}
 	}
 }
+
+// Keep the argv used by the 0.14.x upgrader working so it can install new releases.
+func TestVersionLegacyUpgradeVerificationArgv(t *testing.T) {
+	for _, field := range []string{"data.cli_version", "cli_version"} {
+		t.Run(field, func(t *testing.T) {
+			app, out, stderr := testApp(t, "")
+			app.Info.Version = "0.20.1"
+			if exit := app.Run([]string{"version", "--field", field, "--color", "never"}); exit != ExitOK || out.String() != "0.20.1\n" || stderr.Len() != 0 {
+				t.Fatalf("exit=%d stdout=%q stderr=%q", exit, out, stderr)
+			}
+		})
+	}
+}

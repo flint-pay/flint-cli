@@ -164,6 +164,20 @@ func TestStandaloneUpgradeVersionMismatchPreservesBinary(t *testing.T) {
 	if upgradeErr == nil || upgradeErr.Code != "UPGRADE_VERIFICATION_FAILED" {
 		t.Fatalf("error=%v", upgradeErr)
 	}
+	for _, output := range []string{"human", "json"} {
+		_, stdout, stderr := testApp(t, "")
+		app.Stdout, app.Stderr = stdout, stderr
+		opts := defaultOptions()
+		opts.Output = output
+		app.writeError(upgradeErr, opts)
+		got := stdout.String() + stderr.String()
+		if !strings.Contains(got, "curl -fsSL https://raw.githubusercontent.com/flint-pay/flint-cli/main/scripts/install.sh") || strings.Contains(got, "downloaded Flint CLI binary did not report") {
+			t.Fatalf("%s missing manual recovery guidance: %s", output, got)
+		}
+		if output == "human" && !strings.Contains(got, "Next: Install manually:") {
+			t.Fatalf("missing Next line: %s", got)
+		}
+	}
 	got, err := os.ReadFile(executable)
 	if err != nil {
 		t.Fatal(err)
