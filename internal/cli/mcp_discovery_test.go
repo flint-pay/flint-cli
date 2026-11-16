@@ -336,3 +336,48 @@ func TestMCPDiscoveryCollectedTaxSearch(t *testing.T) {
 		})
 	}
 }
+
+func TestMCPDiscoveryBookkeepingSearch(t *testing.T) {
+	app := discoveryFixture(t)
+	policy := app.mcpPolicy(defaultOptions())
+	for _, tc := range []struct {
+		query, operation string
+		top              int
+	}{
+		{"what was in my bank deposit", "payouts.list", 1},
+		{"what was in my bank deposit", "balance-transactions.list", 3},
+		{"fees I paid this month", "balance-transactions.list", 1},
+		{"fees I paid this month", "merchant-billing-entries.list", 3},
+		{"chargeback fees", "balance-transactions.list", 1},
+		{"chargeback fees", "disputes.list", 3},
+		{"gift card liability", "reports.create", 1},
+		{"deposit", "payouts.list", 1},
+		{"fees", "balance-transactions.list", 1},
+		{"chargeback", "disputes.list", 1},
+		{"liability", "reports.create", 1},
+		{"reconcile", "balance-transactions.list", 1},
+		{"close the month", "reports.create", 1},
+		{"processing fees", "balance-transactions.list", 1},
+		{"processing fees", "payment-intents.get", 3},
+		{"bank deposit details", "payouts.list", 1},
+		{"platform fees", "platform-fees.list", 1},
+		{"cancel payout", "payouts.cancel", 1},
+		{"accept chargeback", "disputes.accept", 1},
+	} {
+		t.Run(tc.query+"/"+tc.operation, func(t *testing.T) {
+			value := discoveryData(t, app, policy, "flint_search", map[string]any{"query": tc.query})
+			ids := []string{}
+			found := false
+			for i, result := range value["results"].([]map[string]any) {
+				id, _ := result["operation"].(string)
+				ids = append(ids, id)
+				if i < tc.top && id == tc.operation {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("want %s in top %d; got %v", tc.operation, tc.top, ids)
+			}
+		})
+	}
+}
