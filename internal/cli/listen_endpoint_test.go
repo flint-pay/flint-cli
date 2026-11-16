@@ -517,3 +517,36 @@ func TestListenExportedOAuthTokenChecksEnvironment(t *testing.T) {
 		t.Fatalf("exit=%d calls=%v %s", code, calls, out)
 	}
 }
+
+func TestListenOAuthSandboxContextRecoversAfterValidationOutage(t *testing.T) {
+	app, out, _, state, stored := newContextTestApp(t)
+	if code := app.Run([]string{"auth", "status", "--context", "ctx_live", "--live", "--output", "json"}); code != ExitOK {
+		t.Fatalf("warm live context: %d %s", code, out)
+	}
+	cmd, opts, _, e := parseInvocation(app.Registry, []string{"listen", "--context", "ctx_a", "--forward-to", "http://localhost/hook"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	resolved, _, err := app.resolveConfig(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state.mu.Lock()
+	state.outage = true
+	state.mu.Unlock()
+	_, _, _, e = app.authenticateCommand(context.Background(), cmd, opts, resolved)
+	if e == nil || e.Code != "OAUTH_CONTEXT_UNAVAILABLE" {
+		t.Fatalf("outage error=%v", e)
+	}
+	saved, e := decodeOAuthCredential(stored())
+	if e != nil || !saved.PendingValidation || saved.ContextID != "ctx_a" || saved.Auth.ContextID != "ctx_live" {
+		t.Fatalf("expected sandbox token pending validation against cached live identity: %+v err=%v", saved.Auth, e)
+	}
+	state.mu.Lock()
+	state.outage = false
+	state.mu.Unlock()
+	_, _, envelope, e := app.authenticateCommand(context.Background(), cmd, opts, resolved)
+	if e != nil || envelope.Data.Environment != "sandbox" || envelope.Data.ContextID != "ctx_a" || state.refreshes != 2 {
+		t.Fatalf("auth=%+v err=%v refreshes=%d", envelope.Data, e, state.refreshes)
+	}
+}

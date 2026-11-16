@@ -273,7 +273,9 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 		}
 		if listenForwarding(command, opts) {
 			saved, e := decodeOAuthCredential(key)
-			if e == nil && normalizeEnvironment(saved.Auth.Environment) == "live" && (resolved.ContextID == "" || resolved.ContextID == saved.ContextID) {
+			// A rotated token can retain the previous context's auth until validation succeeds.
+			cachedContextMatches := saved.Version != 2 || saved.Auth.ContextID == saved.ContextID
+			if e == nil && cachedContextMatches && normalizeEnvironment(saved.Auth.Environment) == "live" && (resolved.ContextID == "" || resolved.ContextID == saved.ContextID) {
 				return "", "", envelope, listenTestModeRequired()
 			}
 		}
