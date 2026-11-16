@@ -114,16 +114,17 @@ func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry,
 	if canRead && opts.DryRunClient() {
 		lookupOpts := opts
 		lookupOpts.DryRun = ""
-		lookupOpts.Live = true // the server's allow-live policy is checked above
 		command, _ := a.Registry.ByName("auth.status")
 		readKey, readBase, envelope, e := a.authenticateCommand(ctx, command, lookupOpts, resolved)
 		if e != nil {
 			canRead = false
 			note = "Amount lookup could not authenticate (" + e.Code + ")."
-		} else if e := validateResolvedCredentialIntent(envelope.Data, lookupOpts, resolved, ""); e != nil {
-			canRead = false
-			note = "Amount lookup refused (" + e.Code + "); correct the server's configured guards or credential."
 		} else {
+			lookupOpts.Live = normalizeEnvironment(envelope.Data.Environment) == "live"
+			if e := validateResolvedCredentialIntent(envelope.Data, lookupOpts, resolved, ""); e != nil {
+				canRead = false
+				note = "Amount lookup refused (" + e.Code + "); correct the server's configured guards or credential."
+			}
 			key, baseURL = readKey, readBase
 			if normalizeEnvironment(envelope.Data.Environment) == "live" && !a.mcpGate.policy.allowLive {
 				canRead = false

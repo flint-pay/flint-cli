@@ -93,3 +93,24 @@ func TestMCPAbsentWebhookDataIsNotFabricated(t *testing.T) {
 		t.Fatalf("got=%v warning=%s", got, warning)
 	}
 }
+
+func TestMCPMixedMappedAndIndexedArraySelection(t *testing.T) {
+	app, _, _ := testApp(t, "")
+	cmd := mustMCPTool(t, app, "orders.get")
+	input := map[string]any{"data": map[string]any{"line_items": []any{map[string]any{"name": "Vase", "quantity": 2}, map[string]any{"name": "Plate", "quantity": 1}}}}
+	for _, tc := range []struct {
+		fields  []string
+		want    []any
+		warning string
+	}{
+		{[]string{"line_items.name", "line_items.0.quantity"}, []any{map[string]any{"name": "Vase", "quantity": json.Number("2")}, map[string]any{"name": "Plate"}}, ""},
+		{[]string{"line_items.0.quantity", "line_items.name"}, []any{map[string]any{"name": "Vase", "quantity": json.Number("2")}, map[string]any{"name": "Plate"}}, ""},
+		{[]string{"line_items.name", "line_items.0"}, []any{map[string]any{"name": "Vase", "quantity": json.Number("2")}, map[string]any{"name": "Plate"}}, ""},
+		{[]string{"line_items.name", "line_items.9.quantity"}, []any{map[string]any{"name": "Vase"}, map[string]any{"name": "Plate"}}, "line_items.9.quantity"},
+	} {
+		got, warning, e := mcpProjectResult(context.Background(), cmd, input, Options{Select: tc.fields})
+		if e != nil || !reflect.DeepEqual(lookupPathValue(got, "data.line_items"), tc.want) || tc.warning == "" && warning != "" || !strings.Contains(warning, tc.warning) {
+			t.Fatalf("fields=%v got=%v warning=%s e=%v", tc.fields, got, warning, e)
+		}
+	}
+}
