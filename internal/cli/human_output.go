@@ -151,6 +151,9 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 		line := make([]string, len(columns))
 		for i, key := range columns {
 			v, _ := lookupPath(m, key)
+			if key == "buyer_contact.email" || key == "customer.email" || key == "customer_id" && cmd != nil && (cmd.OperationID == "listOrders" || cmd.OperationID == "listMeOrders") {
+				v, _ = firstStringAt(m, "buyer_contact.email", "customer.email", "customer_id")
+			}
 			if text, ok := humanMoney(v); ok {
 				line[i] = text
 			} else if key == "created_at" {
@@ -179,7 +182,7 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 		if key == "pricing_amounts.total_money" {
 			headers[i] = "Total"
 		}
-		if key == "buyer_contact.email" || key == "customer.email" {
+		if key == "buyer_contact.email" || key == "customer.email" || key == "customer_id" && cmd != nil && (cmd.OperationID == "listOrders" || cmd.OperationID == "listMeOrders") {
 			headers[i] = "Buyer"
 		}
 	}

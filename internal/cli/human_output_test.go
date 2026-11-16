@@ -88,11 +88,11 @@ func TestHumanListPrefersNestedResourceID(t *testing.T) {
 
 func TestHumanOrdersShowNumberPaymentTotalAndBuyer(t *testing.T) {
 	var out bytes.Buffer
-	rows := []any{map[string]any{"order_id": "ord_example", "order_number": "1010", "status": "closed", "payment_status": "paid", "pricing_amounts": map[string]any{"total_money": map[string]any{"amount": 3570, "currency": "USD"}}, "buyer_contact": map[string]any{"email": "buyer@example.test"}}}
+	rows := []any{map[string]any{"order_id": "ord_customer", "customer_id": "cus_fallback"}, map[string]any{"order_id": "ord_expanded", "customer": map[string]any{"email": "expanded@example.test"}}, map[string]any{"order_id": "ord_example", "order_number": "1010", "status": "closed", "payment_status": "paid", "pricing_amounts": map[string]any{"total_money": map[string]any{"amount": 3570, "currency": "USD"}}, "buyer_contact": map[string]any{"email": "buyer@example.test"}}}
 	if !renderResourceTable(&out, rows, &Command{CanonicalName: "orders.list", OperationID: "listOrders"}, time.Now()) {
 		t.Fatal("no table")
 	}
-	for _, want := range []string{"1010", "paid", "35.70 USD", "buyer@example.test"} {
+	for _, want := range []string{"1010", "paid", "35.70 USD", "buyer@example.test", "cus_fallback", "expanded@example.test"} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("missing %s: %s", want, &out)
 		}
