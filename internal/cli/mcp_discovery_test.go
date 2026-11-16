@@ -260,12 +260,12 @@ func TestMCPDiscoveryScopes(t *testing.T) {
 		t.Fatal("unknown scopes reported missing")
 	}
 	app.mcpAuth = &mcpAuthState{}
-	app.mcpAuth.store(AuthContext{Scopes: []string{}})
+	app.mcpAuth.store(AuthContext{AuthType: "api_key", Scopes: []string{}})
 	missing := discoveryData(t, app, policy, "flint_describe", map[string]any{"operation": "customers.list"})
 	if len(missing["missing_scopes"].([]string)) == 0 {
 		t.Fatal("known missing scope omitted")
 	}
-	app.mcpAuth.store(AuthContext{Scopes: []string{"customers.write"}})
+	app.mcpAuth.store(AuthContext{AuthType: "api_key", Scopes: []string{"customers.write"}})
 	held := discoveryData(t, app, policy, "flint_describe", map[string]any{"operation": "customers.list"})
 	if held["missing_scopes"] != nil {
 		t.Fatalf("implied scope not applied: %v", held)
