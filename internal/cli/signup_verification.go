@@ -27,6 +27,7 @@ type SignupChallenge struct {
 	Inputs            map[string][]string `json:"inputs,omitempty"`
 	VerificationKey   string              `json:"verification_key,omitempty"`
 	VerificationCode  string              `json:"verification_code,omitempty"`
+	Merchant          map[string]string   `json:"merchant,omitempty"`
 	SessionToken      string              `json:"onboarding_session_token,omitempty"`
 	SessionExpiresAt  time.Time           `json:"onboarding_session_expires_at,omitempty"`
 }
@@ -84,6 +85,11 @@ func (a *App) signupChallenge(reader *bufio.Reader, opts Options, profile string
 				return nil, usageError("SIGNUP_INPUT_MISMATCH", "--"+flag+" differs from saved signup progress. Start again without --verification-code to use new details.", flag)
 			}
 		}
+		for _, flag := range signupCreationProfileFlags {
+			if values, supplied := opts.Raw[flag]; supplied && strings.Join(values, "\x00") != strings.Join(saved.Inputs[flag], "\x00") {
+				return nil, usageError("SIGNUP_INPUT_MISMATCH", "--"+flag+" differs from saved signup progress. Start again without --verification-code to use new details.", flag)
+			}
+		}
 		return saved, nil
 	}
 	if lastSignupOption(opts, "verification-code") != "" && (lastSignupOption(opts, "email") == "" || lastSignupOption(opts, "first-name") == "" || lastSignupOption(opts, "last-name") == "") {
@@ -111,11 +117,28 @@ func (a *App) signupChallenge(reader *bufio.Reader, opts Options, profile string
 	if e != nil {
 		return nil, e
 	}
-	return a.startSignupChallenge(profile, &SignupChallenge{Email: email, FirstName: first, LastName: last, BaseURL: baseURL, Inputs: signupInputs(opts)}, saved, opts)
+	inputs := signupInputs(opts)
+	if _, supplied := opts.Raw["business-name"]; !supplied && !opts.NoInput && a.IsTTY() && lastSignupOption(opts, "email") == "" {
+		fmt.Fprint(a.Stderr, "Business name buyers see (Enter to skip): ")
+		value, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, usageError("INPUT_REQUIRED", "Could not read business name.", "business-name")
+		}
+		if value = strings.TrimSpace(value); value != "" {
+			inputs["business-name"] = []string{value}
+		}
+	}
+	return a.startSignupChallenge(profile, &SignupChallenge{Email: email, FirstName: first, LastName: last, BaseURL: baseURL, Inputs: inputs}, saved, opts)
 }
 
 func (a *App) startSignupChallenge(profile string, details, expected *SignupChallenge, opts Options) (*SignupChallenge, *CLIError) {
-	body, _ := json.Marshal(map[string]any{"email": details.Email, "first_name": details.FirstName, "last_name": details.LastName})
+	payload := map[string]any{"email": details.Email, "first_name": details.FirstName, "last_name": details.LastName}
+	for _, flag := range signupCreationProfileFlags {
+		if values, supplied := details.Inputs[flag]; supplied && len(values) > 0 {
+			payload[strings.ReplaceAll(flag, "-", "_")] = values[len(values)-1]
+		}
+	}
+	body, _ := json.Marshal(payload)
 	key, err := newIdempotencyKey()
 	if err != nil {
 		return nil, networkError("IDEMPOTENCY_KEY_GENERATION_FAILED", "Could not generate an idempotency key.", err)
@@ -134,7 +157,7 @@ func (a *App) startSignupChallenge(profile string, details, expected *SignupChal
 	}
 	pending.VerificationToken, pending.Attempts, pending.ExpiresAt = token, 0, time.Time{}
 	pending.VerificationKey, pending.VerificationCode = "", ""
-	pending.SessionToken, pending.SessionExpiresAt = "", time.Time{}
+	pending.SessionToken, pending.SessionExpiresAt, pending.Merchant = "", time.Time{}, nil
 	if expires, ok := firstStringAt(start.Value, "data.expires_at"); ok {
 		pending.ExpiresAt, err = time.Parse(time.RFC3339, expires)
 		if err != nil {
@@ -167,7 +190,7 @@ func (a *App) verifySignupChallenge(reader *bufio.Reader, opts Options, profile 
 			if !pending.SessionExpiresAt.IsZero() && !a.Now().Before(pending.SessionExpiresAt) {
 				return nil, configError("SIGNUP_SESSION_EXPIRED", "Your onboarding session has expired. Start again with flint signup without --verification-code.", nil)
 			}
-			return &apiResponse{Value: map[string]any{"data": map[string]any{"onboarding_session_token": pending.SessionToken}}}, nil
+			return signupSavedVerification(pending), nil
 		}
 		var verificationErr *CLIError
 		switch {
@@ -227,7 +250,9 @@ func (a *App) verifySignupChallenge(reader *bufio.Reader, opts Options, profile 
 }
 
 // Keep only onboarding inputs, never unrelated command flags or credentials.
-var signupInputFlags = []string{"country", "website-url", "support-email", "support-phone", "support-url", "requested-capability"}
+var signupCreationProfileFlags = []string{"business-name", "website-url", "support-email", "support-phone", "support-url"}
+
+var signupInputFlags = []string{"business-name", "country", "website-url", "support-email", "support-phone", "support-url", "requested-capability"}
 
 func signupInputs(opts Options) map[string][]string {
 	inputs := map[string][]string{}
@@ -299,7 +324,7 @@ func (a *App) verifySignupAttempt(profile string, pending *SignupChallenge, code
 			if !current.SessionExpiresAt.IsZero() && !a.Now().Before(current.SessionExpiresAt) {
 				return configError("SIGNUP_SESSION_EXPIRED", "Your onboarding session has expired. Start again with flint signup without --verification-code.", nil)
 			}
-			response = &apiResponse{Value: map[string]any{"data": map[string]any{"onboarding_session_token": current.SessionToken}}}
+			response = signupSavedVerification(current)
 			return nil
 		}
 		if current.VerificationKey == "" {
@@ -332,6 +357,7 @@ func (a *App) verifySignupAttempt(profile string, pending *SignupChallenge, code
 				return invalidResponseError("INVALID_SIGNUP_RESPONSE", "Flint did not return an onboarding session token.", nil)
 			}
 			current.SessionToken = token
+			current.Merchant = signupMerchantSummary(response.Value)
 			if expiry, ok := firstStringAt(response.Value, "data.onboarding_session_expires_at"); ok {
 				current.SessionExpiresAt, err = time.Parse(time.RFC3339, expiry)
 				if err != nil {
@@ -395,4 +421,23 @@ func signupAccountError(e *CLIError) *CLIError {
 		return &copy
 	}
 	return e
+}
+
+// Persist and publish only merchant profile facts, never verification credentials.
+func signupMerchantSummary(value any) map[string]string {
+	merchant := map[string]string{}
+	for _, field := range []string{"merchant_id", "business_name", "website_url", "support_email", "support_phone", "support_url"} {
+		if fact, ok := firstStringAt(value, "data.merchant."+field); ok {
+			merchant[field] = fact
+		}
+	}
+	return merchant
+}
+
+func signupSavedVerification(pending *SignupChallenge) *apiResponse {
+	merchant := map[string]any{}
+	for field, value := range pending.Merchant {
+		merchant[field] = value
+	}
+	return &apiResponse{Value: map[string]any{"data": map[string]any{"onboarding_session_token": pending.SessionToken, "merchant": merchant}}}
 }
