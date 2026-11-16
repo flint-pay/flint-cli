@@ -26,6 +26,20 @@ var (
 	}
 )
 
+// Merchant task vocabulary complements terse API resource names. Keep it local to
+// discovery: these are search terms, not command aliases or execution routing.
+var searchTasks = map[string][]string{
+	"return-resolutions.create":    {"exchange", "size exchange", "store credit", "replace returned item"},
+	"return-previews.create":       {"preview exchange", "preview store credit", "return eligibility"},
+	"returns.create":               {"return item", "start return"},
+	"refunds.create":               {"partial refund", "refund item", "refund line items", "refund shipping", "refund delivery charge"},
+	"return-dispositions.create":   {"restock", "restock returned item"},
+	"orders.close":                 {"cancel order"},
+	"orders.send-receipt":          {"resend receipt", "email receipt"},
+	"payment-intents.send-receipt": {"resend payment receipt", "email payment receipt"},
+	"gift-cards.get":               {"gift card balance"},
+}
+
 type searchField struct {
 	words  map[string]bool
 	weight float64
@@ -35,6 +49,7 @@ type searchDocument struct {
 	entry    Entry
 	fields   []searchField
 	segments [][]string
+	tasks    [][]string
 }
 
 // Search ranks the offline index, applying exposure and kind filters before the
@@ -157,7 +172,16 @@ func newSearchDocument(e Entry) searchDocument {
 	if e.ID == "auth.status" {
 		description = append(description, "whoami", "credential", "context")
 	}
+	var taskWords []string
+	if e.Type == "operation" {
+		for _, task := range searchTasks[e.ID] {
+			words := searchWords(task)
+			d.tasks = append(d.tasks, words)
+			taskWords = append(taskWords, words...)
+		}
+	}
 	d.fields = []searchField{
+		{wordSet(taskWords), 4},
 		{wordSet(last), 4}, {wordSet(nouns), 2.5}, {wordSet(verb), 3}, {wordSet(title), 1.5},
 		{wordSet(searchWords(searchCamel.ReplaceAllString(e.OperationID, "${1} ${2}"))), 1},
 		{wordSet(searchWords(searchParameter.ReplaceAllString(e.Path, ""))), 1}, {wordSet(description), 0.6},
@@ -186,6 +210,20 @@ func scoreSearchDocument(doc searchDocument, tokens []string, idf func(string) f
 			}
 		}
 	}
+	// A complete merchant task gets the same per-word bonus as a complete
+	// resource segment. Use the best task only so overlapping synonyms don't stack.
+	taskBonus := 0.0
+	for _, task := range doc.tasks {
+		all, bonus := len(task) > 0, 0.0
+		for _, word := range task {
+			all = all && queryWords[word]
+			bonus += 3 * idf(word)
+		}
+		if all {
+			taskBonus = math.Max(taskBonus, bonus)
+		}
+	}
+	total += taskBonus
 	matched := 0
 	for _, token := range tokens {
 		// Hyphenated domain synonyms contribute through resource segments,

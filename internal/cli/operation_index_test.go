@@ -68,7 +68,7 @@ func TestSearchGolden(t *testing.T) {
 		{"webhook deliveries", "webhook-deliveries.list", 1}, {"resend webhook", "webhook-deliveries.resend", 1}, {"rotate webhook secret", "webhook-endpoints.rotate-secret", 1}, {"delete webhook endpoint", "webhook-endpoints.delete", 1},
 		{"payment succeeded event", "payment_intent.succeeded", 2}, {"payment succeeded event", "invoice_payment_attempt.succeeded", 2},
 		{"payment intent succeeded event", "payment_intent.succeeded", 1}, {"invoice payment attempt succeeded event", "invoice_payment_attempt.succeeded", 1}, {"test card", "test-cards", 1}, {"who am i", "auth.status", 1}, {"timeline of a payment", "resource-timelines.get", 1}, {"reset sandbox", "sandboxes.reset", 1},
-		{"api request logs", "api-request-logs.list", 1}, {"gift card balance", "gift-cards.adjust-balance", 2}, {"discount code", "promotion-codes.list", 1},
+		{"api request logs", "api-request-logs.list", 1}, {"gift card balance", "gift-cards.get", 1}, {"discount code", "promotion-codes.list", 1},
 		{"forward webhooks to localhost", "listen", 1}, {"exit codes", "exit-codes", 1}, {"api schema for a command", "schema.input", 3}, {"POST /v1/refunds", "refunds.create", 1},
 	} {
 		t.Run(tc.q, func(t *testing.T) {

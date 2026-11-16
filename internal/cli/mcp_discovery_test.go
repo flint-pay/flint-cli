@@ -276,3 +276,47 @@ func TestMCPDiscoveryScopes(t *testing.T) {
 		t.Fatal("unclassified credential reported missing scopes")
 	}
 }
+
+func TestMCPDiscoveryMerchantTaskSearch(t *testing.T) {
+	app := discoveryFixture(t)
+	policy := app.mcpPolicy(defaultOptions())
+	for _, tc := range []struct {
+		query, operation string
+		top              int
+	}{
+		{"exchange", "return-resolutions.create", 1},
+		{"exchange", "return-previews.create", 3},
+		{"exchange a returned item for a different size", "return-resolutions.create", 1},
+		{"return", "returns.create", 3},
+		{"return an item", "returns.create", 3},
+		{"store credit", "return-resolutions.create", 1},
+		{"issue store credit for a return", "return-resolutions.create", 1},
+		{"refund one item", "refunds.create", 1},
+		{"partial refund", "refunds.create", 1},
+		{"refund specific line items with shipping", "refunds.create", 1},
+		{"restock", "return-dispositions.create", 1},
+		{"restock returned items", "return-dispositions.create", 1},
+		{"cancel order", "orders.close", 1},
+		{"refund shipping", "refunds.create", 1},
+		{"resend receipt", "orders.send-receipt", 1},
+		{"resend payment receipt", "payment-intents.send-receipt", 1},
+		{"gift card balance", "gift-cards.get", 1},
+		{"refund an order", "refunds.create", 1},
+	} {
+		t.Run(tc.query+"/"+tc.operation, func(t *testing.T) {
+			value := discoveryData(t, app, policy, "flint_search", map[string]any{"query": tc.query})
+			ids := []string{}
+			found := false
+			for i, result := range value["results"].([]map[string]any) {
+				id, _ := result["operation"].(string)
+				ids = append(ids, id)
+				if i < tc.top && id == tc.operation {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("want %s in top %d; got %v", tc.operation, tc.top, ids)
+			}
+		})
+	}
+}
