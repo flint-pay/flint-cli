@@ -301,6 +301,8 @@ func TestMCPDiscoveryMerchantTaskSearch(t *testing.T) {
 		{"resend receipt", "orders.send-receipt", 1},
 		{"resend payment receipt", "payment-intents.send-receipt", 1},
 		{"gift card balance", "gift-cards.get", 1},
+		{"adjust gift card balance", "gift-cards.adjust-balance", 1},
+		{"cancel payment for order", "orders.payment-attempts.cancel", 1},
 		{"refund an order", "refunds.create", 1},
 	} {
 		t.Run(tc.query+"/"+tc.operation, func(t *testing.T) {

@@ -46,10 +46,12 @@ type searchField struct {
 }
 
 type searchDocument struct {
-	entry    Entry
-	fields   []searchField
-	segments [][]string
-	tasks    [][]string
+	entry     Entry
+	fields    []searchField
+	segments  [][]string
+	tasks     [][]string
+	primary   map[string]bool
+	taskWords map[string]bool
 }
 
 // Search ranks the offline index, applying exposure and kind filters before the
@@ -68,6 +70,17 @@ func (ix *Index) Search(query string, filter Filter) ([]Hit, int) {
 			docs, df = buildSearchDocuments(ix.Entries)
 		}
 	}
+	// Resource and action words in canonical IDs express specific intent. Task
+	// synonyms may fill vocabulary gaps, but must not erase that intent.
+	var intent []string
+	for _, token := range tokens {
+		for _, doc := range docs {
+			if doc.primary[token] {
+				intent = append(intent, token)
+				break
+			}
+		}
+	}
 	idf := func(word string) float64 { return math.Log1p(float64(len(docs)) / float64(1+df[word])) }
 	type rankedHit struct {
 		Hit
@@ -83,7 +96,7 @@ func (ix *Index) Search(query string, filter Filter) ([]Hit, int) {
 		if filter.Kind != "" && (e.Type != "operation" || e.Kind != filter.Kind) {
 			continue
 		}
-		score, priority := scoreSearchDocument(doc, tokens, idf), 0
+		score, priority := scoreSearchDocument(doc, tokens, intent, idf), 0
 		if e.Type == "operation" && q != "" && (strings.ToLower(e.ID) == q || strings.HasPrefix(strings.ToLower(e.ID), q+".")) {
 			score, priority = 100, 1
 		}
@@ -138,7 +151,7 @@ func (ix *Index) Search(query string, filter Filter) ([]Hit, int) {
 }
 
 func newSearchDocument(e Entry) searchDocument {
-	d := searchDocument{entry: e}
+	d := searchDocument{entry: e, primary: wordSet(searchWords(e.ID))}
 	segments := strings.Split(e.ID, ".")
 	var nouns, last, verb []string
 	switch e.Type {
@@ -180,8 +193,8 @@ func newSearchDocument(e Entry) searchDocument {
 			taskWords = append(taskWords, words...)
 		}
 	}
+	d.taskWords = wordSet(taskWords)
 	d.fields = []searchField{
-		{wordSet(taskWords), 4},
 		{wordSet(last), 4}, {wordSet(nouns), 2.5}, {wordSet(verb), 3}, {wordSet(title), 1.5},
 		{wordSet(searchWords(searchCamel.ReplaceAllString(e.OperationID, "${1} ${2}"))), 1},
 		{wordSet(searchWords(searchParameter.ReplaceAllString(e.Path, ""))), 1}, {wordSet(description), 0.6},
@@ -189,7 +202,7 @@ func newSearchDocument(e Entry) searchDocument {
 	return d
 }
 
-func scoreSearchDocument(doc searchDocument, tokens []string, idf func(string) float64) float64 {
+func scoreSearchDocument(doc searchDocument, tokens, intent []string, idf func(string) float64) float64 {
 	queryWords := wordSet(tokens)
 	for _, token := range tokens {
 		for _, word := range strings.Split(token, "-") {
@@ -210,10 +223,20 @@ func scoreSearchDocument(doc searchDocument, tokens []string, idf func(string) f
 			}
 		}
 	}
+	useTasks := true
+	for _, word := range intent {
+		if !doc.primary[word] && !doc.taskWords[word] {
+			useTasks = false
+			break
+		}
+	}
 	// A complete merchant task gets the same per-word bonus as a complete
 	// resource segment. Use the best task only so overlapping synonyms don't stack.
 	taskBonus := 0.0
 	for _, task := range doc.tasks {
+		if !useTasks {
+			break
+		}
 		all, bonus := len(task) > 0, 0.0
 		for _, word := range task {
 			all = all && queryWords[word]
@@ -232,6 +255,9 @@ func scoreSearchDocument(doc searchDocument, tokens []string, idf func(string) f
 			continue
 		}
 		best := 0.0
+		if useTasks && doc.taskWords[token] {
+			best = 4
+		}
 		for _, field := range doc.fields {
 			if field.words[token] {
 				best = math.Max(best, field.weight)
@@ -358,7 +384,7 @@ func buildSearchDocuments(entries []Entry) ([]searchDocument, map[string]int) {
 	df := make(map[string]int)
 	for _, entry := range entries {
 		doc := newSearchDocument(entry)
-		seen := make(map[string]bool)
+		seen := wordSet(searchWords(strings.Join(searchTasks[entry.ID], " ")))
 		for _, field := range doc.fields {
 			for word := range field.words {
 				seen[word] = true
