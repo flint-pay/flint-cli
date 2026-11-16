@@ -123,9 +123,24 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 			money = append(money, key)
 		}
 	}
-	addFirst(statuses...)
-	addFirst(money...)
-	addFirst("name", "email")
+	if cmd != nil && (cmd.CanonicalName == "orders.list" || cmd.CanonicalName == "me.orders.list") {
+		for _, key := range []string{"pricing_amounts.total_money", "buyer_contact.email", "customer.email"} {
+			for _, row := range rows {
+				if value, ok := lookupPath(row, key); ok && value != nil {
+					available[key] = true
+				}
+			}
+		}
+		addFirst("order_number")
+		addFirst("payment_status")
+		addFirst("status")
+		addFirst("pricing_amounts.total_money", "total_money")
+		addFirst("buyer_contact.email", "customer.email", "customer_id")
+	} else {
+		addFirst(statuses...)
+		addFirst(money...)
+		addFirst("name", "email")
+	}
 	addFirst("created_at")
 	if len(columns) == 0 {
 		return false
@@ -135,7 +150,7 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 		m := row.(map[string]any)
 		line := make([]string, len(columns))
 		for i, key := range columns {
-			v := m[key]
+			v, _ := lookupPath(m, key)
 			if text, ok := humanMoney(v); ok {
 				line[i] = text
 			} else if key == "created_at" {
@@ -161,6 +176,12 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 	headers := make([]string, len(columns))
 	for i, key := range columns {
 		headers[i] = humanLabel(key)
+		if key == "pricing_amounts.total_money" {
+			headers[i] = "Total"
+		}
+		if key == "buyer_contact.email" || key == "customer.email" {
+			headers[i] = "Buyer"
+		}
 	}
 	renderTextTable(w, headers, cells)
 	return true

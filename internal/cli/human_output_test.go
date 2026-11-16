@@ -85,3 +85,16 @@ func TestHumanListPrefersNestedResourceID(t *testing.T) {
 		t.Fatalf("bad table: %q", out.String())
 	}
 }
+
+func TestHumanOrdersShowNumberPaymentTotalAndBuyer(t *testing.T) {
+	var out bytes.Buffer
+	rows := []any{map[string]any{"order_id": "ord_example", "order_number": "1010", "status": "closed", "payment_status": "paid", "pricing_amounts": map[string]any{"total_money": map[string]any{"amount": 3570, "currency": "USD"}}, "buyer_contact": map[string]any{"email": "buyer@example.test"}}}
+	if !renderResourceTable(&out, rows, &Command{CanonicalName: "orders.list"}, time.Now()) {
+		t.Fatal("no table")
+	}
+	for _, want := range []string{"1010", "paid", "35.70 USD", "buyer@example.test"} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("missing %s: %s", want, &out)
+		}
+	}
+}

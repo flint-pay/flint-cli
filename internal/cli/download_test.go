@@ -114,3 +114,29 @@ func TestDownloadDestinationErrorPreservesPermissionError(t *testing.T) {
 		t.Fatalf("error=%v", err)
 	}
 }
+
+func TestReportDownloadRedirectedStdoutWritesCSV(t *testing.T) {
+	csv := []byte("order_id,total\nord_example,3570\n")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/auth-context" {
+			fmt.Fprint(w, authContextJSON("sandbox"))
+			return
+		}
+		w.Header().Set("Content-Type", "text/csv")
+		_, _ = w.Write(csv)
+	}))
+	defer server.Close()
+	for _, output := range []string{"human", "json"} {
+		app, stdout, stderr := testApp(t, server.URL)
+		args := []string{"report-downloads", "get", "rdl_example", "--output", output}
+		if exit := app.Run(args); exit != ExitOK {
+			t.Fatalf("exit=%d stderr=%s stdout=%s", exit, stderr, stdout)
+		}
+		if output == "human" && !bytes.Equal(stdout.Bytes(), csv) {
+			t.Fatalf("redirected output: %s", stdout)
+		}
+		if output == "json" && !strings.Contains(stdout.String(), "content_base64") {
+			t.Fatalf("lost JSON envelope: %s", stdout)
+		}
+	}
+}

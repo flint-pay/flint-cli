@@ -474,3 +474,28 @@ func TestMCPAPIKeyCreateRequiresAccess(t *testing.T) {
 		t.Fatalf("restricted create = %v (%s)", body, mcpResultText(accepted))
 	}
 }
+
+func TestDeliveryMethodErrorsUseSelectedPickupBranch(t *testing.T) {
+	cmd, _ := NewRegistry().ByName("delivery-methods.create")
+	var body map[string]any
+	if err := json.Unmarshal([]byte(`{"name":"Pick up","type":"pickup","configuration":{"origin":{"type":"fixed_location","location_id":"loc_example"},"pricing":{"type":"fixed","fixed":{"currency_options":{"USD":{"amount":0,"currency":"USD"}}}}}}`), &body); err != nil {
+		t.Fatal(err)
+	}
+	_, e := validateRequestBody(cmd, cmd.Name, body)
+	if e == nil || strings.Contains(e.Message, "value must be 'shipment'") || !strings.Contains(e.Message, "configuration.public_details") {
+		t.Fatalf("wrong branch: %v", e)
+	}
+}
+
+func TestPromotionRuleAttributeValidation(t *testing.T) {
+	cmd, _ := NewRegistry().ByName("promotions.create")
+	for _, attr := range []string{"order.quantity", "line_item.quantity", "metadata.genre", "metadata."} {
+		body := minimalRequestBody(t, cmd)
+		body["eligibility_rules"] = map[string]any{"all": []any{map[string]any{"attribute": attr, "operator": "gte", "values": []any{2}}}}
+		_, e := validateRequestBody(cmd, cmd.Name, body)
+		valid := attr == "line_item.quantity" || attr == "metadata.genre"
+		if (e == nil) != valid {
+			t.Fatalf("%s: %v", attr, e)
+		}
+	}
+}

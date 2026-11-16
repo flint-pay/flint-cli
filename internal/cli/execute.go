@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/flint-pay/flint-cli/internal/opindex"
+	"golang.org/x/term"
 )
 
 type outputHandled struct{}
@@ -96,6 +97,14 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 	}
 	if values := opts.Raw["save-to"]; len(values) > 0 {
 		return a.saveDownload(resp.Value, values[len(values)-1])
+	}
+	// Human download commands act like file downloads when piped or redirected.
+	// Explicit JSON output and MCP keep their structured base64 envelope.
+	if cmd.ResponseMediaType != "" && cmd.ResponseMediaType != "application/json" && opts.Output == "human" && opts.Field == "" && opts.JQ == "" && len(opts.Select) == 0 && mcpSessionFrom(a.commandContext()) == nil {
+		file, ok := a.Stdout.(interface{ Fd() uintptr })
+		if !ok || !term.IsTerminal(int(file.Fd())) {
+			return a.saveDownload(resp.Value, "-")
+		}
 	}
 	return resp.Value, nil
 }
