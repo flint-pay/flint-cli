@@ -564,7 +564,7 @@ func mcpControlSchemas(c *Command) map[string]any {
 		controls["live"] = control(map[string]any{"type": "boolean"}, "Acknowledge a live credential.")
 	}
 	if !c.Local {
-		controls["merchant"] = control(map[string]any{"type": "string"}, "Require this mer_ merchant.")
+		controls["merchant"] = control(map[string]any{"type": "string"}, "Target this mer_ merchant with a partner app token; otherwise require the credential to belong to it. Cannot replace a merchant pinned in the server configuration.")
 		controls["profile"] = control(map[string]any{"type": "string"}, "CLI profile.")
 	}
 	if credentialed || c.CanonicalName == "help.search" || c.CanonicalName == "signup" {

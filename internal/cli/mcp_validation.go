@@ -158,6 +158,10 @@ func mcpControlProblems(cmd *Command, entry opindex.Entry, controls map[string]a
 	}
 	for _, name := range names {
 		switch name {
+		case "merchant":
+			if policy.credential.Partner && !mcpLocalOperation(cmd) {
+				properties[name] = map[string]any{"type": "string", "pattern": "^mer_"}
+			}
 		case "live":
 			if policy.allowLive {
 				properties[name] = map[string]any{"type": "boolean"}

@@ -341,6 +341,17 @@ func (a *App) resolveProjectConfig(opts Options, project ProjectConfig, projectP
 		}
 		sources["sandbox_guard"] = "project"
 	}
+	if env := strings.TrimSpace(os.Getenv("FLINT_SANDBOX")); env != "" {
+		sandboxGuard = env
+		sources["sandbox_guard"] = "environment"
+	}
+	if opts.Sandbox != "" {
+		sandboxGuard = opts.Sandbox
+		sources["sandbox_guard"] = "flag"
+	}
+	if sandboxGuard != "" && !strings.HasPrefix(sandboxGuard, "test_") {
+		return ResolvedConfig{}, cfg, fmt.Errorf("sandbox must be a test_ ID")
+	}
 	contextID := p.ContextID
 	if contextID != "" {
 		sources["context"] = "profile"

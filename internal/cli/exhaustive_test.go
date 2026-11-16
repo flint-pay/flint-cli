@@ -420,6 +420,7 @@ func TestEveryParserFlagHasPositiveCase(t *testing.T) {
 		"live":             {"sandboxes", "list", "--live"},
 		"max-events":       {"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", "http://127.0.0.1:8080/webhooks", "--max-events", "1"},
 		"merchant":         {"version", "--merchant", "mer_test"},
+		"sandbox":          {"version", "--sandbox", "test_test"},
 		"no-input":         {"version", "--no-input"},
 		"open":             {"checkout-sessions", "create", "--open"},
 		"output":           {"version", "--output", "json"},

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -259,12 +260,12 @@ func TestMCPDiscoveryScopes(t *testing.T) {
 		t.Fatal("unknown scopes reported missing")
 	}
 	app.mcpAuth = &mcpAuthState{}
-	app.mcpAuth.store(AuthContext{Scopes: []string{}})
+	app.mcpAuth.store(AuthContext{AuthType: "api_key", Scopes: []string{}})
 	missing := discoveryData(t, app, policy, "flint_describe", map[string]any{"operation": "customers.list"})
 	if len(missing["missing_scopes"].([]string)) == 0 {
 		t.Fatal("known missing scope omitted")
 	}
-	app.mcpAuth.store(AuthContext{Scopes: []string{"customers.write"}})
+	app.mcpAuth.store(AuthContext{AuthType: "api_key", Scopes: []string{"customers.write"}})
 	held := discoveryData(t, app, policy, "flint_describe", map[string]any{"operation": "customers.list"})
 	if held["missing_scopes"] != nil {
 		t.Fatalf("implied scope not applied: %v", held)
@@ -377,6 +378,52 @@ func TestMCPDiscoveryBookkeepingSearch(t *testing.T) {
 			}
 			if !found {
 				t.Errorf("want %s in top %d; got %v", tc.operation, tc.top, ids)
+			}
+		})
+	}
+}
+
+func TestMCPDiscoveryPrivacyTaskSearch(t *testing.T) {
+	app := discoveryFixture(t)
+	policy := app.mcpPolicy(defaultOptions())
+	for _, tc := range []struct{ query, operation string }{
+		{"delete customer", "customer-deletion-requests.create"},
+		{"erase customer data", "customer-deletion-requests.create"},
+		{"delete a customer's personal data (GDPR)", "customer-deletion-requests.create"},
+		{"gdpr", "customer-deletion-requests.create"},
+		{"gdpr erasure", "customer-deletion-requests.create"},
+		{"right to be forgotten", "customer-deletion-requests.create"},
+		{"ccpa", "customer-deletion-requests.create"},
+		{"approve customer deletion", "customer-deletion-requests.resolve"},
+		{"data subject access request", "customers.get"},
+		{"export customer data", "customers.get"},
+		{"customer data export", "customers.get"},
+		{"data portability", "customers.get"},
+		{"export customer addresses", "customers.addresses.list"},
+		{"export customer orders", "orders.list"},
+		{"export customer payments", "payment-intents.list"},
+		{"change a customer's email address", "customers.email-change-requests.create"},
+		{"change customer email", "customers.email-change-requests.create"},
+		{"delete customer address", "customers.addresses.delete"},
+	} {
+		t.Run(tc.query, func(t *testing.T) {
+			value := discoveryData(t, app, policy, "flint_search", map[string]any{"query": tc.query})
+			results := value["results"].([]map[string]any)
+			if len(results) == 0 || results[0]["operation"] != tc.operation {
+				t.Fatalf("want %s first; got %v", tc.operation, results)
+			}
+			out, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+			app.Stdout, app.Stderr = out, stderr
+			if code := app.Run([]string{"help", "search", tc.query, "--output", "json"}); code != ExitOK {
+				t.Fatalf("help search: %d %s", code, stderr.String())
+			}
+			var response map[string]any
+			if err := json.Unmarshal(out.Bytes(), &response); err != nil {
+				t.Fatal(err)
+			}
+			cliResults := lookupPathValue(response, "data.results").([]any)
+			if len(cliResults) == 0 || cliResults[0].(map[string]any)["name"] != tc.operation {
+				t.Fatalf("CLI want %s first; got %v", tc.operation, cliResults)
 			}
 		})
 	}

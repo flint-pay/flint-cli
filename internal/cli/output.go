@@ -52,6 +52,14 @@ func (a *App) writeError(err *CLIError, opts Options) {
 		if err.Origin != "" {
 			body["cli"] = map[string]any{"origin": err.Origin}
 		}
+		if err.Guidance != "" {
+			meta, _ := body["cli"].(map[string]any)
+			if meta == nil {
+				meta = map[string]any{}
+			}
+			meta["guidance"] = err.Guidance
+			body["cli"] = meta
+		}
 		if err.HTTPStatus != 0 {
 			e["http_status"] = err.HTTPStatus
 		}
