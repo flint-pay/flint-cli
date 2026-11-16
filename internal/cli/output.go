@@ -443,6 +443,10 @@ func renderHuman(w io.Writer, value any, cmd *Command, now time.Time) *CLIError 
 	if data == nil {
 		data = value
 	}
+	if connection, ok := data.(map[string]any); ok && cmd != nil && cmd.OperationID == "getTaxConnection" {
+		renderTaxConnectionHuman(w, connection, now)
+		return nil
+	}
 	if rows, ok := data.([]any); ok && cmd != nil && (cmd.Kind == "collection" || strings.HasSuffix(cmd.CanonicalName, ".list")) && renderResourceTable(w, rows, cmd, now) {
 		return nil
 	}

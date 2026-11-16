@@ -98,3 +98,86 @@ func TestHumanOrdersShowNumberPaymentTotalAndBuyer(t *testing.T) {
 		}
 	}
 }
+
+func TestHumanTaxRegistrationsIdentifyJurisdictionAndDates(t *testing.T) {
+	rows := []any{
+		map[string]any{"tax_registration_id": "trg_us", "country": "US", "state": "NY", "status": "active", "registration_number_last4": "1234", "start_date": "2026-01-01", "end_date": "2026-12-31"},
+		map[string]any{"tax_registration_id": "trg_gb", "country": "GB", "state": nil, "status": "scheduled", "registration_number_last4": "5678", "start_date": "2027-01-01", "end_date": nil},
+	}
+	envelope := map[string]any{"data": rows}
+	before, _ := json.Marshal(envelope)
+	var out bytes.Buffer
+	if e := renderHuman(&out, envelope, &Command{CanonicalName: "tax-connection.registrations.list", OperationID: "listTaxRegistrations"}, time.Now()); e != nil {
+		t.Fatal(e)
+	}
+	for _, want := range []string{"Country", "State", "Registration number last4", "Start date", "End date", "US", "NY", "GB", "1234", "5678", "2026-01-01", "2026-12-31", "2027-01-01"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("missing %q: %s", want, &out)
+		}
+	}
+	if strings.Count(out.String(), "\n") != 3 || strings.Contains(out.String(), "<nil>") {
+		t.Fatalf("not a compact table: %s", &out)
+	}
+	after, _ := json.Marshal(envelope)
+	if !bytes.Equal(before, after) {
+		t.Fatal("rendering mutated JSON")
+	}
+}
+
+func TestHumanTaxConnectionLeadsWithHealthAndSummarizesCoverage(t *testing.T) {
+	coverage := []any{map[string]any{"country": "US", "category_scope": "all"}}
+	for _, country := range []string{"CA", "GB", "AU"} {
+		coverage = append(coverage, map[string]any{"country": country, "category_scope": "digital"})
+	}
+	for _, status := range []string{"active", "not_connected", "attention_required"} {
+		t.Run(status, func(t *testing.T) {
+			data := map[string]any{"status": status, "status_reason": "registration_required", "supported_actions": []any{"connect"}, "coverage": coverage, "legal_business_name": "Example"}
+			envelope := map[string]any{"data": data}
+			before, _ := json.Marshal(envelope)
+			var out bytes.Buffer
+			if e := renderHuman(&out, envelope, &Command{CanonicalName: "tax-connection.get", OperationID: "getTaxConnection"}, time.Now()); e != nil {
+				t.Fatal(e)
+			}
+			text := out.String()
+			last := -1
+			for _, want := range []string{"Status ", "Status reason", "Supported actions", "Coverage", "Legal business name"} {
+				at := strings.Index(text, want)
+				if at <= last {
+					t.Fatalf("fields out of order (%s): %s", want, text)
+				}
+				last = at
+			}
+			for _, want := range []string{status, "registration_required", "connect", "US: all; 3 countries: digital only"} {
+				if !strings.Contains(text, want) {
+					t.Errorf("missing %q: %s", want, text)
+				}
+			}
+			if strings.Contains(text, "Category scope") {
+				t.Fatalf("coverage not summarized: %s", text)
+			}
+			after, _ := json.Marshal(envelope)
+			if !bytes.Equal(before, after) {
+				t.Fatal("rendering mutated JSON")
+			}
+		})
+	}
+}
+
+func TestHumanTaxCoverageSummaryEdges(t *testing.T) {
+	for _, tc := range []struct {
+		value any
+		want  string
+		ok    bool
+	}{
+		{[]any{}, "(none)", true},
+		{[]any{map[string]any{"country": "CA", "category_scope": "digital"}}, "CA: digital only", true},
+		{[]any{map[string]any{"country": "US", "category_scope": "future_scope"}}, "US: future_scope", true},
+		{[]any{map[string]any{"country": "US"}}, "", false},
+		{nil, "", false},
+	} {
+		got, ok := taxCoverageSummary(tc.value)
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("%v: %q, %v; want %q, %v", tc.value, got, ok, tc.want, tc.ok)
+		}
+	}
+}
