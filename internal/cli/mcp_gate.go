@@ -128,6 +128,7 @@ func mcpDecideGate(policy mcpPolicy, call mcpGateInput) mcpGateDecision {
 // One gate belongs to one child invocation. It authorizes the request prepared
 // by that invocation, rather than executing a command again after approval.
 type mcpCallGate struct {
+	effect          map[string]any
 	entry           opindex.Entry
 	input           mcpGateInput
 	policy          mcpPolicy
@@ -210,6 +211,10 @@ func (g *mcpCallGate) prepared(ctx context.Context, a *App, cmd *Command, req pr
 			details := e.Details.(map[string]any)
 			details["command"], details["idempotency_key"] = command, req.IdempotencyKey
 			details["same_project"] = resolved.SandboxGuard != ""
+			if _, sensitive := displayRequestBody(req.BodyValue); sensitive {
+				details["input_required"] = true
+				e.Message += " Supply the original request JSON through stdin; admission codes are omitted from this command."
+			}
 		}
 		return e
 	}
@@ -246,8 +251,11 @@ func (g *mcpCallGate) failure(decision mcpGateDecision, message string) *CLIErro
 }
 
 func (g *mcpCallGate) ask(ctx context.Context, req preparedRequest) *CLIError {
-	effect := mcpPreparedEffect(g.entry, req)
-	prompt := "Approve this " + g.environment + " Flint operation?\n\n" + g.entry.ID + ": " + g.entry.Title
+	effect := g.effect
+	if effect == nil {
+		effect = mcpPreparedEffect(g.entry, req)
+	}
+	prompt := "Approve this " + g.environment + " Flint operation?\n\n" + g.entry.ID + ": " + fmt.Sprint(effect["summary"])
 	if g.merchant != "" {
 		prompt += "\nMerchant: " + g.merchant + " (" + g.environment + ")"
 	}
@@ -262,8 +270,8 @@ func (g *mcpCallGate) ask(ctx context.Context, req preparedRequest) *CLIError {
 	} else if g.entry.Sensitive {
 		prompt += "\nIt is sensitive: it moves money or affects buyers."
 	}
-	body := req.BodyValue
-	if body == nil {
+	body, _ := displayRequestBody(req.BodyValue)
+	if req.BodyValue == nil {
 		body = map[string]any{}
 	}
 	raw, _ := mcpCompactJSON(body)

@@ -22,7 +22,11 @@ func (a *App) mcpKnownEnvironment() string {
 }
 
 func mcpAgentAction(text string, call map[string]any) map[string]any {
-	return map[string]any{"actor": "agent", "text": text, "call": call}
+	displayCall, sensitive := displayRequestBody(call)
+	if sensitive && !strings.Contains(text, "Admission codes are redacted.") {
+		text += " Admission codes are redacted. Supply the original scanned code before retrying."
+	}
+	return map[string]any{"actor": "agent", "text": text, "call": displayCall}
 }
 func mcpUserAction(text string) map[string]any {
 	text = strings.TrimSpace(text)
@@ -157,6 +161,8 @@ func (a *App) mcpCredentialAction(cmd *Command, e *CLIError, opts Options, envir
 		code = value
 	}
 	switch code {
+	case "MERCHANT_GUARD_MISMATCH", "SANDBOX_GUARD_MISMATCH":
+		return mcpUserAction("check the intended merchant and sandbox, then correct this MCP server's --merchant or --sandbox startup flag, project .flint/config.json guard, saved profile guard, or configured credential to match that intended target. Restart the server after correcting it; do not remove a guard to bypass the mismatch.")
 	case "API_KEY_REQUIRED", "CREDENTIAL_LOOKUP_FAILED", "CREDENTIAL_FORMAT_INVALID":
 		return mcpUserAction("set FLINT_API_KEY or FLINT_PROFILE in this server's MCP configuration, or unlock its credential store, then restart the server.")
 	case "IDENTITY_VERIFICATION_REQUIRED":
@@ -472,6 +478,9 @@ func (a *App) mcpNextActions(cmd *Command, args map[string]any, opts Options, po
 		text := "run this command in an interactive terminal with the same credential this server uses and from the same project directory. The terminal will ask for confirmation."
 		if credentialFromEnvironment() != "" {
 			text += " The server's key is FLINT_API_KEY in the MCP client's env configuration."
+		}
+		if mcpErrorFact(e.Details, "input_required") == true {
+			text += " Supply the original request JSON through stdin; admission codes are omitted from the command."
 		}
 		action := mcpUserAction(text)
 		if command, ok := mcpErrorFact(e.Details, "command").(string); ok && command != "" {

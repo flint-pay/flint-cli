@@ -86,7 +86,13 @@ func (a *App) mcpDispatch(ctx context.Context, id any, tool string, input map[st
 			other = "flint_write"
 		}
 		e := usageError("OPERATION_NOT_AVAILABLE", "Use "+other+" for "+entry.ID+".", "operation")
-		e.Details = map[string]any{"reason": "wrong_tool", "call": map[string]any{"tool": other, "arguments": input}}
+		recoveryInput := maps.Clone(input)
+		recoveryInput["arguments"] = arguments
+		displayInput, sensitive := displayRequestBody(recoveryInput)
+		if sensitive {
+			e.Message += " Admission codes are redacted. Supply the original scanned code before retrying."
+		}
+		e.Details = map[string]any{"reason": "wrong_tool", "call": map[string]any{"tool": other, "arguments": displayInput}}
 		return fail(e)
 	}
 	names := mcpReadControls

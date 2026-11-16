@@ -84,13 +84,13 @@ func resourceOutputSchema(cmd *Command) (map[string]any, map[string]any) {
 
 // outputSchemaPath follows declared properties across response variants. Schema
 // objects with additionalProperties admit user-defined keys; closed objects don't.
-func outputSchemaPath(node map[string]any, defs map[string]any, parts []string, depth int) (map[string]any, bool, []string) {
+func outputSchemaPath(node map[string]any, defs map[string]any, parts []string, depth int, mapArrays ...bool) (map[string]any, bool, []string) {
 	if node == nil || depth > 64 {
 		return nil, false, nil
 	}
 	if ref, ok := node["$ref"].(string); ok {
 		target, _ := defs[strings.TrimPrefix(ref, "#/$defs/")].(map[string]any)
-		return outputSchemaPath(target, defs, parts, depth+1)
+		return outputSchemaPath(target, defs, parts, depth+1, mapArrays...)
 	}
 	if len(parts) == 0 {
 		return node, true, nil
@@ -100,7 +100,7 @@ func outputSchemaPath(node map[string]any, defs map[string]any, parts []string, 
 		branches, _ := node[keyword].([]any)
 		for _, raw := range branches {
 			branch, _ := raw.(map[string]any)
-			child, ok, candidates := outputSchemaPath(branch, defs, parts, depth+1)
+			child, ok, candidates := outputSchemaPath(branch, defs, parts, depth+1, mapArrays...)
 			if ok {
 				return child, true, nil
 			}
@@ -112,19 +112,22 @@ func outputSchemaPath(node map[string]any, defs map[string]any, parts []string, 
 	if items, ok := node["items"].(map[string]any); ok {
 		index, err := strconv.Atoi(parts[0])
 		if err != nil || index < 0 {
+			if len(mapArrays) > 0 && mapArrays[0] {
+				return outputSchemaPath(items, defs, parts, depth+1, mapArrays...)
+			}
 			return nil, false, []string{"0"}
 		}
-		return outputSchemaPath(items, defs, parts[1:], depth+1)
+		return outputSchemaPath(items, defs, parts[1:], depth+1, mapArrays...)
 	}
 	properties, _ := node["properties"].(map[string]any)
 	for name := range properties {
 		names[name] = true
 	}
 	if child, ok := properties[parts[0]].(map[string]any); ok {
-		return outputSchemaPath(child, defs, parts[1:], depth+1)
+		return outputSchemaPath(child, defs, parts[1:], depth+1, mapArrays...)
 	}
 	if extra, ok := node["additionalProperties"].(map[string]any); ok {
-		return outputSchemaPath(extra, defs, parts[1:], depth+1)
+		return outputSchemaPath(extra, defs, parts[1:], depth+1, mapArrays...)
 	}
 	if node["additionalProperties"] == true || len(node) == 0 || len(properties) == 0 && node["type"] == "object" && node["additionalProperties"] != false && node["allOf"] == nil && node["anyOf"] == nil && node["oneOf"] == nil {
 		return map[string]any{}, true, nil

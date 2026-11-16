@@ -86,7 +86,7 @@ const mcpDiscoveryDefinitions = `
         },
         "path": {
           "type": "string",
-          "description": "Dot path of a nested field to open, such as line_items or data.pricing_amounts."
+          "description": "Dot path of a nested field to open, such as line_items or pricing_amounts. Result paths start inside the resource."
         },
         "variant": {
           "type": "string",
@@ -404,8 +404,13 @@ func mcpDiscoverySummary(entry opindex.Entry, index *opindex.Index, scopes []str
 	if entry.Audience == "buyer" {
 		result["credential"] = "buyer"
 	}
+	result["permission_check"] = map[string]any{"status": "unknown"}
+	if known || entry.ScopeRequirement == nil {
+		result["permission_check"] = map[string]any{"status": "pass"}
+	}
 	if missing := index.MissingScopes(entry, scopes, known); len(missing) > 0 {
 		result["missing_scopes"] = missing
+		result["permission_check"] = map[string]any{"status": "fail"}
 	}
 	return result
 }
@@ -428,6 +433,13 @@ func (a *App) mcpDiscovery(tool string, args map[string]any, opts Options, polic
 	index, err := a.mcpOperationIndex(policy)
 	if err != nil {
 		return nil, mcpDiscoverySnapshotError(err)
+	}
+	if a.mcpAuth != nil && a.mcpAuth.ready != nil {
+		select {
+		case <-a.mcpAuth.ready:
+		case <-a.commandContext().Done():
+			return nil, mcpDiscoverySnapshotError(a.commandContext().Err())
+		}
 	}
 	scopes, known := a.mcpKnownScopes()
 	if policy.credential.Schemes == nil {
@@ -539,8 +551,13 @@ func (a *App) mcpDescribe(args map[string]any, policy mcpPolicy, index *opindex.
 	if entry.ScopeRequirement != nil {
 		result["scope_requirement"] = entry.ScopeRequirement
 	}
+	result["permission_check"] = map[string]any{"status": "unknown"}
+	if known || entry.ScopeRequirement == nil {
+		result["permission_check"] = map[string]any{"status": "pass"}
+	}
 	if missing := index.MissingScopes(entry, scopes, known); len(missing) > 0 {
 		result["missing_scopes"] = missing
+		result["permission_check"] = map[string]any{"status": "fail"}
 	}
 	if entry.Paginated {
 		result["pagination"] = "page_size (default 10 here, max 100), page_token, next_page_token"

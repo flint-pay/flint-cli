@@ -496,7 +496,7 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	if err := decodeJSONNumbers(trimmed, &result); err == nil {
 		if exit == ExitOK {
 			if transformOptions.DryRunClient() {
-				result = a.mcpDryRunResult(cmd, args, result)
+				result = a.mcpDryRunResult(cmd, gate.effect, result)
 			}
 			projected, warning, transformErr := mcpProjectResult(childCtx, cmd, result, transformOptions)
 			if transformErr != nil {

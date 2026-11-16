@@ -190,7 +190,7 @@ func (a *App) serveMCP(opts Options) int {
 	if err != nil {
 		return a.fail(mcpDiscoverySnapshotError(err), opts)
 	}
-	a.mcpAuth = &mcpAuthState{index: index}
+	a.mcpAuth = &mcpAuthState{index: index, ready: make(chan struct{})}
 	ctx, cancelInput := context.WithCancel(a.commandContext())
 	defer cancelInput()
 	reader := bufio.NewReaderSize(a.Stdin, 64<<10)
@@ -369,7 +369,7 @@ func (a *App) serveMCP(opts Options) int {
 						capabilities, _ := req.Params["capabilities"].(map[string]any)
 						session.configure(capabilities, protocolVersion)
 						workers.Add(1)
-						go func() { defer workers.Done(); a.mcpPrefetchAuth(ctx, opts) }()
+						go func() { defer workers.Done(); defer close(a.mcpAuth.ready); a.mcpPrefetchAuth(ctx, opts) }()
 					}
 				}
 			}
@@ -563,6 +563,7 @@ func rpcError(id any, code int, message string) map[string]any {
 
 // mcpAuthState is a connection-local snapshot. Discovery reads it without IO.
 type mcpAuthState struct {
+	ready chan struct{} // Discovery waits for the bounded startup grant lookup.
 	index *opindex.Index
 	mu    sync.RWMutex
 	auth  AuthContext

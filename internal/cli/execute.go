@@ -32,6 +32,11 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 		return nil, e
 	}
 	if a.mcpGate != nil {
+		call := a.mcpGate.input
+		call.Environment = a.mcpGate.environment
+		if call.DryRun || mcpDecideGate(a.mcpGate.policy, call).Action == mcpGateAsk {
+			a.mcpGate.effect = a.mcpResolvePreparedEffect(ctx, a.mcpGate.entry, req, opts, resolved, authContext, key, baseURL)
+		}
 		if e := a.mcpGate.prepared(ctx, a, cmd, req, resolved); e != nil {
 			return nil, e
 		}
@@ -119,7 +124,8 @@ func previewRequest(req preparedRequest, cmd *Command, authContext AuthContext, 
 	if req.IdempotencyKey != "" {
 		headers["Idempotency-Key"] = req.IdempotencyKey
 	}
-	data := map[string]any{"method": req.Method, "path": req.Path, "headers": headers, "body": req.BodyValue, "persistent_side_effects": false}
+	body, _ := displayRequestBody(req.BodyValue)
+	data := map[string]any{"method": req.Method, "path": req.Path, "headers": headers, "body": body, "persistent_side_effects": false}
 	if authContext.AuthType == "none" {
 		data["environment"] = authContext.Environment
 	}
