@@ -164,7 +164,7 @@ func (a *App) printTreeRootHelp(all bool) {
 	fmt.Fprintln(a.Stdout, "\nEnvironment:")
 	for _, line := range [][2]string{
 		{"FLINT_API_KEY", "API key; overrides saved credentials"}, {"FLINT_OUTPUT", "human, json, or ndjson (streams and lists)"}, {"FLINT_NO_INPUT", "1, true, yes, or on to disable prompts"},
-		{"FLINT_PROFILE", "Profile to use, like --profile"}, {"FLINT_MERCHANT", "Merchant guard, like --merchant"},
+		{"FLINT_PROFILE", "Profile to use, like --profile"}, {"FLINT_MERCHANT", "Partner target or merchant guard, like --merchant"}, {"FLINT_SANDBOX", "Partner sandbox target or sandbox guard, like --sandbox"},
 		{"FLINT_ACCESS_TOKEN", "Access token; takes precedence over FLINT_API_KEY"}, {"FLINT_WORKLOAD_IDENTITY_ID", "Workload identity; overrides saved login and contexts"},
 		{"FLINT_OIDC_SOURCE", "auto, none, token, token_file, github_actions, gitlab_ci, kubernetes, gcp, azure, aws"}, {"FLINT_OIDC_AUDIENCE", "OIDC audience; required Entra app ID URI for Azure, otherwise defaults to the API origin"},
 		{"FLINT_AZURE_CLIENT_ID", "User-assigned Azure managed identity client ID"},

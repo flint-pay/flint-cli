@@ -94,9 +94,29 @@ Environment credentials (`FLINT_API_KEY`, `FLINT_ACCESS_TOKEN`, or `FLINT_WORKLO
 
 Buyer session commands require `FLINT_ACCESS_TOKEN` with the buyer credential named in their help. For example, `flint me orders list` requires a customer session secret (`flint_cses_...`); merchant API keys, saved logins, and workload identities cannot call it. Create a customer session with a merchant credential using `flint customer-sessions create --input '{"customer_id":"CUSTOMER_ID"}' --field secret`, then set `FLINT_ACCESS_TOKEN` to its secret. Checkout-only commands require a checkout session access token (`ckat_v1.`).
 
-The CLI rejects known credential classes that a route cannot accept before credential lookup or requests, including client dry runs. Customer and checkout session credentials cannot call merchant-only commands. Unset `FLINT_ACCESS_TOKEN` to use your saved merchant login. Partner access tokens only call install-scoped operations. The API validates unknown access token formats.
+The CLI rejects known credential classes that a route cannot accept before credential lookup or requests, including client dry runs. Customer and checkout session credentials cannot call merchant-only commands. Unset `FLINT_ACCESS_TOKEN` to use your saved merchant login. Partner access tokens only call install-scoped operations. Select their connected merchant with `--merchant` or `FLINT_MERCHANT`. The API validates unknown access token formats.
 
 If `flint context list` reports that contexts are unavailable, your existing login remains usable and keeps its live-mode safeguards. Run `flint reauth` later to authorize multiple contexts.
+
+### Use the CLI as your partner app
+
+Set `FLINT_ACCESS_TOKEN` to a short-lived partner app token obtained by your backend with the app's client credential. Keep tokens out of shell history and logs. Select the connected merchant on each command:
+
+```sh
+flint orders list --merchant mer_123
+flint orders list --merchant mer_123 --sandbox test_123
+flint mcp serve --merchant mer_123 --sandbox test_123
+```
+
+With a partner app token, `--merchant` sends `Flint-Merchant-Id` on every API request. `FLINT_MERCHANT`, `flint config set merchant mer_123`, and a project's `.flint/config.json` `merchant_id` use the same selection. Flags override environment, project, and profile settings in that order. `--sandbox` or `FLINT_SANDBOX` sends `Flint-Sandbox-Id`; a project `sandbox_id` also applies. Only send a sandbox with a test-mode token. A merchant-bound token can omit the merchant; the API checks any explicit selection against its binding and grant. With API keys and other credentials, these settings remain guards against the credential's own context.
+
+An MCP server without a pinned merchant accepts a top-level `merchant` control on `flint_read` and `flint_write`, or on typed operation tools. For example:
+
+```json
+{"operation":"orders.list","merchant":"mer_123"}
+```
+
+A call cannot replace a merchant selected in the server's flags, environment, project, or profile. Start an unpinned server to work across connected merchants. Partner tokens keep their mode in Flint; the CLI treats it as unverified and requires confirmation for sensitive writes. MCP also requires user approval through elicitation unless the server permits agent confirmation with `--allow-destructive`. Dry-run headers and confirmation output identify the selected merchant. The API still checks the app's permissions and merchant grant.
 
 ### Workload identity and automation
 

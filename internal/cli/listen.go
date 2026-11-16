@@ -501,6 +501,7 @@ func (a *App) openListenStreamAttempt(ctx context.Context, baseURL, key, path, c
 	}
 	key = currentKey
 	req.Header.Set("Authorization", "Bearer "+key)
+	setPartnerTargetHeaders(req)
 	req.Header.Set("User-Agent", "flintpay-cli/"+a.Info.Version)
 	req.Header.Set("X-Flint-CLI-Version", a.Info.Version)
 	req.Header.Set("Flint-Version", apispec.APIVersion())
@@ -563,6 +564,7 @@ func (a *App) openListenStreamAttempt(ctx context.Context, baseURL, key, path, c
 		var value any
 		_ = json.Unmarshal(raw, &value)
 		apiErr := apiErrorFromResponse(&apiResponse{Status: resp.StatusCode, Headers: resp.Header.Clone(), Raw: raw, Value: value})
+		partnerMerchantGuidance(apiErr, key)
 		return nil, errorRetryable(apiErr), apiErr
 	}
 	mediaType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))

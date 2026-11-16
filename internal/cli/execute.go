@@ -26,6 +26,7 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 	if listenForwarding(cmd, opts) && (opts.Live || normalizeEnvironment(authContext.Environment) == "live") {
 		return nil, listenTestModeRequired()
 	}
+	ctx = withPartnerTarget(ctx, key, resolved)
 	ctx = context.WithValue(ctx, responseContractKey{}, cmd)
 	req, e := a.prepareRequest(ctx, cmd, opts, resolved, key, baseURL)
 	if e != nil {
@@ -123,6 +124,14 @@ func previewRequest(req preparedRequest, cmd *Command, authContext AuthContext, 
 	headers := map[string]any{}
 	if req.IdempotencyKey != "" {
 		headers["Idempotency-Key"] = req.IdempotencyKey
+	}
+	if authContext.AuthType == "session" && authContext.Environment == environmentUnverified {
+		if authContext.MerchantID != "" {
+			headers["Flint-Merchant-Id"] = authContext.MerchantID
+		}
+		if authContext.SandboxID != "" {
+			headers["Flint-Sandbox-Id"] = authContext.SandboxID
+		}
 	}
 	body, _ := displayRequestBody(req.BodyValue)
 	data := map[string]any{"method": req.Method, "path": req.Path, "headers": headers, "body": body, "persistent_side_effects": false}

@@ -227,6 +227,7 @@ func completionFlagArguments(cmd *Command) []Arg {
 	if !cmd.Local {
 		add("--live")
 		add("--merchant")
+		add("--sandbox")
 		add("--timeout")
 	}
 	if supportsContextSelection(cmd) {

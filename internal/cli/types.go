@@ -116,6 +116,7 @@ type Options struct {
 	Debug           bool
 	NoInput         bool
 	Live            bool
+	Sandbox         string
 	Merchant        string
 	ContextID       string
 	CredentialStore string
@@ -200,6 +201,7 @@ type CLIError struct {
 	Origin         string
 	Code           string
 	Message        string
+	Guidance       string // CLI guidance kept separate from the immutable API error.
 	Param          string
 	Details        any
 	RequestID      string

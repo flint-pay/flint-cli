@@ -609,6 +609,7 @@ func appendInheritedMCPOptions(argv []string, opts Options) []string {
 		{"profile", opts.Profile},
 		{"credential-store", opts.CredentialStore},
 		{"merchant", opts.Merchant},
+		{"sandbox", opts.Sandbox},
 		{"color", opts.Color},
 	} {
 		if len(opts.Raw[item.name]) > 0 && item.value != "" {

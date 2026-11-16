@@ -252,6 +252,7 @@ func (a *App) doAPIRequest(ctx context.Context, baseURL, key, method, path strin
 		if key != "" {
 			req.Header.Set("Authorization", "Bearer "+key)
 		}
+		setPartnerTargetHeaders(req)
 		req.Header.Set("User-Agent", "flintpay-cli/"+a.Info.Version)
 		req.Header.Set("X-Flint-CLI-Version", a.Info.Version)
 		if !versionProbe {
@@ -354,6 +355,7 @@ func (a *App) doAPIRequest(ctx context.Context, baseURL, key, method, path strin
 				return result, nil
 			}
 			e := apiErrorFromResponse(result)
+			partnerMerchantGuidance(e, key)
 			history.failure(fact, e, false)
 			if errorRetryable(e) && retryRequest(ctx, attempt, resp.Header.Get("Retry-After")) {
 				continue
@@ -450,6 +452,7 @@ func (a *App) doAPIRequest(ctx context.Context, baseURL, key, method, path strin
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			e := apiErrorFromResponse(result)
+			partnerMerchantGuidance(e, key)
 			e.Cause = decodeErr
 			history.requestID(fact, e.RequestID)
 			history.failure(fact, e, method != http.MethodGet && method != http.MethodHead && idempotencyKey != "" && apiOutcomeUnknown(e))

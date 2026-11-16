@@ -63,6 +63,10 @@ func mcpRemaining(total, refunded any) (map[string]any, bool) {
 // that prices or refundable balances cannot change before the write is accepted.
 func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry, req preparedRequest, opts Options, resolved ResolvedConfig, auth AuthContext, key, baseURL string) map[string]any {
 	effect := mcpPreparedEffect(entry, req)
+	if auth.MerchantID != "" {
+		effect["merchant_id"] = auth.MerchantID
+		effect["summary"] = fmt.Sprint(effect["summary"]) + "; merchant " + auth.MerchantID
+	}
 	if !mcpImplicitAmount(entry, req.BodyValue) {
 		return effect
 	}
@@ -249,6 +253,9 @@ func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry,
 	}
 	effect["amount_note"] = note
 	facts := []string{}
+	if auth.MerchantID != "" {
+		facts = append(facts, "merchant "+auth.MerchantID)
+	}
 	for _, m := range effect["amounts"].([]map[string]any) {
 		facts = append(facts, fmt.Sprint(m["display"]))
 	}

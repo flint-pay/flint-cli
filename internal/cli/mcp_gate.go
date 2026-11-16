@@ -21,7 +21,7 @@ func (a *App) mcpSelectionViolation(arguments map[string]any, parent Options) st
 	}
 	base, _, err := a.resolveConfig(parent)
 	if err != nil {
-		return "_flint.profile and _flint.merchant are not accepted because this MCP server's own Flint configuration does not resolve (" + err.Error() + "). Do not retry; ask the user to fix the server's configuration and restart it."
+		return "profile and merchant are not accepted because this MCP server's own Flint configuration does not resolve (" + err.Error() + "). Do not retry; ask the user to fix the server's configuration and restart it."
 	}
 	candidate := parent
 	if hasProfile {
@@ -35,7 +35,7 @@ func (a *App) mcpSelectionViolation(arguments map[string]any, parent Options) st
 		return "" // The command reports the invalid selection itself.
 	}
 	pinned := func(control, setting, value, source string) string {
-		return "_flint." + control + " is not accepted: this MCP server uses " + setting + " " + value + ", set by " + mcpSelectionSources[source] + ", and agents cannot replace it. Do not retry with a different value; omit _flint." + control + ". If the user wants another " + setting + ", they must restart the server with it."
+		return control + " is not accepted: this MCP server uses " + setting + " " + value + ", set by " + mcpSelectionSources[source] + ", and agents cannot replace it. Do not retry with a different value; omit " + control + ". If the user wants another " + setting + ", they must restart the server with it."
 	}
 	switch source := base.Sources["profile"]; {
 	case hasProfile && next.ProfileName != base.ProfileName && (source == "flag" || source == "environment" || source == "project"):
@@ -45,7 +45,7 @@ func (a *App) mcpSelectionViolation(arguments map[string]any, parent Options) st
 		if !hasMerchant {
 			control = "profile"
 		}
-		return pinned(control, "merchant guard", base.MerchantGuard, base.Sources["merchant_guard"])
+		return pinned(control, "merchant selection", base.MerchantGuard, base.Sources["merchant_guard"])
 	case base.ContextID != "" && next.ContextID != base.ContextID:
 		return pinned("profile", "context", base.ContextID, base.Sources["context"])
 	}
@@ -235,6 +235,9 @@ func (g *mcpCallGate) failure(decision mcpGateDecision, message string) *CLIErro
 		case "CONFIRMATION_NEEDS_USER":
 			message = "This live or unverified operation requires the user's approval. Ask the user to run the supplied terminal command."
 		}
+	}
+	if g.merchant != "" {
+		message += " Target merchant: " + g.merchant + "."
 	}
 	e := cliError(ExitConfirmation, errorTypeConfirmationRequired, decision.Code, message)
 	if decision.Code == "OPERATION_NOT_AVAILABLE" {

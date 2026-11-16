@@ -122,6 +122,9 @@ func (a *App) cliCommandFor(cmd *Command, req preparedRequest, resolved Resolved
 	if resolved.ContextID != "" {
 		flag("--context", resolved.ContextID)
 	}
+	if resolved.SandboxGuard != "" {
+		flag("--sandbox", resolved.SandboxGuard)
+	}
 	if resolved.MerchantGuard != "" {
 		flag("--merchant", resolved.MerchantGuard)
 	}

@@ -16,7 +16,7 @@ var boolFlags = map[string]bool{
 var globalFlags = map[string]bool{
 	"credential-store": true,
 	"output":           true, "quiet": true, "debug": true, "no-input": true, "live": true,
-	"context": true, "merchant": true, "profile": true, "color": true, "confirm": true, "dry-run": true,
+	"context": true, "sandbox": true, "merchant": true, "profile": true, "color": true, "confirm": true, "dry-run": true,
 	"idempotency-key": true, "jq": true, "select": true, "field": true, "expand": true,
 	"limit": true, "open": true, "page-size": true, "page-token": true, "all": true, "timeout": true,
 	"max-events": true, "for": true, "wait-for": true, "progress": true, "input": true,
@@ -209,6 +209,8 @@ func setOption(o *Options, key, value string) *CLIError {
 		o.NoInput = boolValue
 	case "live":
 		o.Live = boolValue
+	case "sandbox":
+		o.Sandbox = value
 	case "merchant":
 		o.Merchant = value
 	case "credential-store":
@@ -351,6 +353,7 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 		{"profile", o.Profile},
 		{"credential-store", o.CredentialStore},
 		{"merchant", o.Merchant},
+		{"sandbox", o.Sandbox},
 		{"dry-run", o.DryRun},
 		{"idempotency-key", o.IdempotencyKey},
 		{"field", o.Field},

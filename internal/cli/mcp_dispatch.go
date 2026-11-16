@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-var mcpReadControls = []string{"select", "all", "wait_for", "wait_seconds", "live"}
-var mcpWriteControls = []string{"idempotency_key", "confirm", "dry_run", "select", "live"}
+var mcpReadControls = []string{"select", "all", "wait_for", "wait_seconds", "live", "merchant"}
+var mcpWriteControls = []string{"idempotency_key", "confirm", "dry_run", "select", "live", "merchant"}
 
 func (a *App) mcpDispatch(ctx context.Context, id any, tool string, input map[string]any, opts Options, policy mcpPolicy, structured bool) map[string]any {
 	var errorCommand *Command
@@ -135,6 +135,9 @@ func (a *App) mcpDispatch(ctx context.Context, id any, tool string, input map[st
 		delete(controls, "idempotency_key")
 	}
 	internal["_flint"] = controls
+	if message := a.mcpSelectionViolation(internal, opts); message != "" {
+		return fail(usageError("MERCHANT_SELECTION_PINNED", message, "merchant"))
+	}
 	return rpcResult(id, a.runMCPTool(ctx, cmd, internal, opts, policy, structured))
 }
 

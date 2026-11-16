@@ -155,6 +155,9 @@ func (a *App) mcpProfileCommand(command string, opts Options) string {
 }
 
 func (a *App) mcpCredentialAction(cmd *Command, e *CLIError, opts Options, environment string) map[string]any {
+	if e.Guidance != "" {
+		return map[string]any{"actor": "agent", "text": "Pass merchant: <mer_id> on this call to select the connected merchant, or ask the user to set --merchant (or FLINT_MERCHANT) when starting the server."}
+	}
 	raw := mcpErrorObject(e)
 	code := e.Code
 	if value, _ := raw["code"].(string); value != "" {
@@ -429,8 +432,9 @@ func (a *App) mcpRecoveryActions(cmd *Command, args map[string]any, policy mcpPo
 	return actions
 }
 
-func (a *App) mcpNextActions(cmd *Command, args map[string]any, opts Options, policy mcpPolicy, e *CLIError, environment string) []map[string]any {
-	actions := a.mcpAPIActions(e, policy, environment)
+func (a *App) mcpNextActions(cmd *Command, args map[string]any, opts Options, policy mcpPolicy, e *CLIError, environment string) (actions []map[string]any) {
+	defer func() { a.mcpTargetActions(actions, args, policy) }()
+	actions = a.mcpAPIActions(e, policy, environment)
 	credential := a.mcpCredentialAction(cmd, e, opts, environment)
 	if credential != nil {
 		actions = append(actions, credential)
@@ -604,4 +608,36 @@ func (a *App) mcpNextActions(cmd *Command, args map[string]any, opts Options, po
 		return actions
 	}
 	return []map[string]any{mcpAgentAction("Inspect the error and follow its next_steps before deciding what to do.", map[string]any{"tool": "flint_help", "arguments": map[string]any{"topic": "errors"}})}
+}
+
+// Suggested reads and retries must stay on the merchant selected for this call.
+func (a *App) mcpTargetActions(actions []map[string]any, args map[string]any, policy mcpPolicy) {
+	if !policy.credential.Partner {
+		return
+	}
+	controls, _ := args["_flint"].(map[string]any)
+	merchant, _ := controls["merchant"].(string)
+	if merchant == "" {
+		return
+	}
+	for _, action := range actions {
+		call, _ := action["call"].(map[string]any)
+		tool, _ := call["tool"].(string)
+		input, _ := call["arguments"].(map[string]any)
+		if input == nil {
+			continue
+		}
+		operational := tool == "flint_read" || tool == "flint_write"
+		if !operational {
+			index, err := a.mcpOperationIndex(policy)
+			if err != nil {
+				continue
+			}
+			entry, found := index.Lookup(tool)
+			operational = found && entry.Type == "operation" && entry.Path != ""
+		}
+		if operational {
+			input["merchant"] = merchant
+		}
+	}
 }

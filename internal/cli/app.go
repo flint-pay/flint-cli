@@ -327,6 +327,9 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 			code = "UNVERIFIED_ENVIRONMENT_CONFIRMATION_REQUIRED"
 		}
 	}
+	if authContext.MerchantID != "" {
+		message += " Target merchant: " + terminalSafe(authContext.MerchantID) + "."
+	}
 	if opts.NoInput || !a.IsTTY() {
 		return &CLIError{ExitCode: ExitConfirmation, Type: errorTypeConfirmationRequired, Code: code, Message: message + " Re-run with --confirm."}
 	}
@@ -419,7 +422,8 @@ func (a *App) printCommandHelp(cmd *Command) {
 	if supportsContextSelection(cmd) {
 		fmt.Fprintln(a.Stdout, "  --context ID  Select an authorized context for this command")
 	}
-	fmt.Fprintln(a.Stdout, "  --output human|json|ndjson  --quiet  --debug  --no-input  --live  --merchant ID  --profile NAME")
+	fmt.Fprintln(a.Stdout, "  --output human|json|ndjson  --quiet  --debug  --no-input  --live  --merchant ID  --sandbox ID  --profile NAME")
+	fmt.Fprintln(a.Stdout, "  --merchant/--sandbox select partner targets; other credentials must match these guards.")
 	fmt.Fprintln(a.Stdout, "  --credential-store keyring|file  Credential backend (or FLINT_CREDENTIAL_STORE; defaults to the profile store or keyring)")
 	var capabilities []string
 	if cmd.Mutation {

@@ -23,7 +23,8 @@ Request body:
 
 Global flags:
   --context ID  Select an authorized context for this command
-  --output human|json|ndjson  --quiet  --debug  --no-input  --live  --merchant ID  --profile NAME
+  --output human|json|ndjson  --quiet  --debug  --no-input  --live  --merchant ID  --sandbox ID  --profile NAME
+  --merchant/--sandbox select partner targets; other credentials must match these guards.
   --credential-store keyring|file  Credential backend (or FLINT_CREDENTIAL_STORE; defaults to the profile store or keyring)
 
 Capability flags:

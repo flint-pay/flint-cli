@@ -140,6 +140,21 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 	if strings.HasPrefix(token, "flint_test_") || strings.HasPrefix(token, "flint_live_") {
 		return "", "", envelope, configError("API_KEY_IN_ACCESS_TOKEN", "Set FLINT_API_KEY for an API key. FLINT_ACCESS_TOKEN is for session and partner tokens.", nil)
 	}
+	// Partner tokens select an install with request headers. They cannot be
+	// introspected with auth-context, and their mode is not encoded in the token.
+	_, credential := activeCredentialClass()
+	if command.AuthRequired && credential.Partner {
+		baseURL, err := a.baseURLForCredential("flint_test_")
+		if err != nil {
+			return "", "", envelope, configError("INVALID_BASE_URL", err.Error(), err)
+		}
+		if opts.Live && resolved.SandboxGuard != "" {
+			return "", "", envelope, usageError("CONFLICTING_FLAGS", "A live partner request cannot select a sandbox. Omit --sandbox and FLINT_SANDBOX, and remove any project sandbox_id.", "sandbox")
+		}
+		digest := sha256.Sum256([]byte(token + "\x00" + resolved.MerchantGuard + "\x00" + resolved.SandboxGuard))
+		envelope.Data = AuthContext{AuthType: "session", Environment: environmentUnverified, MerchantID: resolved.MerchantGuard, SandboxID: resolved.SandboxGuard, CredentialScope: hex.EncodeToString(digest[:])}
+		return token, baseURL, envelope, nil
+	}
 	checkoutSession := false
 	for _, requirement := range command.Security {
 		if _, ok := requirement["CheckoutSessionBearer"]; ok && strings.HasPrefix(token, "ckat_") {
