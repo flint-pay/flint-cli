@@ -39,6 +39,7 @@ type contextTestServer struct {
 	wrongSession        bool
 	devices             int
 	revokes             int
+	reauthError         string
 	reauthForm          url.Values
 	approvedScopes      []string
 }
@@ -82,6 +83,11 @@ func newContextTestApp(t *testing.T) (*App, *bytes.Buffer, *bytes.Buffer, *conte
 				if r.Form.Get("refresh_token") == "" {
 					t.Error("reauth has no credential")
 				}
+			}
+			if state.reauthError != "" {
+				w.WriteHeader(http.StatusBadRequest)
+				_ = json.NewEncoder(w).Encode(map[string]string{"error": state.reauthError})
+				return
 			}
 			writeTestDevice(w)
 		case loginTokenPath:
@@ -315,6 +321,21 @@ func TestContextReauthorization(t *testing.T) {
 	c, e := decodeOAuthCredential(stored())
 	if e != nil || c.Version != 2 || c.SessionID != "session_one" || state.devices != 1 || state.refreshes != 1 || state.revokes != 0 {
 		t.Fatalf("reauth session: %+v %v", c, e)
+	}
+}
+
+func TestContextReauthorizationPreserveUnsupported(t *testing.T) {
+	app, out, _, state, stored := newContextTestApp(t)
+	before := stored()
+	state.reauthError = "invalid_request"
+	if exit := app.Run([]string{"reauth", "--no-open", "--output", "json"}); exit == ExitOK {
+		t.Fatalf("unsupported preserve unexpectedly succeeded: %s", out)
+	}
+	if !strings.Contains(out.String(), "REAUTH_PRESERVE_UNAVAILABLE") || !strings.Contains(out.String(), "flint reauth --scope") {
+		t.Fatalf("missing safe recovery guidance: %s", out)
+	}
+	if stored() != before || state.devices != 1 || state.refreshes != 0 || state.revokes != 0 || state.reauthForm.Get("scope_mode") != "preserve" {
+		t.Fatalf("unsupported preserve must not fall back or change the login: devices=%d refreshes=%d revokes=%d", state.devices, state.refreshes, state.revokes)
 	}
 }
 

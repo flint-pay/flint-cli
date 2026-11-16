@@ -210,6 +210,9 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 			response, e = a.oauthRequest(ctx, baseURL, path, body)
 		}
 		if e != nil {
+			if body.Get("scope_mode") == "preserve" && (e.Code == "invalid_request" || e.Code == "LOGIN_UNAVAILABLE") {
+				return a.fail(configError("REAUTH_PRESERVE_UNAVAILABLE", "The server could not start a review that preserves permissions. Update the server, or use flint reauth --scope SCOPE to add permissions to this context. Your existing login is unchanged.", nil), opts)
+			}
 			if reauthorize && e.Code == "LOGIN_UNAVAILABLE" {
 				return a.fail(contextEndpointError(e), opts)
 			}
