@@ -29,16 +29,21 @@ var (
 // Merchant task vocabulary complements terse API resource names. Keep it local to
 // discovery: these are search terms, not command aliases or execution routing.
 var searchTasks = map[string][]string{
-	"reports.create":               {"sales tax", "collected tax", "collect sales tax", "tax by state", "tax liability", "tax report"},
-	"return-resolutions.create":    {"exchange", "size exchange", "store credit", "replace returned item"},
-	"return-previews.create":       {"preview exchange", "preview store credit", "return eligibility"},
-	"returns.create":               {"return item", "start return"},
-	"refunds.create":               {"partial refund", "refund item", "refund line items", "refund shipping", "refund delivery charge"},
-	"return-dispositions.create":   {"restock", "restock returned item"},
-	"orders.close":                 {"cancel order"},
-	"orders.send-receipt":          {"resend receipt", "email receipt"},
-	"payment-intents.send-receipt": {"resend payment receipt", "email payment receipt"},
-	"gift-cards.get":               {"gift card balance"},
+	"balance-transactions.list":     {"fees", "fees paid", "processing fees", "chargeback fees", "bank deposit transactions", "deposit reconciliation", "reconcile"},
+	"payouts.list":                  {"deposit", "bank deposit"},
+	"disputes.list":                 {"chargeback", "chargeback fees"},
+	"merchant-billing-entries.list": {"fees paid", "merchant fees"},
+	"payment-intents.get":           {"processing fees"},
+	"reports.create":                {"sales tax", "collected tax", "collect sales tax", "tax by state", "tax liability", "tax report", "gift card liability", "liability", "liability report", "close month"},
+	"return-resolutions.create":     {"exchange", "size exchange", "store credit", "replace returned item"},
+	"return-previews.create":        {"preview exchange", "preview store credit", "return eligibility"},
+	"returns.create":                {"return item", "start return"},
+	"refunds.create":                {"partial refund", "refund item", "refund line items", "refund shipping", "refund delivery charge"},
+	"return-dispositions.create":    {"restock", "restock returned item"},
+	"orders.close":                  {"cancel order"},
+	"orders.send-receipt":           {"resend receipt", "email receipt"},
+	"payment-intents.send-receipt":  {"resend payment receipt", "email payment receipt"},
+	"gift-cards.get":                {"gift card balance"},
 }
 
 type searchField struct {
