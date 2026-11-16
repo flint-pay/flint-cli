@@ -14,7 +14,7 @@ func displayRequestBody(value any) (any, bool) {
 				out[key] = "[REDACTED]"
 				if code, ok := item.(string); ok {
 					code = strings.NewReplacer("-", "", " ", "").Replace(code)
-					if len(code) > 4 {
+					if code != "[REDACTED]" && len(code) > 4 {
 						out[key] = "[REDACTED]" + code[len(code)-4:]
 					}
 				}

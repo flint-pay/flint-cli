@@ -22,7 +22,11 @@ func (a *App) mcpKnownEnvironment() string {
 }
 
 func mcpAgentAction(text string, call map[string]any) map[string]any {
-	return map[string]any{"actor": "agent", "text": text, "call": call}
+	displayCall, sensitive := displayRequestBody(call)
+	if sensitive && !strings.Contains(text, "Admission codes are redacted.") {
+		text += " Admission codes are redacted. Supply the original scanned code before retrying."
+	}
+	return map[string]any{"actor": "agent", "text": text, "call": displayCall}
 }
 func mcpUserAction(text string) map[string]any {
 	text = strings.TrimSpace(text)
