@@ -169,6 +169,9 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	path := loginDevicePath
 	if reauthorize && previous.Version == 2 {
 		path = oauthReauthorizePath
+		if !additive {
+			body.Set("scope_mode", "preserve")
+		}
 		if resolved.ContextID == "" {
 			resolved.ContextID = previous.ContextID
 		}

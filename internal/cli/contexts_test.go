@@ -308,6 +308,10 @@ func TestContextReauthorization(t *testing.T) {
 	if exit := app.Run([]string{"reauth", "--no-open", "--output", "json"}); exit != ExitOK {
 		t.Fatalf("%d %s", exit, out)
 	}
+	if state.reauthForm.Get("scope_mode") != "preserve" || state.reauthForm.Get("context_id") != "ctx_a" {
+		t.Fatalf("session review must preserve prior context permissions: %v", state.reauthForm)
+	}
+
 	c, e := decodeOAuthCredential(stored())
 	if e != nil || c.Version != 2 || c.SessionID != "session_one" || state.devices != 1 || state.refreshes != 1 || state.revokes != 0 {
 		t.Fatalf("reauth session: %+v %v", c, e)

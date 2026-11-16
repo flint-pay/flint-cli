@@ -180,10 +180,15 @@ func TestInitialCLIScopesCoverBootstrapWorkflow(t *testing.T) {
 		}
 		granted[scope] = true
 	}
+	for _, scope := range []string{"commerce.gift_cards.secrets.write", "accounts.workload_identities.write", "customers.sessions.write", "money_movement.payouts.write", "money_movement.payout_settings.write", "payments.disputes.write", "risk.reviews.write", "developer.sandboxes.write", "payments.readers.write"} {
+		if granted[scope] {
+			t.Errorf("sensitive scope %s must require explicit --scope", scope)
+		}
+	}
+
 	for _, cmd := range NewRegistry().Commands {
-		// Bootstrap grants deliberately cover the initial payment workflow, not
-		// every administrative operation exposed by the public API.
-		bootstrap := map[string]bool{"customers.create": true, "customers.get": true, "orders.create": true, "orders.get": true, "orders.pay": true, "payment-intents.create": true, "payment-intents.get": true, "checkout-sessions.create": true, "webhook-endpoints.create": true, "webhook-events.list": true}
+		// Defaults cover merchant operations; sensitive administration stays explicit.
+		bootstrap := map[string]bool{"customers.create": true, "customers.get": true, "orders.create": true, "orders.get": true, "orders.pay": true, "payment-intents.create": true, "payment-intents.get": true, "checkout-sessions.create": true, "webhook-endpoints.create": true, "webhook-events.list": true, "products.list": true, "products.create": true, "inventory-items.list": true, "promotions.create": true, "gift-cards.list": true, "settings.update": true, "reports.list": true, "analytics.overview.get": true, "balances.list": true, "payouts.list": true}
 		if !bootstrap[cmd.CanonicalName] {
 			continue
 		}
