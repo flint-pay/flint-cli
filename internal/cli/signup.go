@@ -251,14 +251,38 @@ func (a *App) runSignup(opts Options) int {
 		}
 	}
 	nextCommand := a.signupCommand(signupNextCommand, resolved.ProfileName, baseURL)
+	merchant := signupMerchantSummary(verify.Value)
+	guidance := "To change the shared business profile, edit it in the Dashboard, or run flint login --live --new-session, approve live access, then run flint merchant update --context <live context ID> --business-name <name> --confirm."
+	warnings := []string{}
+	for _, flag := range signupCreationProfileFlags {
+		if values := pending.Inputs[flag]; len(values) > 0 {
+			want := values[len(values)-1]
+			if flag == "business-name" {
+				want = strings.TrimSpace(want)
+			}
+			if merchant[strings.ReplaceAll(flag, "-", "_")] != want {
+				warnings = append(warnings, "Requested --"+flag+" was not applied. Signup preserves an existing merchant's profile. Check the returned merchant details.")
+			}
+		}
+	}
 	result := map[string]any{"data": map[string]any{
 		"api_key":          valueAt(created.Value, "data"),
 		"onboarding":       signupOnboardingSummary(state.Value),
 		"credential_saved": true,
+		"merchant":         merchant,
+		"profile_guidance": guidance,
+		"profile_warnings": warnings,
 		"next_command":     nextCommand,
 	}}
 	if opts.Output == "human" && opts.Field == "" && len(opts.Select) == 0 && opts.JQ == "" {
 		if !opts.Quiet {
+			if name := merchant["business_name"]; name != "" {
+				fmt.Fprintf(a.Stdout, "Business name buyers see: %s\n", name)
+			}
+			for _, warning := range warnings {
+				fmt.Fprintln(a.Stdout, warning)
+			}
+			fmt.Fprintln(a.Stdout, guidance)
 			if _, err := fmt.Fprintf(a.Stdout, "You're signed up. Your sandbox is ready for test payments.\n\nMake a test payment:\n  %s\n\nPay with card 4242 4242 4242 4242, any future expiry date, and any CVC.\n", nextCommand); err != nil {
 				return a.fail(networkError("OUTPUT_WRITE_FAILED", "Could not display signup instructions.", err), opts)
 			}

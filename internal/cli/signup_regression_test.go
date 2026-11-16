@@ -249,6 +249,12 @@ func TestSignupTwoPhasePersistsOnboardingInputs(t *testing.T) {
 				country, website, capabilities = "US", "https://new.example.test", []any{"transfers"}
 			}
 			resumed := *app
+			if override {
+				if exit := resumed.Run(args); exit != ExitUsage || !strings.Contains(out.String(), "SIGNUP_INPUT_MISMATCH") || profileBody != nil {
+					t.Fatalf("changed creation profile was accepted: out=%s stderr=%s", out, stderr)
+				}
+				return
+			}
 			if exit := resumed.Run(args); exit != ExitOK {
 				t.Fatalf("resume exit=%d out=%s stderr=%s", exit, out, stderr)
 			}

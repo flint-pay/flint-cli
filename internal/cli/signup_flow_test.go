@@ -165,7 +165,7 @@ func TestSignupFlowTwoPhase(t *testing.T) {
 			}
 			if output == "human" {
 				want := "You're signed up. Your sandbox is ready for test payments.\n\nMake a test payment:\n  " + "FLINT_BASE_URL='https://api.example.test' " + signupNextCommand + " --credential-store keyring\n\nPay with card 4242 4242 4242 4242, any future expiry date, and any CVC.\n"
-				if out.String() != want {
+				if !strings.HasSuffix(out.String(), want) {
 					t.Fatalf("human output = %s", out)
 				}
 			} else {
@@ -569,5 +569,108 @@ func TestSignupFlowStoredExpiryResend(t *testing.T) {
 	app.Stdin = strings.NewReader("yes\n123456\n")
 	if exit := app.Run([]string{"signup", "--verification-code", "111111", "--output", "human"}); exit != ExitOK || starts != 1 || verifies != 1 || !strings.Contains(stderr.String(), "expired. Send a new code?") {
 		t.Fatalf("resend exit=%d starts=%d verifies=%d out=%s stderr=%s", exit, starts, verifies, out, stderr)
+	}
+}
+
+func TestSignupCreationProfileSentAtStart(t *testing.T) {
+	app, out, stderr := signupFlowApp(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/onboarding/start" {
+			var body map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			for field, want := range map[string]string{"business_name": "Ada Labs", "website_url": "https://ada.example", "support_email": "help@ada.example", "support_phone": "+14155552671", "support_url": "https://ada.example/help"} {
+				if body[field] != want {
+					t.Errorf("%s=%v, want %s", field, body[field], want)
+				}
+			}
+		}
+		signupFlowSuccess(t, w, r)
+	})
+	args := append(append([]string{}, signupFlowStartArgs...), "--business-name", "Ada Labs", "--website-url", "https://ada.example", "--support-email", "help@ada.example", "--support-phone", "+14155552671", "--support-url", "https://ada.example/help", "--no-input")
+	if exit := app.Run(args); exit != ExitOK {
+		t.Fatalf("exit=%d out=%s stderr=%s", exit, out, stderr)
+	}
+}
+
+func TestSignupMerchantProfileSurvivesResume(t *testing.T) {
+	for _, output := range []string{"human", "json"} {
+		t.Run(output, func(t *testing.T) {
+			verifies, states := 0, 0
+			app, out, stderr := signupFlowApp(t, func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/v1/onboarding/verify-email":
+					verifies++
+					fmt.Fprint(w, `{"data":{"onboarding_session_token":"synthetic-session","merchant":{"merchant_id":"mer_new","business_name":"Ada Labs","support_email":"help@ada.example"}}}`)
+				case "/v1/onboarding/state":
+					states++
+					if states == 1 {
+						w.WriteHeader(http.StatusServiceUnavailable)
+						fmt.Fprint(w, `{"error":{"code":"SERVICE_UNAVAILABLE","message":"Try again."}}`)
+						return
+					}
+					signupFlowSuccess(t, w, r)
+				default:
+					signupFlowSuccess(t, w, r)
+				}
+			})
+			var secret string
+			app.StoreCredential = func(_ string, value string) error { secret = value; return nil }
+			app.LoadCredential = func(string) (string, error) { return secret, nil }
+			args := append(append([]string{}, signupFlowStartArgs...), "--business-name", "Ada Labs", "--support-email", "help@ada.example", "--no-input")
+			if exit := app.Run(args); exit != ExitOK {
+				t.Fatalf("start=%d %s", exit, stderr)
+			}
+			resume := []string{"signup", "--verification-code", "123456", "--no-input", "--output", output}
+			if exit := app.Run(resume); exit == ExitOK {
+				t.Fatal("first state read must fail")
+			}
+			pending := signupTestLoadPending(t, app)
+			if pending.Merchant["merchant_id"] != "mer_new" || pending.Merchant["business_name"] != "Ada Labs" {
+				t.Fatalf("saved merchant=%v", pending.Merchant)
+			}
+			out.Reset()
+			stderr.Reset()
+			resumed := *app
+			if exit := resumed.Run(resume); exit != ExitOK || verifies != 1 {
+				t.Fatalf("resume=%d verifies=%d out=%s stderr=%s", exit, verifies, out, stderr)
+			}
+			if !strings.Contains(out.String(), "Ada Labs") || strings.Contains(out.String(), "synthetic-session") {
+				t.Fatalf("output=%s", out)
+			}
+			if output == "json" {
+				var result map[string]any
+				if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+					t.Fatal(err)
+				}
+				if valueAt(result, "data.merchant.merchant_id") != "mer_new" || valueAt(result, "data.merchant.support_email") != "help@ada.example" {
+					t.Fatalf("result=%v", result)
+				}
+			}
+		})
+	}
+}
+
+func TestSignupWarnsWhenExistingMerchantProfileDiffers(t *testing.T) {
+	app, out, stderr := signupFlowApp(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/onboarding/verify-email" {
+			fmt.Fprint(w, `{"data":{"onboarding_session_token":"synthetic-session","merchant":{"merchant_id":"mer_existing","business_name":"Existing Shop"}}}`)
+			return
+		}
+		signupFlowSuccess(t, w, r)
+	})
+	var secret string
+	app.StoreCredential = func(_ string, value string) error { secret = value; return nil }
+	app.LoadCredential = func(string) (string, error) { return secret, nil }
+	args := append(append([]string{}, signupFlowStartArgs...), "--business-name", "Ada Labs", "--no-input")
+	if exit := app.Run(args); exit != ExitOK {
+		t.Fatalf("start=%d %s", exit, stderr)
+	}
+	out.Reset()
+	if exit := app.Run([]string{"signup", "--verification-code", "123456", "--no-input"}); exit != ExitOK {
+		t.Fatalf("resume=%d %s", exit, stderr)
+	}
+	if !strings.Contains(out.String(), "Existing Shop") || !strings.Contains(out.String(), "was not applied") || !strings.Contains(out.String(), "flint login --live --new-session") {
+		t.Fatalf("output=%s", out)
 	}
 }
