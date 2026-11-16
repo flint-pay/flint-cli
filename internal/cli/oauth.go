@@ -162,7 +162,7 @@ func (a *App) oauthRequestWithBearer(ctx context.Context, baseURL, path string, 
 		// Only known protocol error names may reach output. Never echo remote
 		// descriptions, arbitrary error strings, or token response bodies.
 		switch body.Error {
-		case "invalid_context", "context_access_denied", "authorization_pending", "slow_down", "access_denied", "expired_token", "invalid_grant", "invalid_client", "invalid_scope", "unsupported_grant_type":
+		case "invalid_request", "invalid_context", "context_access_denied", "authorization_pending", "slow_down", "access_denied", "expired_token", "invalid_grant", "invalid_client", "invalid_scope", "unsupported_grant_type":
 			return nil, configError(body.Error, "OAuth authorization failed. Run flint auth login again.", nil)
 		}
 		return nil, networkError("OAUTH_REQUEST_FAILED", "The OAuth server rejected the request. Try again, or run flint auth login.", nil)
