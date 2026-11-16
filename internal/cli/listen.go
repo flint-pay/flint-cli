@@ -690,6 +690,9 @@ func (a *App) consumeListenStream(ctx context.Context, body io.Reader, opts Opti
 				return writeErr
 			}
 			state.cursor = withheld.WebhookEventID
+			if forwardTo != "" && !source.allows(withheld.EventType) {
+				return nil
+			}
 			state.processed++
 			state.withheld++
 			record := map[string]any{

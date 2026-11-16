@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -246,6 +247,7 @@ func TestListenSubscriptionFilters(t *testing.T) { // AC 5-8, 11
 					}
 					w.Header().Set("Content-Type", "text/event-stream")
 					if scenario == "over 50" {
+						fmt.Fprint(w, "id: whev_withheld\nevent: withheld\ndata: {\"webhook_event_id\":\"whev_withheld\",\"event_type\":\"order.paid\",\"reason\":\"resource_not_readable\"}\n\n")
 						fmt.Fprint(w, listenEventFrame("whev_drop", "order.paid", `{}`))
 					}
 					typ := "customer.created"
@@ -475,5 +477,43 @@ func TestListenResolvedEndpointBanner(t *testing.T) {
 				t.Fatal(out.String())
 			}
 		})
+	}
+}
+
+func TestListenOAuthSandboxContextOverridesLiveCache(t *testing.T) {
+	app, out, _, state, _ := newContextTestApp(t)
+	if code := app.Run([]string{"auth", "status", "--context", "ctx_live", "--live", "--output", "json"}); code != ExitOK {
+		t.Fatalf("warm live context: %d %s", code, out)
+	}
+	cmd, opts, _, e := parseInvocation(app.Registry, []string{"listen", "--context", "ctx_a", "--forward-to", "http://localhost/hook"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	resolved, _, err := app.resolveConfig(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, envelope, e := app.authenticateCommand(context.Background(), cmd, opts, resolved)
+	if e != nil || envelope.Data.Environment != "sandbox" || envelope.Data.ContextID != "ctx_a" || state.refreshes != 2 {
+		t.Fatalf("auth=%+v err=%v refreshes=%d", envelope.Data, e, state.refreshes)
+	}
+}
+func TestListenExportedOAuthTokenChecksEnvironment(t *testing.T) {
+	calls := []string{}
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls = append(calls, r.URL.Path)
+		if r.URL.Path != "/v1/auth-context" {
+			t.Error("resource request with live token")
+			http.NotFound(w, r)
+			return
+		}
+		fmt.Fprint(w, authContextJSON("live"))
+	}))
+	defer api.Close()
+	app, out, _ := testApp(t, api.URL)
+	t.Setenv("FLINT_API_KEY", "")
+	t.Setenv("FLINT_ACCESS_TOKEN", "fcat_listen_fixture")
+	if code := app.Run([]string{"listen", "--forward-to", "http://localhost/hook", "--for", "1s", "--output", "json"}); code != ExitUsage || !strings.Contains(out.String(), "TEST_MODE_REQUIRED") || !reflect.DeepEqual(calls, []string{"/v1/auth-context"}) {
+		t.Fatalf("exit=%d calls=%v %s", code, calls, out)
 	}
 }

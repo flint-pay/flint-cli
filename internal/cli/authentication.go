@@ -165,7 +165,7 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 		if !command.AuthRequired {
 			token = ""
 		}
-		if command.CanonicalName == "auth.status" || (strings.HasPrefix(token, "fwat_") && !opts.DryRunClient()) {
+		if command.CanonicalName == "auth.status" || (strings.HasPrefix(token, "fwat_") || listenForwarding(command, opts)) && !opts.DryRunClient() {
 			authCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
 			defer cancel()
 			actual, authErr := a.fetchAuthContextResponse(authCtx, baseURL, token, opts.Debug)
@@ -273,7 +273,7 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 		}
 		if listenForwarding(command, opts) {
 			saved, e := decodeOAuthCredential(key)
-			if e == nil && normalizeEnvironment(saved.Auth.Environment) == "live" {
+			if e == nil && normalizeEnvironment(saved.Auth.Environment) == "live" && (resolved.ContextID == "" || resolved.ContextID == saved.ContextID) {
 				return "", "", envelope, listenTestModeRequired()
 			}
 		}
