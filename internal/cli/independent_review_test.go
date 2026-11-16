@@ -139,7 +139,7 @@ func TestMCPUnverifiedEnvironmentElicitsConfirmation(t *testing.T) {
 	}
 }
 
-func TestMCPOptionalFieldProjectionsMatchCLI(t *testing.T) {
+func TestMCPOptionalFieldProjectionSemantics(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
@@ -170,7 +170,16 @@ func TestMCPOptionalFieldProjectionsMatchCLI(t *testing.T) {
 			text := mcpResultText(result)
 			if exit == ExitOK {
 				value, _ := json.Marshal(mcpResultJSON(t, result))
-				if result["isError"] == true || strings.TrimSpace(out.String()) != test.want || string(value) != test.want {
+				mcpWant := test.want
+				if test.name == "select" {
+					mcpWant = `{"data":{}}`
+				} else if test.name == "select and jq" {
+					mcpWant = "false"
+				}
+				if _, selected := test.controls["select"]; selected && !strings.Contains(text, "Warning: select path email is not in this result.") {
+					t.Fatalf("missing absence warning: %v", result)
+				}
+				if result["isError"] == true || strings.TrimSpace(out.String()) != test.want || string(value) != mcpWant {
 					t.Fatalf("CLI=%s MCP=%v", out, result)
 				}
 			} else if result["isError"] != true || !strings.Contains(out.String(), test.want) || !strings.Contains(text, test.want) {

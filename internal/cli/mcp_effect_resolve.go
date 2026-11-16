@@ -15,12 +15,12 @@ import (
 // These operations can omit the amount that Flint will resolve. Never present
 // their component prices as the total the user is being asked to approve.
 func mcpImplicitAmount(entry opindex.Entry, body map[string]any) bool {
-	switch entry.ID {
-	case "refunds.create":
+	switch entry.OperationID {
+	case "createRefund":
 		return body["amount_money"] == nil
-	case "invoices.create", "invoices.issue", "invoices.collect", "orders.pay", "payouts.cancel":
+	case "createInvoice", "issueInvoice", "collectInvoice", "payOrder", "cancelPayout":
 		return true
-	case "payouts.create":
+	case "createPayout":
 		return body["amount_money"] == nil
 	}
 	return false
@@ -136,8 +136,8 @@ func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry,
 	}
 	orderID, _ := body["order_id"].(string)
 	var resource map[string]any
-	switch entry.ID {
-	case "refunds.create":
+	switch entry.OperationID {
+	case "createRefund":
 		if id, _ := body["credit_note_id"].(string); id != "" {
 			resource = read("/v1/credit-notes/" + url.PathEscape(id))
 			setAmount(resource["available_money"], "available_money", "upper_bound", "amount resolved by Flint: up to ")
@@ -179,7 +179,7 @@ func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry,
 			}
 		}
 		note += " Refund eligibility, target allocation and any merchant-recorded payment cap are resolved by Flint."
-	case "invoices.create":
+	case "createInvoice":
 		if orderID != "" {
 			resource = read("/v1/orders/" + url.PathEscape(orderID))
 			setAmount(at(resource, "pricing_amounts.total_money"), "order.pricing_amounts.total_money", "snapshot", "")
@@ -191,10 +191,10 @@ func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry,
 			}
 			note = "Final invoice amount resolved by Flint at creation, including catalog prices, discounts, tips and tax; no invoice preview endpoint is available."
 		}
-	case "invoices.issue", "invoices.collect":
+	case "issueInvoice", "collectInvoice":
 		resource = read(strings.TrimSuffix(strings.TrimSuffix(req.Path, "/issue"), "/collect"))
 		field := "pricing_amounts.total_money"
-		if entry.ID == "invoices.collect" {
+		if entry.OperationID == "collectInvoice" {
 			field = "settlement_amounts.currently_due_money"
 		}
 		setAmount(at(resource, field), "invoice."+field, "snapshot", "")
@@ -207,7 +207,7 @@ func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry,
 				customer = id
 			}
 		}
-	case "orders.pay":
+	case "payOrder":
 		resource = read(strings.TrimSuffix(req.Path, "/pay"))
 		if body["action"] == "setup" {
 			effect["amounts"] = []map[string]any{}
@@ -216,7 +216,7 @@ func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry,
 			setAmount(at(resource, "settlement_amounts.outstanding_money"), "order.settlement_amounts.outstanding_money", "snapshot", "")
 			note = "Outstanding balance at lookup; Flint resolves the payment and tender allocation when executing."
 		}
-	case "payouts.cancel":
+	case "cancelPayout":
 		resource = read(strings.TrimSuffix(req.Path, "/cancel"))
 		setAmount(resource["amount_money"], "payout.amount_money", "snapshot", "")
 		if destination, _ := resource["payout_destination_id"].(string); destination != "" {
@@ -233,7 +233,7 @@ func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry,
 	}
 	if value, exists := body["recipient_email"]; exists {
 		recipient, _ = value.(string)
-	} else if recipient == "" && entry.ID == "invoices.create" && customer != "" {
+	} else if recipient == "" && entry.OperationID == "createInvoice" && customer != "" {
 		buyer := read("/v1/customers/" + url.PathEscape(customer))
 		recipient, _ = buyer["email"].(string)
 	}
@@ -244,7 +244,7 @@ func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry,
 	if amount["resolution"] == "unresolved" && note == "Amounts reflect the current resource; Flint resolves the final amount when executing." {
 		note = "The amount could not be read with this server's credential and live-access policy; Flint resolves it when executing."
 	}
-	if amount["resolution"] != "unresolved" && !strings.Contains(note, "lookup") && entry.ID != "invoices.create" && entry.ID != "orders.pay" {
+	if amount["resolution"] != "unresolved" && !strings.Contains(note, "lookup") && entry.OperationID != "createInvoice" && entry.OperationID != "payOrder" {
 		note = "Amounts reflect the current resource; Flint resolves the final amount when executing."
 	}
 	effect["amount_note"] = note
@@ -254,14 +254,14 @@ func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry,
 	}
 	if customer != "" {
 		facts = append(facts, "customer "+customer)
-	} else if strings.HasPrefix(entry.ID, "payouts.") {
+	} else if entry.OperationID == "createPayout" || entry.OperationID == "cancelPayout" {
 		facts = append(facts, "merchant payout; no customer")
 	} else {
 		facts = append(facts, "customer unavailable before execution")
 	}
 	if recipient != "" {
 		facts = append(facts, "recipient "+recipient)
-	} else if strings.HasPrefix(entry.ID, "invoices.") {
+	} else if entry.OperationID == "createInvoice" || entry.OperationID == "issueInvoice" || entry.OperationID == "collectInvoice" {
 		facts = append(facts, "recipient unset or unavailable before execution")
 	}
 	facts = append(facts, resources...)

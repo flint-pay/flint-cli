@@ -87,7 +87,11 @@ func (a *App) cliCommandFor(cmd *Command, req preparedRequest, resolved Resolved
 					return "", err
 				}
 			}
-			flag("--input", string(body))
+			if _, sensitive := displayRequestBody(req.BodyValue); sensitive {
+				flag("--input", "-")
+			} else {
+				flag("--input", string(body))
+			}
 		}
 		if req.IdempotencyKey != "" {
 			flag("--idempotency-key", req.IdempotencyKey)

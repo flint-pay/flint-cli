@@ -55,6 +55,9 @@ func mcpEffect(entryTitle string, confirm, irreversible, sensitive bool, body ma
 			}
 			sort.Strings(keys)
 			for _, key := range keys {
+				if key == "admission_code" {
+					sensitive = true
+				}
 				field := key
 				if path != "" {
 					field = path + "." + key
@@ -277,6 +280,17 @@ func mcpProjectResult(ctx context.Context, cmd *Command, value any, opts Options
 		}
 		projected, e := applyCommandOutputTransforms(ctx, value, nil, opts)
 		return projected, "", e
+	}
+	if len(opts.Select) > 0 && (opts.Field != "" || opts.JQ != "") {
+		selection := opts
+		selection.Field, selection.JQ = "", ""
+		projected, warning, e := mcpProjectResult(ctx, cmd, value, selection)
+		if e != nil {
+			return nil, warning, e
+		}
+		opts.Select = nil
+		projected, e = applyCommandOutputTransforms(ctx, projected, cmd, opts)
+		return projected, warning, e
 	}
 	write := cmd != nil && (cmd.Mutation || cmd.Destructive || cmd.CanonicalName == "signup" || cmd.CanonicalName == "trigger" || cmd.CanonicalName == "listen")
 	if len(opts.Select) == 0 || opts.Field != "" || opts.JQ != "" {

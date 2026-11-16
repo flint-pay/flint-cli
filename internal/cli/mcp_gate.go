@@ -211,6 +211,10 @@ func (g *mcpCallGate) prepared(ctx context.Context, a *App, cmd *Command, req pr
 			details := e.Details.(map[string]any)
 			details["command"], details["idempotency_key"] = command, req.IdempotencyKey
 			details["same_project"] = resolved.SandboxGuard != ""
+			if _, sensitive := displayRequestBody(req.BodyValue); sensitive {
+				details["input_required"] = true
+				e.Message += " Supply the original request JSON through stdin; admission codes are omitted from this command."
+			}
 		}
 		return e
 	}
@@ -266,8 +270,8 @@ func (g *mcpCallGate) ask(ctx context.Context, req preparedRequest) *CLIError {
 	} else if g.entry.Sensitive {
 		prompt += "\nIt is sensitive: it moves money or affects buyers."
 	}
-	body := req.BodyValue
-	if body == nil {
+	body, _ := displayRequestBody(req.BodyValue)
+	if req.BodyValue == nil {
 		body = map[string]any{}
 	}
 	raw, _ := mcpCompactJSON(body)

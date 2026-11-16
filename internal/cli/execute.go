@@ -124,7 +124,8 @@ func previewRequest(req preparedRequest, cmd *Command, authContext AuthContext, 
 	if req.IdempotencyKey != "" {
 		headers["Idempotency-Key"] = req.IdempotencyKey
 	}
-	data := map[string]any{"method": req.Method, "path": req.Path, "headers": headers, "body": req.BodyValue, "persistent_side_effects": false}
+	body, _ := displayRequestBody(req.BodyValue)
+	data := map[string]any{"method": req.Method, "path": req.Path, "headers": headers, "body": body, "persistent_side_effects": false}
 	if authContext.AuthType == "none" {
 		data["environment"] = authContext.Environment
 	}
