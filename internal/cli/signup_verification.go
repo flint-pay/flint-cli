@@ -118,16 +118,7 @@ func (a *App) signupChallenge(reader *bufio.Reader, opts Options, profile string
 		return nil, e
 	}
 	inputs := signupInputs(opts)
-	if _, supplied := opts.Raw["business-name"]; !supplied && !opts.NoInput && a.IsTTY() && lastSignupOption(opts, "email") == "" {
-		fmt.Fprint(a.Stderr, "Business name buyers see (Enter to skip): ")
-		value, err := reader.ReadString('\n')
-		if err != nil {
-			return nil, usageError("INPUT_REQUIRED", "Could not read business name.", "business-name")
-		}
-		if value = strings.TrimSpace(value); value != "" {
-			inputs["business-name"] = []string{value}
-		}
-	}
+
 	return a.startSignupChallenge(profile, &SignupChallenge{Email: email, FirstName: first, LastName: last, BaseURL: baseURL, Inputs: inputs}, saved, opts)
 }
 

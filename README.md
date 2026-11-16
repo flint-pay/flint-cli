@@ -28,7 +28,7 @@ The installer uses `/usr/local/bin` when you can write to it and `$HOME/.local/b
 
 ## Sign up and make a test payment
 
-`flint signup` creates an account without an invitation. In an interactive terminal it asks for your name, email, an optional business name, and the emailed verification code. Incorrect codes can be retried up to five times per code; expired codes offer to send a new one.
+`flint signup` creates an account without an invitation. In an interactive terminal it asks for your name, email, and the emailed verification code. Set `--business-name` to provide the name buyers see. Incorrect codes can be retried up to five times per code; expired codes offer to send a new one.
 
 For scripts, start signup first, then finish after receiving the email:
 
