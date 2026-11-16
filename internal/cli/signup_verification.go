@@ -118,6 +118,13 @@ func (a *App) signupChallenge(reader *bufio.Reader, opts Options, profile string
 		return nil, e
 	}
 	inputs := signupInputs(opts)
+	zone, timezoneErr := signupTimezone(opts)
+	if timezoneErr != nil {
+		return nil, timezoneErr
+	}
+	if zone != "" {
+		inputs["timezone"] = []string{zone}
+	}
 
 	return a.startSignupChallenge(profile, &SignupChallenge{Email: email, FirstName: first, LastName: last, BaseURL: baseURL, Inputs: inputs}, saved, opts)
 }
@@ -161,17 +168,24 @@ func (a *App) startSignupChallenge(profile string, details, expected *SignupChal
 	return &pending, nil
 }
 
-func (a *App) signupVerificationRequired(profile string, baseURL string, opts Options) int {
-	next := a.signupCommand("flint signup --verification-code <code>", profile, baseURL)
+func (a *App) signupVerificationRequired(profile string, pending *SignupChallenge, opts Options) int {
+	next := a.signupCommand("flint signup --verification-code <code>", profile, pending.BaseURL)
 	if opts.Output == "human" && opts.Field == "" && len(opts.Select) == 0 && opts.JQ == "" {
 		if !opts.Quiet {
+			if zone := pending.Inputs["timezone"]; len(zone) > 0 {
+				fmt.Fprintf(a.Stdout, "Business time zone: %s\n", zone[len(zone)-1])
+			}
 			if _, err := fmt.Fprintf(a.Stdout, "A verification code was sent to your email. Finish signup with:\n  %s\n", next); err != nil {
 				return a.fail(networkError("OUTPUT_WRITE_FAILED", "Could not display verification instructions.", err), opts)
 			}
 		}
 		return ExitOK
 	}
-	return a.outputLocal(map[string]any{"data": map[string]any{"status": "verification_required", "message": "A verification code was sent to your email.", "next_command": next}}, nilCommand("signup"), opts)
+	data := map[string]any{"status": "verification_required", "message": "A verification code was sent to your email.", "next_command": next}
+	if zone := pending.Inputs["timezone"]; len(zone) > 0 {
+		data["timezone"] = zone[len(zone)-1]
+	}
+	return a.outputLocal(map[string]any{"data": data}, nilCommand("signup"), opts)
 }
 
 func (a *App) verifySignupChallenge(reader *bufio.Reader, opts Options, profile string, pending *SignupChallenge) (*apiResponse, *CLIError) {
@@ -241,9 +255,9 @@ func (a *App) verifySignupChallenge(reader *bufio.Reader, opts Options, profile 
 }
 
 // Keep only onboarding inputs, never unrelated command flags or credentials.
-var signupCreationProfileFlags = []string{"business-name", "website-url", "support-email", "support-phone", "support-url"}
+var signupCreationProfileFlags = []string{"business-name", "website-url", "support-email", "support-phone", "support-url", "timezone"}
 
-var signupInputFlags = []string{"business-name", "country", "website-url", "support-email", "support-phone", "support-url", "requested-capability"}
+var signupInputFlags = []string{"business-name", "country", "website-url", "support-email", "support-phone", "support-url", "timezone", "requested-capability"}
 
 func signupInputs(opts Options) map[string][]string {
 	inputs := map[string][]string{}
@@ -417,7 +431,7 @@ func signupAccountError(e *CLIError) *CLIError {
 // Persist and publish only merchant profile facts, never verification credentials.
 func signupMerchantSummary(value any) map[string]string {
 	merchant := map[string]string{}
-	for _, field := range []string{"merchant_id", "business_name", "website_url", "support_email", "support_phone", "support_url"} {
+	for _, field := range []string{"merchant_id", "business_name", "website_url", "support_email", "support_phone", "support_url", "timezone"} {
 		if fact, ok := firstStringAt(value, "data.merchant."+field); ok {
 			merchant[field] = fact
 		}

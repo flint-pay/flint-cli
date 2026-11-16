@@ -131,7 +131,7 @@ func (a *App) runSignup(opts Options) int {
 		return a.fail(e, opts)
 	}
 	if lastSignupOption(opts, "verification-code") == "" && (opts.NoInput || !a.IsTTY()) {
-		return a.signupVerificationRequired(resolved.ProfileName, pending.BaseURL, opts)
+		return a.signupVerificationRequired(resolved.ProfileName, pending, opts)
 	}
 	verify, e := a.verifySignupChallenge(reader, opts, resolved.ProfileName, pending)
 	if e != nil {
@@ -278,6 +278,9 @@ func (a *App) runSignup(opts Options) int {
 		if !opts.Quiet {
 			if name := merchant["business_name"]; name != "" {
 				fmt.Fprintf(a.Stdout, "Business name buyers see: %s\n", name)
+			}
+			if zone := merchant["timezone"]; zone != "" {
+				fmt.Fprintf(a.Stdout, "Business time zone: %s\n", zone)
 			}
 			for _, warning := range warnings {
 				fmt.Fprintln(a.Stdout, warning)
