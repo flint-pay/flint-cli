@@ -969,6 +969,11 @@ func TestListenForwardsServerSignedPayloadAndCheckpoint(t *testing.T) {
 
 func TestDurationBoundedEmptyListenExitsWithCheckpoint(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/webhook-endpoints/whep_fixture" {
+			w.Header().Set("Content-Type", "application/json")
+			writeListenEndpoint(w, "whep_fixture")
+			return
+		}
 		if r.URL.Path == "/v1/auth-context" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, authContextJSON("sandbox"))
