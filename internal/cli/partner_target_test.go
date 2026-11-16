@@ -36,9 +36,9 @@ func TestPartnerTargetRequests(t *testing.T) {
 					t.Errorf("unexpected request: %s", r.URL)
 				}
 				if requests == 1 {
-					fmt.Fprint(w, `{"data":[{"customer_id":"cus_one"}],"pagination":{"has_more":true,"next_page_token":"page_two"}}`)
+					fmt.Fprint(w, `{"data":[{"customer_id":"cus_one"}],"next_page_token":"page_two"}`)
 				} else {
-					fmt.Fprint(w, `{"data":[{"customer_id":"cus_two"}],"pagination":{"has_more":false}}`)
+					fmt.Fprint(w, `{"data":[{"customer_id":"cus_two"}],"next_page_token":""}`)
 				}
 			}))
 			defer server.Close()
@@ -83,7 +83,7 @@ func TestPartnerTargetDryRunAndConfirmation(t *testing.T) {
 	for _, dry := range []bool{false, true} {
 		t.Run(fmt.Sprint(dry), func(t *testing.T) {
 			app, out, err := partnerTestApp(t, "http://127.0.0.1:1")
-			argv := []string{"webhook-endpoints", "delete", "whep_target", "--merchant", "mer_target", "--sandbox", "test_target", "--output", "json"}
+			argv := []string{"categories", "delete", "cat_target", "--merchant", "mer_target", "--sandbox", "test_target", "--output", "json"}
 			if dry {
 				argv = append(argv, "--dry-run", "client")
 			}
@@ -271,6 +271,7 @@ func TestPartnerMCPRecoveryKeepsMerchant(t *testing.T) {
 				err := networkError("CLIENT_TIMEOUT", "Timed out", nil)
 				err.Details = map[string]any{"outcome": "unknown"}
 				err.idempotencyKey = "partner-recovery-key"
+				err.requestSent = true
 				actions := app.mcpNextActions(cmd, args, defaultOptions(), policy, err, "unverified")
 				calls := 0
 				for _, action := range actions {

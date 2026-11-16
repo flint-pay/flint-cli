@@ -156,7 +156,7 @@ func (a *App) mcpProfileCommand(command string, opts Options) string {
 
 func (a *App) mcpCredentialAction(cmd *Command, e *CLIError, opts Options, environment string) map[string]any {
 	if e.Guidance != "" {
-		return map[string]any{"actor": "agent", "text": "Pass merchant: <mer_id> on this call to select the connected merchant, or ask the user to set --merchant (or FLINT_MERCHANT) when starting the server."}
+		return mcpUserAction("select the connected merchant by passing merchant: <mer_id> on this call, or set --merchant (or FLINT_MERCHANT) when starting the server.")
 	}
 	raw := mcpErrorObject(e)
 	code := e.Code
