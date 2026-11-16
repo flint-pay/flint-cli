@@ -83,7 +83,7 @@ func TestPartnerTargetDryRunAndConfirmation(t *testing.T) {
 	for _, dry := range []bool{false, true} {
 		t.Run(fmt.Sprint(dry), func(t *testing.T) {
 			app, out, err := partnerTestApp(t, "http://127.0.0.1:1")
-			argv := []string{"customers", "delete", "cus_target", "--merchant", "mer_target", "--sandbox", "test_target", "--output", "json"}
+			argv := []string{"webhook-endpoints", "delete", "whep_target", "--merchant", "mer_target", "--sandbox", "test_target", "--output", "json"}
 			if dry {
 				argv = append(argv, "--dry-run", "client")
 			}
