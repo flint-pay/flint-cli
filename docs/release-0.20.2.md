@@ -7,7 +7,7 @@
 - Run `flint listen --forward-to http://localhost:3000/webhooks/flint` with a sandbox credential to create or reuse the CLI's JWT endpoint. Use the printed endpoint ID as `FLINT_WEBHOOK_ENDPOINT_ID` in your receiver. Later runs reuse the same ID.
 - Pass `--webhook-endpoint-id` to test an existing endpoint's subscriptions. The listener forwards only its enabled event types. Individual signing refusals produce `skipped` records and do not count toward `--max-events`.
 - Calendar filters use the merchant's `timezone` from `GET /v1/merchant`.
-- Redirected downloads write file bytes in human output. Delivery-method validation reports the selected request variant.
+- Piped or redirected downloads write raw file bytes in human output. Delivery-method validation reports the selected request variant.
 - Order summaries include the receipt number, payment status, total, and buyer, including buyer order lists.
 - Promotion attribute discovery includes the complete attribute, type, and operator matrix. CLI and MCP dry runs reject unknown attributes while preserving metadata keys.
 
