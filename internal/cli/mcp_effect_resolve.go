@@ -69,6 +69,7 @@ func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry,
 	ctx, cancel := context.WithTimeout(ctx, opts.Timeout)
 	defer cancel()
 	body := req.BodyValue
+	at := func(value any, path string) any { result, _ := lookupPath(value, path); return result }
 	amount := map[string]any{"field": "resolved_amount_money", "resolution": "unresolved", "display": "amount resolved by Flint: unavailable before execution"}
 	effect["amounts"] = []map[string]any{amount}
 	note := "Amounts reflect the current resource; Flint resolves the final amount when executing."
@@ -167,10 +168,10 @@ func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry,
 					}
 					setAmount(money, "targets.remaining_money", resolution, prefix)
 				} else if amount["resolution"] == "unresolved" {
-					setAmount(lookupPathValue(order, "settlement_amounts.net_collected_money"), "order.net_collected_money", "upper_bound", "amount resolved by Flint: up to ")
+					setAmount(at(order, "settlement_amounts.net_collected_money"), "order.net_collected_money", "upper_bound", "amount resolved by Flint: up to ")
 				}
 			} else if body["refund_type"] == "full" && amount["resolution"] == "unresolved" {
-				setAmount(lookupPathValue(order, "settlement_amounts.net_collected_money"), "order.net_collected_money", "upper_bound", "amount resolved by Flint: up to ")
+				setAmount(at(order, "settlement_amounts.net_collected_money"), "order.net_collected_money", "upper_bound", "amount resolved by Flint: up to ")
 			}
 			if customer == "" {
 				customer, _ = order["customer_id"].(string)
@@ -180,7 +181,7 @@ func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry,
 	case "invoices.create":
 		if orderID != "" {
 			resource = read("/v1/orders/" + url.PathEscape(orderID))
-			setAmount(lookupPathValue(resource, "pricing_amounts.total_money"), "order.pricing_amounts.total_money", "snapshot", "")
+			setAmount(at(resource, "pricing_amounts.total_money"), "order.pricing_amounts.total_money", "snapshot", "")
 		} else {
 			quick, _ := body["quick_pay"].(map[string]any)
 			customer, _ = quick["customer_id"].(string)
@@ -195,9 +196,9 @@ func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry,
 		if entry.ID == "invoices.collect" {
 			field = "settlement_amounts.currently_due_money"
 		}
-		setAmount(lookupPathValue(resource, field), "invoice."+field, "snapshot", "")
+		setAmount(at(resource, field), "invoice."+field, "snapshot", "")
 		recipient, _ = resource["recipient_email"].(string)
-		customer, _ = lookupPathValue(resource, "snapshot.customer_display_name").(string)
+		customer, _ = at(resource, "snapshot.customer_display_name").(string)
 		if id, _ := resource["order_id"].(string); id != "" {
 			order := read("/v1/orders/" + url.PathEscape(id))
 			addResource(id)
@@ -211,7 +212,7 @@ func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry,
 			effect["amounts"] = []map[string]any{}
 			note = "Save a payment method; no money is charged."
 		} else {
-			setAmount(lookupPathValue(resource, "settlement_amounts.outstanding_money"), "order.settlement_amounts.outstanding_money", "snapshot", "")
+			setAmount(at(resource, "settlement_amounts.outstanding_money"), "order.settlement_amounts.outstanding_money", "snapshot", "")
 			note = "Outstanding balance at lookup; Flint resolves the payment and tender allocation when executing."
 		}
 	case "payouts.cancel":

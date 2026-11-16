@@ -86,7 +86,7 @@ func mcpEffect(entryTitle string, confirm, irreversible, sensitive bool, body ma
 	return map[string]any{"summary": summary, "confirm_required": confirm, "irreversible": irreversible, "sensitive": sensitive, "amounts": amounts, "resources": resources}
 }
 
-func (a *App) mcpDryRunResult(cmd *Command, args map[string]any, value any) any {
+func (a *App) mcpDryRunResult(cmd *Command, effect map[string]any, value any) any {
 	envelope, ok := value.(map[string]any)
 	if !ok {
 		return value
@@ -113,7 +113,10 @@ func (a *App) mcpDryRunResult(cmd *Command, args map[string]any, value any) any 
 	delete(data, "persistent_side_effects")
 	delete(data, "preview")
 	body, _ := data["body"].(map[string]any)
-	data["effect"] = mcpPreparedEffect(entry, preparedRequest{Path: fmt.Sprint(data["path"]), BodyValue: body})
+	if effect == nil {
+		effect = mcpPreparedEffect(entry, preparedRequest{Path: fmt.Sprint(data["path"]), BodyValue: body})
+	}
+	data["effect"] = effect
 	permission := map[string]any{"status": "unknown", "reason": "Credential permissions were not checked for this dry run."}
 	if entry.ScopeRequirement != nil {
 		permission["scope_requirement"] = entry.ScopeRequirement
