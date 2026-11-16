@@ -128,6 +128,7 @@ func mcpDecideGate(policy mcpPolicy, call mcpGateInput) mcpGateDecision {
 // One gate belongs to one child invocation. It authorizes the request prepared
 // by that invocation, rather than executing a command again after approval.
 type mcpCallGate struct {
+	effect          map[string]any
 	entry           opindex.Entry
 	input           mcpGateInput
 	policy          mcpPolicy
@@ -246,8 +247,11 @@ func (g *mcpCallGate) failure(decision mcpGateDecision, message string) *CLIErro
 }
 
 func (g *mcpCallGate) ask(ctx context.Context, req preparedRequest) *CLIError {
-	effect := mcpPreparedEffect(g.entry, req)
-	prompt := "Approve this " + g.environment + " Flint operation?\n\n" + g.entry.ID + ": " + g.entry.Title
+	effect := g.effect
+	if effect == nil {
+		effect = mcpPreparedEffect(g.entry, req)
+	}
+	prompt := "Approve this " + g.environment + " Flint operation?\n\n" + g.entry.ID + ": " + fmt.Sprint(effect["summary"])
 	if g.merchant != "" {
 		prompt += "\nMerchant: " + g.merchant + " (" + g.environment + ")"
 	}

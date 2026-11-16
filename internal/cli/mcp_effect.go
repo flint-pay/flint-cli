@@ -184,7 +184,7 @@ func mcpValidateSelect(cmd *Command, controls map[string]any) *CLIError {
 	}
 	fields := mcpStrings(raw)
 	for i, field := range fields {
-		if e := validateOutputPaths(cmd, []outputPath{{field, "select"}}); e != nil {
+		if e := mcpValidateSelectPath(cmd, field); e != nil {
 			e.Code = "INVALID_REQUEST"
 			e.Param = fmt.Sprintf("select[%d]", i)
 			e.Details = map[string]any{"problems": []map[string]any{{"code": "INVALID_VALUE", "param": e.Param, "message": e.Message}}}
@@ -264,7 +264,8 @@ func mcpSchemaIDField(name string) string {
 	return strings.ReplaceAll(out.String(), "o_auth", "oauth") + "_id"
 }
 
-// A committed write retains its identity and reports absent optional fields as warnings.
+// Selected writes retain their declared identity and status; all selections
+// omit absent fields and explain how to retrieve unexpanded relationships.
 func mcpProjectResult(ctx context.Context, cmd *Command, value any, opts Options) (any, string, *CLIError) {
 	if opts.DryRunClient() {
 		opts.Select = nil
@@ -275,81 +276,84 @@ func mcpProjectResult(ctx context.Context, cmd *Command, value any, opts Options
 		return projected, "", e
 	}
 	write := cmd != nil && (cmd.Mutation || cmd.Destructive || cmd.CanonicalName == "signup" || cmd.CanonicalName == "trigger" || cmd.CanonicalName == "listen")
-	if !write || len(opts.Select) == 0 || opts.Field != "" || opts.JQ != "" {
+	if len(opts.Select) == 0 || opts.Field != "" || opts.JQ != "" {
 		projected, e := applyCommandOutputTransforms(ctx, value, cmd, opts)
 		if write && e != nil && (e.Code == "UNKNOWN_OUTPUT_FIELD" || e.Code == "OUTPUT_FIELD_ROOT") {
 			return value, "Warning: the mutation succeeded, but output selection failed: " + e.Message + " Returning the complete successful result.", nil
 		}
 		return projected, "", e
 	}
-	fields := append([]string(nil), opts.Select...)
-	// Internal callers retain the completed-write safeguard even if they bypass dispatch.
-	if e := validateOutputPaths(cmd, func() []outputPath {
-		p := []outputPath{}
-		for _, f := range fields {
-			p = append(p, outputPath{f, "select"})
+	for _, field := range opts.Select {
+		if e := mcpValidateSelectPath(cmd, field); e != nil {
+			if write {
+				return value, "Warning: the mutation succeeded, but output selection failed: " + e.Message + " Returning the complete successful result.", nil
+			}
+			return nil, "", e
 		}
-		return p
-	}()); e != nil {
-		return value, "Warning: the mutation succeeded, but output selection failed: " + e.Message + " Returning the complete successful result.", nil
 	}
-	for _, field := range []string{mcpOwnIDField(cmd), "status"} {
-		if field != "" && !containsString(fields, field) {
-			fields = append(fields, field)
+	normalized, e := normalizeOutput(value)
+	if e != nil {
+		return nil, "", e
+	}
+	fields := append([]string(nil), opts.Select...)
+	if write {
+		for _, field := range []string{mcpOwnIDField(cmd), "status"} {
+			if field != "" && !containsString(fields, field) {
+				fields = append(fields, field)
+			}
 		}
 	}
 	warnings := []string{}
 	warned := map[string]bool{}
-	project := func(resource any) (any, bool) {
-		object, ok := resource.(map[string]any)
-		if !ok {
-			return nil, false
+	warn := func(field string) {
+		if !containsString(opts.Select, field) || warned[field] {
+			return
 		}
-		out := map[string]any{}
-		for _, field := range fields {
-			item, present := lookupPath(object, field)
-			if !present {
-				if containsString(opts.Select, field) && !warned[field] {
-					warned[field] = true
-					warnings = append(warnings, "Warning: select path "+field+" is not in this result.")
+		warned[field] = true
+		message := "Warning: select path " + field + " is not in this result."
+		schema, defs := resourceOutputSchema(cmd)
+		root := strings.Split(mcpSelectPath(field), ".")[0]
+		if node, ok, _ := outputSchemaPath(schema, defs, []string{root}, 0); ok {
+			description, _ := node["description"].(string)
+			if strings.Contains(description, "expand") {
+				message += " Request arguments.expand: [\"" + root + "\"] to include this relationship."
+			}
+		}
+		warnings = append(warnings, message)
+	}
+	tree := map[string]any{}
+	for _, field := range fields {
+		mcpSelectTree(tree, strings.Split(mcpSelectPath(field), "."))
+	}
+	project := func(resource any) any {
+		return mcpSelectObject(resource, tree, "", func(path string) {
+			// Warn once per requested path, including paths below a missing parent.
+			for _, field := range fields {
+				canonical := mcpSelectPath(field)
+				if canonical == path || strings.HasPrefix(canonical, path+".") {
+					warn(field)
 				}
-				continue
 			}
-			if err := setBodyPath(out, field, item); err != nil {
-				return nil, false
-			}
-		}
-		return out, true
+		})
 	}
-	envelope, ok := value.(map[string]any)
-	if !ok {
-		return value, "Warning: the mutation succeeded, but output selection failed. Returning the complete successful result.", nil
-	}
-	out := maps.Clone(envelope)
-	root, hasData := envelope["data"]
-	if !hasData {
-		root = value
-	}
-	switch resources := root.(type) {
-	case []any:
-		list := make([]any, 0, len(resources))
-		for _, item := range resources {
-			selected, ok := project(item)
-			if !ok {
-				return value, "Warning: the mutation succeeded, but output selection failed. Returning the complete successful result.", nil
-			}
-			list = append(list, selected)
+	envelope, hasEnvelope := normalized.(map[string]any)
+	root := resourceRoot(normalized)
+	var selected any
+	if list, ok := root.([]any); ok {
+		items := make([]any, len(list))
+		for i, item := range list {
+			items[i] = project(item)
 		}
-		out["data"] = list
-	default:
-		selected, ok := project(root)
-		if !ok {
-			return value, "Warning: the mutation succeeded, but output selection failed. Returning the complete successful result.", nil
-		}
-		if !hasData {
-			return selected, strings.Join(warnings, "\n"), nil
-		}
-		out["data"] = selected
+		selected = items
+	} else {
+		selected = project(root)
 	}
-	return out, strings.Join(warnings, "\n"), nil
+	if hasEnvelope {
+		if _, hasData := envelope["data"]; hasData {
+			out := maps.Clone(envelope)
+			out["data"] = selected
+			return out, strings.Join(warnings, "\n"), nil
+		}
+	}
+	return selected, strings.Join(warnings, "\n"), nil
 }

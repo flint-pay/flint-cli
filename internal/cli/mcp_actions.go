@@ -157,6 +157,8 @@ func (a *App) mcpCredentialAction(cmd *Command, e *CLIError, opts Options, envir
 		code = value
 	}
 	switch code {
+	case "MERCHANT_GUARD_MISMATCH", "SANDBOX_GUARD_MISMATCH":
+		return mcpUserAction("check the intended merchant and sandbox, then correct this MCP server's --merchant or --sandbox startup flag, project .flint/config.json guard, saved profile guard, or configured credential to match that intended target. Restart the server after correcting it; do not remove a guard to bypass the mismatch.")
 	case "API_KEY_REQUIRED", "CREDENTIAL_LOOKUP_FAILED", "CREDENTIAL_FORMAT_INVALID":
 		return mcpUserAction("set FLINT_API_KEY or FLINT_PROFILE in this server's MCP configuration, or unlock its credential store, then restart the server.")
 	case "IDENTITY_VERIFICATION_REQUIRED":

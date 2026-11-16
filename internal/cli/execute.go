@@ -32,6 +32,11 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 		return nil, e
 	}
 	if a.mcpGate != nil {
+		call := a.mcpGate.input
+		call.Environment = a.mcpGate.environment
+		if call.DryRun || mcpDecideGate(a.mcpGate.policy, call).Action == mcpGateAsk {
+			a.mcpGate.effect = a.mcpResolvePreparedEffect(ctx, a.mcpGate.entry, req, opts, resolved, authContext, key, baseURL)
+		}
 		if e := a.mcpGate.prepared(ctx, a, cmd, req, resolved); e != nil {
 			return nil, e
 		}

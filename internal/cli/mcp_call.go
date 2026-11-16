@@ -497,6 +497,11 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 		if exit == ExitOK {
 			if transformOptions.DryRunClient() {
 				result = a.mcpDryRunResult(cmd, args, result)
+				if gate.effect != nil {
+					if data, ok := lookupPathValue(result, "data").(map[string]any); ok {
+						data["effect"] = gate.effect
+					}
+				}
 			}
 			projected, warning, transformErr := mcpProjectResult(childCtx, cmd, result, transformOptions)
 			if transformErr != nil {
