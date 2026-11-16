@@ -110,14 +110,18 @@ func TestAdmissionCodeDisplayShortAndFormattedCodes(t *testing.T) {
 
 func TestTicketDryRunRecoveryRedactsAdmissionCode(t *testing.T) {
 	app, _, _ := testApp(t, "")
-	input := map[string]any{"operation": "tickets.lookup", "arguments": map[string]any{"admission_code": admissionFixture}, "dry_run": true}
-	result := mcpCall(t, app, defaultOptions(), "flint_read", input)
-	text := mcpResultText(result)
-	if result["isError"] != true || strings.Contains(text, admissionFixture) || !strings.Contains(text, "[REDACTED]1234") || !strings.Contains(text, "original scanned code") {
-		t.Fatalf("unsafe recovery result: %v", result)
-	}
-	if lookupPathValue(input, "arguments.admission_code") != admissionFixture {
-		t.Fatal("recovery changed original invocation")
+	for _, arguments := range []any{map[string]any{"admission_code": admissionFixture}, `{"admission_code":"` + admissionFixture + `"}`} {
+		input := map[string]any{"operation": "tickets.lookup", "arguments": arguments, "dry_run": true}
+		before, _ := json.Marshal(input)
+		result := mcpCall(t, app, defaultOptions(), "flint_read", input)
+		text := mcpResultText(result)
+		if result["isError"] != true || strings.Contains(text, admissionFixture) || !strings.Contains(text, "[REDACTED]1234") || !strings.Contains(text, "original scanned code") {
+			t.Fatalf("unsafe recovery result: %v", result)
+		}
+		after, _ := json.Marshal(input)
+		if string(after) != string(before) {
+			t.Fatal("recovery changed original invocation")
+		}
 	}
 	call := map[string]any{"tool": "tickets_check_in", "arguments": map[string]any{"admission_code": admissionFixture}}
 	action := mcpAgentAction("Retry the original operation.", call)
