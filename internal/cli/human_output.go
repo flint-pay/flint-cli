@@ -123,7 +123,7 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 			money = append(money, key)
 		}
 	}
-	if cmd != nil && (cmd.OperationID == "listOrders" || cmd.OperationID == "listMyOrders") {
+	if cmd != nil && (cmd.OperationID == "listOrders" || cmd.OperationID == "listMeOrders") {
 		for _, key := range []string{"pricing_amounts.total_money", "buyer_contact.email", "customer.email"} {
 			for _, row := range rows {
 				if value, ok := lookupPath(row, key); ok && value != nil {
