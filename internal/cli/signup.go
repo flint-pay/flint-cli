@@ -210,7 +210,7 @@ func (a *App) runSignup(opts Options) int {
 	}
 	nextCommand := a.signupCommand(signupNextCommand, resolved.ProfileName, baseURL)
 	merchant := signupMerchantSummary(verify.Value)
-	guidance := "To change the shared business profile, edit it in the Dashboard, or run flint login --live, approve live access, then run flint merchant update --context <live context ID> --business-name <name> --confirm."
+	guidance := "To change the shared business profile, edit it in the Dashboard, or run flint login --live --new-session, approve live access, then run flint merchant update --context <live context ID> --business-name <name> --confirm."
 	warnings := []string{}
 	for _, flag := range signupCreationProfileFlags {
 		if values := pending.Inputs[flag]; len(values) > 0 {

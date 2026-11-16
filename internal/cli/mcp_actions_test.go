@@ -267,7 +267,7 @@ func TestMCPProfileWriteLiveModeGuidanceDoesNotInventScopes(t *testing.T) {
 	e := mcpActionAPIError("ACTION_NOT_ALLOWED", "none", []any{map[string]any{"reason": "live_mode_required"}})
 	action := app.mcpNextActions(cmd, nil, defaultOptions(), app.mcpPolicy(defaultOptions()), e, "sandbox")[0]
 	message := fmt.Sprint(action["text"])
-	if !strings.Contains(message, "flint login --live") || strings.Contains(message, "these scopes") || !strings.Contains(message, "live context") {
+	if !strings.Contains(message, "flint login --live --new-session") || strings.Contains(message, "these scopes") || !strings.Contains(message, "live context") {
 		t.Fatal(action)
 	}
 }

@@ -194,7 +194,7 @@ func (a *App) mcpCredentialAction(cmd *Command, e *CLIError, opts Options, envir
 		if len(scopes) > 0 {
 			text += "; these scopes cannot be added to a sandbox key"
 		}
-		text += ". Use a live API key, or run flint login --live, approve live access, and select the returned live context. Configure that credential or context for this MCP server and restart with --allow-live. To update the shared business profile, you can also use the Dashboard."
+		text += ". Use a live API key, or run flint login --live --new-session, approve live access, and select the returned live context. Configure that credential or context for this MCP server and restart with --allow-live. To update the shared business profile, you can also use the Dashboard."
 		action := mcpUserAction(text)
 		action["url"] = dashboardAPIKeysURL
 		return action

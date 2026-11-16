@@ -670,7 +670,7 @@ func TestSignupWarnsWhenExistingMerchantProfileDiffers(t *testing.T) {
 	if exit := app.Run([]string{"signup", "--verification-code", "123456", "--no-input"}); exit != ExitOK {
 		t.Fatalf("resume=%d %s", exit, stderr)
 	}
-	if !strings.Contains(out.String(), "Existing Shop") || !strings.Contains(out.String(), "was not applied") || !strings.Contains(out.String(), "flint login --live") {
+	if !strings.Contains(out.String(), "Existing Shop") || !strings.Contains(out.String(), "was not applied") || !strings.Contains(out.String(), "flint login --live --new-session") {
 		t.Fatalf("output=%s", out)
 	}
 }
