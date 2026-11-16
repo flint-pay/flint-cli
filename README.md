@@ -5,6 +5,7 @@
 - Guide: https://developers.withflintpay.com/docs/guides/cli
 - Command reference: https://developers.withflintpay.com/docs/cli
 - npm package source: [`npm/`](npm/)
+- Release notes: [0.20.3](docs/release-0.20.3.md)
 
 ## Install
 
