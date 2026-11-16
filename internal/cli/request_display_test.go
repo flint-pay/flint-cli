@@ -32,8 +32,8 @@ func TestTicketDryRunsRedactAdmissionCodes(t *testing.T) {
 				t.Fatalf("exit=%d result=%v", exit, value)
 			}
 			result := mcpCall(t, app, defaultOptions(), "flint_write", map[string]any{"operation": "tickets." + operation, "arguments": body, "dry_run": true})
-			value = mcpResultJSON(t, result)
-			if result["isError"] == true || lookupPathValue(value, "data.body.admission_code") != "[REDACTED]1234" || lookupPathValue(value, "data.effect.sensitive") != true || strings.Contains(mcpResultText(result), admissionFixture) {
+			mcpValue := mcpResultJSON(t, result)
+			if result["isError"] == true || lookupPathValue(mcpValue, "data.body.admission_code") != "[REDACTED]1234" || lookupPathValue(mcpValue, "data.effect.sensitive") != true || strings.Contains(mcpResultText(result), admissionFixture) {
 				t.Fatalf("MCP=%v", result)
 			}
 			if body["admission_code"] != admissionFixture {
