@@ -22,6 +22,9 @@ type paginationResultCheckKey struct{}
 type paginationResultCheck func(any, int) *CLIError
 
 func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolved ResolvedConfig, authContext AuthContext, key, baseURL string) (any, *CLIError) {
+	if listenForwarding(cmd, opts) && (opts.Live || normalizeEnvironment(authContext.Environment) == "live") {
+		return nil, listenTestModeRequired()
+	}
 	ctx = context.WithValue(ctx, responseContractKey{}, cmd)
 	req, e := a.prepareRequest(ctx, cmd, opts, resolved, key, baseURL)
 	if e != nil {

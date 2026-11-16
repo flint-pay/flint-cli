@@ -516,6 +516,11 @@ func TestDurationBoundedListenLimitsInFlightRequest(t *testing.T) {
 		if r.URL.Path == "/v1/auth-context" {
 			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(authContextJSON("sandbox")))}, nil
 		}
+		if r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/v1/webhook-endpoints/") {
+			recorder := httptest.NewRecorder()
+			writeListenEndpoint(recorder, "whep_fixture")
+			return recorder.Result(), nil
+		}
 		// Check the request's bound directly, independent of scheduler delays.
 		// Without --for propagation this would be the one-hour --timeout.
 		deadline, ok := r.Context().Deadline()
@@ -826,6 +831,10 @@ func TestBoundedListenReportsOutputWriteFailure(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Path == "/v1/auth-context" {
 			fmt.Fprint(w, authContextJSON("sandbox"))
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, "/v1/webhook-endpoints/") {
+			writeListenEndpoint(w, "whep_fixture")
 			return
 		}
 		fmt.Fprint(w, `{"data":[]}`)

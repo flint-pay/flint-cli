@@ -26,7 +26,7 @@ func TestMCPStreamOutputSchemaIncludesListenRecords(t *testing.T) {
 	for _, value := range values {
 		available[value] = struct{}{}
 	}
-	for _, required := range []string{"event", "listener", "ready", "gap", "withheld", "forward", "reconnect", "disconnect", "checkpoint"} {
+	for _, required := range []string{"event", "listener", "ready", "gap", "withheld", "skipped", "forward", "reconnect", "disconnect", "checkpoint"} {
 		if _, ok := available[required]; !ok {
 			t.Fatalf("MCP stream output schema is missing %q: %#v", required, values)
 		}

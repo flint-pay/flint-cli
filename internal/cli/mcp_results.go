@@ -237,7 +237,7 @@ func mcpStreamOutputSchema() map[string]any {
 					"additionalProperties": true,
 					"required":             []string{"type"},
 					"properties": map[string]any{
-						"type": map[string]any{"type": "string", "enum": []string{"version", "event", "listener", "ready", "gap", "withheld", "forward", "reconnect", "disconnect", "checkpoint"}},
+						"type": map[string]any{"type": "string", "enum": []string{"version", "event", "listener", "ready", "gap", "withheld", "skipped", "forward", "reconnect", "disconnect", "checkpoint"}},
 					},
 				},
 			},

@@ -66,6 +66,8 @@ func TestBuiltCLIListenDefaultJWTReceiver(t *testing.T) {
 		switch r.URL.Path {
 		case "/v1/auth-context":
 			fmt.Fprint(w, `{"data":{"auth_type":"api_key","api_key_id":"key_test","environment":"sandbox","merchant_id":"mer_test","sandbox_id":"test_test","scopes":["webhooks.read","webhooks.write","customers.read"]},"request_id":"req_test"}`)
+		case "/v1/webhook-endpoints/" + endpointID:
+			fmt.Fprintf(w, `{"data":{"webhook_endpoint_id":%q,"status":"active","signing_methods":["jwt"],"enabled_events":["*"]}}`, endpointID)
 		case "/v1/webhook-events/stream":
 			w.Header().Set("Content-Type", "text/event-stream")
 			fmt.Fprintf(w, "id: %s\nevent: webhook.event\ndata: {\"webhook_event_id\":%q,\"event_type\":\"customer.created\",\"payload\":{}}\n\n", eventID, eventID)

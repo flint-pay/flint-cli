@@ -77,6 +77,18 @@ func parseInvocation(r *Registry, argv []string) (*Command, Options, bool, *CLIE
 		}
 	}
 	tail := remaining[consumed:]
+	if cmd.CanonicalName == "listen" && !flagsTerminated {
+		for _, word := range tail {
+			name, _, _ := strings.Cut(word, "=")
+			if name == "--print-secret" || name == "--webhook-secret" {
+				return nil, opts, false, usageError("LOCAL_SIGNING_REMOVED", "flint listen no longer signs with a local secret. Run flint listen --forward-to URL and verify the forwarded JWT deliveries with the endpoint ID it prints.", strings.TrimPrefix(name, "--"))
+			}
+			if word == "--" {
+				break
+			}
+		}
+	}
+
 	if !flagsTerminated {
 		tail, err = extractKnownFlags(tail, commandFlags, &opts)
 		if err != nil {
@@ -359,7 +371,7 @@ func validateOptions(cmd *Command, o *Options, help bool) *CLIError {
 	if o.DryRun != "" && cmd.CanonicalName == "upgrade" {
 		return usageError("UNSUPPORTED_FLAG", "Use flint upgrade --check to check for an upgrade.", "dry-run")
 	}
-	if o.DryRun != "" && !cmd.Mutation && !rawMutation {
+	if o.DryRun != "" && !cmd.Mutation && !rawMutation && cmd.CanonicalName != "listen" {
 		return usageError("UNSUPPORTED_FLAG", "--dry-run applies only to mutations.", "dry-run")
 	}
 	if used("idempotency-key") && !cmd.Mutation && !rawMutation {

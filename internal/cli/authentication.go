@@ -271,7 +271,17 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 			envelope.Data.CredentialScope = oauthHistoryScope(c.Auth)
 			return c.AccessToken, c.BaseURL, envelope, nil
 		}
+		if listenForwarding(command, opts) {
+			saved, e := decodeOAuthCredential(key)
+			if e == nil && normalizeEnvironment(saved.Auth.Environment) == "live" {
+				return "", "", envelope, listenTestModeRequired()
+			}
+		}
+
 		return a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, key, opts.Debug)
+	}
+	if listenForwarding(command, opts) && strings.HasPrefix(key, "flint_live_") {
+		return "", "", envelope, listenTestModeRequired()
 	}
 	if resolved.ContextID != "" {
 		return "", "", envelope, contextSessionRequired()

@@ -27,7 +27,7 @@ Developer tools:
   help                             Command help, reference topics, and offline search
   history                          List or clear recent Flint resource IDs
   init                             Write or validate .flint/config.json project guards; commit this file with your project
-  listen                           Print Flint webhook events or forward exact signed deliveries locally. Forwarding requires --webhook-endpoint-id for a sandbox endpoint owned by your merchant and sandbox, JWT signing, webhooks.write and resource read scopes. Delivery is at-least-once
+  listen                           Print Flint webhook events or forward exact signed deliveries locally. Forwarding creates or reuses a CLI-managed sandbox JWT endpoint. Requires a sandbox credential, webhooks.write and resource read scopes. Delivery is at-least-once
   mcp                              Serve Flint operations to AI agents over MCP
   merchant-signups                 A platform's requests to create merchants for owners, who confirm them with a code Flint emails them.
   openapi                          API metadata.
@@ -101,7 +101,6 @@ Environment:
   FLINT_NO_INPUT              1, true, yes, or on to disable prompts
   FLINT_PROFILE               Profile to use, like --profile
   FLINT_MERCHANT              Merchant guard, like --merchant
-  FLINT_WEBHOOK_SECRET        Signing secret for flint listen
   FLINT_ACCESS_TOKEN          Access token; takes precedence over FLINT_API_KEY
   FLINT_WORKLOAD_IDENTITY_ID  Workload identity; overrides saved login and contexts
   FLINT_OIDC_SOURCE           auto, none, token, token_file, github_actions, gitlab_ci, kubernetes, gcp, azure, aws

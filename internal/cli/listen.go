@@ -61,6 +61,7 @@ type listenStreamState struct {
 	forwarded int
 	failed    int
 	withheld  int
+	skipped   int
 	// replayCursor is the cursor before the first failed delivery. Resuming
 	// there delivers that event and every later one again.
 	replayCursor string
@@ -93,6 +94,8 @@ type listenDeliverySource struct {
 	baseURL    string
 	key        string
 	endpointID string
+	endpoint   *listenEndpoint
+	selected   []string
 }
 
 type listenOpenResult struct {
@@ -134,9 +137,34 @@ func (a *App) executeListen(ctx context.Context, _ *Command, opts Options, req p
 	if e := validateListenEventType(opts.Raw["event-type"]); e != nil {
 		return nil, e
 	}
+	forwardTo := lastRawOption(opts, "forward-to")
+	source := listenDeliverySource{baseURL: baseURL, key: key, endpointID: listenEndpointID(opts), selected: listenSelectedTypes(opts)}
+	origin := ""
+	if len(opts.Raw["forward-to"]) > 0 {
+		if _, err := validateLocalForwardURL(forwardTo); err != nil {
+			return nil, usageError("INVALID_FORWARD_URL", err.Error(), "forward_to")
+		}
+		endpoint, endpointSource, e := a.resolveListenEndpoint(ctx, opts, source)
+		if e != nil {
+			return nil, e
+		}
+		source.endpointID, source.endpoint, origin = endpoint.ID, &endpoint, endpointSource
+		effective, e := listenEffectiveFilter(endpoint, source.selected)
+		if e != nil {
+			return nil, e
+		}
+		raw := make(map[string][]string, len(opts.Raw))
+		for k, v := range opts.Raw {
+			raw[k] = v
+		}
+		opts.Raw = raw
+		opts.Raw["webhook-endpoint-id"] = []string{endpoint.ID}
+		opts.Raw["event-type"] = effective
+	}
 	parsedPath, _ := url.Parse(req.Path)
 	query := parsedPath.Query()
-	if types := listenSelectedTypes(opts); len(types) > 0 {
+	query.Del("event_type")
+	if types := listenSelectedTypes(opts); len(types) > 0 && (forwardTo == "" || len(types) <= 50) {
 		query.Set("event_type", strings.Join(types, ","))
 	}
 	parsedPath.RawQuery = query.Encode()
@@ -144,20 +172,26 @@ func (a *App) executeListen(ctx context.Context, _ *Command, opts Options, req p
 	if e != nil {
 		return nil, e
 	}
-	forwardTo := lastRawOption(opts, "forward-to")
-	if len(opts.Raw["forward-to"]) > 0 {
-		if _, err := validateLocalForwardURL(forwardTo); err != nil {
-			return nil, usageError("INVALID_FORWARD_URL", err.Error(), "forward_to")
-		}
-		if listenEndpointID(opts) == "" {
-			return nil, usageError("WEBHOOK_ENDPOINT_REQUIRED", "Forwarding requires --webhook-endpoint-id. Create a sandbox endpoint with flint webhook-endpoints create, then pass its whep_ ID.", "webhook_endpoint_id")
-		}
-	}
-	if e := a.writeListenStarted(opts, forwardTo); e != nil {
+	if e := a.writeListenStarted(opts, forwardTo, origin, baseURL); e != nil {
 		return nil, e
 	}
-
-	state := &listenStreamState{cursor: initialCursor, banner: listenBanner(opts, forwardTo)}
+	banner := listenBanner(opts, forwardTo)
+	if forwardTo != "" {
+		suffix := ""
+		if origin == "created" {
+			suffix = " (created for flint listen; later runs reuse it)"
+		} else if origin == "reused" {
+			suffix = " (reused)"
+		}
+		banner = strings.Replace(banner, "Endpoint: "+source.endpointID+".", "Endpoint: "+source.endpointID+suffix+".", 1)
+		if origin != "flag" {
+			banner += "\nVerify deliveries as JWTs with this endpoint ID as the audience: FLINT_WEBHOOK_ENDPOINT_ID=" + source.endpointID
+		}
+		if baseURL != defaultAPIBaseURL {
+			banner += "\nIssuer: " + baseURL
+		}
+	}
+	state := &listenStreamState{cursor: initialCursor, banner: banner}
 	returnWithCheckpoint := func(primary *CLIError) (any, *CLIError) {
 		if checkpointErr := a.writeListenCheckpoint(opts, state); checkpointErr != nil {
 			return nil, checkpointErr
@@ -206,7 +240,7 @@ func (a *App) executeListen(ctx context.Context, _ *Command, opts Options, req p
 		state.disconnect = ""
 		connectedAt := time.Now()
 		processedBefore := state.processed
-		consumeErr := a.consumeListenStreamWithIdleTimeout(streamCtx, resp.Body, opts, forwardTo, listenDeliverySource{baseURL: baseURL, key: key, endpointID: listenEndpointID(opts)}, state)
+		consumeErr := a.consumeListenStreamWithIdleTimeout(streamCtx, resp.Body, opts, forwardTo, source, state)
 		if state.processed > processedBefore || time.Since(connectedAt) >= 2*listenReconnectDelay(5) {
 			reconnects = 0
 		}
@@ -711,6 +745,10 @@ func (a *App) consumeListenWebhookEvent(ctx context.Context, frame listenSSEFram
 	if writeErr := a.announceListenReady(opts, state); writeErr != nil {
 		return writeErr
 	}
+	if forwardTo != "" && !source.allows(event.EventType) {
+		state.cursor = event.WebhookEventID
+		return nil
+	}
 	eventLabel := terminalSafe(event.EventType) + " " + terminalSafe(event.WebhookEventID)
 	if !listenRawPresent(event.Payload) && listenRawPresent(event.Data) {
 		projected, err := projectListenEnvelope(frame.Data, event.EventType)
@@ -749,8 +787,7 @@ func (a *App) consumeListenWebhookEvent(ctx context.Context, frame listenSSEFram
 		return nil
 	}
 	if result.signingError != nil {
-		// Keep the cursor before an event that could not be signed.
-		return result.signingError
+		return a.handleListenSigningFailure(ctx, opts, source, state, event, result.signingError)
 	}
 	state.processed++
 	state.events++
@@ -1056,11 +1093,11 @@ func listenReconnectDelay(attempt int) time.Duration {
 	return min(delay, 5*time.Second)
 }
 
-func (a *App) writeListenStarted(opts Options, forwardTo string) *CLIError {
+func (a *App) writeListenStarted(opts Options, forwardTo, origin, issuer string) *CLIError {
 	if opts.Output == "json" || opts.Output == "ndjson" {
 		record := map[string]any{"type": "listener", "mode": "print"}
 		if forwardTo != "" {
-			record = map[string]any{"type": "listener", "mode": "forward", "forward_to": forwardTo, "webhook_endpoint_id": listenEndpointID(opts)}
+			record = map[string]any{"type": "listener", "mode": "forward", "forward_to": forwardTo, "webhook_endpoint_id": listenEndpointID(opts), "webhook_endpoint_source": origin, "issuer": issuer}
 		}
 		record["event_type"] = listenSelectedTypes(opts)
 		return a.writeListenRecord(opts, record, "")
@@ -1145,7 +1182,7 @@ func (a *App) writeListenRecord(opts Options, record map[string]any, human strin
 }
 
 func (a *App) writeListenCheckpoint(opts Options, state *listenStreamState) *CLIError {
-	record := map[string]any{"type": "checkpoint", "cursor": state.cursor, "processed": state.processed, "events": state.events, "forwarded": state.forwarded, "failed": state.failed, "withheld": state.withheld}
+	record := map[string]any{"type": "checkpoint", "cursor": state.cursor, "processed": state.processed, "events": state.events, "forwarded": state.forwarded, "failed": state.failed, "withheld": state.withheld, "skipped": state.skipped}
 	if state.failed > 0 && state.replayCursor != "" {
 		record["replay_cursor"] = state.replayCursor
 	}
@@ -1159,6 +1196,9 @@ func (a *App) writeListenCheckpoint(opts Options, state *listenStreamState) *CLI
 	human := fmt.Sprintf("Checkpoint: cursor=%s processed=%d events=%d withheld=%d", state.cursor, state.processed, state.events, state.withheld)
 	if forwardTo != "" {
 		human = fmt.Sprintf("Checkpoint: cursor=%s processed=%d forwarded=%d failed=%d withheld=%d", state.cursor, state.processed, state.forwarded, state.failed, state.withheld)
+	}
+	if forwardTo != "" {
+		human += fmt.Sprintf(" skipped=%d", state.skipped)
 	}
 	if state.failed > 0 {
 		noun := "deliveries"

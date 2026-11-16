@@ -102,9 +102,15 @@ func (a *App) Run(argv []string) int {
 		return a.fail(errKey, opts)
 	}
 	opts.IdempotencyKey = idempotencyKey
+	if listenForwarding(effective, opts) && opts.Live {
+		return a.fail(listenTestModeRequired(), opts)
+	}
 	key, baseURL, authEnvelope, authErr := a.authenticateCommand(ctx, effective, opts, resolved)
 	if authErr != nil {
 		return a.fail(authErr, opts)
+	}
+	if listenForwarding(effective, opts) && normalizeEnvironment(authEnvelope.Data.Environment) == "live" {
+		return a.fail(listenTestModeRequired(), opts)
 	}
 	if !a.mcpSkipScopeCheck && authEnvelope.fromCache && !opts.DryRunClient() && commandPermissionError(effective, authEnvelope.Data, resolved.ProfileName) != nil {
 		// Revalidate a cached denial before any guards, confirmation, or target

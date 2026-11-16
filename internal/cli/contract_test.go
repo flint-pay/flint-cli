@@ -909,6 +909,11 @@ func TestListenForwardsServerSignedPayloadAndCheckpoint(t *testing.T) {
 			return
 		}
 
+		if r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/v1/webhook-endpoints/") {
+			writeListenEndpoint(w, "whep_fixture")
+			return
+		}
+
 		if strings.HasSuffix(r.URL.Path, "/sign-delivery") {
 			_ = json.NewEncoder(w).Encode(map[string]any{"data": listenSignedDelivery{EndpointID: "whep_fixture", EventID: eventID, Body: payload, ExpiresAt: time.Now().Add(5 * time.Minute), Headers: map[string]string{"Authorization": "Bearer mock-token", "webhook-id": eventID, "webhook-timestamp": "1700000000"}}})
 			return
