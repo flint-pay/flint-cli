@@ -165,7 +165,7 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 		if !command.AuthRequired {
 			token = ""
 		}
-		if command.CanonicalName == "auth.status" || (strings.HasPrefix(token, "fwat_") && !opts.DryRunClient()) {
+		if command.CanonicalName == "auth.status" || (strings.HasPrefix(token, "fwat_") || listenForwarding(command, opts)) && !opts.DryRunClient() {
 			authCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
 			defer cancel()
 			actual, authErr := a.fetchAuthContextResponse(authCtx, baseURL, token, opts.Debug)
@@ -271,7 +271,19 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 			envelope.Data.CredentialScope = oauthHistoryScope(c.Auth)
 			return c.AccessToken, c.BaseURL, envelope, nil
 		}
+		if listenForwarding(command, opts) {
+			saved, e := decodeOAuthCredential(key)
+			// A rotated token can retain the previous context's auth until validation succeeds.
+			cachedContextMatches := saved.Version != 2 || saved.Auth.ContextID == saved.ContextID
+			if e == nil && cachedContextMatches && normalizeEnvironment(saved.Auth.Environment) == "live" && (resolved.ContextID == "" || resolved.ContextID == saved.ContextID) {
+				return "", "", envelope, listenTestModeRequired()
+			}
+		}
+
 		return a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, key, opts.Debug)
+	}
+	if listenForwarding(command, opts) && strings.HasPrefix(key, "flint_live_") {
+		return "", "", envelope, listenTestModeRequired()
 	}
 	if resolved.ContextID != "" {
 		return "", "", envelope, contextSessionRequired()

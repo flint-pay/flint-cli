@@ -158,6 +158,10 @@ func TestListenMaxEventsCountsWithheldRecords(t *testing.T) {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
+		if r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/v1/webhook-endpoints/") {
+			writeListenEndpoint(w, strings.TrimPrefix(r.URL.Path, "/v1/webhook-endpoints/"))
+			return
+		}
 		if strings.HasSuffix(r.URL.Path, "/sign-delivery") {
 			mockListenDelivery(w, r)
 			return
@@ -204,6 +208,10 @@ func TestListenReconnectsWithLastEventID(t *testing.T) {
 		if r.URL.Path == "/v1/auth-context" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, authContextJSON("sandbox"))
+			return
+		}
+		if r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/v1/webhook-endpoints/") {
+			writeListenEndpoint(w, strings.TrimPrefix(r.URL.Path, "/v1/webhook-endpoints/"))
 			return
 		}
 		if strings.HasSuffix(r.URL.Path, "/sign-delivery") {
@@ -258,6 +266,10 @@ func TestListenMaxEventsStopsAnOpenStream(t *testing.T) {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
+		if r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/v1/webhook-endpoints/") {
+			writeListenEndpoint(w, strings.TrimPrefix(r.URL.Path, "/v1/webhook-endpoints/"))
+			return
+		}
 		if strings.HasSuffix(r.URL.Path, "/sign-delivery") {
 			mockListenDelivery(w, r)
 			return
@@ -297,6 +309,11 @@ func TestListenReconnectsAfterTransientStreamReadError(t *testing.T) {
 	streamCalls := 0
 	lastEventIDs := []string{}
 	transport := listenRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if req.Method == "GET" && strings.HasPrefix(req.URL.Path, "/v1/webhook-endpoints/") {
+			recorder := httptest.NewRecorder()
+			writeListenEndpoint(recorder, strings.TrimPrefix(req.URL.Path, "/v1/webhook-endpoints/"))
+			return recorder.Result(), nil
+		}
 		if strings.HasSuffix(req.URL.Path, "/sign-delivery") {
 			recorder := httptest.NewRecorder()
 			mockListenDelivery(recorder, req)
@@ -356,12 +373,16 @@ func TestListenTimeoutBoundsStreamResponseHeaders(t *testing.T) {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
+		if r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/v1/webhook-endpoints/") {
+			writeListenEndpoint(w, "whep_fixture")
+			return
+		}
 		<-r.Context().Done()
 	}))
 	defer server.Close()
 
 	app, _, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", "http://127.0.0.1:1/webhooks", "--timeout", "25ms"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", "http://127.0.0.1:1/webhooks", "--timeout", "100ms"})
 	if exit != ExitNetwork || !strings.Contains(stderr.String(), "Timed out waiting") {
 		t.Fatalf("exit=%d stderr=%s", exit, stderr)
 	}
@@ -370,6 +391,11 @@ func TestListenTimeoutBoundsStreamResponseHeaders(t *testing.T) {
 func TestOpenListenStreamTimeoutDoesNotWaitForTransportCancellation(t *testing.T) {
 	release := make(chan struct{})
 	transport := listenRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if req.Method == "GET" && strings.HasPrefix(req.URL.Path, "/v1/webhook-endpoints/") {
+			recorder := httptest.NewRecorder()
+			writeListenEndpoint(recorder, strings.TrimPrefix(req.URL.Path, "/v1/webhook-endpoints/"))
+			return recorder.Result(), nil
+		}
 		if strings.HasSuffix(req.URL.Path, "/sign-delivery") {
 			recorder := httptest.NewRecorder()
 			mockListenDelivery(recorder, req)
@@ -425,6 +451,10 @@ func TestListenReportsCursorGapAndUsesResumeCursor(t *testing.T) {
 		if r.URL.Path == "/v1/auth-context" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, authContextJSON("sandbox"))
+			return
+		}
+		if r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/v1/webhook-endpoints/") {
+			writeListenEndpoint(w, "whep_fixture")
 			return
 		}
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -546,6 +576,10 @@ func listenAPI(t *testing.T, stream func(w http.ResponseWriter, r *http.Request,
 		if r.URL.Path == "/v1/auth-context" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, authContextJSON("sandbox"))
+			return
+		}
+		if r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/v1/webhook-endpoints/") {
+			writeListenEndpoint(w, strings.TrimPrefix(r.URL.Path, "/v1/webhook-endpoints/"))
 			return
 		}
 		if strings.HasSuffix(r.URL.Path, "/sign-delivery") {

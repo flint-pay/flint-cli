@@ -301,7 +301,7 @@ func TestSigningHelpAndMCPDescriptions(t *testing.T) {
 		{"webhook-endpoints.create", []string{"--signing-methods", "jwt|hmac"}},
 		{"webhook-endpoints.update", []string{"--signing-methods", "--expected-version", "signing_methods"}},
 		{"webhook-endpoints.rotate-secret", []string{"--confirm"}},
-		{"listen", []string{"--webhook-endpoint-id", "sandbox endpoint", "at-least-once", "JWT", "webhooks.write"}},
+		{"listen", []string{"--webhook-endpoint-id", "sandbox JWT endpoint", "at-least-once", "JWT", "webhooks.write"}},
 		{"delivery-rate-callbacks.create", []string{"--signing-methods", "jwt|hmac"}},
 		{"delivery-rate-callbacks.update", []string{"--signing-methods", "--expected-version", "signing_methods"}},
 		{"delivery-rate-callbacks.rotate-secret", []string{"--confirm"}},
@@ -337,7 +337,7 @@ func TestSigningHelpAndMCPDescriptions(t *testing.T) {
 		"delivery-rate-callbacks.create":        {"signing_methods defaults to [jwt]", "Authorization: Bearer <token>", "aud set to the delivery_rate_callback_id", "save them if present"},
 		"delivery-rate-callbacks.update":        {"replaces the set", "409 ACTION_NOT_ALLOWED with reason secret_not_issued", "expected_version is required when sending", "signing_methods"},
 		"delivery-rate-callbacks.rotate-secret": {"delivery_rate_callback_signing_key_id once"},
-		"listen":                                {"JWT", "at-least-once", "webhook_endpoint_id", "sandbox endpoint"},
+		"listen":                                {"JWT", "at-least-once", "webhook_endpoint_id", "sandbox JWT endpoint"},
 	} {
 		cmd, _ := NewRegistry().ByName(name)
 		schema, _ := schemaForMCPTool(cmd, mcpPolicy{})

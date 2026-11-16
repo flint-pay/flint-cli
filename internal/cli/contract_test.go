@@ -909,6 +909,11 @@ func TestListenForwardsServerSignedPayloadAndCheckpoint(t *testing.T) {
 			return
 		}
 
+		if r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/v1/webhook-endpoints/") {
+			writeListenEndpoint(w, "whep_fixture")
+			return
+		}
+
 		if strings.HasSuffix(r.URL.Path, "/sign-delivery") {
 			_ = json.NewEncoder(w).Encode(map[string]any{"data": listenSignedDelivery{EndpointID: "whep_fixture", EventID: eventID, Body: payload, ExpiresAt: time.Now().Add(5 * time.Minute), Headers: map[string]string{"Authorization": "Bearer mock-token", "webhook-id": eventID, "webhook-timestamp": "1700000000"}}})
 			return
@@ -964,6 +969,11 @@ func TestListenForwardsServerSignedPayloadAndCheckpoint(t *testing.T) {
 
 func TestDurationBoundedEmptyListenExitsWithCheckpoint(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/webhook-endpoints/whep_fixture" {
+			w.Header().Set("Content-Type", "application/json")
+			writeListenEndpoint(w, "whep_fixture")
+			return
+		}
 		if r.URL.Path == "/v1/auth-context" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, authContextJSON("sandbox"))

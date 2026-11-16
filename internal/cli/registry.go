@@ -87,6 +87,9 @@ func newRegistryFromSnapshot(includeAPI bool) *Registry {
 		c.Supports.Field = transforms
 		c.Supports.Select = transforms
 		c.Supports.JQ = transforms
+		if c.CanonicalName == "listen" {
+			c.Supports.DryRunClient = true
+		}
 		if c.Mutation {
 			c.Supports.DryRunClient = true
 			c.Supports.IdempotencyKey = true

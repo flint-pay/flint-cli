@@ -32,19 +32,6 @@ func mockListenSource(t *testing.T) listenDeliverySource {
 	return listenDeliverySource{baseURL: server.URL, key: "flint_test_fixture", endpointID: "whep_fixture"}
 }
 
-func TestListenRequiresEndpointForForwarding(t *testing.T) {
-	server := listenAPI(t, func(http.ResponseWriter, *http.Request, int) { t.Error("opened stream") })
-	app, out, _ := testApp(t, server.URL)
-	if exit := app.Run([]string{"listen", "--forward-to", "http://localhost/hook", "--for", "1s", "--output", "json"}); exit != ExitUsage {
-		t.Fatalf("exit=%d", exit)
-	}
-	for _, expected := range []string{"--webhook-endpoint-id", "sandbox endpoint", "webhook-endpoints create"} {
-		if !strings.Contains(out.String(), expected) {
-			t.Fatalf("missing %q", expected)
-		}
-	}
-}
-
 func TestListenSignedDeliveryVerbatimAndNoFrameOutput(t *testing.T) {
 	const body = "{ \"data\": {\"object\":{\"label\":\"é\"}}, \"test\":false }\n"
 	headers := map[string]string{"Authorization": "Bearer sensitive-signed-token", "Content-Type": "application/json", "User-Agent": "Flint-Webhooks/1.0", "Flint-Webhook-Endpoint-Id": "whep_fixture", "webhook-id": "whev_fixture", "webhook-timestamp": "1800000000", "webhook-signature": "v1,optional-hmac", "Future-Header": "unchanged"}
@@ -53,6 +40,8 @@ func TestListenSignedDeliveryVerbatimAndNoFrameOutput(t *testing.T) {
 		switch r.URL.Path {
 		case "/v1/auth-context":
 			fmt.Fprint(w, authContextJSON("sandbox"))
+		case "/v1/webhook-endpoints/whep_fixture":
+			writeListenEndpoint(w, "whep_fixture")
 		case "/v1/webhook-events/stream":
 			w.Header().Set("Content-Type", "text/event-stream")
 			fmt.Fprint(w, listenEventFrame("whev_fixture", "customer.created", `{"different":"stream body"}`))
@@ -173,6 +162,8 @@ func TestListenDailyQuotaStopsBeforeAdvancingCursor(t *testing.T) {
 		switch r.URL.Path {
 		case "/v1/auth-context":
 			fmt.Fprint(w, authContextJSON("sandbox"))
+		case "/v1/webhook-endpoints/whep_fixture":
+			writeListenEndpoint(w, "whep_fixture")
 		case "/v1/webhook-events/stream":
 			w.Header().Set("Content-Type", "text/event-stream")
 			fmt.Fprint(w, "event: ready\ndata: {\"cursor\":\"whev_before\"}\n\n")

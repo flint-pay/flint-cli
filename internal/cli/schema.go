@@ -693,7 +693,10 @@ func errorCatalog() map[string]any {
 		"exit_codes": []map[string]any{{"code": 0, "meaning": "success"}, {"code": 1, "meaning": "api_error"}, {"code": 2, "meaning": "usage_error"}, {"code": 3, "meaning": "auth_or_config_error"}, {"code": 4, "meaning": "confirmation_required"}, {"code": 5, "meaning": "network_or_timeout_error"}, {"code": 6, "meaning": "wait_condition_unmet"}, {"code": 70, "meaning": "internal_error"}},
 		"types":      errorCatalogTypes(),
 		"listen_codes": []map[string]any{
-			{"code": "WEBHOOK_ENDPOINT_REQUIRED", "exit_code": ExitUsage},
+			{"code": "TEST_MODE_REQUIRED", "exit_code": ExitUsage},
+			{"code": "EVENT_TYPE_NOT_ENABLED", "exit_code": ExitUsage},
+			{"code": "WEBHOOK_ENDPOINT_NOT_USABLE", "exit_code": ExitAPI},
+			{"code": "LOCAL_SIGNING_REMOVED", "exit_code": ExitUsage},
 			{"code": "INVALID_SIGNED_DELIVERY", "exit_code": ExitAPI},
 			{"code": "SIGNED_DELIVERY_EXPIRED", "exit_code": ExitAPI},
 			{"code": "STREAM_BOUND_REQUIRED", "exit_code": ExitUsage},

@@ -324,4 +324,4 @@ These additions need no changes to existing scripts.
 
 The default total timeout of 150 seconds came in 0.14.3.
 
-Current listener forwarding requires `--webhook-endpoint-id` for a sandbox endpoint and uses server-signed deliveries. The local secret flags described above are retired. See [Use](../README.md#use) for the current setup.
+Current listener forwarding creates or reuses a sandbox JWT endpoint and uses server-signed deliveries. `--webhook-endpoint-id` optionally selects an existing sandbox endpoint and its subscriptions. The local secret flags described above are retired. See [Use](../README.md#use) for the current setup.

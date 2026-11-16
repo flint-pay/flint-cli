@@ -927,6 +927,10 @@ func TestListenExecutesEveryDeclaredArgument(t *testing.T) {
 			fmt.Fprint(w, exhaustiveAuthContextJSON("sandbox"))
 			return
 		}
+		if strings.HasPrefix(request.URL.Path, "/v1/webhook-endpoints/") {
+			writeListenEndpoint(w, "whep_fixture")
+			return
+		}
 		eventType = request.URL.Query().Get("event_type")
 		cursorQuery = request.URL.Query().Get("after_event_id")
 		lastEventID = request.Header.Get("Last-Event-ID")
