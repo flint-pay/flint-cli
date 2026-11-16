@@ -322,3 +322,17 @@ func TestMCPDiscoveryMerchantTaskSearch(t *testing.T) {
 		})
 	}
 }
+
+func TestMCPDiscoveryCollectedTaxSearch(t *testing.T) {
+	app := discoveryFixture(t)
+	policy := app.mcpPolicy(defaultOptions())
+	for _, query := range []string{"how much sales tax did I collect by state", "collected tax", "sales tax by state", "tax liability", "tax report"} {
+		t.Run(query, func(t *testing.T) {
+			value := discoveryData(t, app, policy, "flint_search", map[string]any{"query": query})
+			results := value["results"].([]map[string]any)
+			if len(results) == 0 || results[0]["operation"] != "reports.create" {
+				t.Fatalf("want reports.create first; got %v", results)
+			}
+		})
+	}
+}

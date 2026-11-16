@@ -29,6 +29,7 @@ var (
 // Merchant task vocabulary complements terse API resource names. Keep it local to
 // discovery: these are search terms, not command aliases or execution routing.
 var searchTasks = map[string][]string{
+	"reports.create":               {"sales tax", "collected tax", "collect sales tax", "tax by state", "tax liability", "tax report"},
 	"return-resolutions.create":    {"exchange", "size exchange", "store credit", "replace returned item"},
 	"return-previews.create":       {"preview exchange", "preview store credit", "return eligibility"},
 	"returns.create":               {"return item", "start return"},

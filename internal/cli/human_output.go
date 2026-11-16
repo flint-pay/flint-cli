@@ -136,6 +136,10 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 		addFirst("status")
 		addFirst("pricing_amounts.total_money", "total_money")
 		addFirst("buyer_contact.email", "customer.email", "customer_id")
+	} else if cmd != nil && cmd.OperationID == "listTaxRegistrations" {
+		for _, key := range []string{"country", "state", "status", "registration_number_last4", "start_date", "end_date"} {
+			addFirst(key)
+		}
 	} else {
 		addFirst(statuses...)
 		addFirst(money...)
@@ -217,4 +221,61 @@ func renderTextTable(w io.Writer, headers []string, rows [][]string) {
 	for _, row := range rows {
 		printRow(row)
 	}
+}
+
+// Lead with connection health and keep the country catalog compact in text output.
+func renderTaxConnectionHuman(w io.Writer, data map[string]any, now time.Time) {
+	remaining := copyMap(data)
+	for _, key := range []string{"status", "status_reason", "supported_actions"} {
+		if value, exists := remaining[key]; exists {
+			renderHumanValue(w, map[string]any{key: value}, "", now, 0)
+			delete(remaining, key)
+		}
+	}
+	if coverage, ok := taxCoverageSummary(remaining["coverage"]); ok {
+		fmt.Fprintf(w, "%-20s %s\n", "Coverage", terminalSafe(coverage))
+		delete(remaining, "coverage")
+	}
+	if len(remaining) > 0 {
+		renderHumanValue(w, remaining, "", now, 0)
+	}
+}
+
+func taxCoverageSummary(value any) (string, bool) {
+	entries, ok := value.([]any)
+	if !ok {
+		return "", false
+	}
+	if len(entries) == 0 {
+		return "(none)", true
+	}
+	groups := map[string][]string{}
+	for _, value := range entries {
+		entry, _ := value.(map[string]any)
+		country, countryOK := entry["country"].(string)
+		scope, scopeOK := entry["category_scope"].(string)
+		if !countryOK || !scopeOK || country == "" || scope == "" {
+			return "", false
+		}
+		groups[scope] = append(groups[scope], country)
+	}
+	scopes := make([]string, 0, len(groups))
+	for scope := range groups {
+		scopes = append(scopes, scope)
+	}
+	sort.Strings(scopes)
+	parts := make([]string, 0, len(scopes))
+	for _, scope := range scopes {
+		countries := groups[scope]
+		label := scope
+		if scope == "digital" {
+			label = "digital only"
+		}
+		if len(countries) == 1 {
+			parts = append(parts, countries[0]+": "+label)
+		} else {
+			parts = append(parts, fmt.Sprintf("%d countries: %s", len(countries), label))
+		}
+	}
+	return strings.Join(parts, "; "), true
 }
