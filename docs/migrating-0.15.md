@@ -13,7 +13,9 @@ flint upgrade --check
 flint upgrade
 ```
 
-`flint upgrade` in 0.14.x can fail on this release. It verifies the downloaded binary with `flint version --field data.cli_version`, and 0.15.0 rejects `data.` at the start of an output path (see [Output paths](#output-paths)). If the upgrade fails, use the package manager that installed the CLI:
+Releases from 0.20.1 accept `version --field data.cli_version` so 0.14.x installations can upgrade directly. Other output paths still start inside the resource.
+
+`flint upgrade` in 0.14.x can fail when upgrading to 0.15.0 through 0.20.0. It verifies the downloaded binary with `flint version --field data.cli_version`, and 0.15.0 rejects `data.` at the start of an output path (see [Output paths](#output-paths)). If the upgrade fails, use the package manager that installed the CLI:
 
 ```sh
 npm install -g @flintpay/cli@latest

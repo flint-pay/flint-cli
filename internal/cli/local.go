@@ -22,6 +22,10 @@ func (a *App) runLocal(cmd *Command, opts Options) int {
 	case "trigger":
 		return a.localTrigger(cmd, opts)
 	case "version":
+		// Releases through 0.14.x use this exact field to verify an upgrade.
+		if opts.Field == "data.cli_version" {
+			opts.Field = "cli_version"
+		}
 		return a.outputLocal(map[string]any{"data": map[string]any{
 			"cli_version": a.Info.Version,
 			"git_commit":  a.Info.Commit,

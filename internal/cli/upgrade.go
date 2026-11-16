@@ -673,7 +673,12 @@ func (a *App) replaceExecutableAtomically(ctx context.Context, executable string
 		return "", networkError("CLIENT_CANCELED", "The CLI upgrade was canceled or timed out; the existing installation was left unchanged.", err)
 	}
 	if verifyErr != nil || strings.TrimSpace(string(output)) != expectedVersion {
-		return "", upgradeFailure("UPGRADE_VERIFICATION_FAILED", "The downloaded Flint CLI binary did not report the expected release version; the existing installation was left unchanged.", verifyErr)
+		failure := upgradeFailure("UPGRADE_VERIFICATION_FAILED", "Flint CLI could not verify the release version. This can happen when CLI versions use incompatible verification commands. The existing installation was left unchanged.", verifyErr)
+		failure.Details = map[string]any{
+			"expected_version": expectedVersion,
+			"remediation":      map[string]any{"next_steps": "Install manually: curl -fsSL https://raw.githubusercontent.com/flint-pay/flint-cli/main/scripts/install.sh -o /tmp/flint-install.sh && sh /tmp/flint-install.sh"},
+		}
+		return "", failure
 	}
 	installedVersion := expectedVersion
 	err = withLocalFileLock(ctx, filepath.Join(directory, ".flint-upgrade"), func() error {
