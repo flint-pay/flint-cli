@@ -233,12 +233,12 @@ func TestSignupTwoPhasePersistsOnboardingInputs(t *testing.T) {
 					signupFlowSuccess(t, w, r)
 				}
 			})
-			args := append(append([]string{}, signupFlowStartArgs...), "--country", "ca", "--website-url", "https://example.test", "--support-email", "support@example.test", "--support-phone", "+15555550100", "--support-url", "https://example.test/support", "--requested-capability", "payments", "--requested-capability", "refunds", "--no-input", "--output", "json")
+			args := append(append([]string{}, signupFlowStartArgs...), "--country", "ca", "--timezone", "America/Chicago", "--website-url", "https://example.test", "--support-email", "support@example.test", "--support-phone", "+15555550100", "--support-url", "https://example.test/support", "--requested-capability", "payments", "--requested-capability", "refunds", "--no-input", "--output", "json")
 			if exit := app.Run(args); exit != ExitOK || profileBody != nil {
 				t.Fatalf("start exit=%d out=%s", exit, out)
 			}
 			pending := signupTestLoadPending(t, app)
-			if len(pending.Inputs) != 6 || len(pending.Inputs["requested-capability"]) != 2 {
+			if len(pending.Inputs) != 7 || len(pending.Inputs["requested-capability"]) != 2 || pending.Inputs["timezone"][0] != "America/Chicago" {
 				t.Fatalf("inputs not persisted: %#v", pending.Inputs)
 			}
 			args = []string{"signup", "--verification-code", "123456", "--no-input", "--output", "json"}
