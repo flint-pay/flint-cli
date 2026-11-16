@@ -390,6 +390,7 @@ func TestMCPDiscoveryPrivacyTaskSearch(t *testing.T) {
 		{"delete customer", "customer-deletion-requests.create"},
 		{"erase customer data", "customer-deletion-requests.create"},
 		{"delete a customer's personal data (GDPR)", "customer-deletion-requests.create"},
+		{"gdpr", "customer-deletion-requests.create"},
 		{"gdpr erasure", "customer-deletion-requests.create"},
 		{"right to be forgotten", "customer-deletion-requests.create"},
 		{"ccpa", "customer-deletion-requests.create"},

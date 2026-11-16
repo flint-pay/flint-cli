@@ -128,8 +128,6 @@ func (a *App) cliCommandFor(cmd *Command, req preparedRequest, resolved Resolved
 	if resolved.MerchantGuard != "" {
 		flag("--merchant", resolved.MerchantGuard)
 	}
-	// Sandbox guards are project-only. The action instructs the user to run in
-	// the same project directory rather than suggesting an unsupported flag.
 	if len(positionals) > 0 {
 		tokens = append(tokens, "--")
 		tokens = append(tokens, positionals...)
