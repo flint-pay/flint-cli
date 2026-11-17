@@ -17,6 +17,9 @@ func (a *App) mcpDispatch(ctx context.Context, id any, tool string, input map[st
 	fail := func(e *CLIError) map[string]any {
 		return rpcResult(id, a.mcpLocalError(errorCommand, errorArguments, opts, policy, e, a.mcpKnownEnvironment()))
 	}
+	if e := a.checkMCPContext(); e != nil {
+		return fail(e)
+	}
 	if tool == "flint_search" || tool == "flint_describe" || tool == "flint_help" {
 		value, e := a.mcpDiscovery(tool, input, opts, policy)
 		if e != nil {
