@@ -28,7 +28,7 @@ func TestCredentialClassMismatchBeforeLookupOrRequest(t *testing.T) {
 		{"customer_session_listen", "listen", "", "flint_cses_example", "", "MERCHANT_CREDENTIAL_REQUIRED", opindex.CredentialAccessToken},
 		{"customer_session_status", "auth.status", "", "flint_cses_example", "", "MERCHANT_CREDENTIAL_REQUIRED", opindex.CredentialAccessToken},
 		{"checkout_session_merchant", "orders.list", "", "ckat_v1.example", "", "MERCHANT_CREDENTIAL_REQUIRED", opindex.CredentialAccessToken},
-		{"partner_unsupported", "customer-sessions.create", "", "fpat_v1.example", "", "PARTNER_ACCESS_NOT_ALLOWED", opindex.CredentialAccessToken},
+		{"partner_unsupported", "customer-sessions.create", "", "fpat_" + strings.Repeat("A", 43), "", "PARTNER_ACCESS_NOT_ALLOWED", opindex.CredentialAccessToken},
 	} {
 		for _, dryRun := range []string{"", "client"} {
 			t.Run(tc.name+"/"+dryRun, func(t *testing.T) {
@@ -68,7 +68,7 @@ func TestCredentialClassCompatibleAndUnknown(t *testing.T) {
 	for _, tc := range []struct{ command, token string }{
 		{"orders.list", "fcat_example"},
 		{"orders.list", "fwat_example"},
-		{"orders.list", "fpat_v1.example"},
+		{"orders.list", "fpat_" + strings.Repeat("A", 43)},
 		{"checkout-sessions.get", "ckat_v1.example"},
 		{"checkout-sessions.get", "fcat_example"},
 		{"me.orders.list", "flint_cses_example"},
@@ -144,7 +144,7 @@ func TestCredentialClassStopsJSON(t *testing.T) {
 		{"buyer_listen", []string{"listen"}, "flint_cses_example", "", "MERCHANT_CREDENTIAL_REQUIRED", "BearerAuth", ""},
 		{"buyer_status", []string{"auth", "status"}, "flint_cses_example", "", "MERCHANT_CREDENTIAL_REQUIRED", "BearerAuth", ""},
 		{"buyer_trigger", []string{"trigger", "customer.created"}, "flint_cses_example", "", "MERCHANT_CREDENTIAL_REQUIRED", "BearerAuth", ""},
-		{"partner_unsupported", []string{"customer-sessions", "create", "--input", `{"customer_id":"cus_example"}`}, "fpat_v1.example", "", "PARTNER_ACCESS_NOT_ALLOWED", "BearerAuth", ""},
+		{"partner_unsupported", []string{"customer-sessions", "create", "--input", `{"customer_id":"cus_example"}`}, "fpat_" + strings.Repeat("A", 43), "", "PARTNER_ACCESS_NOT_ALLOWED", "BearerAuth", ""},
 		{"checkout_required", []string{"checkout-sessions", "customer-verifications", "create", "cs_example", "--input", `{"email":"ada@example.com","purpose":"use_saved_payment_methods"}`}, "", "flint_test_example", "BUYER_CREDENTIAL_REQUIRED", "CheckoutSessionBearer", ""},
 		{"buyer_client_dry_run", []string{"me", "addresses", "create", "--input", `{}`, "--dry-run=client"}, "", "flint_test_example", "BUYER_CREDENTIAL_REQUIRED", "CustomerSessionBearer", ""},
 		{"workload_buyer", []string{"me", "orders", "list"}, "", "", "BUYER_CREDENTIAL_REQUIRED", "CustomerSessionBearer", "wid_example"},

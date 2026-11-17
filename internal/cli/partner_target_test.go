@@ -17,7 +17,7 @@ func partnerTestApp(t *testing.T, url string) (*App, *bytes.Buffer, *bytes.Buffe
 	t.Helper()
 	app, out, err := testApp(t, url)
 	t.Setenv("FLINT_API_KEY", "")
-	t.Setenv("FLINT_ACCESS_TOKEN", "fpat_v1.test")
+	t.Setenv("FLINT_ACCESS_TOKEN", "fpat_"+strings.Repeat("A", 43))
 	t.Setenv("FLINT_MERCHANT", "")
 	t.Setenv("FLINT_SANDBOX", "")
 	return app, out, err

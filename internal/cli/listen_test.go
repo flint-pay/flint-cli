@@ -382,7 +382,7 @@ func TestListenTimeoutBoundsStreamResponseHeaders(t *testing.T) {
 	defer server.Close()
 
 	app, _, stderr := testApp(t, server.URL)
-	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", "http://127.0.0.1:1/webhooks", "--timeout", "100ms"})
+	exit := app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", "http://127.0.0.1:1/webhooks", "--timeout", "100ms", "--for", "400ms"})
 	if exit != ExitNetwork || !strings.Contains(stderr.String(), "Timed out waiting") {
 		t.Fatalf("exit=%d stderr=%s", exit, stderr)
 	}
@@ -413,7 +413,7 @@ func TestOpenListenStreamTimeoutDoesNotWaitForTransportCancellation(t *testing.T
 	started := time.Now()
 	_, retryable, streamErr := app.openListenStream(context.Background(), "https://api.example.test", "flint_test_test", "/v1/webhook-events/stream", "", 25*time.Millisecond, false)
 	close(release)
-	if streamErr == nil || streamErr.Code != "CLIENT_TIMEOUT" || retryable {
+	if streamErr == nil || streamErr.Code != "CLIENT_TIMEOUT" || !retryable {
 		t.Fatalf("open error = %#v, retryable = %t", streamErr, retryable)
 	}
 	if elapsed := time.Since(started); elapsed > 500*time.Millisecond {
@@ -791,24 +791,28 @@ func TestListenHandlerSlowerThanTimeoutDoesNotStopListener(t *testing.T) {
 	}
 }
 
-func TestOpenListenStreamUsesFlintRetryDecision(t *testing.T) {
+func TestOpenListenStreamRetriesTransientHTTPFailures(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		body      string
 		wantRetry bool
+		status    int
 	}{
-		{"none", `{"error":{"code":"INTERNAL_ERROR","remediation":{"retry":"none"}}}`, false},
-		{"after_refresh", `{"error":{"code":"INTERNAL_ERROR","remediation":{"retry":"after_refresh"}}}`, false},
-		{"same_request", `{"error":{"code":"INTERNAL_ERROR","remediation":{"retry":"same_request"}}}`, true},
-		{"missing_retry", `{"error":{"code":"INTERNAL_ERROR"}}`, false},
-		{"proxy", `<html>Internal Server Error</html>`, true},
+		{"none", `{"error":{"code":"INTERNAL_ERROR","remediation":{"retry":"none"}}}`, true, 500},
+		{"after_refresh", `{"error":{"code":"INTERNAL_ERROR","remediation":{"retry":"after_refresh"}}}`, true, 500},
+		{"same_request", `{"error":{"code":"INTERNAL_ERROR","remediation":{"retry":"same_request"}}}`, true, 500},
+		{"missing_retry", `{"error":{"code":"INTERNAL_ERROR"}}`, true, 500},
+		{"proxy", `<html>Internal Server Error</html>`, true, 500},
+		{"unauthorized", `{"error":{"code":"UNAUTHORIZED"}}`, false, 401},
+		{"forbidden", `{"error":{"code":"FORBIDDEN"}}`, false, 403},
+		{"bad_request", `{"error":{"code":"INVALID_REQUEST"}}`, false, 400},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			app := &App{HTTPClient: &http.Client{Transport: listenRoundTripFunc(func(*http.Request) (*http.Response, error) {
-				return &http.Response{StatusCode: http.StatusInternalServerError, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(tc.body))}, nil
+				return &http.Response{StatusCode: tc.status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(tc.body))}, nil
 			})}}
 			resp, retryable, err := app.openListenStream(t.Context(), "https://api.example.test", "", "/v1/webhook-events/stream", "", time.Second, false)
-			if resp != nil || err == nil || err.HTTPStatus != 500 || retryable != tc.wantRetry {
+			if resp != nil || err == nil || err.HTTPStatus != tc.status || retryable != tc.wantRetry {
 				t.Fatalf("response=%v retryable=%t error=%+v", resp, retryable, err)
 			}
 		})
@@ -828,7 +832,7 @@ func TestListenReportsRetryableStreamFailures(t *testing.T) {
 		t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
 	}
 	reconnect := findListenRecord(t, stdout.String(), "reconnect")
-	if reconnect["reason"] != "SERVICE_UNAVAILABLE" || reconnect["http_status"] != float64(503) || reconnect["attempt"] != float64(1) || reconnect["retry_in_ms"] != float64(250) {
+	if reconnect["reason"] != "SERVICE_UNAVAILABLE" || reconnect["http_status"] != float64(503) || reconnect["attempt"] != float64(1) || reconnect["retry_in_ms"].(float64) < 125 || reconnect["retry_in_ms"].(float64) > 250 {
 		t.Fatalf("reconnect record = %#v", reconnect)
 	}
 	failure := listenErrorRecord(t, stdout.String())
@@ -840,7 +844,7 @@ func TestListenReportsRetryableStreamFailures(t *testing.T) {
 
 	stdout.Reset()
 	exit = app.Run([]string{"listen", "--webhook-endpoint-id", "whep_fixture", "--forward-to", "http://127.0.0.1:1/webhooks", "--for", "400ms"})
-	if exit != ExitNetwork || !strings.Contains(stderr.String(), "returned HTTP 503: Webhook streaming is temporarily unavailable. Reconnecting in 250ms (attempt 1).") || !strings.Contains(stderr.String(), "did not connect within --for 400ms") {
+	if exit != ExitNetwork || !strings.Contains(stderr.String(), "returned HTTP 503: Webhook streaming is temporarily unavailable. Reconnecting in ") || !strings.Contains(stderr.String(), "did not connect within --for 400ms") {
 		t.Fatalf("human exit=%d stderr=%s", exit, stderr)
 	}
 	if strings.Contains(stdout.String(), "Ready") || strings.Contains(stdout.String(), "whsec_") {
@@ -1076,5 +1080,42 @@ func TestListenWithholdsCurrentEventWithoutData(t *testing.T) {
 	}
 	if withheld := findListenRecord(t, stdout.String(), "withheld"); withheld["webhook_event_id"] != eventID {
 		t.Fatalf("withheld record = %#v", withheld)
+	}
+}
+
+func TestListenRecoversFromServiceUnavailableWithoutRetryAdvice(t *testing.T) {
+	for _, output := range []string{"human", "ndjson"} {
+		t.Run(output, func(t *testing.T) {
+			server := listenAPI(t, func(w http.ResponseWriter, r *http.Request, connection int) {
+				if connection == 1 {
+					w.WriteHeader(http.StatusServiceUnavailable)
+					fmt.Fprint(w, `{"error":{"code":"SERVICE_UNAVAILABLE","message":"Try again later."}}`)
+					return
+				}
+				w.Header().Set("Content-Type", "text/event-stream")
+				fmt.Fprint(w, listenEventFrame("whev_recovered", "order.created", `{"sequence":1}`))
+			})
+			app, stdout, stderr := testApp(t, server.URL)
+			if exit := app.Run([]string{"listen", "--max-events", "1", "--for", "3s", "--output", output}); exit != ExitOK {
+				t.Fatalf("exit=%d stdout=%s stderr=%s", exit, stdout, stderr)
+			}
+			if output == "human" && !strings.Contains(stderr.String(), "Reconnecting in") || output == "ndjson" && !strings.Contains(stdout.String(), `"type":"reconnect"`) {
+				t.Fatalf("missing reconnect status: stdout=%s stderr=%s", stdout, stderr)
+			}
+			if !strings.Contains(stdout.String(), "whev_recovered") {
+				t.Fatal(stdout)
+			}
+		})
+	}
+}
+
+func TestListenReconnectDelayIsCappedAndJittered(t *testing.T) {
+	for _, attempt := range []int{1, 2, 3, 8, 1000000} {
+		ceiling := min(250*time.Millisecond*time.Duration(1<<min(attempt-1, 5)), 5*time.Second)
+		for i := 0; i < 20; i++ {
+			if delay := listenReconnectDelay(attempt); delay < ceiling/2 || delay > ceiling {
+				t.Fatalf("attempt=%d delay=%s ceiling=%s", attempt, delay, ceiling)
+			}
+		}
 	}
 }
