@@ -95,7 +95,7 @@ func TestTimelineAllPreservesEnvelopeAndCollectsEntries(t *testing.T) {
 				if token == "page_two" {
 					next = ""
 				}
-				fmt.Fprintf(w, `{"data":{"resource_id":"pi_test","resource_type":"payment_intent","test":true,"environment_id":"env_test","entries":[{"entry_type":"webhook_event","occurred_at":"2026-09-13T00:00:00Z","resource_timeline_entry_id":"entry_%d","event_type":"payment_intent.succeeded","webhook_event_id":"evt_test"}]},"next_page_token":%q,"request_id":"req_%026d"}`, len(tokens), next, len(tokens))
+				fmt.Fprintf(w, `{"data":{"resource_id":"pi_test","resource_type":"payment_intent","test":true,"environment_id":"env_test","entries":[{"actor":null,"entry_type":"webhook_event","occurred_at":"2026-09-13T00:00:00Z","resource_timeline_entry_id":"entry_%d","event_type":"payment_intent.succeeded","webhook_event_id":"evt_test"}]},"next_page_token":%q,"request_id":"req_%026d"}`, len(tokens), next, len(tokens))
 			}))
 			defer server.Close()
 			app, out, _ := testApp(t, server.URL)

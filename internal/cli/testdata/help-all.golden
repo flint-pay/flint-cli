@@ -377,6 +377,7 @@ Merchant resources:
   flint orders discounts create <order_id>                          Apply discount
   flint orders discounts remove <order_id>                          Remove discounts
   flint orders discounts reprice <order_id>                         Reprice discounts
+  flint orders edits cancel <order_id> <order_edit_id>              Cancel order edit
   flint orders edits create <order_id>                              Create order edit
   flint orders edits get <order_id> <order_edit_id>                 Get order edit
   flint orders edits list <order_id>                                List order edits

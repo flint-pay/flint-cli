@@ -41,6 +41,11 @@ func TestHelpSearchOfflineOutput(t *testing.T) {
 		{"payment intent succeeded event", "payment_intent.succeeded", "event", 1},
 		{"invoice payment attempt succeeded event", "invoice_payment_attempt.succeeded", "event", 1},
 		{"test card", "test-cards", "topic", 1},
+		// FLI-2510: the CLI guide's example must find webhook verification, not buyer email verification.
+		{"webhook signature verification", "listen", "command", 2},
+		{"webhook signature verification", "webhook-endpoints.sign-delivery", "command", 2},
+		{"verify webhook", "listen", "command", 2},
+		{"webhook verification", "webhook-endpoints.sign-delivery", "command", 2},
 	} {
 		for _, jsonOutput := range []bool{false, true} {
 			app, out, errOut := offlineHelpSearchApp(t)
