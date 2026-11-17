@@ -2,6 +2,7 @@ package opindex
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -11,7 +12,7 @@ func TestCredentialAdapter(t *testing.T) {
 		partner               bool
 	}{
 		{CredentialAPIKey, "anything", "BearerAuth", false}, {CredentialLogin, "anything", "BearerAuth", false}, {CredentialWorkload, "anything", "BearerAuth", false},
-		{CredentialAccessToken, "fcat_example", "BearerAuth", false}, {CredentialAccessToken, "fwat_example", "BearerAuth", false}, {CredentialAccessToken, "fpat_v1.example", "BearerAuth", true},
+		{CredentialAccessToken, "fcat_example", "BearerAuth", false}, {CredentialAccessToken, "fwat_example", "BearerAuth", false}, {CredentialAccessToken, "fpat_" + strings.Repeat("A", 43), "BearerAuth", true},
 		{CredentialAccessToken, "ckat_v1.example", "CheckoutSessionBearer", false}, {CredentialAccessToken, "flint_cses_example", "CustomerSessionBearer", false}, {CredentialAccessToken, "unknown", "", false},
 	} {
 		c := ClassifyCredential(tc.source, tc.token)
@@ -21,7 +22,7 @@ func TestCredentialAdapter(t *testing.T) {
 	}
 	merchant := Entry{Audience: "merchant", Schemes: []string{"BearerAuth"}}
 	buyer := Entry{Audience: "buyer", Schemes: []string{"CustomerSessionBearer"}}
-	partner := ClassifyCredential(CredentialAccessToken, "fpat_v1.example")
+	partner := ClassifyCredential(CredentialAccessToken, "fpat_"+strings.Repeat("A", 43))
 	if partner.Allows(merchant) || partner.Allows(buyer) {
 		t.Fatal("partner escaped install restriction")
 	}

@@ -20,7 +20,7 @@ var credentialPrefixes = []struct {
 	Partner        bool
 }{
 	{"fcat_", "BearerAuth", false}, {"fwat_", "BearerAuth", false},
-	{"fpat_v1.", "BearerAuth", true}, {"ckat_v1.", "CheckoutSessionBearer", false},
+	{"fpat_", "BearerAuth", true}, {"ckat_v1.", "CheckoutSessionBearer", false},
 	{"flint_cses_", "CustomerSessionBearer", false},
 }
 

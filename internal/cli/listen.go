@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	mathrand "math/rand/v2"
 	"mime"
 	"net"
 	"net/http"
@@ -532,7 +533,7 @@ func (a *App) openListenStreamAttempt(ctx context.Context, baseURL, key, path, c
 	case <-timer.C:
 		cancelRequest()
 		close(abandoned)
-		return nil, false, networkError("CLIENT_TIMEOUT", "Timed out waiting for the webhook event stream to open.", context.DeadlineExceeded)
+		return nil, true, networkError("CLIENT_TIMEOUT", "Timed out waiting for the webhook event stream to open.", context.DeadlineExceeded)
 	case <-ctx.Done():
 		cancelRequest()
 		close(abandoned)
@@ -565,7 +566,9 @@ func (a *App) openListenStreamAttempt(ctx context.Context, baseURL, key, path, c
 		_ = json.Unmarshal(raw, &value)
 		apiErr := apiErrorFromResponse(&apiResponse{Status: resp.StatusCode, Headers: resp.Header.Clone(), Raw: raw, Value: value})
 		partnerMerchantGuidance(apiErr, key)
-		return nil, errorRetryable(apiErr), apiErr
+		// Stream opens are reads. Transient HTTP failures are safe to retry
+		// even when an API error omits retry advice.
+		return nil, retryableErrorStatus(resp.StatusCode) || errorRetryable(apiErr), apiErr
 	}
 	mediaType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 	if err != nil || mediaType != "text/event-stream" {
@@ -1095,7 +1098,8 @@ func listenReconnectDelay(attempt int) time.Duration {
 	for i := 1; i < attempt && delay < 5*time.Second; i++ {
 		delay *= 2
 	}
-	return min(delay, 5*time.Second)
+	ceiling := min(delay, 5*time.Second)
+	return ceiling/2 + time.Duration(mathrand.Int64N(int64(ceiling/2)+1))
 }
 
 func (a *App) writeListenStarted(opts Options, forwardTo, origin, issuer string) *CLIError {

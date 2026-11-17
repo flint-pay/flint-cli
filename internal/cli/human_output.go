@@ -89,7 +89,10 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 	}
 	// Resource identifiers generally precede foreign IDs in the alphabet. Prefer
 	// the command's own resource name when several identifiers are present.
-	if cmd != nil {
+	if cmd != nil && cmd.OperationID == "listCustomerTaxExemptions" {
+		addFirst("customer_tax_exemption_id")
+	}
+	if cmd != nil && len(columns) == 0 {
 		parts := strings.Split(cmd.CanonicalName, ".")
 		group := parts[0]
 		if len(parts) > 1 {
@@ -136,6 +139,10 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 		addFirst("status")
 		addFirst("pricing_amounts.total_money", "total_money")
 		addFirst("buyer_contact.email", "customer.email", "customer_id")
+	} else if cmd != nil && cmd.OperationID == "listCustomerTaxExemptions" {
+		for _, key := range []string{"reason", "coverage", "certificate_number", "start_date", "end_date", "status"} {
+			addFirst(key)
+		}
 	} else if cmd != nil && cmd.OperationID == "listTaxRegistrations" {
 		for _, key := range []string{"country", "state", "status", "registration_number_last4", "start_date", "end_date"} {
 			addFirst(key)
@@ -158,7 +165,18 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 			if key == "buyer_contact.email" || key == "customer.email" || key == "customer_id" && cmd != nil && (cmd.OperationID == "listOrders" || cmd.OperationID == "listMeOrders") {
 				v, _ = firstStringAt(m, "buyer_contact.email", "customer.email", "customer_id")
 			}
-			if text, ok := humanMoney(v); ok {
+			if key == "coverage" && cmd != nil && cmd.OperationID == "listCustomerTaxExemptions" {
+				coverage, _ := v.(map[string]any)
+				if coverage["type"] == "all_states" {
+					line[i] = "All states"
+				} else if states, ok := coverage["states"].([]any); ok {
+					values := make([]string, 0, len(states))
+					for _, state := range states {
+						values = append(values, terminalSafe(fmt.Sprint(state)))
+					}
+					line[i] = strings.Join(values, ", ")
+				}
+			} else if text, ok := humanMoney(v); ok {
 				line[i] = text
 			} else if key == "created_at" {
 				if stamp, ok := v.(string); ok {

@@ -181,3 +181,28 @@ func TestHumanTaxCoverageSummaryEdges(t *testing.T) {
 		}
 	}
 }
+
+func TestHumanCustomerTaxExemptionsIdentifyCertificates(t *testing.T) {
+	rows := []any{
+		map[string]any{"customer_id": "cus_example", "customer_tax_exemption_id": "ctex_resale", "reason": "resale", "coverage": map[string]any{"type": "states", "country": "US", "states": []any{"TX", "NY"}}, "certificate_number": "SYNTHETIC-42", "start_date": "2026-01-01", "end_date": "2027-12-31", "status": "active"},
+		map[string]any{"customer_id": "cus_example", "customer_tax_exemption_id": "ctex_government", "reason": "federal_government", "coverage": map[string]any{"type": "all_states", "country": "US"}, "certificate_number": nil, "start_date": "2027-01-01", "end_date": nil, "status": "scheduled"},
+	}
+	envelope := map[string]any{"data": rows}
+	before, _ := json.Marshal(envelope)
+	var out bytes.Buffer
+	if e := renderHuman(&out, envelope, &Command{CanonicalName: "customers.tax-exemptions.list", OperationID: "listCustomerTaxExemptions"}, time.Now()); e != nil {
+		t.Fatal(e)
+	}
+	for _, want := range []string{"Customer tax exemption ID", "Reason", "Coverage", "Certificate number", "Start date", "End date", "Status", "ctex_resale", "ctex_government", "resale", "federal_government", "TX, NY", "All states", "SYNTHETIC-42", "2026-01-01", "2027-12-31", "scheduled"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("missing %q: %s", want, &out)
+		}
+	}
+	if strings.Contains(out.String(), "cus_example") || strings.Contains(out.String(), "<nil>") || strings.Count(out.String(), "\n") != 3 {
+		t.Fatal(&out)
+	}
+	after, _ := json.Marshal(envelope)
+	if !bytes.Equal(before, after) {
+		t.Fatal("rendering mutated JSON")
+	}
+}
