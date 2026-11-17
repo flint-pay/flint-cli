@@ -260,7 +260,7 @@ Delivery rate callbacks take the same repeatable `--signing-methods jwt|hmac` fl
 
 `flint`, `flint --help`, and `flint help` group commands into Developer tools, Merchant resources, and Buyer session. Use `flint help customers create`, `flint help customers.create`, or `flint customers create --help` for the same help. `flint help --all` lists every command; add `--output json` for a structured index. `flint schema commands --output json` returns the same command tree as a full catalog, including each command's section and credential audience. Buyer help identifies the required session credential.
 
-`flint help search <words>` searches commands, webhook events, and reference topics offline, without a credential or network request. Each result names its command; run `flint COMMAND --help` for flags, or use `flint support open` to ask Flint.
+`flint help search <words>` searches commands, webhook events, and reference topics offline, without a credential or network request. Run `flint COMMAND --help` for a result's flags, or use `flint support open` to ask Flint.
 
 `flint schema errors --output json` lists CLI and public API error types, exit codes, and listen error codes under `data`. `flint schema events --output json` returns a compact event list under `data`; pass an exact type such as `payment_intent.succeeded` or a prefix such as `payment_intent` to get a raw OpenAPI document with the matching payload schemas and their referenced components.
 

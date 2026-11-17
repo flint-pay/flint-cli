@@ -53,8 +53,8 @@ var searchTasks = map[string][]string{
 	"orders.send-receipt":                    {"resend receipt", "email receipt"},
 	"payment-intents.send-receipt":           {"resend payment receipt", "email payment receipt"},
 	"gift-cards.get":                         {"gift card balance"},
-	"listen":                                 {"webhook signature", "webhook signature verification", "verify webhook", "verify webhook signature", "verify webhook signatures", "webhook verification", "webhook jwt", "webhook hmac", "test webhooks locally"},
-	"webhook-endpoints.sign-delivery":        {"webhook signature", "webhook signature verification", "verify webhook", "verify webhook signature", "verify webhook signatures", "webhook verification", "webhook jwt", "webhook hmac", "sign webhook delivery"},
+	"listen":                                 {"webhook signature", "webhook signature verification", "verify webhook", "webhook verification"},
+	"webhook-endpoints.sign-delivery":        {"webhook signature", "webhook signature verification", "verify webhook", "webhook verification"},
 }
 
 type searchField struct {
