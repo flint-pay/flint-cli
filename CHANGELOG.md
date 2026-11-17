@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.5 (2026-11-17)
+
+- MCP servers pin their startup context and credential. Changing the saved selection or replacing the credential returns `MCP_CONTEXT_CHANGED` and requires a server restart. OAuth refresh and live-access safeguards remain in effect.
+
 ## 0.20.3 (2026-11-16)
 
 - Default browser login requests permissions for shop operations and financial reads. More sensitive operations still require explicit scopes.

@@ -157,6 +157,7 @@ type Options struct {
 
 type App struct {
 	mcpAuth                   *mcpAuthState
+	mcpContext                *mcpContextPin
 	mcpSkipScopeCheck         bool // MCP forwards scope failures from the API unchanged.
 	mcpErrorObserver          func(*CLIError)
 	mcpGate                   *mcpCallGate

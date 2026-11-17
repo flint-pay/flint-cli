@@ -281,6 +281,9 @@ func (a *App) findProjectConfig() (ProjectConfig, string, error) {
 }
 
 func (a *App) resolveConfig(opts Options) (ResolvedConfig, Config, error) {
+	if a.mcpContext != nil {
+		return a.mcpContext.resolve(a, opts)
+	}
 	project, projectPath, err := a.findProjectConfig()
 	if err != nil {
 		return ResolvedConfig{}, Config{}, err

@@ -193,6 +193,7 @@ func TestSignupFlowMCP(t *testing.T) {
 		}
 		signupFlowSuccess(t, w, r)
 	})
+	app.mcpContext = app.pinMCPContext(mcpServeOptions(t, "--tools", "signup"))
 	for i, args := range []map[string]any{
 		{"email": "dev@example.com", "first_name": "Ada", "last_name": "Lovelace"},
 		{"verification_code": "123456"},

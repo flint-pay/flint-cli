@@ -124,6 +124,14 @@ func (a *App) loadSavedCredential(profile string) (string, error) {
 // Call only while holding the config lock. A missing profile is genuinely new;
 // an unmarked existing profile receives one bounded legacy keyring lookup.
 func (a *App) loadSavedCredentialUnlocked(profile string) (string, error) {
+	value, err := a.readSavedCredentialUnlocked(profile)
+	if err == nil && a.mcpContext != nil && a.mcpContext.saved && !a.mcpContext.acceptsCredential(profile, value) {
+		return "", mcpContextChanged()
+	}
+	return value, err
+}
+
+func (a *App) readSavedCredentialUnlocked(profile string) (string, error) {
 	cfg, err := a.loadConfig()
 	if err != nil {
 		return "", err

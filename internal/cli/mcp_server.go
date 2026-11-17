@@ -190,6 +190,8 @@ func (a *App) serveMCP(opts Options) int {
 	if err != nil {
 		return a.fail(mcpDiscoverySnapshotError(err), opts)
 	}
+	a.mcpContext = a.pinMCPContext(opts)
+	defer func() { a.mcpContext = nil }()
 	a.mcpAuth = &mcpAuthState{index: index, ready: make(chan struct{})}
 	ctx, cancelInput := context.WithCancel(a.commandContext())
 	defer cancelInput()

@@ -164,6 +164,8 @@ func (a *App) mcpCredentialAction(cmd *Command, e *CLIError, opts Options, envir
 		code = value
 	}
 	switch code {
+	case "MCP_CONTEXT_CHANGED":
+		return mcpUserAction("restart flint mcp serve after checking the intended context and credential. This server cannot follow saved context changes.")
 	case "MERCHANT_GUARD_MISMATCH", "SANDBOX_GUARD_MISMATCH":
 		return mcpUserAction("check the intended merchant and sandbox, then correct this MCP server's --merchant or --sandbox startup flag, project .flint/config.json guard, saved profile guard, or configured credential to match that intended target. Restart the server after correcting it; do not remove a guard to bypass the mismatch.")
 	case "API_KEY_REQUIRED", "CREDENTIAL_LOOKUP_FAILED", "CREDENTIAL_FORMAT_INVALID":

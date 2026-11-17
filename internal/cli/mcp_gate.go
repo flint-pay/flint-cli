@@ -38,9 +38,9 @@ func (a *App) mcpSelectionViolation(arguments map[string]any, parent Options) st
 		return control + " is not accepted: this MCP server uses " + setting + " " + value + ", set by " + mcpSelectionSources[source] + ", and agents cannot replace it. Do not retry with a different value; omit " + control + ". If the user wants another " + setting + ", they must restart the server with it."
 	}
 	switch source := base.Sources["profile"]; {
-	case hasProfile && next.ProfileName != base.ProfileName && (source == "flag" || source == "environment" || source == "project"):
+	case hasProfile && profile != base.ProfileName && (a.mcpContext != nil || source == "flag" || source == "environment" || source == "project"):
 		return pinned("profile", "profile", base.ProfileName, source)
-	case base.MerchantGuard != "" && next.MerchantGuard != base.MerchantGuard:
+	case base.MerchantGuard != "" && (next.MerchantGuard != base.MerchantGuard || (hasMerchant && merchant != base.MerchantGuard)):
 		control := "merchant"
 		if !hasMerchant {
 			control = "profile"
