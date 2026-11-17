@@ -240,7 +240,7 @@ flint listen --forward-to http://localhost:8080/webhooks/flint
 
 `flint listen --forward-to` creates or reuses a CLI-managed sandbox endpoint with JWT signing. It prints a stable `whep_...` ID; set it as `FLINT_WEBHOOK_ENDPOINT_ID` in your receiver and use it as the JWT audience. The endpoint belongs to your merchant and sandbox and is shared across profiles, forward URLs, and teammates. Your credential needs `webhooks.write` and read access to each event's resource. The CLI calls `POST /v1/webhook-endpoints/{id}/sign-delivery` for each event and forwards the returned body bytes and headers unchanged. Your receiver's default JWT verification works unchanged. Forwarding runs only with a sandbox credential.
 
-The managed endpoint stays registered after the listener exits so its ID remains stable. Flint's attempts to deliver to its reserved `.invalid` URL fail DNS in the sandbox; the CLI forwards events through the event stream. Delete it with `flint webhook-endpoints delete whep_... --confirm` when you no longer need it. The next listener run creates a new one. Pass `--webhook-endpoint-id whep_...` to test an existing sandbox JWT endpoint's subscriptions; the CLI never modifies endpoints passed by flag.
+The managed endpoint stays registered after the listener exits so its ID remains stable. Flint delivers this endpoint's events only through the listener stream, so it has no deliveries of its own. Delete it with `flint webhook-endpoints delete whep_... --confirm` when you no longer need it. The next listener run creates a new one. Pass `--webhook-endpoint-id whep_...` to test an existing sandbox JWT endpoint's subscriptions; the CLI never modifies endpoints passed by flag.
 
 Without `--forward-to`, `listen` prints events as before. `--forward-to` accepts localhost, loopback IPs, and `host.docker.internal`. Signed frames stay in memory and are never printed or saved. The local `--webhook-secret`, `--print-secret`, and `FLINT_WEBHOOK_SECRET` signing path is retired; remove those flags and configure your receiver for its registered endpoint's default JWT verification.
 
@@ -260,7 +260,7 @@ Delivery rate callbacks take the same repeatable `--signing-methods jwt|hmac` fl
 
 `flint`, `flint --help`, and `flint help` group commands into Developer tools, Merchant resources, and Buyer session. Use `flint help customers create`, `flint help customers.create`, or `flint customers create --help` for the same help. `flint help --all` lists every command; add `--output json` for a structured index. `flint schema commands --output json` returns the same command tree as a full catalog, including each command's section and credential audience. Buyer help identifies the required session credential.
 
-`flint help search <words>` searches commands, webhook events, and reference topics offline, without a credential or network request. Results link to command help; use `flint support open` to ask Flint.
+`flint help search <words>` searches commands, webhook events, and reference topics offline, without a credential or network request. Each result names its command; run `flint COMMAND --help` for flags, or use `flint support open` to ask Flint.
 
 `flint schema errors --output json` lists CLI and public API error types, exit codes, and listen error codes under `data`. `flint schema events --output json` returns a compact event list under `data`; pass an exact type such as `payment_intent.succeeded` or a prefix such as `payment_intent` to get a raw OpenAPI document with the matching payload schemas and their referenced components.
 

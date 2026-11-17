@@ -29,6 +29,19 @@ func publicBodyArguments(operation openAPIOperation, existing []Arg) []Arg {
 	return args
 }
 
+// customerPhoneHelp states the rule Flint's API publishes for customer phone
+// numbers (flint-pay/flint#5712, FLI-2481). The pinned API snapshot predates
+// it, so the help carries the rule until the next snapshot refresh.
+const customerPhoneHelp = "Customer phone number in E.164 format: a leading `+`, then the country code and number as digits only, such as `+14155551234`. Flint trims surrounding whitespace but rejects spaces, hyphens, dots, and parentheses inside the number, so send `+14155550100`, not `+1 (415) 555-0100`. Leave out a national trunk prefix: send `+442079460958`, not `+4402079460958`."
+
+// bodyFlagDescriptionOverrides replaces a generated body flag's description,
+// keyed by operation ID and top-level body field, where the pinned snapshot
+// lags a published API description. Remove an entry once the snapshot catches up.
+var bodyFlagDescriptionOverrides = map[string]string{
+	"createCustomer.phone": customerPhoneHelp,
+	"updateCustomer.phone": customerPhoneHelp + " Omit to leave unchanged.",
+}
+
 func buildBodyArguments(operation openAPIOperation, existing []Arg) []Arg {
 	media, schema := requestContentSchema(operation.RequestBody)
 	if media != "application/json" {
@@ -73,6 +86,9 @@ func buildBodyArguments(operation openAPIOperation, existing []Arg) []Arg {
 		arg := flag(name, openAPIArgumentType(typ, node), name, "", "", slices.Contains(required, name))
 		arg.bodyGenerated = true
 		arg.Description, _ = field.Schema["description"].(string)
+		if override, ok := bodyFlagDescriptionOverrides[operation.OperationID+"."+name]; ok {
+			arg.Description = override
+		}
 		if arg.Description == "" {
 			arg.Description = "Set " + name + "."
 		}

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.20.7 (2026-11-17)
+
+- `flint settings get` and `flint settings update` include the `receipts` section, so you can set `receipts.footer_text` (the receipt note) from the CLI. The embedded API snapshot now matches Flint `014ba16b42`, and `flint orders edits cancel` cancels an order edit.
+- `flint help search webhook signature verification` (and similar webhook verification queries) now lists `flint listen` and `flint webhook-endpoints sign-delivery` before buyer email verification commands.
+- `customers create --phone` and `customers update --phone` explain the E.164 format Flint requires and that surrounding whitespace is trimmed.
+- The README no longer says Flint's delivery attempts to the `flint listen` endpoint fail DNS. Flint delivers this endpoint's events only through the listener stream, so it has no deliveries of its own.
+
 ## 0.20.5 (2026-11-17)
 
 - MCP servers pin their startup context and credential. Changing the saved selection or replacing the credential returns `MCP_CONTEXT_CHANGED` and requires a server restart. OAuth refresh and live-access safeguards remain in effect.
