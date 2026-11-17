@@ -186,14 +186,28 @@ func TestMCPContextLiveStillRequiresAllowLive(t *testing.T) {
 	if exit := app.Run([]string{"context", "switch", "ctx_live", "--live", "--output", "json"}); exit != ExitOK {
 		t.Fatal(exit)
 	}
-	conn := startMCPTestConn(t, app, defaultOptions())
-	conn.initialize(`{}`)
-	conn.send(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"flint_read","arguments":{"operation":"auth.status","live":true}}}`)
-	if got := fmt.Sprint(conn.next()); !strings.Contains(got, "LIVE_ACCESS_DISABLED") {
-		t.Fatalf("live access accepted: %s", got)
-	}
-	if exit := conn.close(); exit != ExitOK {
-		t.Fatal(exit)
+	for _, allowLive := range []bool{false, true} {
+		opts := defaultOptions()
+		arguments := map[string]any{"operation": "auth.status"}
+		if allowLive {
+			opts = mcpServeOptions(t, "--allow-live")
+			arguments["live"] = true
+		}
+		conn := startMCPTestConn(t, app, opts)
+		conn.initialize(`{}`)
+		raw, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": map[string]any{"name": "flint_read", "arguments": arguments}})
+		conn.send(string(raw))
+		response := conn.next()
+		if allowLive {
+			if lookupPathValue(response, "result.isError") == true || !strings.Contains(fmt.Sprint(response), "ctx_live") {
+				t.Fatalf("acknowledged live context refused: %v", response)
+			}
+		} else if !strings.Contains(fmt.Sprint(response), "LIVE_ACCESS_DISABLED") {
+			t.Fatalf("unexpected live refusal: %v", response)
+		}
+		if exit := conn.close(); exit != ExitOK {
+			t.Fatal(exit)
+		}
 	}
 }
 
