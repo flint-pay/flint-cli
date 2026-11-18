@@ -32,6 +32,7 @@ func (a *App) runMCPTool(ctx context.Context, cmd *Command, args map[string]any,
 			outcome.warnings += fmt.Sprintf("\nWarning: this result is %d bytes, over the 49,152-byte read limit; it is returned in full because the write completed.", len(raw))
 		}
 	}
+	outcome.warnings += a.mcpSecretNote(outcome.secrets)
 	return mcpWithWarnings(mcpToolResult(outcome.value, structured, outcome.transformed, outcome.environment), outcome.warnings)
 }
 
@@ -407,7 +408,8 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	}
 	if !mcpResultIsWrite(cmd, args) {
 		childCtx = context.WithValue(childCtx, paginationResultCheckKey{}, paginationResultCheck(func(value any, pages int) *CLIError {
-			projected, _, e := mcpProjectResult(childCtx, cmd, value, transformOptions)
+			masked, _, _ := maskMCPResult(cmd.OperationID, value, "")
+			projected, _, e := mcpProjectResult(childCtx, cmd, masked, transformOptions)
 			if e != nil {
 				return e
 			}
@@ -461,7 +463,7 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	}
 	outcome := mcpCallResult{cliError: capturedError, exit: exit, environment: environment}
 	if exit == ExitOK {
-		outcome.warnings = stderr.String()
+		outcome.warnings = mcpRedactCredentialText(stderr.String())
 		if defaultPageSize {
 			outcome.warnings = "Note: page_size is 10, the default here.\n" + outcome.warnings
 		}
@@ -489,7 +491,7 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	}
 	trimmed := bytes.TrimSpace(stdout.Bytes())
 	if len(trimmed) == 0 {
-		outcome.value, outcome.warnings = map[string]any{"stderr": stderr.String()}, ""
+		outcome.value, outcome.warnings = map[string]any{}, mcpRedactCredentialText(stderr.String())
 		return outcome
 	}
 	var result any
@@ -497,6 +499,10 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 		if exit == ExitOK {
 			if transformOptions.DryRunClient() {
 				result = a.mcpDryRunResult(cmd, gate.effect, result)
+			}
+			result, outcome.warnings, outcome.secrets = maskMCPResult(observer.targetOperationID, result, outcome.warnings)
+			if transformOptions.DryRunClient() {
+				outcome.secrets = nil
 			}
 			projected, warning, transformErr := mcpProjectResult(childCtx, cmd, result, transformOptions)
 			if transformErr != nil {
@@ -517,22 +523,23 @@ func (a *App) runMCPCommand(ctx context.Context, cmd *Command, args map[string]a
 	for scanner.Scan() {
 		var line any
 		if err := decodeJSONNumbers(scanner.Bytes(), &line); err != nil {
-			outcome.value = map[string]any{"error": "Could not decode Flint NDJSON output: " + err.Error(), "stderr": strings.TrimSpace(stderr.String())}
+			outcome.value = map[string]any{"error": "Could not decode Flint NDJSON output."}
 			outcome.exit = ExitNetwork
 			return outcome
 		}
 		lines = append(lines, line)
 	}
 	if err := scanner.Err(); err != nil {
-		outcome.value = map[string]any{"error": "Could not read Flint NDJSON output: " + err.Error(), "stderr": strings.TrimSpace(stderr.String())}
+		outcome.value = map[string]any{"error": "Could not read Flint NDJSON output."}
 		outcome.exit = ExitNetwork
 		return outcome
 	}
 	if len(lines) > 0 {
-		outcome.value = map[string]any{"records": lines}
+		outcome.value, outcome.warnings, outcome.secrets = maskMCPResult("", map[string]any{"records": lines}, outcome.warnings)
 		return outcome
 	}
-	outcome.value = map[string]any{"stdout": string(trimmed), "stderr": strings.TrimSpace(stderr.String())}
+	outcome.value = map[string]any{"error": "Flint returned no JSON records."}
+	outcome.exit = ExitNetwork
 	return outcome
 }
 

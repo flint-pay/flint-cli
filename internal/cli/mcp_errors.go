@@ -134,7 +134,10 @@ func (a *App) mcpCommandError(cmd *Command, args map[string]any, opts Options, o
 
 func (a *App) mcpLocalError(cmd *Command, args map[string]any, opts Options, policy mcpPolicy, e *CLIError, environment string) map[string]any {
 	envelope := a.mcpErrorEnvelope(cmd, args, opts, policy, e, environment)
-	raw, _ := mcpCompactJSON(envelope)
+	// Errors can include arbitrary API detail objects and echoed credentials.
+	value, _ := normalizeOutput(envelope)
+	masked, _, _ := maskMCPResult("", value, "")
+	raw, _ := mcpCompactJSON(masked)
 	result := map[string]any{
 		"content": []map[string]any{{"type": "text", "text": string(raw)}}, "isError": true,
 	}
