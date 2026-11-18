@@ -238,6 +238,28 @@ func TestMCPDiscoveryViews(t *testing.T) {
 	}
 }
 
+func TestMCPDiscoveryInvoiceConfirmationIsConditional(t *testing.T) {
+	app := discoveryFixture(t)
+	policy := app.mcpPolicy(defaultOptions())
+	value := discoveryData(t, app, policy, "flint_describe", map[string]any{"operation": "invoices.create"})
+	if value["confirm"] != nil || value["confirm_when"] != mcpInvoiceConfirmationCondition || strings.Contains(fmt.Sprint(value["effects"]), "irreversible") {
+		t.Fatalf("describe has unexpected confirmation metadata: %v", value)
+	}
+	entry, ok := policy.index.Lookup("invoices.create")
+	if !ok {
+		t.Fatal("missing invoice operation")
+	}
+	summary := mcpDiscoverySummary(entry, policy.index, nil, false)
+	if summary["confirm"] != nil || summary["confirm_when"] != mcpInvoiceConfirmationCondition {
+		t.Fatalf("search has unexpected confirmation metadata: %v", summary)
+	}
+	cmd := mustMCPTool(t, app, "invoices.create")
+	description := mcpTypedDescription(cmd, entry)
+	if strings.Contains(description, "Needs confirm: true.") || !strings.Contains(description, mcpInvoiceConfirmationCondition) {
+		t.Fatalf("typed description has unexpected confirmation guidance: %s", description)
+	}
+}
+
 func TestMCPDiscoverySearchAndHelp(t *testing.T) {
 	app := discoveryFixture(t)
 	policy := app.mcpPolicy(defaultOptions())

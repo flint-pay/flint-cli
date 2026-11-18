@@ -399,9 +399,7 @@ func mcpDiscoverySummary(entry opindex.Entry, index *opindex.Index, scopes []str
 		return map[string]any{"help_topic": entry.ID, "title": entry.Title}
 	}
 	result := map[string]any{"operation": entry.ID, "kind": entry.Kind, "title": entry.Title}
-	if entry.ConfirmRequired() {
-		result["confirm"] = true
-	}
+	mcpDiscoveryConfirmation(result, entry)
 	if entry.Idempotency == "required" {
 		result["idempotency_key"] = "required"
 	}
@@ -538,11 +536,9 @@ func (a *App) mcpDescribe(args map[string]any, policy mcpPolicy, index *opindex.
 	if entry.Kind == "write" {
 		result["idempotency_key"] = entry.Idempotency
 	}
-	if entry.ConfirmRequired() {
-		result["confirm"] = true
-	}
+	mcpDiscoveryConfirmation(result, entry)
 	effects := []string{}
-	if entry.Irreversible {
+	if entry.Irreversible && entry.OperationID != "createInvoice" {
 		effects = append(effects, "irreversible")
 	}
 	if entry.Overwrites {
@@ -750,6 +746,16 @@ func (a *App) mcpDiscoveryHelp(topic string, opts Options, policy mcpPolicy, ind
 	return nil, usageError("UNKNOWN_OPERATION", "Unknown Flint help topic or resource group: "+topic+". Call flint_help without a topic for the index.", "topic")
 }
 
+const mcpInvoiceConfirmationCondition = "Set confirm to true when you include issue or a non-null scheduled_issue_at."
+
+func mcpDiscoveryConfirmation(result map[string]any, entry opindex.Entry) {
+	if entry.OperationID == "createInvoice" {
+		result["confirm_when"] = mcpInvoiceConfirmationCondition
+	} else if entry.ConfirmRequired() {
+		result["confirm"] = true
+	}
+}
+
 // The title is sent separately. Keep only substantive operation prose here;
 // common pagination, money, and execution guidance belongs in instructions.
 func mcpTypedDescription(cmd *Command, entry opindex.Entry) string {
@@ -773,10 +779,13 @@ func mcpTypedDescription(cmd *Command, entry opindex.Entry) string {
 			break
 		}
 	}
+	if entry.OperationID == "createInvoice" {
+		parts = append(parts, mcpInvoiceConfirmationCondition)
+	}
 	for _, requirement := range []struct {
 		needed bool
 		text   string
-	}{{entry.ConfirmRequired(), "Needs confirm: true."}, {entry.Idempotency == "required", "Needs idempotency_key."}} {
+	}{{entry.ConfirmRequired() && entry.OperationID != "createInvoice", "Needs confirm: true."}, {entry.Idempotency == "required", "Needs idempotency_key."}} {
 		if requirement.needed && !strings.Contains(strings.Join(parts, " "), requirement.text) {
 			parts = append(parts, requirement.text)
 		}
