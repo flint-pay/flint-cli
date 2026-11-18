@@ -120,9 +120,13 @@ func TestMCPBuyerSubscriptionPreviewRequiresWrite(t *testing.T) {
 	app := discoveryFixture(t)
 	t.Setenv("FLINT_ACCESS_TOKEN", "flint_cses_example")
 	const operation = "me.subscription-previews.create"
-	_, entry, e := app.mcpResolveOperation(operation, app.mcpPolicy(defaultOptions()))
+	cmd, entry, e := app.mcpResolveOperation(operation, app.mcpPolicy(defaultOptions()))
 	if e != nil || entry.Kind != "write" {
 		t.Fatalf("buyer subscription preview kind = %q, error = %v", entry.Kind, e)
+	}
+
+	if cmd.Supports.IdempotencyKey || entry.Idempotency != "none" {
+		t.Fatal("buyer subscription preview advertises idempotency support")
 	}
 
 	result := mcpCall(t, app, mcpServeOptions(t, "--read-only"), "flint_read", map[string]any{
