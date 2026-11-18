@@ -116,6 +116,23 @@ func TestMCPDiscoveryReadOnlyTypedWriteRefusal(t *testing.T) {
 	}
 }
 
+func TestMCPBuyerSubscriptionPreviewRequiresWrite(t *testing.T) {
+	app := discoveryFixture(t)
+	t.Setenv("FLINT_ACCESS_TOKEN", "flint_cses_example")
+	const operation = "me.subscription-previews.create"
+	_, entry, e := app.mcpResolveOperation(operation, app.mcpPolicy(defaultOptions()))
+	if e != nil || entry.Kind != "write" {
+		t.Fatalf("buyer subscription preview kind = %q, error = %v", entry.Kind, e)
+	}
+
+	result := mcpCall(t, app, mcpServeOptions(t, "--read-only"), "flint_read", map[string]any{
+		"operation": operation,
+	})
+	if result["isError"] != true || !strings.Contains(mcpResultText(result), "read_only_server") {
+		t.Fatalf("read-only server accepted buyer subscription preview: %v", result)
+	}
+}
+
 func TestMCPDiscoveryClassNoneKeysIgnored(t *testing.T) {
 	app, _, _ := testApp(t, "http://127.0.0.1:1")
 	result := mcpCall(t, app, mcpServeOptions(t, "--allow-destructive"), "flint_write", map[string]any{
