@@ -32,6 +32,25 @@ type operationRoute struct {
 	Method, Path string
 }
 
+// RouteMutates classifies a known public operation by its contract and method.
+func RouteMutates(method, id, routeClass string) bool {
+	if method == "POST" {
+		switch routeClass {
+		case "read", "delivery_preview":
+			return false
+		}
+		// The pinned contract omits a route class for license validation and
+		// labels the buyer subscription estimate as a write.
+		switch id {
+		case "validateLicenseKey":
+			return routeClass != ""
+		case "createMeSubscriptionPreview":
+			return routeClass != "write"
+		}
+	}
+	return method != "GET" || id == "authorizePartnerInstall"
+}
+
 var localReads = map[string]bool{"version": true, "doctor": true, "config.get": true, "config.validate": true, "history": true, "auth.status": true, "help": true, "help.search": true, "context.list": true, "support.open": true, "completion": true}
 var localExposed = map[string]bool{"version": true, "doctor": true, "init": true, "config.get": true, "config.validate": true, "history": true, "history.clear": true, "signup": true, "listen": true, "auth.status": true, "trigger": true}
 var hidden = map[string]bool{"mcp.serve": true, "config.set": true, "config.unset": true, "auth.logout": true, "api": true, "help": true, "help.search": true}
@@ -63,7 +82,7 @@ func New(commands []Command, document []byte) (*Index, error) {
 	for id, route := range routes {
 		schemes := securitySchemes(route.Security)
 		kind := "write"
-		if route.Method == "GET" && id != "authorizePartnerInstall" {
+		if !RouteMutates(route.Method, id, route.RouteClass) {
 			kind = "read"
 		}
 		ix.credentialPolicies[id] = Entry{OperationID: id, Method: route.Method, Path: route.Path, Kind: kind, Schemes: schemes, Audience: audience(schemes), PartnerAccess: route.PartnerAccess == "install_scoped",
@@ -102,11 +121,11 @@ func New(commands []Command, document []byte) (*Index, error) {
 		} else {
 			entry.Method, entry.Path = route.Method, route.Path
 			entry.Description = shortText(route.Description, 2, 300)
-			entry.Kind = "write"
-			if route.Method == "GET" && !cmd.Mutation && route.ID != "authorizePartnerInstall" {
-				entry.Kind = "read"
-			}
 			policy := ix.credentialPolicies[cmd.OperationID]
+			entry.Kind = policy.Kind
+			if cmd.Mutation {
+				entry.Kind = "write"
+			}
 			entry.Schemes, entry.Audience, entry.PartnerAccess = policy.Schemes, policy.Audience, policy.PartnerAccess
 			entry.Overwrites = route.Method == "PUT" || route.Method == "PATCH"
 			entry.Sensitive = policy.Sensitive

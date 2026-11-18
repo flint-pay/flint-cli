@@ -16,30 +16,20 @@ import (
 const admissionFixture = "0123456789AB1234"
 
 func TestTicketDryRunsRedactAdmissionCodes(t *testing.T) {
-	for _, operation := range []string{"lookup", "check-in"} {
-		t.Run(operation, func(t *testing.T) {
-			app, out, _ := testApp(t, "")
-			app.Stdin = strings.NewReader(`{"admission_code":"` + admissionFixture + `"}`)
-			args := []string{"tickets", operation}
-			body := map[string]any{"admission_code": admissionFixture}
-			if operation == "check-in" {
-				args = append(args, "tkt_fixture")
-				body["ticket_id"] = "tkt_fixture"
-			}
-			args = append(args, "--input", "-", "--dry-run=client", "--no-input")
-			exit, value := runJSON(t, app, out, args...)
-			if exit != ExitOK || lookupPathValue(value, "data.body.admission_code") != "[REDACTED]1234" || strings.Contains(out.String(), admissionFixture) {
-				t.Fatalf("exit=%d result=%v", exit, value)
-			}
-			result := mcpCall(t, app, defaultOptions(), "flint_write", map[string]any{"operation": "tickets." + operation, "arguments": body, "dry_run": true})
-			mcpValue := mcpResultJSON(t, result)
-			if result["isError"] == true || lookupPathValue(mcpValue, "data.body.admission_code") != "[REDACTED]1234" || lookupPathValue(mcpValue, "data.effect.sensitive") != true || strings.Contains(mcpResultText(result), admissionFixture) {
-				t.Fatalf("MCP=%v", result)
-			}
-			if body["admission_code"] != admissionFixture {
-				t.Fatal("display changed the supplied credential")
-			}
-		})
+	app, out, _ := testApp(t, "")
+	app.Stdin = strings.NewReader(`{"admission_code":"` + admissionFixture + `"}`)
+	exit, value := runJSON(t, app, out, "tickets", "check-in", "tkt_fixture", "--input", "-", "--dry-run=client", "--no-input")
+	if exit != ExitOK || lookupPathValue(value, "data.body.admission_code") != "[REDACTED]1234" || strings.Contains(out.String(), admissionFixture) {
+		t.Fatalf("exit=%d result=%v", exit, value)
+	}
+	body := map[string]any{"admission_code": admissionFixture, "ticket_id": "tkt_fixture"}
+	result := mcpCall(t, app, defaultOptions(), "flint_write", map[string]any{"operation": "tickets.check-in", "arguments": body, "dry_run": true})
+	mcpValue := mcpResultJSON(t, result)
+	if result["isError"] == true || lookupPathValue(mcpValue, "data.body.admission_code") != "[REDACTED]1234" || lookupPathValue(mcpValue, "data.effect.sensitive") != true || strings.Contains(mcpResultText(result), admissionFixture) {
+		t.Fatalf("MCP=%v", result)
+	}
+	if body["admission_code"] != admissionFixture {
+		t.Fatal("display changed the supplied credential")
 	}
 }
 
@@ -108,12 +98,12 @@ func TestAdmissionCodeDisplayShortAndFormattedCodes(t *testing.T) {
 	}
 }
 
-func TestTicketDryRunRecoveryRedactsAdmissionCode(t *testing.T) {
+func TestTicketWrongToolRecoveryRedactsAdmissionCode(t *testing.T) {
 	app, _, _ := testApp(t, "")
 	for _, arguments := range []any{map[string]any{"admission_code": admissionFixture}, `{"admission_code":"` + admissionFixture + `"}`} {
-		input := map[string]any{"operation": "tickets.lookup", "arguments": arguments, "dry_run": true}
+		input := map[string]any{"operation": "tickets.lookup", "arguments": arguments}
 		before, _ := json.Marshal(input)
-		result := mcpCall(t, app, defaultOptions(), "flint_read", input)
+		result := mcpCall(t, app, defaultOptions(), "flint_write", input)
 		text := mcpResultText(result)
 		if result["isError"] != true || strings.Contains(text, admissionFixture) || !strings.Contains(text, "[REDACTED]1234") || !strings.Contains(text, "original scanned code") {
 			t.Fatalf("unsafe recovery result: %v", result)

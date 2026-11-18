@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 )
 
@@ -155,6 +156,76 @@ func TestLicenseKeyPoolFileUploadAndReplay(t *testing.T) {
 	}
 }
 
+func TestLicenseKeyMCPReadsSendKeyInPOSTBody(t *testing.T) {
+	for _, action := range []string{"lookup", "validate"} {
+		t.Run(action, func(t *testing.T) {
+			path := "/v1/license-keys/" + action
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				if r.URL.Path == "/v1/auth-context" {
+					fmt.Fprint(w, authContextJSON("sandbox"))
+					return
+				}
+				if r.Method != http.MethodPost || r.URL.RequestURI() != path {
+					t.Error("expected POST without URL parameters")
+				}
+				var body map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body["key"] != testLicenseValue {
+					t.Error("expected key in JSON body")
+				}
+				fmt.Fprint(w, `{"data":{"license_key_id":"lk_fixture","is_valid":true}}`)
+			}))
+			defer server.Close()
+
+			app, _, _ := testApp(t, server.URL)
+			opts := mcpServeOptions(t, "--read-only")
+			args := map[string]any{"key": testLicenseValue}
+			if action == "validate" {
+				args["product_ids"] = []any{testLicenseProduct}
+			}
+			result := mcpCall(t, app, opts, "flint_read", map[string]any{
+				"operation": "license-keys." + action,
+				"arguments": args,
+			})
+			if result["isError"] == true || lookupPathValue(mcpResultJSON(t, result), "data.license_key_id") != "lk_fixture" {
+				t.Fatalf("read failed: %v", result)
+			}
+		})
+	}
+}
+
+func TestLicenseKeyMCPReadRequiresLiveOAuthAcknowledgement(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/v1/auth-context" {
+			fmt.Fprint(w, authContextJSON("live"))
+			return
+		}
+		requests.Add(1)
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/license-keys/lookup" {
+			t.Error("expected POST license key lookup")
+		}
+		fmt.Fprint(w, `{"data":{"license_key_id":"lk_fixture"}}`)
+	}))
+	defer server.Close()
+	app, _, _ := testApp(t, server.URL)
+	t.Setenv("FLINT_API_KEY", "")
+	t.Setenv("FLINT_ACCESS_TOKEN", "oauth-access-token-fixture")
+
+	opts := mcpServeOptions(t, "--read-only", "--allow-live")
+	args := map[string]any{"operation": "license-keys.lookup", "arguments": map[string]any{"key": testLicenseValue}}
+	result := mcpCall(t, app, opts, "flint_read", args)
+	if lookupPathValue(mcpErrorJSON(t, result), "error.code") != "LIVE_ACKNOWLEDGEMENT_REQUIRED" || requests.Load() != 0 {
+		t.Fatalf("live lookup reached the API without acknowledgement: %v", result)
+	}
+	args["live"] = true
+	result = mcpCall(t, app, opts, "flint_read", args)
+	if result["isError"] == true || requests.Load() != 1 {
+		t.Fatalf("acknowledged read failed: %v", result)
+	}
+}
+
 func TestLicenseKeyMCPGuardAndRedaction(t *testing.T) {
 	app, _, _ := testApp(t, "")
 	opts := defaultOptions()
@@ -170,13 +241,19 @@ func TestLicenseKeyMCPGuardAndRedaction(t *testing.T) {
 		}
 	}
 	args := map[string]any{"operation": "license-keys.validate",
-		"arguments": map[string]any{"key": testLicenseValue, "product_ids": []any{testLicenseProduct}}, "dry_run": true}
-	for _, tool := range []string{"flint_write", "flint_read"} {
-		result := mcpCall(t, app, opts, tool, args)
-		text := mcpResultText(result)
-		if strings.Contains(text, testLicenseValue) || !strings.Contains(text, "[REDACTED]") {
-			t.Fatalf("%s exposed the key or omitted the redacted request", tool)
-		}
+		"arguments": map[string]any{"key": testLicenseValue, "product_ids": []any{testLicenseProduct}}}
+	wrongTool := mcpCall(t, app, opts, "flint_write", args)
+	text := mcpResultText(wrongTool)
+	if wrongTool["isError"] != true || !strings.Contains(text, "flint_read") ||
+		strings.Contains(text, testLicenseValue) || !strings.Contains(text, "[REDACTED]") {
+		t.Fatal("wrong-tool recovery did not direct the caller to flint_read with a redacted key")
+	}
+	args["dry_run"] = true
+	dryRun := mcpCall(t, app, opts, "flint_write", args)
+	text = mcpResultText(dryRun)
+	if dryRun["isError"] != true || !strings.Contains(text, "Dry runs are unavailable") ||
+		strings.Contains(text, "flint_read") || strings.Contains(text, testLicenseValue) {
+		t.Fatal("dry-run rejection exposed the key or suggested executing the read")
 	}
 	result := mcpCall(t, app, opts, "flint_write", map[string]any{
 		"operation": "license-key-pools.add-keys",

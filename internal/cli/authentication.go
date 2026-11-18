@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -209,11 +210,12 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 			credentialScope = hex.EncodeToString(digest[:])
 		}
 		// An access token's format does not reveal its environment. Before a
-		// merchant write, CLI OAuth tokens are introspected so they receive the
-		// same live acknowledgement, confirmation, and guard checks as API keys.
+		// merchant write or POST read, introspect CLI OAuth tokens so the call
+		// uses the verified environment for live access and guard checks.
 		// Partner tokens cannot be, so their environment stays unverified and
 		// sensitive writes require confirmation as if they were live.
-		if token != "" && !checkoutSession && command.Mutation && !opts.DryRunClient() && (merchantBearerRoute(command) || unknownRawOperation(command)) && oauthAuthorizationEnvironment(command, opts) == "" {
+		verifyEnvironment := command.Mutation || command.Method == http.MethodPost
+		if token != "" && !checkoutSession && verifyEnvironment && !opts.DryRunClient() && (merchantBearerRoute(command) || unknownRawOperation(command)) && oauthAuthorizationEnvironment(command, opts) == "" {
 			authCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
 			actual, introspectErr := a.fetchAuthContextResponse(authCtx, baseURL, token, opts.Debug)
 			cancel()

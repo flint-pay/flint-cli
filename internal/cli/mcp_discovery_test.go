@@ -110,6 +110,34 @@ func TestMCPDiscoveryOfflineExposure(t *testing.T) {
 	}
 }
 
+func TestMCPReadOnlyAdvertisesPOSTReads(t *testing.T) {
+	app := discoveryFixture(t)
+	opts := mcpServeOptions(t, "--read-only", "--tools",
+		"license-keys,email-preference-links,email-preferences,gift-cards,tickets,delivery-previews,discount-previews,order-edit-previews,return-previews,risk-previews,subscription-previews")
+	policy := app.mcpPolicy(opts)
+	tools, e := app.mcpAdvertisedTools(policy, "2025-06-18")
+	if e != nil {
+		t.Fatal(e)
+	}
+	hints := map[string]any{}
+	for _, tool := range tools {
+		hints[tool["name"].(string)] = tool["annotations"].(map[string]any)["readOnlyHint"]
+	}
+	for _, name := range []string{
+		"license_keys_lookup", "license_keys_validate", "email_preference_links_lookup",
+		"email_preferences_lookup", "gift_cards_lookup", "tickets_lookup",
+		"delivery_previews_create", "discount_previews_create", "order_edit_previews_create",
+		"return_previews_create", "risk_previews_create", "subscription_previews_create",
+	} {
+		if hints[name] != true {
+			t.Errorf("%s should be advertised with readOnlyHint", name)
+		}
+	}
+	if _, ok := hints["license_keys_disable"]; ok {
+		t.Error("license key mutation advertised in read-only mode")
+	}
+}
+
 func TestMCPDiscoveryDefinitionBudgets(t *testing.T) {
 	app := discoveryFixture(t)
 	for mask := 0; mask < 16; mask++ {

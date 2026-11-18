@@ -11,7 +11,6 @@ type operationOverlay struct {
 	Render         string
 	Follow         bool
 	Open           bool
-	ReadOnly       bool
 	TerminalStates map[string]bool
 }
 
@@ -48,7 +47,7 @@ func operationOverlays() map[string]operationOverlay {
 		"createCustomerVerification":           {Arguments: []Arg{idFlag("customer", "cus_", "customer_id", "", "Customer ID", false), flag("purpose", "string", "purpose", "", "link_guest_purchases", false)}, Examples: ex("flint customer-verifications create --input verification.json")},
 		"confirmCustomerVerification":          {Examples: ex("flint customer-verifications confirm cver_123 --input -")},
 		"linkCustomerGuestPurchases":           {Arguments: []Arg{idFlag("customer_verification", "cver_", "customer_verification_id", "", "Confirmed customer verification ID", false)}, Examples: ex("flint customers link-guest-purchases cus_123 --input linking.json")},
-		"lookupEmailPreferenceLink":            {Examples: ex("flint email-preference-links lookup --input -"), ReadOnly: true},
+		"lookupEmailPreferenceLink":            {Examples: ex("flint email-preference-links lookup --input -")},
 		"unsubscribeEmailPreferenceLink":       {Examples: ex("flint email-preference-links unsubscribe --input -")},
 		"validateCustomDomain":                 {Examples: ex("flint custom-domains validate cdom_123")},
 		"createPaymentLink":                    {Arguments: []Arg{flag("name", "string", "name", "", "Payment link name", true), flag("item_name", "string", "line_items.0.name", "", "Item name", false), flag("amount", "integer", "line_items.0.unit_price_money.amount", "", "Item price in minor units", false), flag("currency", "string", "line_items.0.unit_price_money.currency", "", "Uppercase ISO 4217 currency code, such as USD", false)}, Examples: ex("flint payment-links create --name T-shirt --item-name T-shirt --amount 2500 --currency USD --open"), Render: "checkout", Open: true},
