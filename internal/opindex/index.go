@@ -39,14 +39,6 @@ func RouteMutates(method, id, routeClass string) bool {
 		case "read", "delivery_preview":
 			return false
 		}
-		// The pinned contract omits a route class for license validation and
-		// labels the buyer subscription estimate as a write.
-		switch id {
-		case "validateLicenseKey":
-			return routeClass != ""
-		case "createMeSubscriptionPreview":
-			return routeClass != "write"
-		}
 	}
 	return method != "GET" || id == "authorizePartnerInstall"
 }

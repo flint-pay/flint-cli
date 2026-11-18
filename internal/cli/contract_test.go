@@ -48,8 +48,11 @@ func TestRegistryContract(t *testing.T) {
 		if !cmd.Supports.JSONOutput || !cmd.Supports.NoInput {
 			t.Errorf("%s lacks machine-mode support", cmd.Name)
 		}
-		if cmd.Mutation && (!cmd.Supports.IdempotencyKey || !cmd.Supports.DryRunClient) {
-			t.Errorf("%s mutation lacks idempotency or dry-run", cmd.Name)
+		if cmd.Mutation && !cmd.Supports.DryRunClient {
+			t.Errorf("%s mutation lacks dry-run support", cmd.Name)
+		}
+		if !cmd.Local && cmd.Mutation && cmd.Supports.IdempotencyKey != (commandIdempotencyClass(cmd) != "none") {
+			t.Errorf("%s idempotency support differs from the contract", cmd.Name)
 		}
 		if cmd.OperationID != "" {
 			route, exists := operations[cmd.OperationID]

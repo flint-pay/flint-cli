@@ -92,7 +92,7 @@ func newRegistryFromSnapshot(includeAPI bool) *Registry {
 		}
 		if c.Mutation {
 			c.Supports.DryRunClient = true
-			c.Supports.IdempotencyKey = true
+			c.Supports.IdempotencyKey = c.Local || commandIdempotencyClass(c) != "none"
 		}
 		if c.Get && c.CanonicalName != "auth.status" {
 			c.Supports.WaitFor = true

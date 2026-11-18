@@ -570,8 +570,10 @@ func mcpControlSchemas(c *Command) map[string]any {
 	if credentialed || c.CanonicalName == "help.search" || c.CanonicalName == "signup" {
 		controls["timeout"] = control(map[string]any{"type": "string"}, "Total request budget including retries, e.g. 150s (default).")
 	}
-	if c.Mutation || api {
+	if c.Supports.IdempotencyKey || api {
 		controls["idempotency_key"] = control(map[string]any{"type": "string", "minLength": 1}, "Reuse the same key when retrying, or the write may run twice.")
+	}
+	if c.Mutation || api {
 		controls["dry_run"] = control(map[string]any{"type": "string", "enum": []string{"client"}}, "\"client\": prepare without sending.")
 	}
 	if c.Sensitive || c.Destructive || api {

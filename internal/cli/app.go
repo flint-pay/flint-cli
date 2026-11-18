@@ -451,8 +451,11 @@ func (a *App) printCommandHelp(cmd *Command) {
 	fmt.Fprintln(a.Stdout, "  --merchant/--sandbox select partner targets; other credentials must match these guards.")
 	fmt.Fprintln(a.Stdout, "  --credential-store keyring|file  Credential backend (or FLINT_CREDENTIAL_STORE; defaults to the profile store or keyring)")
 	var capabilities []string
+	if cmd.Supports.IdempotencyKey {
+		capabilities = append(capabilities, "--idempotency-key KEY")
+	}
 	if cmd.Mutation {
-		capabilities = append(capabilities, "--idempotency-key KEY", "--dry-run=client", "--confirm")
+		capabilities = append(capabilities, "--dry-run=client", "--confirm")
 	}
 	if cmd.CanonicalName == "api" {
 		capabilities = append(capabilities, "--idempotency-key KEY", "--dry-run=client", "--confirm", "--preview", "--paginate", "--page-size N", "--page-token TOKEN", "--all")
