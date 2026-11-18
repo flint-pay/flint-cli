@@ -217,7 +217,7 @@ func TestMCPErrorsClassNoneWriteReportsUnknownOutcome(t *testing.T) {
 			fmt.Fprint(w, authContextJSON("sandbox"))
 			return
 		}
-		if r.Method != http.MethodPost || r.URL.Path != "/v1/delivery-previews" {
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/webhook-endpoints/whep_fixture/sign-delivery" {
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 		if r.Header.Get("Idempotency-Key") != "" {
@@ -229,16 +229,11 @@ func TestMCPErrorsClassNoneWriteReportsUnknownOutcome(t *testing.T) {
 	}))
 	defer server.Close()
 	app, _, _ := testApp(t, server.URL)
-	cmd, _ := app.Registry.ByName("delivery-previews.create")
+	cmd, _ := app.Registry.ByName("webhook-endpoints.sign-delivery")
 	if commandIdempotencyClass(cmd) != "none" {
 		t.Fatal("fixture requires a class-none operation")
 	}
-	args := map[string]any{
-		"mode": "delivery_options", "currency": "USD",
-		"delivery_method_ids": []any{"dmet_01K1P6G4M7H2N8Q9R3S5T6V7WX"},
-		"destination_address": map[string]any{"country": "US", "postal_code": "11249"},
-		"line_items":          []any{map[string]any{"type": "variant", "variant_id": "var_01K1P6G4M7H2N8Q9R3S5T6V7WX", "quantity": 2}},
-	}
+	args := map[string]any{"webhook_endpoint_id": "whep_fixture", "webhook_event_id": "whev_01KEZF7C00BW7XQJ98PQ8EHA81", "_flint": map[string]any{"confirm": true}}
 	outcome := app.runMCPCommand(context.Background(), cmd, args, defaultOptions(), mcpPolicy{}, nil)
 	if writes.Load() != 1 || outcome.cliError == nil || !outcome.cliError.requestSent {
 		t.Fatalf("write did not dispatch: writes=%d outcome=%#v", writes.Load(), outcome)
