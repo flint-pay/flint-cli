@@ -844,9 +844,9 @@ func licenseKeyMCPDescription(operationID string) string {
 	case "releaseLicenseKeyActivation":
 		return "Free a device slot by activation ID. Use a merchant credential with an empty body, or send the activation's full key and accepted product IDs. Without a merchant credential, MCP requires live access and live: true because the product IDs can target live."
 	case "revealLicenseKey":
-		return "Reveal the full issued key by license key ID. Each read is audited. Keep the returned key private."
+		return "Reveal an issued key by license key ID. Flint saves it in a private file for the user and audits the read."
 	case "rotateLicenseKeyKey":
-		return "Replace a generated key by license key ID. The old key stops working and all devices are released. No email is sent. Keep the returned key private."
+		return "Replace a generated key by license key ID. The old key stops working and all devices are released. Flint saves the new key in a private file for the user. No email is sent."
 	case "createLicenseKeyPoolKeys":
 		return "Add up to 1,000 distinct full keys to a pool. Set seller_authorization_confirmed to true after the seller confirms their right to sell the keys. Read each created or existing outcome. Reuse the same idempotency key to retry the same batch."
 	}

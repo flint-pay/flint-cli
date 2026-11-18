@@ -36,6 +36,8 @@ var mcpCredentialPattern = regexp.MustCompile(`\b(?:(?:flint_(?:test|live|cses|c
 // from the random part. Full keys in free-form fields still match the detector.
 var mcpPublicKeyPrefix = regexp.MustCompile(`^flint_(?:test|live)_(?:int_)?[0-9a-fA-F]{8}$`)
 
+var mcpMaskedAdmissionCode = regexp.MustCompile(`^\[REDACTED\][0-9A-Za-z]{4}$`)
+
 const mcpInvoicePDFPath = "/data/content_base64"
 const mcpGiftCardChallengeAction = "complete_gift_card_challenge"
 
@@ -178,6 +180,12 @@ func mcpMaskResult(value any, path string, fields map[string]any) any {
 		for name, item := range node {
 			child := mcpSecretPath(path, name)
 			text, isString := item.(string)
+			if text == mcpRedacted || (name == "admission_code" && mcpMaskedAdmissionCode.MatchString(text)) {
+				// Keep the request display's existing mask and avoid saving it.
+				delete(fields, child)
+				out[name] = item
+				continue
+			}
 			_, hasKeyID := node["api_key_id"].(string)
 			if name == "key_prefix" && hasKeyID && mcpPublicKeyPrefix.MatchString(text) {
 				if _, marked := fields[child]; !marked {
