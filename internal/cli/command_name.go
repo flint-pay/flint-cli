@@ -54,6 +54,15 @@ func commandName(doc *openAPIDocument, path, method string, operation openAPIOpe
 	if len(nouns) == 0 {
 		return fail("path has no literal segments")
 	}
+	// The pool's three bulk stock operations use verbs on the pool group.
+	switch operation.OperationID {
+	case "createLicenseKeyPoolKeys":
+		return nouns[0] + ".add-keys", "action", nil
+	case "listLicenseKeyPoolKeys":
+		return nouns[0] + ".list-keys", "collection", nil
+	case "removeLicenseKeyPoolKeys":
+		return nouns[0] + ".remove-keys", "action", nil
+	}
 	last := segments[len(segments)-1]
 	kind, verb := "singleton", ""
 	verbs := map[string]string{"GET": "get", "PATCH": "update", "PUT": "replace", "DELETE": "delete"}

@@ -1670,7 +1670,7 @@ func exhaustiveRemoteInvocation(command *Command) []string {
 		if command.CanonicalName == "payment-intents.create" && argument.Name == "order" {
 			continue
 		}
-		if argument.Name == "save_to" {
+		if argument.Name == "save_to" || (argument.Name == "file" && command.OperationID == "createLicenseKeyPoolKeys") {
 			continue
 		}
 		values := exhaustiveArgumentValues(argument)
@@ -1723,7 +1723,7 @@ func assertExhaustiveRequest(t *testing.T, command *Command, request *exhaustive
 	if token := exhaustiveSessionCredential(command); token != "" {
 		wantAuth = "Bearer " + token
 	}
-	if !command.AuthRequired {
+	if !command.AuthRequired && !optionalAuth(command) {
 		wantAuth = ""
 	}
 	if request.Header.Get("Authorization") != wantAuth {

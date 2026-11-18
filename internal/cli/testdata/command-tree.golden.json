@@ -1977,6 +1977,160 @@
     "audience": "merchant"
   },
   {
+    "name": "license-key-activations.create",
+    "operation_id": "createLicenseKeyActivation",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-key-activations.get",
+    "operation_id": "getLicenseKeyActivation",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-key-activations.list",
+    "operation_id": "listLicenseKeyActivations",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-key-activations.release",
+    "operation_id": "releaseLicenseKeyActivation",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-key-pools.add-keys",
+    "operation_id": "createLicenseKeyPoolKeys",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-key-pools.create",
+    "operation_id": "createLicenseKeyPool",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-key-pools.delete",
+    "operation_id": "deleteLicenseKeyPool",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-key-pools.get",
+    "operation_id": "getLicenseKeyPool",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-key-pools.list",
+    "operation_id": "listLicenseKeyPools",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-key-pools.list-keys",
+    "operation_id": "listLicenseKeyPoolKeys",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-key-pools.remove-keys",
+    "operation_id": "removeLicenseKeyPoolKeys",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-key-pools.update",
+    "operation_id": "updateLicenseKeyPool",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-keys.disable",
+    "operation_id": "disableLicenseKey",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-keys.get",
+    "operation_id": "getLicenseKey",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-keys.list",
+    "operation_id": "listLicenseKeys",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-keys.lookup",
+    "operation_id": "lookupLicenseKey",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-keys.reinstate",
+    "operation_id": "reinstateLicenseKey",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-keys.resend",
+    "operation_id": "resendLicenseKey",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-keys.reveal",
+    "operation_id": "revealLicenseKey",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-keys.rotate-key",
+    "operation_id": "rotateLicenseKeyKey",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-keys.update",
+    "operation_id": "updateLicenseKey",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "license-keys.validate",
+    "operation_id": "validateLicenseKey",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "listen",
     "operation_id": "streamWebhookEvents",
     "kind": "cli",
@@ -2231,6 +2385,34 @@
     "name": "me.invoices.pdf.get",
     "operation_id": "getMeInvoicePDF",
     "kind": "singleton",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
+    "name": "me.license-key-activations.list",
+    "operation_id": "listMeLicenseKeyActivations",
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
+    "name": "me.license-key-activations.release",
+    "operation_id": "releaseMeLicenseKeyActivation",
+    "kind": "action",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
+    "name": "me.license-keys.list",
+    "operation_id": "listMeLicenseKeys",
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
+    "name": "me.license-keys.resend",
+    "operation_id": "resendMeLicenseKey",
+    "kind": "action",
     "section": "buyer_session",
     "audience": "buyer"
   },

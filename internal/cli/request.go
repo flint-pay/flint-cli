@@ -308,6 +308,9 @@ func (a *App) prepareRequest(ctx context.Context, cmd *Command, opts Options, re
 				if e := a.validateBody(cmd, opts, body, &req); e != nil {
 					return req, e
 				}
+				if cmd.CanonicalName != "api" && cmd.OperationID == "releaseLicenseKeyActivation" && key == "" && !opts.DryRunClient() && (body["key"] == nil || body["product_ids"] == nil) {
+					return req, usageError("MISSING_REQUIRED_ARGUMENT", "Without a merchant credential, releasing an activation requires both --key and --product-ids (or supply them through --input).", "input")
+				}
 			}
 			raw, e := json.Marshal(body)
 			if e != nil {

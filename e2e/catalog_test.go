@@ -183,7 +183,7 @@ func TestBuiltCLISchemaContainsEveryRegisteredCommand(t *testing.T) {
 
 // The compiled matrix must use a credential accepted by each route.
 func builtRemoteCredentials(command *cli.Command, merchantKey string) (string, string) {
-	if !command.AuthRequired {
+	if !command.AuthRequired && len(command.Security) == 0 {
 		return "", ""
 	}
 	for _, requirement := range command.Security {
@@ -368,7 +368,7 @@ func builtRemoteInvocation(command *cli.Command) []string {
 		if command.CanonicalName == "payment-intents.create" && argument.Name == "order" {
 			continue
 		}
-		if argument.Name == "save_to" {
+		if argument.Name == "save_to" || (argument.Name == "file" && command.OperationID == "createLicenseKeyPoolKeys") {
 			continue
 		}
 		values := builtArgumentValues(argument)

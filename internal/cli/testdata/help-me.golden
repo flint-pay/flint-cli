@@ -26,14 +26,18 @@ Commands:
   fulfillments get <fulfillment_id>            Get one of the current buyer's fulfillments (customer session secret) GET /v1/me/fulfillments/{fulfillment_id}
   fulfillments list                            List the current buyer's fulfillments (customer session secret) GET /v1/me/fulfillments
   get                                          Get the current buyer profile (customer session secret) GET /v1/me
-  gift-card-transactions list                  List a saved gift card's balance history (customer session secret) GET /v1/me/gift-card-transactions
+  gift-card-transactions list                  List a gift card's balance history (customer session secret) GET /v1/me/gift-card-transactions
   gift-cards create                            Save a gift card to your account (customer session secret) POST /v1/me/gift-cards
   gift-cards delete <gift_card_id>             Remove a saved gift card (customer session secret) DELETE /v1/me/gift-cards/{gift_card_id}
-  gift-cards get <gift_card_id>                Get a saved gift card (customer session secret) GET /v1/me/gift-cards/{gift_card_id}
-  gift-cards list                              List your saved gift cards (customer session secret) GET /v1/me/gift-cards
+  gift-cards get <gift_card_id>                Get a gift card (customer session secret) GET /v1/me/gift-cards/{gift_card_id}
+  gift-cards list                              List your gift cards (customer session secret) GET /v1/me/gift-cards
   invoices get <invoice_id>                    Get one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}
   invoices list                                List the current buyer's invoices (customer session secret) GET /v1/me/invoices
   invoices pdf get <invoice_id>                Download one of the current buyer's invoices (invoice access token) GET /v1/me/invoices/{invoice_id}/pdf
+  license-key-activations list                 List the buyer's license key activations (customer session secret) GET /v1/me/license-key-activations
+  license-key-activations release <license_key_activation_id> Release the buyer's license key activation (customer session secret) POST /v1/me/license-key-activations/{license_key_activation_id}/release
+  license-keys list                            List the buyer's license keys (customer session secret) GET /v1/me/license-keys
+  license-keys resend <license_key_id>         Resend the buyer's license key email (customer session secret) POST /v1/me/license-keys/{license_key_id}/resend
   orders activities list <order_id>            List activity for one of the current buyer's orders (customer session secret) GET /v1/me/orders/{order_id}/activities
   orders get <order_id>                        Get one of the current buyer's orders (customer session secret) GET /v1/me/orders/{order_id}
   orders list                                  List the current buyer's orders (customer session secret) GET /v1/me/orders

@@ -184,6 +184,11 @@ func (g *mcpCallGate) afterAuth(auth AuthContext) *CLIError {
 	g.environment, g.merchant = normalizeEnvironment(auth.Environment), auth.MerchantID
 	call := g.input
 	call.Environment, call.Write, call.Gated = g.environment, false, false
+	if auth.AuthType == "none" && (g.entry.OperationID == "createLicenseKeyActivation" || g.entry.OperationID == "releaseLicenseKeyActivation") {
+		// Anonymous product IDs can target live devices. With no verified
+		// credential, require the same permissions as for a live write.
+		call.Environment = "live"
+	}
 	decision := mcpDecideGate(g.policy, call)
 	if decision.Action == mcpGateReject {
 		return g.failure(decision, "")
@@ -211,9 +216,14 @@ func (g *mcpCallGate) prepared(ctx context.Context, a *App, cmd *Command, req pr
 			details := e.Details.(map[string]any)
 			details["command"], details["idempotency_key"] = command, req.IdempotencyKey
 			details["same_project"] = resolved.SandboxGuard != ""
-			if _, sensitive := displayRequestBody(req.BodyValue); sensitive {
+			if _, sensitive := displayRequestBody(req.BodyValue, cmd.OperationID); sensitive {
 				details["input_required"] = true
-				e.Message += " Supply the original request JSON through stdin; admission codes are omitted from this command."
+				if hasLicenseKeyBody(cmd.OperationID) {
+					details["input_file_required"] = true
+					e.Message += " Save the original request JSON in a private file named license-keys.json before running this command."
+				} else {
+					e.Message += " Supply the original request JSON through stdin; admission codes are omitted from this command."
+				}
 			}
 		}
 		return e
@@ -273,7 +283,7 @@ func (g *mcpCallGate) ask(ctx context.Context, req preparedRequest) *CLIError {
 	} else if g.entry.Sensitive {
 		prompt += "\nIt is sensitive: it moves money or affects buyers."
 	}
-	body, _ := displayRequestBody(req.BodyValue)
+	body, _ := displayRequestBody(req.BodyValue, g.entry.OperationID)
 	if req.BodyValue == nil {
 		body = map[string]any{}
 	}

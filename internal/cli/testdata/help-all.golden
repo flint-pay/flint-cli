@@ -336,6 +336,28 @@ Merchant resources:
   flint invoices send-reminder <invoice_id>                         Send invoice reminder
   flint invoices update <invoice_id>                                Update invoice
   flint invoices void <invoice_id>                                  Void invoice
+  flint license-key-activations create                              Activate a license key
+  flint license-key-activations get <license_key_activation_id>     Get a license key activation
+  flint license-key-activations list                                List license key activations
+  flint license-key-activations release <license_key_activation_id> Release a license key activation
+  flint license-key-pools add-keys <license_key_pool_id>            Add keys to a license key pool
+  flint license-key-pools create                                    Create a license key pool
+  flint license-key-pools delete <license_key_pool_id>              Archive a license key pool
+  flint license-key-pools get <license_key_pool_id>                 Get a license key pool
+  flint license-key-pools list                                      List license key pools
+  flint license-key-pools list-keys <license_key_pool_id>           List keys in a license key pool
+  flint license-key-pools remove-keys <license_key_pool_id>         Remove keys from a license key pool
+  flint license-key-pools update <license_key_pool_id>              Update a license key pool
+  flint license-keys disable <license_key_id>                       Disable a license key
+  flint license-keys get <license_key_id>                           Get a license key
+  flint license-keys list                                           List license keys
+  flint license-keys lookup                                         Look up a license key
+  flint license-keys reinstate <license_key_id>                     Reinstate a license key
+  flint license-keys resend <license_key_id>                        Resend a license key
+  flint license-keys reveal <license_key_id>                        Reveal a license key
+  flint license-keys rotate-key <license_key_id>                    Rotate a license key
+  flint license-keys update <license_key_id>                        Update a license key
+  flint license-keys validate                                       Validate a license key
   flint locations create                                            Create location
   flint locations delete <location_id>                              Retire location
   flint locations get <location_id>                                 Get location
@@ -692,14 +714,18 @@ Buyer session:
   flint me fulfillments get <fulfillment_id>                        Get one of the current buyer's fulfillments
   flint me fulfillments list                                        List the current buyer's fulfillments
   flint me get                                                      Get the current buyer profile
-  flint me gift-card-transactions list                              List a saved gift card's balance history
+  flint me gift-card-transactions list                              List a gift card's balance history
   flint me gift-cards create                                        Save a gift card to your account
   flint me gift-cards delete <gift_card_id>                         Remove a saved gift card
-  flint me gift-cards get <gift_card_id>                            Get a saved gift card
-  flint me gift-cards list                                          List your saved gift cards
+  flint me gift-cards get <gift_card_id>                            Get a gift card
+  flint me gift-cards list                                          List your gift cards
   flint me invoices get <invoice_id>                                Get one of the current buyer's invoices
   flint me invoices list                                            List the current buyer's invoices
   flint me invoices pdf get <invoice_id>                            Download one of the current buyer's invoices
+  flint me license-key-activations list                             List the buyer's license key activations
+  flint me license-key-activations release <license_key_activation_id> Release the buyer's license key activation
+  flint me license-keys list                                        List the buyer's license keys
+  flint me license-keys resend <license_key_id>                     Resend the buyer's license key email
   flint me orders activities list <order_id>                        List activity for one of the current buyer's orders
   flint me orders get <order_id>                                    Get one of the current buyer's orders
   flint me orders list                                              List the current buyer's orders

@@ -61,7 +61,8 @@ Merchant resources:
   inventory-allocation-policies       inventory-counts                    inventory-items
   inventory-levels                    inventory-movements                 inventory-receipts
   inventory-reservations              inventory-transfers                 invoice-payment-terms
-  invoices                            locations                           merchant
+  invoices                            license-key-activations             license-key-pools
+  license-keys                        locations                           merchant
   merchant-account-session-refreshes  merchant-account-sessions           merchant-billing-balances
   merchant-billing-entries            merchant-billing-invoices           modifier-groups
   modifier-sets                       onboarding                          order-edit-previews

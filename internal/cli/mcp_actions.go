@@ -21,10 +21,21 @@ func (a *App) mcpKnownEnvironment() string {
 	return ""
 }
 
-func mcpAgentAction(text string, call map[string]any) map[string]any {
-	displayCall, sensitive := displayRequestBody(call)
-	if sensitive && !strings.Contains(text, "Admission codes are redacted.") {
-		text += " Admission codes are redacted. Supply the original scanned code before retrying."
+func mcpDisplayRequest(value any, operationID ...string) (any, string) {
+	display, sensitive := displayRequestBody(value, operationID...)
+	if !sensitive {
+		return display, ""
+	}
+	if _, admission := displayRequestBody(value); admission {
+		return display, " Admission codes are redacted. Supply the original scanned code before retrying."
+	}
+	return display, " License keys are redacted. Supply the original keys before retrying."
+}
+
+func mcpAgentAction(text string, call map[string]any, operationID ...string) map[string]any {
+	displayCall, notice := mcpDisplayRequest(call, operationID...)
+	if notice != "" && !strings.Contains(text, strings.TrimSpace(notice)) {
+		text += notice
 	}
 	return map[string]any{"actor": "agent", "text": text, "call": displayCall}
 }
@@ -485,7 +496,9 @@ func (a *App) mcpNextActions(cmd *Command, args map[string]any, opts Options, po
 		if credentialFromEnvironment() != "" {
 			text += " The server's key is FLINT_API_KEY in the MCP client's env configuration."
 		}
-		if mcpErrorFact(e.Details, "input_required") == true {
+		if mcpErrorFact(e.Details, "input_file_required") == true {
+			text += " Save the original request JSON in a private file named license-keys.json before running the command."
+		} else if mcpErrorFact(e.Details, "input_required") == true {
 			text += " Supply the original request JSON through stdin; admission codes are omitted from the command."
 		}
 		action := mcpUserAction(text)
@@ -517,7 +530,7 @@ func (a *App) mcpNextActions(cmd *Command, args map[string]any, opts Options, po
 			if environment != "sandbox" && !policy.allowDestructive {
 				text += " The server will ask the user to approve it."
 			}
-			return append(actions, mcpAgentAction(text, a.mcpOperationCall(cmd, confirmed, policy)))
+			return append(actions, mcpAgentAction(text, a.mcpOperationCall(cmd, confirmed, policy), cmd.OperationID))
 		}
 		return append(actions, mcpUserAction("approve this operation in the MCP client before the agent proceeds."))
 	case "LIVE_ACKNOWLEDGEMENT_REQUIRED":
@@ -533,7 +546,7 @@ func (a *App) mcpNextActions(cmd *Command, args map[string]any, opts Options, po
 			}
 			controls["live"] = true
 			acknowledged["_flint"] = controls
-			return append(actions, mcpAgentAction("Acknowledge the live environment with live: true.", a.mcpOperationCall(cmd, acknowledged, policy)))
+			return append(actions, mcpAgentAction("Acknowledge the live environment with live: true.", a.mcpOperationCall(cmd, acknowledged, policy), cmd.OperationID))
 		}
 	case "LIVE_ACCESS_DISABLED":
 		return append(actions, mcpUserAction("restart this MCP server with --allow-live, or configure a sandbox credential."))
@@ -591,7 +604,7 @@ func (a *App) mcpNextActions(cmd *Command, args map[string]any, opts Options, po
 				controls["idempotency_key"] = key
 			}
 			identical["_flint"] = controls
-			return append(actions, mcpAgentAction("After the supplied delay, resend the identical request.", a.mcpOperationCall(cmd, identical, policy)))
+			return append(actions, mcpAgentAction("After the supplied delay, resend the identical request.", a.mcpOperationCall(cmd, identical, policy), cmd.OperationID))
 		case "after_refresh":
 			refresh := a.mcpRecoveryActions(cmd, args, policy, key, environment)
 			for _, action := range refresh {

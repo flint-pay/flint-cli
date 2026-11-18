@@ -28,6 +28,9 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 	}
 	ctx = withPartnerTarget(ctx, key, resolved)
 	ctx = context.WithValue(ctx, responseContractKey{}, cmd)
+	if cmd.OperationID == "createLicenseKeyPoolKeys" && len(opts.Raw["file"]) > 0 {
+		return a.executeLicenseKeyFile(ctx, cmd, opts, resolved, authContext, key, baseURL)
+	}
 	req, e := a.prepareRequest(ctx, cmd, opts, resolved, key, baseURL)
 	if e != nil {
 		return nil, e
@@ -46,7 +49,7 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 		opts.Confirm = true
 	}
 	if opts.DryRun == "client" || opts.Preview {
-		if authContext.AuthType == "none" {
+		if authContext.AuthType == "none" && cmd.AuthRequired {
 			req.Warnings = append(req.Warnings, map[string]any{
 				"message":        unauthenticatedDryRunWarning,
 				"skipped_checks": []string{"scopes", "merchant_guard", "sandbox_guard"},
@@ -133,7 +136,7 @@ func previewRequest(req preparedRequest, cmd *Command, authContext AuthContext, 
 			headers["Flint-Sandbox-Id"] = authContext.SandboxID
 		}
 	}
-	body, _ := displayRequestBody(req.BodyValue)
+	body, _ := displayRequestBody(req.BodyValue, cmd.OperationID)
 	data := map[string]any{"method": req.Method, "path": req.Path, "headers": headers, "body": body, "persistent_side_effects": false}
 	if authContext.AuthType == "none" {
 		data["environment"] = authContext.Environment

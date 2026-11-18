@@ -57,7 +57,20 @@ func operationRequestExamples(operation openAPIOperation) []requestExample {
 			schema = resolved
 		}
 	}
-	return collect(schema, false)
+	if examples := collect(schema, false); len(examples) > 0 {
+		return examples
+	}
+	// These operations have request schemas but no examples in the pinned export.
+	switch operation.OperationID {
+	case "validateLicenseKey":
+		return []requestExample{{"default", map[string]any{
+			"key":         "TEST-KEY-00000001",
+			"product_ids": []any{"prod_01KEZF7C00BVSHCNWVH528HB66"},
+		}}}
+	case "resendLicenseKey":
+		return []requestExample{{"default", map[string]any{}}}
+	}
+	return nil
 }
 
 func commandRequestExamples(cmd *Command) []requestExample {

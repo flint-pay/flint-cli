@@ -28,6 +28,9 @@ func publicAPICommands() []*Command {
 			overlay := publicOperationOverlays[operation.OperationID]
 			arguments = append(arguments, publicBodyArguments(operation, arguments)...)
 			arguments = append(arguments, overlay.Arguments...)
+			if operation.OperationID == "createLicenseKeyPoolKeys" {
+				arguments = append(arguments, flag("file", "string", "", "", "Upload a local file with one key per line or a CSV column named license_key or key. Confirm with --seller-authorization-confirmed. Reuse --idempotency-key with the same file to retry within 24 hours.", false))
+			}
 			if operation.RequestBody != nil {
 				arguments = append(arguments, flag("input", "string", "", "", "JSON body: FILE.json, - for stdin, or inline JSON", false))
 			}
@@ -43,6 +46,9 @@ func publicAPICommands() []*Command {
 			command.Examples = append([]string(nil), overlay.Examples...)
 			if operation.RequestBody != nil {
 				command.Examples = ex(specRequestCommandExample(command, operation))
+				if operation.OperationID == "createLicenseKeyPoolKeys" {
+					command.Examples = append(command.Examples, "flint license-key-pools add-keys lkp_01KEZF7C00AQV1X2DPWG2NXS7H --file keys.csv --seller-authorization-confirmed")
+				}
 			} else if len(command.Examples) == 0 {
 				command.Examples = ex(publicAPIExample(name, arguments, destructive))
 			}
@@ -171,7 +177,11 @@ func openAPIArgumentType(typeName string, schema map[string]any) string {
 }
 
 var publicResourceIDPrefixes = map[string]string{
-	"credit_note_id": "cn_", "credit_note_allocation_id": "cna_", "invoice_payment_attempt_id": "invpa_", "email_change_request_id": "cecr_", "environment_grant_id": "egrt_", "partner_app_install_id": "pinst_", "plan_id": "plan_", "review_id": "rev_",
+	"license_key_id":            "lk_",
+	"license_key_activation_id": "lka_",
+	"license_key_pool_id":       "lkp_",
+	"license_key_pool_key_id":   "lkpk_",
+	"credit_note_id":            "cn_", "credit_note_allocation_id": "cna_", "invoice_payment_attempt_id": "invpa_", "email_change_request_id": "cecr_", "environment_grant_id": "egrt_", "partner_app_install_id": "pinst_", "plan_id": "plan_", "review_id": "rev_",
 	"after_event_id":                     "whev_",
 	"api_key_id":                         "key_",
 	"api_request_log_id":                 "rlog_",
@@ -440,11 +450,11 @@ func applyPublicOperationMetadata(command *Command) {
 	}
 	command.Security = operation.Security
 	command.OutputSchema = responseSchemaName(operation.Responses)
-	command.AuthRequired = len(operation.Security) > 0
+	command.AuthRequired = metadataAuthRequired(operation.Security)
 	if command.APIPath == "/v1/partner-apps" || strings.HasPrefix(command.APIPath, "/v1/partner-apps/") || command.APIPath == "/v1/sandboxes" || strings.HasPrefix(command.APIPath, "/v1/sandboxes/") || strings.HasPrefix(command.APIPath, "/v1/onboarding/") || strings.HasPrefix(command.APIPath, "/v1/oauth/") {
 		command.EnvironmentAffinity = EnvironmentAffinityAccount
 	}
-	if !command.AuthRequired {
+	if len(command.Security) == 0 {
 		command.EnvironmentAffinity = EnvironmentAffinityNeutral
 	}
 	queries := map[string]bool{}

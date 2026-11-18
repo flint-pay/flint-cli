@@ -24,7 +24,7 @@ func activeCredentialClass() (string, opindex.Credential) {
 }
 
 func (a *App) credentialClassError(command *Command) *CLIError {
-	if !command.AuthRequired || command.OperationID == "" {
+	if (!command.AuthRequired && !optionalAuth(command)) || command.OperationID == "" {
 		return nil
 	}
 	source, credential := activeCredentialClass()
