@@ -30,7 +30,14 @@ func mcpSecretField(name string) bool {
 		strings.HasSuffix(name, "_token") || strings.HasSuffix(name, "_password")
 }
 
-var mcpCredentialPattern = regexp.MustCompile(`\b(?:(?:flint_(?:test|live|cses|cref)_|fpat_|fwat_)[A-Za-z0-9_~-]+|whsec_[A-Za-z0-9+/]+={0,2}|ckat_v1\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|(?:pi|seti)_[A-Za-z0-9]+_secret_[A-Za-z0-9_]+)`)
+var mcpCredentialPattern = regexp.MustCompile(`\b(?:(?:flint_(?:test|live|cses|cref)_|fpat_|fwat_)[A-Za-z0-9_~-]+|whsec_[A-Za-z0-9_+/-]+={0,2}|ckat_v1\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|(?:pi|seti)_[A-Za-z0-9]+_secret_[A-Za-z0-9_]+)`)
+
+// APIKey.key_prefix is a display identifier containing only eight hex digits
+// from the random part. Full keys in free-form fields still match the detector.
+var mcpPublicKeyPrefix = regexp.MustCompile(`^flint_(?:test|live)_(?:int_)?[0-9a-fA-F]{8}$`)
+
+const mcpInvoicePDFPath = "/data/content_base64"
+const mcpGiftCardChallengeAction = "complete_gift_card_challenge"
 
 func mcpRedactCredentialText(text string) string {
 	return mcpCredentialPattern.ReplaceAllString(text, mcpRedacted)
@@ -132,6 +139,11 @@ func mcpResponseSecrets(operationID string, value any) map[string]any {
 		if code := mcpObject(mcpObject(value)["data"])["code"]; code != nil {
 			fields["/data/code"] = code
 		}
+	case "getInvoicePDF", "getMeInvoicePDF":
+		// Open-invoice PDFs embed a bearer link in the button and QR code.
+		if content := mcpObject(mcpObject(value)["data"])["content_base64"]; content != nil {
+			fields[mcpInvoicePDFPath] = content
+		}
 	case "authorizePartnerInstall":
 		if location := mcpObject(mcpObject(value)["data"])["url"]; location != nil {
 			fields["/data/url"] = location
@@ -165,9 +177,16 @@ func mcpMaskResult(value any, path string, fields map[string]any) any {
 		out := make(map[string]any, len(node))
 		for name, item := range node {
 			child := mcpSecretPath(path, name)
-			_, apiKey := item.(string)
-			if item != nil && (mcpSecretField(name) || (name == "api_key" && apiKey) ||
-				(name == "url" && strings.HasSuffix(path, "/gift_card_challenge"))) {
+			text, isString := item.(string)
+			_, hasKeyID := node["api_key_id"].(string)
+			if name == "key_prefix" && hasKeyID && mcpPublicKeyPrefix.MatchString(text) {
+				if _, marked := fields[child]; !marked {
+					out[name] = item
+					continue
+				}
+			}
+			if item != nil && (mcpSecretField(name) || (name == "api_key" && isString) ||
+				(name == "url" && (strings.HasSuffix(path, "/gift_card_challenge") || node["action_type"] == mcpGiftCardChallengeAction))) {
 				fields[child] = item
 			}
 			out[name] = mcpMaskResult(item, child, fields)
@@ -261,6 +280,17 @@ func (a *App) saveMCPSecrets(fields map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if content, ok := fields[mcpInvoicePDFPath].(string); ok && len(fields) == 1 {
+		path := filepath.Join(callDir, "invoice.pdf")
+		_, downloadErr := a.saveDownload(map[string]any{"data": map[string]any{
+			"content_base64": content, "content_type": "application/pdf",
+		}}, path)
+		if downloadErr != nil {
+			_ = os.Remove(callDir)
+			return "", downloadErr
+		}
+		return path, nil
+	}
 	path := filepath.Join(callDir, "secrets.json")
 	if err := writePrivateJSON(path, fields); err != nil {
 		_ = os.Remove(callDir)
@@ -283,7 +313,7 @@ func (a *App) mcpSecretNote(fields map[string]any) string {
 	}
 	path, err := a.saveMCPSecrets(fields)
 	if err != nil {
-		return "\nWarning: The operation succeeded, but Flint could not save its redacted secrets. Check the result before retrying. Use your terminal or Dashboard to recover or reissue them."
+		return "\nWarning: Flint could not save the redacted values. Check the result before retrying. Use your terminal or Dashboard to recover or reissue them."
 	}
 	return fmt.Sprintf("\nNote: Flint saved redacted values in %s. Only the user should open this file on the machine running Flint and delete it after use.", path)
 }

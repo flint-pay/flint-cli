@@ -136,13 +136,29 @@ func (a *App) mcpLocalError(cmd *Command, args map[string]any, opts Options, pol
 	envelope := a.mcpErrorEnvelope(cmd, args, opts, policy, e, environment)
 	// Errors can include arbitrary API detail objects and echoed credentials.
 	value, _ := normalizeOutput(envelope)
-	masked, _, _ := maskMCPResult("", value, "")
+	masked, _, fields := maskMCPResult("", value, "")
 	raw, _ := mcpCompactJSON(masked)
 	result := map[string]any{
 		"content": []map[string]any{{"type": "text", "text": string(raw)}}, "isError": true,
 	}
 	if environment != "" {
 		result["_meta"] = map[string]any{mcpEnvironmentMetaKey: environment}
+	}
+	// Only hand off credentials issued for remediation. Other errors can echo
+	// credentials supplied by the caller and should never persist those values.
+	errBody := mcpObject(mcpObject(value)["error"])
+	if errBody["code"] == "GIFT_CARD_CHALLENGE_REQUIRED" {
+		actions, _ := mcpObject(errBody["remediation"])["next_actions"].([]any)
+		challengeLinks := map[string]any{}
+		for i, action := range actions {
+			if mcpObject(action)["action_type"] == mcpGiftCardChallengeAction {
+				path := fmt.Sprintf("/error/remediation/next_actions/%d/url", i)
+				if link, ok := fields[path]; ok {
+					challengeLinks[path] = link
+				}
+			}
+		}
+		return mcpWithWarnings(result, a.mcpSecretNote(challengeLinks))
 	}
 	return result
 }

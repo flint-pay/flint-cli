@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -144,7 +145,7 @@ func TestMCPSecretStorageFailurePreservesSuccessfulResult(t *testing.T) {
 		t.Fatal(err)
 	}
 	if strings.Contains(string(raw)+notes, secret) || !strings.Contains(string(raw), "key_fixture") ||
-		!strings.Contains(notes, "operation succeeded") || !strings.Contains(notes, "could not save") {
+		!strings.Contains(notes, "could not save") {
 		t.Fatal("storage failure did not preserve the safe success result and instructions")
 	}
 }
@@ -181,5 +182,99 @@ func TestMCPSecretResultPreservesPublicURLsAndMasksCapabilities(t *testing.T) {
 	}
 	if mcpObject(input["data"])["url"] != bearer {
 		t.Fatal("redaction mutated the source used by pagination")
+	}
+}
+
+func TestMCPSecretInvoicePDFIsSavedAsPrivateDownload(t *testing.T) {
+	pdf := []byte("%PDF-1.7\nhttps://example.com/invoice/synthetic-bearer-link\n%%EOF")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/auth-context":
+			fmt.Fprint(w, authContextJSON("sandbox"))
+		case "/v1/invoices/inv_fixture/pdf":
+			w.Header().Set("Content-Type", "application/pdf")
+			_, _ = w.Write(pdf)
+		default:
+			t.Errorf("unexpected route %s", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+	app, _, _ := testApp(t, server.URL)
+	result := mcpCall(t, app, defaultOptions(), "flint_read", map[string]any{
+		"operation": "invoices.pdf.get", "arguments": map[string]any{"invoice_id": "inv_fixture"},
+	})
+	raw, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result["isError"] == true || strings.Contains(string(raw), base64.StdEncoding.EncodeToString(pdf)) ||
+		strings.Contains(string(raw), "synthetic-bearer-link") ||
+		!strings.Contains(mcpResultText(result), `"content_type":"application/pdf"`) ||
+		!strings.Contains(mcpResultText(result), fmt.Sprintf(`"size":%d`, len(pdf))) {
+		t.Fatal("expected a redacted PDF result with content type and size")
+	}
+	matches, err := filepath.Glob(filepath.Join(app.ConfigDir, "mcp-secrets", "result-*", "invoice.pdf"))
+	if err != nil || len(matches) != 1 {
+		t.Fatalf("expected one private PDF, got %d (%v)", len(matches), err)
+	}
+	path := matches[0]
+	content := result["content"].([]map[string]any)
+	if notes, _ := content[len(content)-1]["text"].(string); !strings.Contains(notes, path) {
+		t.Fatal("result does not include the private download location")
+	}
+	if data, err := os.ReadFile(path); err != nil || string(data) != string(pdf) {
+		t.Fatal("private download does not contain the original PDF")
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0600 {
+		t.Fatalf("download mode = %o, want 0600", info.Mode().Perm())
+	}
+}
+
+func TestMCPErrorSecretsInGiftCardChallengeRemediation(t *testing.T) {
+	app := &App{ConfigDir: t.TempDir()}
+	const link = "https://example.com/gift-card-challenge/synthetic-opaque-capability"
+	e := usageError("GIFT_CARD_CHALLENGE_REQUIRED", "Complete the gift card challenge.", "")
+	e.apiError = map[string]any{
+		"code": e.Code, "message": e.Message,
+		"remediation": map[string]any{"next_actions": []any{
+			map[string]any{"action_type": mcpGiftCardChallengeAction, "url": link},
+			map[string]any{"action_type": "read", "url": "https://example.com/docs"},
+		}},
+	}
+	result := app.mcpLocalError(nil, nil, Options{}, mcpPolicy{}, e, "")
+	raw, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), e.Code) || !strings.Contains(string(raw), mcpGiftCardChallengeAction) ||
+		strings.Contains(string(raw), link) || !strings.Contains(string(raw), "https://example.com/docs") {
+		t.Fatal("expected the capability to be masked and the remediation to be preserved")
+	}
+	matches, err := filepath.Glob(filepath.Join(app.ConfigDir, "mcp-secrets", "result-*", "secrets.json"))
+	if err != nil || len(matches) != 1 {
+		t.Fatalf("expected one private handoff file, got %d (%v)", len(matches), err)
+	}
+	if data, err := os.ReadFile(matches[0]); err != nil || !strings.Contains(string(data), link) {
+		t.Fatal("private handoff does not contain the challenge URL")
+	}
+}
+
+func TestMCPSecretResultPreservesOnlyPublicAPIKeyPrefixes(t *testing.T) {
+	const prefix = "flint_test_abcd1234"
+	const fullKey = prefix + "_synthetic_suffix"
+	input := map[string]any{"data": []any{
+		map[string]any{"api_key_id": "key_fixture", "key_prefix": prefix},
+		map[string]any{"api_key_id": "key_bad_fixture", "key_prefix": fullKey},
+	}}
+	result, _, fields := maskMCPResult("listAPIKeys", input, "")
+	data := mcpObject(result)["data"].([]any)
+	if mcpObject(data[0])["key_prefix"] != prefix || mcpObject(data[1])["key_prefix"] != mcpRedacted ||
+		len(fields) != 1 || fields["/data/1/key_prefix"] != fullKey {
+		t.Fatal("expected only the documented display prefix to pass through")
 	}
 }
