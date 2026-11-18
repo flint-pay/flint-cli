@@ -84,6 +84,9 @@ func (a *App) mcpDispatch(ctx context.Context, id any, tool string, input map[st
 		return fail(e)
 	}
 	if discovery && ((tool == "flint_read") != (entry.Kind == "read")) {
+		if _, requested := controls["dry_run"]; entry.Kind == "read" && requested {
+			return fail(mcpInputError([]mcpInputProblem{mcpPlainProblem(mcpInputControlLocation, "dry_run", "NOT_ALLOWED", "Dry runs are unavailable for "+entry.ID+" because it is a read operation.")}))
+		}
 		other := "flint_read"
 		if entry.Kind == "write" {
 			other = "flint_write"
