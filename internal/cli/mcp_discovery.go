@@ -527,7 +527,9 @@ func (a *App) mcpDescribe(args map[string]any, policy mcpPolicy, index *opindex.
 	if entry.Path != "" {
 		result["route"] = entry.Method + " " + entry.Path
 	}
-	if entry.Description != "" && !strings.EqualFold(strings.TrimSuffix(entry.Description, "."), strings.TrimSuffix(entry.Title, ".")) {
+	if description := licenseKeyMCPDescription(cmd.OperationID); description != "" {
+		result["description"] = description
+	} else if entry.Description != "" && !strings.EqualFold(strings.TrimSuffix(entry.Description, "."), strings.TrimSuffix(entry.Title, ".")) {
 		result["description"] = entry.Description
 	}
 	if entry.Audience == "buyer" {
@@ -759,13 +761,17 @@ func mcpTypedDescription(cmd *Command, entry opindex.Entry) string {
 		text = local.description
 	}
 	parts := []string{}
-	for _, sentence := range strings.Split(strings.Join(strings.Fields(text), " "), ". ") {
-		sentence = strings.TrimSpace(sentence)
-		if sentence == "" || mcpDescriptionKey(sentence) == mcpDescriptionKey(entry.Title) || strings.Contains(sentence, "--") {
-			continue
+	if description := licenseKeyMCPDescription(cmd.OperationID); description != "" {
+		parts = append(parts, description)
+	} else {
+		for _, sentence := range strings.Split(strings.Join(strings.Fields(text), " "), ". ") {
+			sentence = strings.TrimSpace(sentence)
+			if sentence == "" || mcpDescriptionKey(sentence) == mcpDescriptionKey(entry.Title) || strings.Contains(sentence, "--") {
+				continue
+			}
+			parts = append(parts, strings.TrimRight(sentence, ".")+".")
+			break
 		}
-		parts = append(parts, strings.TrimRight(sentence, ".")+".")
-		break
 	}
 	for _, requirement := range []struct {
 		needed bool

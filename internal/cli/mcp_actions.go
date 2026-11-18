@@ -34,7 +34,7 @@ func mcpDisplayRequest(value any, operationID ...string) (any, string) {
 
 func mcpAgentAction(text string, call map[string]any, operationID ...string) map[string]any {
 	displayCall, notice := mcpDisplayRequest(call, operationID...)
-	if !strings.Contains(text, strings.TrimSpace(notice)) {
+	if notice != "" && !strings.Contains(text, strings.TrimSpace(notice)) {
 		text += notice
 	}
 	return map[string]any{"actor": "agent", "text": text, "call": displayCall}

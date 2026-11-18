@@ -33,14 +33,6 @@ func commandExclusion(doc *openAPIDocument, path string, operation openAPIOperat
 // commandName is the route rule. Operation IDs only distinguish POST action
 // verbs from nouns; GET collection names come from the response shape.
 func commandName(doc *openAPIDocument, path, method string, operation openAPIOperation) (string, string, error) {
-	switch operation.OperationID {
-	case "createLicenseKeyPoolKeys":
-		return "license-key-pools.add-keys", "action", nil
-	case "listLicenseKeyPoolKeys":
-		return "license-key-pools.list-keys", "collection", nil
-	case "removeLicenseKeyPoolKeys":
-		return "license-key-pools.remove-keys", "action", nil
-	}
 	fail := func(reason string) (string, string, error) {
 		return "", "", fmt.Errorf("%s %s (%s): %s", method, path, operation.OperationID, reason)
 	}
@@ -61,6 +53,15 @@ func commandName(doc *openAPIDocument, path, method string, operation openAPIOpe
 	}
 	if len(nouns) == 0 {
 		return fail("path has no literal segments")
+	}
+	// The pool's three bulk stock operations use verbs on the pool group.
+	switch operation.OperationID {
+	case "createLicenseKeyPoolKeys":
+		return nouns[0] + ".add-keys", "action", nil
+	case "listLicenseKeyPoolKeys":
+		return nouns[0] + ".list-keys", "collection", nil
+	case "removeLicenseKeyPoolKeys":
+		return nouns[0] + ".remove-keys", "action", nil
 	}
 	last := segments[len(segments)-1]
 	kind, verb := "singleton", ""

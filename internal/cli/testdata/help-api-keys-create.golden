@@ -12,7 +12,7 @@ Arguments and flags:
   --sandbox-id test_ID                   Public ID of the sandbox the new test key is bound to. A live credential or a user session sends it to create a test key in that sandbox, and omits it for a live key. A sandbox-bound credential, such as a test key, may name only its own sandbox and gets a test key there either way; any other sandbox returns 404. A Dashboard or onboarding session may name any of the merchant's active sandboxes, and an onboarding session must send it: its first key goes to default_sandbox_id. Storage generation IDs are never accepted.
     Accepts @last.test for the most recent resource this profile created or changed.
   --scopes TEXT[,TEXT...]                The scopes to grant. Required only with access restricted; forbidden with full or read_only. For a test key, use only scopes whose key_modes includes test in x-flint-scopes. The developer.sandboxes.read and developer.sandboxes.write scopes are valid on test keys; developer.partner_apps.read and developer.partner_apps.write are live-only. (required for --access restricted)
-    102 values: flint schema command api-keys.create --output json
+    103 values: flint schema command api-keys.create --output json
     Repeat this flag for multiple values.
   --input TEXT                           JSON body: FILE.json, - for stdin, or inline JSON
 
