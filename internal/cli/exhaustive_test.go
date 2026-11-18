@@ -1152,8 +1152,10 @@ func TestEveryDestructiveMutationExecutesPreviewWithoutMutation(t *testing.T) {
 			if endpointCalls != 0 {
 				t.Fatalf("preview made %d mutation requests", endpointCalls)
 			}
-			if !strings.Contains(stdout.String(), `"persistent_side_effects":false`) ||
-				!strings.Contains(stdout.String(), `"reversible":false`) {
+			// The minimal invoice request creates an unscheduled draft.
+			reversible := command.OperationID == "createInvoice"
+			if lookupPathValue(result, "data.persistent_side_effects") != false ||
+				lookupPathValue(result, "data.preview.reversibility.reversible") != reversible {
 				t.Fatalf("preview output = %s", stdout)
 			}
 		})
@@ -1875,7 +1877,7 @@ func exhaustiveArgumentValues(argument Arg) []string {
 		value = "test"
 	case "topic":
 		value = "test-cards"
-	case "amount":
+	case "amount", "price":
 		value = "2500"
 	case "expected_version":
 		value = "3"

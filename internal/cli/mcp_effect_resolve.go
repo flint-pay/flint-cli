@@ -63,6 +63,10 @@ func mcpRemaining(total, refunded any) (map[string]any, bool) {
 // that prices or refundable balances cannot change before the write is accepted.
 func (a *App) mcpResolvePreparedEffect(ctx context.Context, entry opindex.Entry, req preparedRequest, opts Options, resolved ResolvedConfig, auth AuthContext, key, baseURL string) map[string]any {
 	effect := mcpPreparedEffect(entry, req)
+	if a.mcpGate.selfRevocation {
+		effect["revokes_active_api_key"] = true
+		effect["summary"] = fmt.Sprint(effect["summary"]) + ". " + selfRevocationWarning
+	}
 	if auth.MerchantID != "" {
 		effect["merchant_id"] = auth.MerchantID
 		effect["summary"] = fmt.Sprint(effect["summary"]) + "; merchant " + auth.MerchantID

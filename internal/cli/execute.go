@@ -35,7 +35,24 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 	if e != nil {
 		return nil, e
 	}
+	draftInvoice := createsUnscheduledInvoiceDraft(cmd, req)
+	if cmd.OperationID == "revokeAPIKey" && opts.DryRun == "client" {
+		// Keep client dry runs offline and use only context tied to this key.
+		authContext.APIKeyID = ""
+		if cached, ok := a.cachedAuthContext(baseURL, key); ok {
+			authContext.APIKeyID = cached.Data.APIKeyID
+		}
+	}
+	selfRevocation := revokesActiveAPIKey(cmd, req, authContext)
+	if selfRevocation && opts.DryRunClient() {
+		req.Warnings = append(req.Warnings, map[string]any{"message": selfRevocationWarning})
+	}
 	if a.mcpGate != nil {
+		if draftInvoice {
+			a.mcpGate.entry.Irreversible = false
+			a.mcpGate.input.Gated = a.mcpGate.entry.ConfirmRequired()
+		}
+		a.mcpGate.selfRevocation = selfRevocation
 		call := a.mcpGate.input
 		call.Environment = a.mcpGate.environment
 		if call.DryRun || mcpDecideGate(a.mcpGate.policy, call).Action == mcpGateAsk {
@@ -47,6 +64,13 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 		// The MCP gate authorized this exact prepared request. Legacy terminal
 		// confirmation must not add a second approval or change the request.
 		opts.Confirm = true
+		if selfRevocation && !opts.DryRunClient() {
+			fmt.Fprintln(a.Stderr, "Warning: "+selfRevocationWarning)
+		}
+	} else if cmd.OperationID == "revokeAPIKey" || cmd.OperationID == "createInvoice" && !draftInvoice {
+		if e := a.confirmOperation(cmd, authContext, opts, selfRevocation); e != nil {
+			return nil, e
+		}
 	}
 	if opts.DryRun == "client" || opts.Preview {
 		if authContext.AuthType == "none" && cmd.AuthRequired {
@@ -121,6 +145,21 @@ func (a *App) executeAPI(ctx context.Context, cmd *Command, opts Options, resolv
 	return resp.Value, nil
 }
 
+const selfRevocationWarning = "This is the API key Flint is using. Revoking it will stop calls made with this key."
+
+func createsUnscheduledInvoiceDraft(cmd *Command, req preparedRequest) bool {
+	return cmd.OperationID == "createInvoice" && req.BodyValue != nil &&
+		req.BodyValue["issue"] == nil && req.BodyValue["scheduled_issue_at"] == nil
+}
+
+func revokesActiveAPIKey(cmd *Command, req preparedRequest, auth AuthContext) bool {
+	if cmd.OperationID != "revokeAPIKey" || auth.APIKeyID == "" {
+		return false
+	}
+	target, err := url.Parse(req.Path)
+	return err == nil && target.Path == "/v1/api-keys/"+auth.APIKeyID+"/revoke"
+}
+
 // routeNotFound reports a 404 for the route itself rather than for a resource
 // the route names, such as a sandbox that does not exist.
 func previewRequest(req preparedRequest, cmd *Command, authContext AuthContext, preview bool) map[string]any {
@@ -155,6 +194,11 @@ func previewRequest(req preparedRequest, cmd *Command, authContext AuthContext, 
 				"reason":     "Flint has no automatic rollback operation for this command.",
 			},
 			"affected_resources": []map[string]any{{"method": req.Method, "path": req.Path}},
+		}
+		if createsUnscheduledInvoiceDraft(cmd, req) {
+			data["preview"].(map[string]any)["reversibility"] = map[string]any{
+				"reversible": true, "reason": "The draft can be voided before it is issued.",
+			}
 		}
 	}
 	return map[string]any{"data": data}

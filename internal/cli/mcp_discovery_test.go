@@ -238,6 +238,28 @@ func TestMCPDiscoveryViews(t *testing.T) {
 	}
 }
 
+func TestMCPDiscoveryInvoiceConfirmationIsConditional(t *testing.T) {
+	app := discoveryFixture(t)
+	policy := app.mcpPolicy(defaultOptions())
+	value := discoveryData(t, app, policy, "flint_describe", map[string]any{"operation": "invoices.create"})
+	if value["confirm"] != nil || value["confirm_when"] != mcpInvoiceConfirmationCondition || strings.Contains(fmt.Sprint(value["effects"]), "irreversible") {
+		t.Fatalf("describe has unexpected confirmation metadata: %v", value)
+	}
+	entry, ok := policy.index.Lookup("invoices.create")
+	if !ok {
+		t.Fatal("missing invoice operation")
+	}
+	summary := mcpDiscoverySummary(entry, policy.index, nil, false)
+	if summary["confirm"] != nil || summary["confirm_when"] != mcpInvoiceConfirmationCondition {
+		t.Fatalf("search has unexpected confirmation metadata: %v", summary)
+	}
+	cmd := mustMCPTool(t, app, "invoices.create")
+	description := mcpTypedDescription(cmd, entry)
+	if strings.Contains(description, "Needs confirm: true.") || !strings.Contains(description, mcpInvoiceConfirmationCondition) {
+		t.Fatalf("typed description has unexpected confirmation guidance: %s", description)
+	}
+}
+
 func TestMCPDiscoverySearchAndHelp(t *testing.T) {
 	app := discoveryFixture(t)
 	policy := app.mcpPolicy(defaultOptions())
@@ -333,6 +355,12 @@ func TestMCPDiscoveryMerchantTaskSearch(t *testing.T) {
 		{"adjust gift card balance", "gift-cards.adjust-balance", 1},
 		{"cancel payment for order", "orders.payment-attempts.cancel", 1},
 		{"refund an order", "refunds.create", 1},
+		{"send an invoice", "invoices.issue", 1},
+		{"send an invoice to a customer", "invoices.issue", 1},
+		{"list payments", "payment-intents.list", 1},
+		{"find a customer by email", "customers.list", 1},
+		{"which API key am I using", "auth.status", 1},
+		{"which account am I using", "auth.status", 1},
 	} {
 		t.Run(tc.query+"/"+tc.operation, func(t *testing.T) {
 			value := discoveryData(t, app, policy, "flint_search", map[string]any{"query": tc.query})
