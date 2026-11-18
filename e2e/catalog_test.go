@@ -449,6 +449,7 @@ func builtArgumentValues(argument cli.Arg) []string {
 			"signing_method":       "jwt",
 			"status":               "succeeded",
 			"status_bucket":        "success",
+			"price":                "2500",
 			"purpose":              "link_guest_purchases",
 			"delivery_mode":        "email",
 			"transaction_purpose":  "services",
