@@ -195,8 +195,7 @@ and use sandbox product IDs to test sandbox keys. Pass the key in JSON
 through `--input -` to keep it out of the command line.
 
 `license-key-pools add-keys POOL_ID --file keys.csv` reads one key per line or a
-CSV with a `license_key` or `key` column. Use `.txt` for plain text when the
-first key contains commas. In scripts, pass
+CSV with a `license_key` or `key` column. Use `.txt` for plain text. In scripts, pass
 `--seller-authorization-confirmed` after verifying your right to sell the keys.
 An interactive run prompts for that confirmation. The CLI uploads distinct keys
 in batches of up to 1,000 and reports added, existing, and rejected counts.

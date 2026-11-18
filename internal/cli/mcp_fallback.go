@@ -88,7 +88,11 @@ func (a *App) cliCommandFor(cmd *Command, req preparedRequest, resolved Resolved
 				}
 			}
 			if _, sensitive := displayRequestBody(req.BodyValue, cmd.OperationID); sensitive {
-				flag("--input", "-")
+				if hasLicenseKeyBody(cmd.OperationID) {
+					flag("--input", "license-keys.json")
+				} else {
+					flag("--input", "-")
+				}
 			} else {
 				flag("--input", string(body))
 			}

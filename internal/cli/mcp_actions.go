@@ -496,7 +496,9 @@ func (a *App) mcpNextActions(cmd *Command, args map[string]any, opts Options, po
 		if credentialFromEnvironment() != "" {
 			text += " The server's key is FLINT_API_KEY in the MCP client's env configuration."
 		}
-		if mcpErrorFact(e.Details, "input_required") == true {
+		if mcpErrorFact(e.Details, "input_file_required") == true {
+			text += " Save the original request JSON in a private file named license-keys.json before running the command."
+		} else if mcpErrorFact(e.Details, "input_required") == true {
 			text += " Supply the original request JSON through stdin; admission codes are omitted from the command."
 		}
 		action := mcpUserAction(text)

@@ -206,6 +206,13 @@ func TestLicenseKeyFileTextAndMalformedCSV(t *testing.T) {
 	if e == nil || e.Code != "INVALID_LICENSE_KEY_CSV" || len(keys) != 0 {
 		t.Fatal("malformed CSV was accepted")
 	}
+	if err := os.WriteFile(path, []byte("Product License Key\n\"SAMPLE-KEY\"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	keys, _, _, e = readLicenseKeyFile(t.Context(), path)
+	if e == nil || e.Code != "INVALID_LICENSE_KEY_CSV" || len(keys) != 0 {
+		t.Fatal("unrecognized single-column CSV header was treated as a key")
+	}
 }
 
 func TestLicenseKeyMCPSecretResponsesRequireConfirmation(t *testing.T) {
@@ -235,5 +242,47 @@ func TestLicenseKeyMCPSecretResponsesRequireConfirmation(t *testing.T) {
 			t.Fatalf("confirmed %s did not return the key: %v", verb, result)
 		}
 		<-requests
+	}
+}
+
+func TestLicenseKeyUploadErrorUsesImportSeed(t *testing.T) {
+	app, out, stderr := testApp(t, "")
+	err := cliError(ExitAPI, errorTypeAPI, "RATE_LIMITED", "Try again later.")
+	err.requestSent = true
+	err.Details = map[string]any{"type": err.Type, "code": err.Code, "message": err.Message, "remediation": map[string]any{"retry": "same_request"}}
+	const seed, batchKey = "saved-upload", "derived-batch-key"
+	e := licenseKeyUploadError(withIdempotencyRetryContext(err, batchKey), seed, batchKey, 2, licenseKeyFileCounts{Added: 1000})
+	opts := defaultOptions()
+	app.writeError(e, opts)
+	opts.Output = "json"
+	app.writeError(e, opts)
+	for _, text := range []string{out.String(), stderr.String()} {
+		if !strings.Contains(text, "Before batch 2, 1000 keys were added") ||
+			!strings.Contains(text, "--idempotency-key "+seed) || strings.Contains(text, "--idempotency-key "+batchKey) {
+			t.Fatalf("incorrect import recovery advice: %s", text)
+		}
+	}
+}
+
+func TestLicenseKeyMCPFallbackUsesPrivateInputFile(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/auth-context" {
+			t.Error("MCP sent a write without terminal approval")
+		}
+		fmt.Fprint(w, authContextJSON("live"))
+	}))
+	defer server.Close()
+	app, _, _ := testApp(t, server.URL)
+	t.Setenv("FLINT_API_KEY", "flint_live_test")
+	opts := mcpServeOptions(t, "--allow-live")
+	result := mcpCall(t, app, opts, "flint_write", map[string]any{
+		"operation": "license-key-pools.remove-keys",
+		"arguments": map[string]any{"license_key_pool_id": "lkp_fixture", "keys": []any{testLicenseValue}},
+		"live":      true, "confirm": true,
+	})
+	text := mcpResultText(result)
+	if result["isError"] != true || !strings.Contains(text, "CONFIRMATION_NEEDS_USER") || !strings.Contains(text, "--input=license-keys.json") ||
+		!strings.Contains(text, "private file") || strings.Contains(text, testLicenseValue) {
+		t.Fatalf("unexpected fallback: %v", result)
 	}
 }

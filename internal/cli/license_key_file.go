@@ -45,17 +45,18 @@ func (a *App) executeLicenseKeyFile(ctx context.Context, cmd *Command, opts Opti
 			return nil, e
 		}
 	}
+	// Resolve the pool once, including history references, so all batches use
+	// the same target even if local history changes during the import.
+	target := *cmd
+	target.OperationID, target.InputSchema = "", ""
+	req, e := a.prepareRequest(ctx, &target, opts, resolved, credential, baseURL)
+	if e != nil {
+		return nil, e
+	}
 	if opts.DryRunClient() {
-		batches := (len(keys) + licenseKeyBatchSize - 1) / licenseKeyBatchSize
-		preview := *cmd
-		preview.OperationID, preview.InputSchema = "", ""
-		req, e := a.prepareRequest(ctx, &preview, opts, resolved, credential, baseURL)
-		if e != nil {
-			return nil, e
-		}
 		return map[string]any{"data": map[string]any{
 			"method": req.Method, "path": req.Path, "environment": auth.Environment,
-			"keys": len(keys), "rejected": rejected, "batches": batches,
+			"keys": len(keys), "rejected": rejected, "batches": (len(keys) + licenseKeyBatchSize - 1) / licenseKeyBatchSize,
 			"persistent_side_effects": false,
 		}}, nil
 	}
@@ -67,31 +68,47 @@ func (a *App) executeLicenseKeyFile(ctx context.Context, cmd *Command, opts Opti
 	for batch := range slices.Chunk(keys, licenseKeyBatchSize) {
 		batchNumber++
 		body, _ := json.Marshal(map[string]any{"keys": batch, "seller_authorization_confirmed": true})
-		opts.Input = string(body)
-		opts.IdempotencyKey = fmt.Sprintf("flint-license-upload-%x", sha256.Sum256([]byte(fmt.Sprintf("%s\x00%d", seed, batchNumber))))
-		req, e := a.prepareRequest(ctx, cmd, opts, resolved, credential, baseURL)
-		if e != nil {
-			return nil, e
-		}
-		resp, e := a.doRequestWithin(ctx, opts.Timeout, baseURL, credential, req.Method, req.Path, req.Body, req.IdempotencyKey, opts.Debug)
+		batchKey := fmt.Sprintf("flint-license-upload-%x", sha256.Sum256([]byte(fmt.Sprintf("%s\x00%d", seed, batchNumber))))
+		resp, e := a.doRequestWithin(ctx, opts.Timeout, baseURL, credential, req.Method, req.Path, body, batchKey, opts.Debug)
 		if e == nil {
 			e = countLicenseKeyBatch(resp.Value, batch, occurrences, &counts)
 		}
 		if e != nil {
-			// The request-level recovery hint names the derived key. Include
-			// the import seed separately so the entire file can be replayed.
-			details, _ := e.Details.(map[string]any)
-			details = copyMap(details)
-			details["upload"] = map[string]any{"counts": counts, "batch": batchNumber, "idempotency_key": seed}
-			e.Details = details
-			e.Guidance = fmt.Sprintf("Before batch %d, %d keys were added, %d already existed, and %d were rejected. When retrying the upload within 24 hours, use the unchanged file and --idempotency-key %s.", batchNumber, counts.Added, counts.Existing, counts.Rejected, terminalSafe(seed))
-			if opts.Output == "human" {
-				fmt.Fprintln(a.Stderr, e.Guidance)
-			}
-			return nil, e
+			return nil, licenseKeyUploadError(e, seed, batchKey, batchNumber, counts)
 		}
 	}
 	return map[string]any{"data": counts}, nil
+}
+
+func licenseKeyUploadError(e *CLIError, seed, batchKey string, batch int, counts licenseKeyFileCounts) *CLIError {
+	details, _ := cloneErrorJSON(e.Details).(map[string]any)
+	if details == nil {
+		details = map[string]any{}
+	}
+	nested, _ := details["details"].(map[string]any)
+	// Preserve request diagnostics and server remediation. Remove the CLI's
+	// single-request retry commands because --file takes the import seed.
+	e.idempotencyKey = ""
+	for _, target := range []map[string]any{details, nested} {
+		remediation, _ := target["remediation"].(map[string]any)
+		actions, _ := remediation["next_actions"].([]any)
+		if len(actions) == 0 {
+			continue
+		}
+		actions = slices.DeleteFunc(actions, func(action any) bool {
+			actionMap, _ := action.(map[string]any)
+			message, _ := actionMap["reason_message"].(string)
+			return strings.Contains(message, "--idempotency-key "+batchKey) || message == "Idempotency key: "+batchKey
+		})
+		remediation["next_actions"] = actions
+	}
+	details["upload"] = map[string]any{"counts": counts, "batch": batch, "idempotency_key": seed}
+	e.Details = details
+	e.Message += fmt.Sprintf(" Before batch %d, %d keys were added, %d already existed, and %d were rejected. When retrying the upload within 24 hours, use the unchanged file and --idempotency-key %s.", batch, counts.Added, counts.Existing, counts.Rejected, terminalSafe(quoteRemediationArgument(seed)))
+	if _, apiEnvelope := details["message"]; apiEnvelope {
+		details["message"] = e.Message
+	}
+	return e
 }
 
 func readLicenseKeyFile(ctx context.Context, path string) ([]string, map[string]int, int, *CLIError) {
@@ -131,8 +148,8 @@ func readLicenseKeyFile(ctx context.Context, path string) ([]string, map[string]
 	if strings.EqualFold(filepath.Ext(path), ".txt") {
 		column = -1
 	}
-	if column < 0 && strings.EqualFold(filepath.Ext(path), ".csv") && strings.Contains(firstLine, ",") {
-		return nil, nil, 0, usageError("INVALID_LICENSE_KEY_CSV", "A multi-column CSV needs a license_key or key column.", "file")
+	if column < 0 && strings.EqualFold(filepath.Ext(path), ".csv") {
+		return nil, nil, 0, usageError("INVALID_LICENSE_KEY_CSV", "A CSV needs a license_key or key column. Use a .txt file for a list without a header.", "file")
 	}
 	if column >= 0 {
 		if headerErr != nil {

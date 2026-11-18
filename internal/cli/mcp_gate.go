@@ -218,10 +218,11 @@ func (g *mcpCallGate) prepared(ctx context.Context, a *App, cmd *Command, req pr
 			details["same_project"] = resolved.SandboxGuard != ""
 			if _, sensitive := displayRequestBody(req.BodyValue, cmd.OperationID); sensitive {
 				details["input_required"] = true
-				if _, admission := displayRequestBody(req.BodyValue); admission {
-					e.Message += " Supply the original request JSON through stdin; admission codes are omitted from this command."
+				if hasLicenseKeyBody(cmd.OperationID) {
+					details["input_file_required"] = true
+					e.Message += " Save the original request JSON in a private file named license-keys.json before running this command."
 				} else {
-					e.Message += " Supply the original request JSON through stdin. License keys are omitted from this command."
+					e.Message += " Supply the original request JSON through stdin; admission codes are omitted from this command."
 				}
 			}
 		}

@@ -4,14 +4,15 @@ import "strings"
 
 // Display copies must never change the credential sent in the real request.
 func displayRequestBody(value any, operationID ...string) (any, bool) {
-	licenseKeys := false
-	if len(operationID) > 0 {
-		switch operationID[0] {
-		case "lookupLicenseKey", "validateLicenseKey", "createLicenseKeyActivation", "releaseLicenseKeyActivation", "createLicenseKeyPoolKeys", "removeLicenseKeyPoolKeys":
-			licenseKeys = true
-		}
+	return redactRequestBody(value, len(operationID) > 0 && hasLicenseKeyBody(operationID[0]))
+}
+
+func hasLicenseKeyBody(operationID string) bool {
+	switch operationID {
+	case "lookupLicenseKey", "validateLicenseKey", "createLicenseKeyActivation", "releaseLicenseKeyActivation", "createLicenseKeyPoolKeys", "removeLicenseKeyPoolKeys":
+		return true
 	}
-	return redactRequestBody(value, licenseKeys)
+	return false
 }
 
 func redactRequestBody(value any, licenseKeys bool) (any, bool) {
