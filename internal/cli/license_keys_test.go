@@ -315,10 +315,25 @@ func TestLicenseKeyMCPSecretResponsesRequireConfirmation(t *testing.T) {
 		}
 		input["confirm"] = true
 		result = mcpCall(t, app, defaultOptions(), "flint_write", input)
-		if result["isError"] == true || lookupPathValue(mcpResultJSON(t, result), "data.key") != testLicenseValue || len(requests) != 1 {
-			t.Fatalf("confirmed %s did not return the key: %v", verb, result)
+		raw, err := json.Marshal(result)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result["isError"] == true || lookupPathValue(mcpResultJSON(t, result), "data.key") != mcpRedacted ||
+			strings.Contains(string(raw), testLicenseValue) || len(requests) != 1 {
+			t.Fatalf("confirmed %s did not return a redacted key", verb)
 		}
 		<-requests
+		matches, err := filepath.Glob(filepath.Join(app.ConfigDir, "mcp-secrets", "result-*", "secrets.json"))
+		if err != nil || len(matches) != 1 {
+			t.Fatalf("expected one private key file, got %d (%v)", len(matches), err)
+		}
+		if b, err := os.ReadFile(matches[0]); err != nil || !strings.Contains(string(b), testLicenseValue) {
+			t.Fatalf("confirmed %s did not save the key for the user", verb)
+		}
+		if err := os.Remove(matches[0]); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 

@@ -33,7 +33,8 @@ type mcpCallResult struct {
 	exit        int
 	environment string
 	liveBlocked bool
-	warnings    string // stderr of a successful command, minus progress and debug lines
+	warnings    string         // stderr of a successful command, minus progress and debug lines
+	secrets     map[string]any // written locally only when returning a successful result
 }
 
 // mcpResultTooLarge refuses an oversized read result with advice to narrow
