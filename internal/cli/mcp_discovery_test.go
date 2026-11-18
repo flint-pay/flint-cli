@@ -333,6 +333,12 @@ func TestMCPDiscoveryMerchantTaskSearch(t *testing.T) {
 		{"adjust gift card balance", "gift-cards.adjust-balance", 1},
 		{"cancel payment for order", "orders.payment-attempts.cancel", 1},
 		{"refund an order", "refunds.create", 1},
+		{"send an invoice", "invoices.issue", 1},
+		{"send an invoice to a customer", "invoices.issue", 1},
+		{"list payments", "payment-intents.list", 1},
+		{"find a customer by email", "customers.list", 1},
+		{"which API key am I using", "auth.status", 1},
+		{"which account am I using", "auth.status", 1},
 	} {
 		t.Run(tc.query+"/"+tc.operation, func(t *testing.T) {
 			value := discoveryData(t, app, policy, "flint_search", map[string]any{"query": tc.query})

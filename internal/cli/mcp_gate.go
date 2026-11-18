@@ -129,6 +129,7 @@ func mcpDecideGate(policy mcpPolicy, call mcpGateInput) mcpGateDecision {
 // by that invocation, rather than executing a command again after approval.
 type mcpCallGate struct {
 	effect          map[string]any
+	selfRevocation  bool
 	entry           opindex.Entry
 	input           mcpGateInput
 	policy          mcpPolicy
@@ -246,6 +247,9 @@ func (g *mcpCallGate) failure(decision mcpGateDecision, message string) *CLIErro
 			message = "This live or unverified operation requires the user's approval. Ask the user to run the supplied terminal command."
 		}
 	}
+	if g.selfRevocation {
+		message = selfRevocationWarning + " " + message
+	}
 	if g.merchant != "" {
 		message += " Target merchant: " + g.merchant + "."
 	}
@@ -277,6 +281,9 @@ func (g *mcpCallGate) ask(ctx context.Context, req preparedRequest) *CLIError {
 	}
 	if resources := effect["resources"].([]string); len(resources) > 0 {
 		prompt += "\nResources: " + strings.Join(resources, ", ")
+	}
+	if g.selfRevocation {
+		prompt += "\n" + selfRevocationWarning
 	}
 	if g.entry.Irreversible {
 		prompt += "\nThis can't be undone through the API."

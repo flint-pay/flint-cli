@@ -172,7 +172,7 @@ func (a *App) Run(argv []string) int {
 			return a.fail(e, opts)
 		}
 	}
-	if a.mcpGate == nil {
+	if a.mcpGate == nil && effective.OperationID != "createInvoice" && effective.OperationID != "revokeAPIKey" {
 		if e := a.confirmCommand(effective, authContext, opts); e != nil {
 			return a.fail(e, opts)
 		}
@@ -290,7 +290,11 @@ func validateCredentialIntentForCommand(authContext AuthContext, opts Options, m
 }
 
 func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options) *CLIError {
-	if opts.DryRun == "client" {
+	return a.confirmOperation(cmd, authContext, opts, false)
+}
+
+func (a *App) confirmOperation(cmd *Command, authContext AuthContext, opts Options, selfRevocation bool) *CLIError {
+	if opts.DryRunClient() {
 		return nil
 	}
 	environment := normalizeEnvironment(authContext.Environment)
@@ -302,7 +306,7 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 	if cmd.OperationID != "" && !cmd.Local {
 		entry, found = index.OperationSafety(cmd.OperationID)
 	}
-	needs := found && terminalConfirmationRequired(entry, environment)
+	needs := selfRevocation || found && terminalConfirmationRequired(entry, environment)
 	if unknownRawOperation(cmd) {
 		// No contract classification exists for forward-compatible raw routes.
 		needs = cmd.Method == "DELETE" || cmd.Mutation && (environment == "live" || environment == environmentUnverified)
@@ -310,7 +314,10 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 	// Keep the earlier irreversible bridge's error code stable. Legacy hints
 	// affect only this diagnostic, never whether confirmation is required.
 	bridgeCode := entry.Irreversible && !cmd.Destructive && !cmd.Sensitive
-	if !needs || opts.Confirm || opts.Preview {
+	if !needs || opts.Confirm {
+		if selfRevocation {
+			fmt.Fprintln(a.Stderr, "Warning: "+selfRevocationWarning)
+		}
 		return nil
 	}
 	message := "This operation requires confirmation."
@@ -329,6 +336,9 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 	}
 	if authContext.MerchantID != "" {
 		message += " Target merchant: " + terminalSafe(authContext.MerchantID) + "."
+	}
+	if selfRevocation {
+		message = selfRevocationWarning + " " + message
 	}
 	return a.promptConfirmation(opts, message, code, "--confirm")
 }
@@ -424,6 +434,10 @@ func (a *App) printCommandHelp(cmd *Command) {
 		fmt.Fprintln(a.Stdout, "Request body:")
 		if required := requiredBodyFields(cmd); len(required) > 0 {
 			fmt.Fprintln(a.Stdout, "  Required top-level fields: "+strings.Join(required, ", "))
+		}
+		if cmd.OperationID == "createProduct" {
+			fmt.Fprintln(a.Stdout, "  A simple product requires default_variant. Use --price and --currency to set its unit price.")
+			fmt.Fprintln(a.Stdout, "  An optioned product requires options and variants. Supply both with --input.")
 		}
 		fmt.Fprintf(a.Stdout, "  Run flint schema input %s --output json for the full schema.\n", cmd.CanonicalName)
 		fmt.Fprintln(a.Stdout, "  --input takes FILE.json, - for stdin, or inline JSON.")

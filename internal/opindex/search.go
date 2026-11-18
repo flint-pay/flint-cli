@@ -29,14 +29,16 @@ var (
 // Merchant task vocabulary complements terse API resource names. Keep it local to
 // discovery: these are search terms, not command aliases or execution routing.
 var searchTasks = map[string][]string{
+	"invoices.issue":                         {"send invoice", "send invoice customer"},
+	"auth.status":                            {"which api key am using", "which account am using", "current api key", "current account"},
 	"customer-deletion-requests.create":      {"delete customer", "erase customer data", "delete customer's personal data", "gdpr", "gdpr erasure", "ccpa", "right to be forgotten", "personal data deletion", "data subject erasure request"},
 	"customer-deletion-requests.resolve":     {"approve customer deletion", "resolve gdpr erasure", "approve ccpa erasure", "resolve data subject erasure request"},
 	"customers.get":                          {"data subject access request", "customer data export", "export customer data", "gdpr access request", "ccpa right to know", "personal data access", "data portability"},
-	"customers.list":                         {"find data subject", "find customer for data export"},
+	"customers.list":                         {"find data subject", "find customer for data export", "list customer email"},
 	"customers.addresses.list":               {"export customer addresses"},
 	"customers.email-preferences.get":        {"export customer email preferences"},
 	"orders.list":                            {"export customer orders"},
-	"payment-intents.list":                   {"export customer payments"},
+	"payment-intents.list":                   {"export customer payments", "list payments"},
 	"customers.email-change-requests.create": {"update customer email", "update customer's email address", "update customer email address"},
 	"balance-transactions.list":              {"fees", "fees paid", "processing fees", "chargeback fees", "bank deposit transactions", "deposit reconciliation", "reconcile"},
 	"payouts.list":                           {"deposit", "bank deposit"},
