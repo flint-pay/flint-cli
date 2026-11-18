@@ -183,6 +183,34 @@ every dot and hyphen with an underscore.
 `payment-intents create --order` is removed. Use
 `payment-intents create --order-id ORDER_ID` for an order-owned payment.
 
+## License keys
+
+Use `flint license-keys` to find, manage, and check issued keys,
+`flint license-key-activations` to manage devices, and `flint license-key-pools`
+to manage stock. `license-keys validate` and `license-key-activations create`
+and `release` accept a license key and one or more `--product-ids` values
+without an API credential. The first product ID selects the environment.
+Use a credential-free profile with no environment credentials for that check,
+and use sandbox product IDs to test sandbox keys. Pass the key in JSON
+through `--input -` to keep it out of the command line.
+
+`license-key-pools add-keys POOL_ID --file keys.csv` reads one key per line or a
+CSV with a `license_key` or `key` column. Use `.txt` for plain text when the
+first key contains commas. In scripts, pass
+`--seller-authorization-confirmed` after verifying your right to sell the keys.
+An interactive run prompts for that confirmation. The CLI uploads distinct keys
+in batches of up to 1,000 and reports added, existing, and rejected counts.
+Locally invalid rows count as rejected. If Flint refuses a batch, the import
+stops and reports its progress. Save an `--idempotency-key` for the import and
+reuse it with the same file and pool within 24 hours to recover the same batch
+outcomes on retry.
+
+`license-keys reveal` and `rotate-key` print the full key. Keep their output
+private. MCP requires confirmation for both. Use the `keys` array and explicit
+seller authorization to add pool keys through MCP. Anonymous activation and
+release through MCP require `--allow-live` on the server and `live: true` on the
+call because the CLI cannot verify the product's environment.
+
 ## Request flags
 
 Query filters use their field names, such as `orders list --customer-id` and

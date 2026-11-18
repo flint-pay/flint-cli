@@ -739,27 +739,6 @@
   },
   {
     "method": "GET",
-    "path": "/v1/feedback-reports",
-    "operation_id": "listFeedbackReports",
-    "classification": "raw-api-only",
-    "reason": "Feedback CLI feature removed; use flint support open for Flint Help."
-  },
-  {
-    "method": "POST",
-    "path": "/v1/feedback-reports",
-    "operation_id": "createFeedbackReport",
-    "classification": "raw-api-only",
-    "reason": "Feedback CLI feature removed; use flint support open for Flint Help."
-  },
-  {
-    "method": "GET",
-    "path": "/v1/feedback-reports/{feedback_report_id}",
-    "operation_id": "getFeedbackReport",
-    "classification": "raw-api-only",
-    "reason": "Feedback CLI feature removed; use flint support open for Flint Help."
-  },
-  {
-    "method": "GET",
     "path": "/v1/fraud-warnings",
     "operation_id": "listFraudWarnings",
     "classification": "resource"
@@ -4341,6 +4320,162 @@
     "method": "GET",
     "path": "/v1/subscriptions/{subscription_id}/line-items",
     "operation_id": "listSubscriptionLineItems",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/license-key-activations",
+    "operation_id": "listLicenseKeyActivations",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/license-key-activations",
+    "operation_id": "createLicenseKeyActivation",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/license-key-activations/{license_key_activation_id}",
+    "operation_id": "getLicenseKeyActivation",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/license-key-activations/{license_key_activation_id}/release",
+    "operation_id": "releaseLicenseKeyActivation",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/license-key-pools",
+    "operation_id": "listLicenseKeyPools",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/license-key-pools",
+    "operation_id": "createLicenseKeyPool",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/license-key-pools/{license_key_pool_id}",
+    "operation_id": "deleteLicenseKeyPool",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/license-key-pools/{license_key_pool_id}",
+    "operation_id": "getLicenseKeyPool",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/license-key-pools/{license_key_pool_id}",
+    "operation_id": "updateLicenseKeyPool",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/license-key-pools/{license_key_pool_id}/keys",
+    "operation_id": "listLicenseKeyPoolKeys",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/license-key-pools/{license_key_pool_id}/keys",
+    "operation_id": "createLicenseKeyPoolKeys",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/license-key-pools/{license_key_pool_id}/keys/remove",
+    "operation_id": "removeLicenseKeyPoolKeys",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/license-keys",
+    "operation_id": "listLicenseKeys",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/license-keys/lookup",
+    "operation_id": "lookupLicenseKey",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/license-keys/validate",
+    "operation_id": "validateLicenseKey",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/license-keys/{license_key_id}",
+    "operation_id": "getLicenseKey",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/license-keys/{license_key_id}",
+    "operation_id": "updateLicenseKey",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/license-keys/{license_key_id}/disable",
+    "operation_id": "disableLicenseKey",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/license-keys/{license_key_id}/reinstate",
+    "operation_id": "reinstateLicenseKey",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/license-keys/{license_key_id}/resend",
+    "operation_id": "resendLicenseKey",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/license-keys/{license_key_id}/reveal",
+    "operation_id": "revealLicenseKey",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/license-keys/{license_key_id}/rotate-key",
+    "operation_id": "rotateLicenseKeyKey",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/license-key-activations",
+    "operation_id": "listMeLicenseKeyActivations",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/license-key-activations/{license_key_activation_id}/release",
+    "operation_id": "releaseMeLicenseKeyActivation",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me/license-keys",
+    "operation_id": "listMeLicenseKeys",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/license-keys/{license_key_id}/resend",
+    "operation_id": "resendMeLicenseKey",
     "classification": "resource"
   }
 ]

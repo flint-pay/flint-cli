@@ -281,7 +281,7 @@ func TestEveryPublicOperationHasCompleteCommandContract(t *testing.T) {
 			if command.APIPath != path || command.Method != strings.ToUpper(method) {
 				t.Errorf("%s route %s %s differs from OpenAPI %s %s", command.Name, command.Method, command.APIPath, method, path)
 			}
-			if command.AuthRequired != (len(operation.Security) > 0) {
+			if command.AuthRequired != metadataAuthRequired(operation.Security) {
 				t.Errorf("%s authentication differs from OpenAPI", command.Name)
 			}
 			if command.OutputSchema != responseSchemaName(operation.Responses) {

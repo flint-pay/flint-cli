@@ -87,7 +87,7 @@ func (a *App) cliCommandFor(cmd *Command, req preparedRequest, resolved Resolved
 					return "", err
 				}
 			}
-			if _, sensitive := displayRequestBody(req.BodyValue); sensitive {
+			if _, sensitive := displayRequestBody(req.BodyValue, cmd.OperationID); sensitive {
 				flag("--input", "-")
 			} else {
 				flag("--input", string(body))

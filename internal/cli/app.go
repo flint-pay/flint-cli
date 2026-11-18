@@ -157,7 +157,7 @@ func (a *App) Run(argv []string) int {
 		opts.Live = normalizeEnvironment(authContext.Environment) == "live"
 	}
 	if !(opts.DryRun == "client" && authContext.AuthType == "none") {
-		if e := validateResolvedCredentialIntent(authContext, opts, resolved, affinity); (effective.AuthRequired || effective.OperationID == "authorizePartnerInstall") && e != nil {
+		if e := validateResolvedCredentialIntent(authContext, opts, resolved, affinity); (effective.AuthRequired || optionalAuth(effective) && key != "" || effective.OperationID == "authorizePartnerInstall") && e != nil {
 			return a.fail(e, opts)
 		}
 	}
@@ -330,8 +330,12 @@ func (a *App) confirmCommand(cmd *Command, authContext AuthContext, opts Options
 	if authContext.MerchantID != "" {
 		message += " Target merchant: " + terminalSafe(authContext.MerchantID) + "."
 	}
+	return a.promptConfirmation(opts, message, code, "--confirm")
+}
+
+func (a *App) promptConfirmation(opts Options, message, code, flag string) *CLIError {
 	if opts.NoInput || !a.IsTTY() {
-		return &CLIError{ExitCode: ExitConfirmation, Type: errorTypeConfirmationRequired, Code: code, Message: message + " Re-run with --confirm."}
+		return &CLIError{ExitCode: ExitConfirmation, Type: errorTypeConfirmationRequired, Code: code, Message: message + " Re-run with " + flag + "."}
 	}
 	fmt.Fprintf(a.Stderr, "%s Continue? [y/N] ", message)
 	line, err := bufio.NewReader(&contextInputReader{ctx: a.commandContext(), reader: a.Stdin}).ReadString('\n')
@@ -381,6 +385,13 @@ func (a *App) printCommandHelp(cmd *Command) {
 	}
 
 	fmt.Fprintln(a.Stdout, cmd.Description)
+	if optionalAuth(cmd) {
+		fmt.Fprintln(a.Stdout, "Credential: an API key is optional. Without a credential, supply the license key and product IDs. The first product ID selects the environment.")
+	}
+	switch cmd.OperationID {
+	case "revealLicenseKey", "rotateLicenseKeyKey":
+		fmt.Fprintln(a.Stdout, "The response prints a full license key. Keep the output private.")
+	}
 	if cmd.Audience == "buyer" {
 		fmt.Fprintln(a.Stdout, "Credential: set FLINT_ACCESS_TOKEN to a "+buyerCredentialName(cmd)+". Known incompatible credentials stop locally before any request.")
 	}

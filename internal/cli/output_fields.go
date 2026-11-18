@@ -17,6 +17,11 @@ func outputCommand(cmd *Command, opts Options) *Command {
 		entry.OutputSchema = "ResourceTimelineEntry"
 		return &entry
 	}
+	if cmd != nil && cmd.OperationID == "createLicenseKeyPoolKeys" && len(opts.Raw["file"]) > 0 {
+		summary := *cmd
+		summary.OperationID, summary.OutputSchema = "", ""
+		return &summary
+	}
 	return cmd
 }
 

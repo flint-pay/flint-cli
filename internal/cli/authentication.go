@@ -77,7 +77,7 @@ func resolveAPICommand(command *Command, opts Options) *Command {
 	if operation, ok := matchPublicOperation(resolved.Method, resolved.APIPath); ok {
 		resolved.OperationID = operation.OperationID
 		resolved.Security = operation.Security
-		resolved.AuthRequired = len(operation.Security) > 0
+		resolved.AuthRequired = metadataAuthRequired(operation.Security)
 		resolved.Mutation = resolved.Mutation || operation.OperationID == "authorizePartnerInstall"
 		resolved.Destructive = operation.FlintDestructive
 		metadata := &Command{OperationID: operation.OperationID}
@@ -87,6 +87,20 @@ func resolveAPICommand(command *Command, opts Options) *Command {
 	// Raw request metadata is conservative; confirmation uses opindex safety.
 	resolved.Sensitive = resolved.Mutation
 	return &resolved
+}
+
+// An empty OpenAPI security alternative permits a request without any credential.
+func metadataAuthRequired(security []map[string][]string) bool {
+	for _, requirement := range security {
+		if len(requirement) == 0 {
+			return false
+		}
+	}
+	return len(security) > 0
+}
+
+func optionalAuth(cmd *Command) bool {
+	return !cmd.AuthRequired && merchantBearerRoute(cmd)
 }
 
 // merchantBearerRoute includes operations that also accept session credentials.
@@ -161,7 +175,8 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 			checkoutSession = true
 		}
 	}
-	if !command.AuthRequired || token != "" || checkoutSession {
+	keyless := !command.AuthRequired && !optionalAuth(command)
+	if keyless || token != "" || checkoutSession {
 		mode := "sandbox"
 		if opts.Live {
 			mode = "live"
@@ -177,7 +192,7 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 		if err != nil {
 			return "", "", envelope, configError("INVALID_BASE_URL", err.Error(), err)
 		}
-		if !command.AuthRequired {
+		if keyless {
 			token = ""
 		}
 		if command.CanonicalName == "auth.status" || (strings.HasPrefix(token, "fwat_") || listenForwarding(command, opts)) && !opts.DryRunClient() {
@@ -227,6 +242,17 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 		return "", "", envelope, credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The credential could not be read from the selected credential store.", err)
 	}
 	if key == "" {
+		if optionalAuth(command) {
+			if resolved.ContextID != "" || resolved.MerchantGuard != "" || resolved.SandboxGuard != "" {
+				return "", "", envelope, configError("CREDENTIAL_REQUIRED_FOR_GUARDS", "Use a merchant credential to verify the selected context, merchant, or sandbox. Anonymous license requests select their environment by product ID.", nil)
+			}
+			baseURL, err := a.baseURLForCredential("flint_test_")
+			if err != nil {
+				return "", "", envelope, configError("INVALID_BASE_URL", err.Error(), err)
+			}
+			envelope.Data = AuthContext{AuthType: "none", Environment: environmentUnverified}
+			return "", baseURL, envelope, nil
+		}
 		if opts.DryRun == "client" {
 			mode, baseKey := "sandbox", "flint_test_"
 			if opts.Live {

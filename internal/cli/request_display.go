@@ -3,12 +3,27 @@ package cli
 import "strings"
 
 // Display copies must never change the credential sent in the real request.
-func displayRequestBody(value any) (any, bool) {
+func displayRequestBody(value any, operationID ...string) (any, bool) {
+	licenseKeys := false
+	if len(operationID) > 0 {
+		switch operationID[0] {
+		case "lookupLicenseKey", "validateLicenseKey", "createLicenseKeyActivation", "releaseLicenseKeyActivation", "createLicenseKeyPoolKeys", "removeLicenseKeyPoolKeys":
+			licenseKeys = true
+		}
+	}
+	return redactRequestBody(value, licenseKeys)
+}
+
+func redactRequestBody(value any, licenseKeys bool) (any, bool) {
 	sensitive := false
 	switch node := value.(type) {
 	case map[string]any:
 		out := make(map[string]any, len(node))
 		for key, item := range node {
+			if licenseKeys && (key == "key" || key == "keys") {
+				out[key], sensitive = "[REDACTED]", true
+				continue
+			}
 			if key == "admission_code" {
 				sensitive = true
 				out[key] = "[REDACTED]"
@@ -20,14 +35,14 @@ func displayRequestBody(value any) (any, bool) {
 				}
 				continue
 			}
-			masked, secret := displayRequestBody(item)
+			masked, secret := redactRequestBody(item, licenseKeys)
 			out[key], sensitive = masked, sensitive || secret
 		}
 		return out, sensitive
 	case []any:
 		out := make([]any, len(node))
 		for i, item := range node {
-			masked, secret := displayRequestBody(item)
+			masked, secret := redactRequestBody(item, licenseKeys)
 			out[i], sensitive = masked, sensitive || secret
 		}
 		return out, sensitive

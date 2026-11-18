@@ -801,6 +801,18 @@ func mcpToolDescription(cmd *Command, schema map[string]any) string {
 // its first sentences, when it says more than the CLI's one-line summary.
 func mcpBaseDescription(cmd *Command) string {
 	switch cmd.OperationID {
+	case "validateLicenseKey":
+		return "Check a full license key against up to 20 accepted product IDs, optionally for a stored activation ID. Read is_valid and invalid_reason even on HTTP 200. An API key is optional. Without one, the first product selects the merchant and environment."
+	case "createLicenseKeyActivation":
+		return "Register a device for a license key using its full key, accepted product IDs and device name. Reuse the same fingerprint for the same installation. Without a merchant credential, MCP requires live access and live: true because the product IDs can target live."
+	case "releaseLicenseKeyActivation":
+		return "Free a device slot by activation ID. Use a merchant credential with an empty body, or send the activation's full key and accepted product IDs. Without a merchant credential, MCP requires live access and live: true because the product IDs can target live."
+	case "revealLicenseKey":
+		return "Reveal the full issued key by license key ID. Each read is audited. Keep the returned key private and get confirmation before calling."
+	case "rotateLicenseKeyKey":
+		return "Replace a generated key by license key ID. The old key stops working and all devices are released. No email is sent. Keep the returned key private and get confirmation before calling."
+	case "createLicenseKeyPoolKeys":
+		return "Add up to 1,000 distinct full keys to a pool. Set seller_authorization_confirmed to true after the seller confirms their right to sell the keys. Read each created or existing outcome. Reuse the same idempotency key to retry the same batch."
 	case "createWebhookEndpoint":
 		return "Create a webhook endpoint. signing_methods defaults to [jwt]; verify Authorization: Bearer <token> with Flint's JWKS. A shared secret is returned only when hmac is included; save it if present."
 	case "updateWebhookEndpoint":
