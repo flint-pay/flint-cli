@@ -190,12 +190,19 @@ func TestSignupFlowMCP(t *testing.T) {
 	app, _, _ := signupFlowApp(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/onboarding/start" {
 			starts++
+			var body map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Error(err)
+			}
+			if body["timezone"] != "America/Chicago" {
+				t.Errorf("timezone = %v, want America/Chicago", body["timezone"])
+			}
 		}
 		signupFlowSuccess(t, w, r)
 	})
 	app.mcpContext = app.pinMCPContext(mcpServeOptions(t, "--tools", "signup"))
 	for i, args := range []map[string]any{
-		{"email": "dev@example.com", "first_name": "Ada", "last_name": "Lovelace"},
+		{"email": "dev@example.com", "first_name": "Ada", "last_name": "Lovelace", "timezone": "America/Chicago"},
 		{"verification_code": "123456"},
 	} {
 		response := app.handleMCP(jsonRPCRequest{JSONRPC: "2.0", ID: i + 1, Method: "tools/call", Params: map[string]any{"name": "signup", "arguments": args}}, mcpServeOptions(t, "--tools", "signup"))
@@ -580,7 +587,7 @@ func TestSignupCreationProfileSentAtStart(t *testing.T) {
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				t.Fatal(err)
 			}
-			for field, want := range map[string]string{"business_name": "Ada Labs", "website_url": "https://ada.example", "support_email": "help@ada.example", "support_phone": "+14155552671", "support_url": "https://ada.example/help"} {
+			for field, want := range map[string]string{"business_name": "Ada Labs", "timezone": "America/Chicago", "website_url": "https://ada.example", "support_email": "help@ada.example", "support_phone": "+14155552671", "support_url": "https://ada.example/help"} {
 				if body[field] != want {
 					t.Errorf("%s=%v, want %s", field, body[field], want)
 				}
@@ -588,7 +595,7 @@ func TestSignupCreationProfileSentAtStart(t *testing.T) {
 		}
 		signupFlowSuccess(t, w, r)
 	})
-	args := append(append([]string{}, signupFlowStartArgs...), "--business-name", "Ada Labs", "--website-url", "https://ada.example", "--support-email", "help@ada.example", "--support-phone", "+14155552671", "--support-url", "https://ada.example/help", "--no-input")
+	args := append(append([]string{}, signupFlowStartArgs...), "--business-name", "Ada Labs", "--timezone", "America/Chicago", "--website-url", "https://ada.example", "--support-email", "help@ada.example", "--support-phone", "+14155552671", "--support-url", "https://ada.example/help", "--no-input")
 	if exit := app.Run(args); exit != ExitOK {
 		t.Fatalf("exit=%d out=%s stderr=%s", exit, out, stderr)
 	}
@@ -602,7 +609,7 @@ func TestSignupMerchantProfileSurvivesResume(t *testing.T) {
 				switch r.URL.Path {
 				case "/v1/onboarding/verify-email":
 					verifies++
-					fmt.Fprint(w, `{"data":{"onboarding_session_token":"synthetic-session","merchant":{"merchant_id":"mer_new","business_name":"Ada Labs","support_email":"help@ada.example"}}}`)
+					fmt.Fprint(w, `{"data":{"onboarding_session_token":"synthetic-session","merchant":{"merchant_id":"mer_new","business_name":"Ada Labs","timezone":"America/Chicago","support_email":"help@ada.example"}}}`)
 				case "/v1/onboarding/state":
 					states++
 					if states == 1 {
@@ -618,11 +625,14 @@ func TestSignupMerchantProfileSurvivesResume(t *testing.T) {
 			var secret string
 			app.StoreCredential = func(_ string, value string) error { secret = value; return nil }
 			app.LoadCredential = func(string) (string, error) { return secret, nil }
-			args := append(append([]string{}, signupFlowStartArgs...), "--business-name", "Ada Labs", "--support-email", "help@ada.example", "--no-input")
+			args := append(append([]string{}, signupFlowStartArgs...), "--business-name", "Ada Labs", "--timezone", "America/Chicago", "--support-email", "help@ada.example", "--no-input")
 			if exit := app.Run(args); exit != ExitOK {
 				t.Fatalf("start=%d %s", exit, stderr)
 			}
 			resume := []string{"signup", "--verification-code", "123456", "--no-input", "--output", output}
+			if exit := app.Run(append(append([]string{}, resume...), "--timezone", "Europe/London")); exit != ExitUsage || verifies != 0 {
+				t.Fatalf("changed time zone exit=%d verifies=%d out=%s stderr=%s", exit, verifies, out, stderr)
+			}
 			if exit := app.Run(resume); exit == ExitOK {
 				t.Fatal("first state read must fail")
 			}
@@ -636,7 +646,7 @@ func TestSignupMerchantProfileSurvivesResume(t *testing.T) {
 			if exit := resumed.Run(resume); exit != ExitOK || verifies != 1 {
 				t.Fatalf("resume=%d verifies=%d out=%s stderr=%s", exit, verifies, out, stderr)
 			}
-			if !strings.Contains(out.String(), "Ada Labs") || strings.Contains(out.String(), "synthetic-session") {
+			if !strings.Contains(out.String(), "Ada Labs") || !strings.Contains(out.String(), "America/Chicago") || strings.Contains(out.String(), "synthetic-session") {
 				t.Fatalf("output=%s", out)
 			}
 			if output == "json" {

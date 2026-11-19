@@ -78,6 +78,7 @@ func additionalCommands(page []Arg, input Arg) []*Command {
 				flag("first_name", "string", "", "", "First name", false),
 				flag("last_name", "string", "", "", "Last name", false),
 				flag("business_name", "string", "", "", "Business name buyers see; set when signup creates a merchant", false),
+				flag("timezone", "string", "", "", "IANA business time zone for the new merchant, such as America/Chicago", false),
 				flag("verification_code", "string", "", "", "Email verification code; resumes signup saved in this profile", false),
 				flag("country", "string", "", "", "ISO 3166-1 alpha-2 business country", false),
 				flag("website_url", "string", "", "", "Public business website URL", false),
