@@ -21,15 +21,29 @@ type listenSignedDelivery struct {
 func (a *App) signListenDelivery(ctx context.Context, timeout time.Duration, source listenDeliverySource, eventID string) (listenSignedDelivery, *CLIError) {
 	body, _ := json.Marshal(map[string]string{"webhook_event_id": eventID})
 	path := "/v1/webhook-endpoints/" + url.PathEscape(source.endpointID) + "/sign-delivery"
-	// The POST has no business side effects, but each call consumes quota and
-	// creates fresh bearer material. Retry throttling, configuration races and server failures.
-	for attempt := 1; attempt <= 3; attempt++ {
+	// Signing does not dispatch a webhook. Stay on the same event until
+	// signing succeeds, a permanent error arrives, or listening ends.
+	var retries, configurationRaces, expiredFrames int
+	for {
 		resp, e := a.doRequestWithin(ctx, timeout, source.baseURL, source.key, http.MethodPost, path, body, "", false)
 		if e != nil {
-			if (e.HTTPStatus == http.StatusTooManyRequests || e.HTTPStatus == http.StatusConflict && e.Code == "CONCURRENT_MODIFICATION" || e.HTTPStatus >= 500) && attempt < 3 {
-				delay := time.Duration(attempt) * time.Second
-				if e.RetryAfterMs != nil {
-					delay = max(delay, time.Duration(*e.RetryAfterMs)*time.Millisecond)
+			retry := listenSigningRetryable(e)
+			if e.HTTPStatus == http.StatusConflict && e.Code == "CONCURRENT_MODIFICATION" {
+				configurationRaces++
+				retry = configurationRaces < 3
+			} else {
+				configurationRaces = 0
+			}
+			if retry && ctx.Err() == nil {
+				retries++
+				delay := listenReconnectDelay(retries)
+				if e.RetryAfterMs != nil && *e.RetryAfterMs > 0 {
+					hint := time.Duration(*e.RetryAfterMs) * time.Millisecond
+					if e.HTTPStatus == http.StatusTooManyRequests {
+						delay = hint
+					} else {
+						delay = max(delay, hint)
+					}
 				}
 				if sleepContext(ctx, delay) {
 					continue
@@ -39,6 +53,7 @@ func (a *App) signListenDelivery(ctx context.Context, timeout time.Duration, sou
 			// response is allowed to reflect a signed frame into CLI output.
 			safe := cliError(e.ExitCode, e.Type, e.Code, "Could not sign the webhook delivery for this sandbox endpoint.")
 			safe.HTTPStatus, safe.RequestID, safe.Param = e.HTTPStatus, e.RequestID, e.Param
+			safe.retryable = &retry
 			safe.Details = map[string]any{"reason": listenSigningReason(e)}
 			if e.HTTPStatus == http.StatusConflict && e.Code == "LIMIT_REACHED" {
 				reset := "unknown (see the endpoint's daily quota)"
@@ -66,12 +81,25 @@ func (a *App) signListenDelivery(ctx context.Context, timeout time.Duration, sou
 		}
 		// Re-mint expired frames, including frames delayed by a proxy. Each local
 		// delivery retry also mints afresh, so it never reuses an expired JWT.
-		if !envelope.Data.ExpiresAt.After(a.Now()) {
-			continue
+		if envelope.Data.ExpiresAt.After(a.Now()) {
+			return envelope.Data, nil
 		}
-		return envelope.Data, nil
+		retries, configurationRaces = 0, 0
+		expiredFrames++
+		if expiredFrames == 3 {
+			return listenSignedDelivery{}, invalidResponseError("SIGNED_DELIVERY_EXPIRED", "The signed delivery expired before it could be forwarded. Retry listening.", nil)
+		}
 	}
-	return listenSignedDelivery{}, invalidResponseError("SIGNED_DELIVERY_EXPIRED", "The signed delivery expired before it could be forwarded. Retry listening.", nil)
+}
+
+func listenSigningRetryable(e *CLIError) bool {
+	if e.Code == "LIMIT_REACHED" || e.Code == "CLIENT_CANCELED" {
+		return false
+	}
+	// Older error envelopes report retryability directly. Unstructured
+	// gateway failures can also arrive without a remediation field.
+	retryable, _ := e.apiError["retryable"].(bool)
+	return retryable || errorRetryable(e) || retryableErrorStatus(e.HTTPStatus)
 }
 
 // Only published reason identifiers cross the signed-response boundary.

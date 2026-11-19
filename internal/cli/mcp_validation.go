@@ -28,13 +28,14 @@ const (
 )
 
 type mcpInputProblem struct {
-	location int
-	tokens   []string
-	indexes  []bool
-	param    string
-	code     string
-	message  string
-	priority int // Discriminator diagnostics replace a plain required/enum error.
+	location    int
+	tokens      []string
+	indexes     []bool
+	param       string
+	code        string
+	message     string
+	suggestions []string
+	priority    int // Discriminator diagnostics replace a plain required/enum error.
 }
 
 // mcpValidateInputs keeps execution validation on the full request schema. The
@@ -89,6 +90,14 @@ func mcpValidateInputs(cmd *Command, entry opindex.Entry, args, controls map[str
 				continue
 			}
 			name, _ := parameter["name"].(string)
+			if entry.Get && location == "query" && name == "page_size" {
+				if _, supplied := body["limit"]; supplied {
+					problem := mcpPlainProblem(mcpInputQueryLocation, "limit", "UNKNOWN_FIELD", "limit is not a known query parameter. Did you mean page_size?")
+					problem.suggestions = []string{"page_size"}
+					problems = append(problems, problem)
+					delete(body, "limit")
+				}
+			}
 			value, exists := args[name]
 			delete(body, name)
 			rank := mcpInputPathLocation
@@ -588,6 +597,9 @@ func mcpNotFields(node map[string]any, object map[string]any) []string {
 	return nil
 }
 
+const currencyCodePattern = "^[A-Z]{3}$"
+const currencyCodeConstraintMessage = "must be a three-letter uppercase ISO 4217 code such as USD."
+
 func mcpInputConstraintMessage(constraint jsonschema.ErrorKind) string {
 	switch k := constraint.(type) {
 	case *kind.Type:
@@ -613,6 +625,9 @@ func mcpInputConstraintMessage(constraint jsonschema.ErrorKind) string {
 	case *kind.Format:
 		return "must be a valid " + k.Want + "."
 	case *kind.Pattern:
+		if k.Want == currencyCodePattern {
+			return currencyCodeConstraintMessage
+		}
 		return "must match the required pattern."
 	case *kind.MinLength:
 		return fmt.Sprintf("must contain at least %d characters.", k.Want)
@@ -809,7 +824,11 @@ func mcpInputError(problems []mcpInputProblem) *CLIError {
 	}
 	details := make([]map[string]any, 0, len(problems))
 	for _, problem := range problems {
-		details = append(details, map[string]any{"code": problem.code, "param": problem.param, "message": problem.message})
+		detail := map[string]any{"code": problem.code, "param": problem.param, "message": problem.message}
+		if len(problem.suggestions) > 0 {
+			detail["suggestions"] = problem.suggestions
+		}
+		details = append(details, detail)
 	}
 	message := "1 argument is invalid."
 	if len(problems) > 1 {

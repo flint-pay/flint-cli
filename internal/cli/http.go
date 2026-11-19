@@ -383,7 +383,7 @@ func (a *App) doAPIRequest(ctx context.Context, baseURL, key, method, path strin
 			}
 			history.failure(fact, e, true)
 			retryAfter := resp.Header.Get("Retry-After")
-			if delay, ok := parseRetryAfter(retryAfter); ok {
+			if delay, ok := responseRetryAfter(resp.StatusCode, resp.Header); ok {
 				milliseconds := delay.Milliseconds()
 				e.RetryAfterMs = &milliseconds
 			}
@@ -551,6 +551,18 @@ func parseRetryAfter(value string) (time.Duration, bool) {
 	}
 	return 0, false
 }
+
+// A sign-delivery throttle can publish a finer delay alongside the rounded
+// Retry-After that generic HTTP clients use.
+func responseRetryAfter(status int, headers http.Header) (time.Duration, bool) {
+	if status == http.StatusTooManyRequests {
+		if ms, err := strconv.ParseInt(headers.Get("Retry-After-Ms"), 10, 64); err == nil && ms > 0 && ms < 1000 {
+			return time.Duration(ms) * time.Millisecond, true
+		}
+	}
+	return parseRetryAfter(headers.Get("Retry-After"))
+}
+
 func sleepContext(ctx context.Context, d time.Duration) bool {
 	t := time.NewTimer(d)
 	defer t.Stop()
@@ -607,7 +619,7 @@ func apiErrorFromResponse(resp *apiResponse) *CLIError {
 	if e.RequestID == "" {
 		e.RequestID = resp.Headers.Get("X-Request-Id")
 	}
-	if delay, ok := parseRetryAfter(resp.Headers.Get("Retry-After")); ok {
+	if delay, ok := responseRetryAfter(resp.Status, resp.Headers); ok {
 		milliseconds := delay.Milliseconds()
 		e.RetryAfterMs = &milliseconds
 	}
