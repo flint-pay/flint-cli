@@ -158,7 +158,7 @@ func TestListenSigningUsesSubsecondThrottleHint(t *testing.T) {
 	}
 }
 
-func TestListenForwardRecoversAfterThreeSigningFailures(t *testing.T) {
+func TestListenForwardRecoversAfterRepeatedSigningFailures(t *testing.T) {
 	var signatures, deliveries atomic.Int32
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -189,6 +189,13 @@ func TestListenForwardRecoversAfterThreeSigningFailures(t *testing.T) {
 	}))
 	defer api.Close()
 	app, out, _ := testApp(t, api.URL)
+	var networkFailure atomic.Bool
+	app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if strings.HasSuffix(r.URL.Path, "/sign-delivery") && networkFailure.CompareAndSwap(false, true) {
+			return nil, io.ErrUnexpectedEOF
+		}
+		return http.DefaultTransport.RoundTrip(r)
+	})}
 	app.ForwardHTTPClient = &http.Client{Transport: listenRoundTripFunc(func(r *http.Request) (*http.Response, error) {
 		deliveries.Add(1)
 		if r.Header.Get("webhook-id") != "whev_fixture" {
@@ -200,8 +207,31 @@ func TestListenForwardRecoversAfterThreeSigningFailures(t *testing.T) {
 		t.Fatalf("exit=%d: %s", exit, out.String())
 	}
 	checkpoint := findListenRecord(t, out.String(), "checkpoint")
-	if signatures.Load() != 4 || deliveries.Load() != 1 || checkpoint["cursor"] != "whev_fixture" {
+	if !networkFailure.Load() || signatures.Load() != 4 || deliveries.Load() != 1 || checkpoint["cursor"] != "whev_fixture" {
 		t.Fatalf("retry did not preserve the pending delivery: %s", out.String())
+	}
+}
+
+func TestListenCanceledSigningKeepsCursorBeforeBufferedFrames(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		cancel()
+	}))
+	defer api.Close()
+	app, _, _ := testApp(t, api.URL)
+	app.ForwardHTTPClient = &http.Client{Transport: listenRoundTripFunc(func(*http.Request) (*http.Response, error) {
+		t.Error("forwarded without a signature")
+		return nil, io.ErrUnexpectedEOF
+	})}
+	source := listenDeliverySource{baseURL: api.URL, endpointID: "whep_fixture"}
+	state := listenStreamState{cursor: "whev_before"}
+	first := listenEventFrame("whev_first", "customer.created", `{}`)
+	withheld := "id: whev_second\nevent: withheld\ndata: {\"webhook_event_id\":\"whev_second\",\"event_type\":\"customer.created\"}\n\n"
+	e := app.consumeListenStream(ctx, strings.NewReader(first+withheld), Options{Output: "ndjson", Timeout: time.Second}, "http://localhost/hook", source, &state)
+	if e != nil || state.cursor != "whev_before" || state.processed != 0 {
+		t.Fatalf("canceled signing advanced the checkpoint to %s (%d processed): %v", state.cursor, state.processed, e)
 	}
 }
 

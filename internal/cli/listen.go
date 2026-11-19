@@ -628,6 +628,9 @@ func (a *App) consumeListenStreamWithIdleTimeout(ctx context.Context, body io.Re
 
 func (a *App) consumeListenStream(ctx context.Context, body io.Reader, opts Options, forwardTo string, source listenDeliverySource, state *listenStreamState) *CLIError {
 	err := readListenSSE(body, func(frame listenSSEFrame) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		switch frame.Event {
 		case "ready":
 			var ready struct {

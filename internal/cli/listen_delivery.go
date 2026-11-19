@@ -99,7 +99,8 @@ func listenSigningRetryable(e *CLIError) bool {
 	// Older error envelopes report retryability directly. Unstructured
 	// gateway failures can also arrive without a remediation field.
 	retryable, _ := e.apiError["retryable"].(bool)
-	return retryable || errorRetryable(e) || retryableErrorStatus(e.HTTPStatus)
+	remediation, _ := e.apiError["remediation"].(map[string]any)
+	return retryable || remediation["retry"] == "same_request" || e.ExitCode == ExitNetwork || retryableStatus(e.HTTPStatus)
 }
 
 // Only published reason identifiers cross the signed-response boundary.
