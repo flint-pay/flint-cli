@@ -3,7 +3,7 @@
 ## 0.21.0 (2026-11-19)
 
 - Manage license keys and pools from the CLI or MCP. Import keys from text or CSV with `flint license-key-pools add-keys`. MCP routes license lookup and validation through `flint_read`.
-- MCP tool results redact credentials and point to a private local file when a response contains a secret. Open the file on the machine running Flint and delete it after you move the secret to its destination.
+- MCP redacts credentials from tool results and discards credentials echoed in errors. Credentials issued by successful calls and eligible remediation links go to a private file on the machine running Flint. Open the file there and delete it after use.
 - Set the business time zone on the first signup call with `flint signup --timezone` or the MCP `timezone` field. Use an IANA name such as `America/Chicago`.
 - `flint listen` retries webhook signing after throttling and transient failures and retains pending events across transport failures. Help search prioritizes listener and signing commands for webhook verification queries.
 - The CLI and MCP validate positive payment amounts locally, including payment link amounts, payment intent amounts, and explicit capture amounts.
