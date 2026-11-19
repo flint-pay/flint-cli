@@ -233,6 +233,8 @@ func bodyViolations(e *jsonschema.ValidationError, declared []string, translator
 		if k.Want == currencyCodePattern {
 			return []map[string]any{{"path": jsonFieldPath(e.InstanceLocation), "message": currencyCodeConstraintMessage}}
 		}
+	case *kind.Minimum:
+		return []map[string]any{{"path": jsonFieldPath(e.InstanceLocation), "message": mcpInputConstraintMessage(k)}}
 	case *kind.OneOf, *kind.AnyOf:
 		node := translator.schemaAt(e.SchemaURL)
 		if _, anyOf := e.ErrorKind.(*kind.AnyOf); anyOf && node["oneOf"] != nil {
