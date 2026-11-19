@@ -125,6 +125,116 @@ func TestListenSigningLimits(t *testing.T) {
 	}
 }
 
+func TestListenSigningUsesSubsecondThrottleHint(t *testing.T) {
+	const interval = 200 * time.Millisecond
+	var calls atomic.Int32
+	var throttledAt atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		call := calls.Add(1)
+		if call%2 == 0 {
+			throttledAt.Store(time.Now().UnixNano())
+			w.Header().Set("Retry-After", "1")
+			w.Header().Set("Retry-After-Ms", "200")
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		if call > 1 && time.Since(time.Unix(0, throttledAt.Load())) < interval {
+			t.Error("retried before the throttle reset")
+		}
+		mockListenDelivery(w, r)
+	}))
+	defer server.Close()
+	app, _, _ := testApp(t, server.URL)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	source := listenDeliverySource{baseURL: server.URL, endpointID: "whep_fixture"}
+	for range 5 {
+		if _, e := app.signListenDelivery(ctx, time.Second, source, "whev_fixture"); e != nil {
+			t.Fatal(e)
+		}
+	}
+	if calls.Load() != 9 {
+		t.Fatalf("throttle was not exercised on each successive event: %d requests", calls.Load())
+	}
+}
+
+func TestListenForwardRecoversAfterRepeatedSigningFailures(t *testing.T) {
+	var signatures, deliveries atomic.Int32
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/auth-context":
+			fmt.Fprint(w, authContextJSON("sandbox"))
+		case "/v1/webhook-endpoints/whep_fixture":
+			writeListenEndpoint(w, "whep_fixture")
+		case "/v1/webhook-events/stream":
+			w.Header().Set("Content-Type", "text/event-stream")
+			fmt.Fprint(w, "event: ready\ndata: {\"cursor\":\"whev_before\"}\n\n", listenEventFrame("whev_fixture", "customer.created", `{}`))
+		case "/v1/webhook-endpoints/whep_fixture/sign-delivery":
+			switch signatures.Add(1) {
+			case 1:
+				w.WriteHeader(http.StatusBadGateway)
+			case 2:
+				w.WriteHeader(http.StatusServiceUnavailable)
+				fmt.Fprint(w, `{"error":{"code":"SERVICE_UNAVAILABLE","retryable":true}}`)
+			case 3:
+				w.WriteHeader(http.StatusConflict)
+				fmt.Fprint(w, `{"error":{"code":"TRANSIENT_CONFLICT","retryable":true}}`)
+			default:
+				mockListenDelivery(w, r)
+			}
+		default:
+			t.Error("unexpected API route")
+			http.NotFound(w, r)
+		}
+	}))
+	defer api.Close()
+	app, out, _ := testApp(t, api.URL)
+	var networkFailure atomic.Bool
+	app.HTTPClient = &http.Client{Transport: listenRoundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if strings.HasSuffix(r.URL.Path, "/sign-delivery") && networkFailure.CompareAndSwap(false, true) {
+			return nil, io.ErrUnexpectedEOF
+		}
+		return http.DefaultTransport.RoundTrip(r)
+	})}
+	app.ForwardHTTPClient = &http.Client{Transport: listenRoundTripFunc(func(r *http.Request) (*http.Response, error) {
+		deliveries.Add(1)
+		if r.Header.Get("webhook-id") != "whev_fixture" {
+			t.Error("forwarded wrong event")
+		}
+		return &http.Response{StatusCode: http.StatusNoContent, Header: make(http.Header), Body: http.NoBody}, nil
+	})}
+	if exit := app.Run([]string{"listen", "--forward-to", "http://localhost/hook", "--webhook-endpoint-id", "whep_fixture", "--max-events", "1", "--for", "10s", "--output", "ndjson"}); exit != ExitOK {
+		t.Fatalf("exit=%d: %s", exit, out.String())
+	}
+	checkpoint := findListenRecord(t, out.String(), "checkpoint")
+	if !networkFailure.Load() || signatures.Load() != 4 || deliveries.Load() != 1 || checkpoint["cursor"] != "whev_fixture" {
+		t.Fatalf("retry did not preserve the pending delivery: %s", out.String())
+	}
+}
+
+func TestListenCanceledSigningKeepsCursorBeforeBufferedFrames(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		cancel()
+	}))
+	defer api.Close()
+	app, _, _ := testApp(t, api.URL)
+	app.ForwardHTTPClient = &http.Client{Transport: listenRoundTripFunc(func(*http.Request) (*http.Response, error) {
+		t.Error("forwarded without a signature")
+		return nil, io.ErrUnexpectedEOF
+	})}
+	source := listenDeliverySource{baseURL: api.URL, endpointID: "whep_fixture"}
+	state := listenStreamState{cursor: "whev_before"}
+	first := listenEventFrame("whev_first", "customer.created", `{}`)
+	withheld := "id: whev_second\nevent: withheld\ndata: {\"webhook_event_id\":\"whev_second\",\"event_type\":\"customer.created\"}\n\n"
+	e := app.consumeListenStream(ctx, strings.NewReader(first+withheld), Options{Output: "ndjson", Timeout: time.Second}, "http://localhost/hook", source, &state)
+	if e != nil || state.cursor != "whev_before" || state.processed != 0 {
+		t.Fatalf("canceled signing advanced the checkpoint to %s (%d processed): %v", state.cursor, state.processed, e)
+	}
+}
+
 func TestListenResignsExpiredFramesAndRetries(t *testing.T) {
 	now := time.Now()
 	calls := 0

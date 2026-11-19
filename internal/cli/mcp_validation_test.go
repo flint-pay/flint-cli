@@ -268,3 +268,37 @@ func TestMCPPromotionDryRunRejectsUnknownAttribute(t *testing.T) {
 		t.Fatalf("wrong attribute error: %#v", details)
 	}
 }
+
+func TestMCPValidationSuggestsPageSizeForLimit(t *testing.T) {
+	app, _, _ := testApp(t, "")
+	cmd, ok := app.Registry.ByName("customers.list")
+	if !ok {
+		t.Fatal("missing operation")
+	}
+	_, e := mcpValidateInputs(cmd, opindex.Entry{ID: cmd.CanonicalName, Kind: "read", Get: true}, map[string]any{"limit": 1}, nil, mcpPolicy{})
+	if e == nil || e.Code != "INVALID_REQUEST" {
+		t.Fatalf("expected validation error, got %#v", e)
+	}
+	details, _ := e.Details.([]map[string]any)
+	if len(details) != 1 || details[0]["code"] != "UNKNOWN_FIELD" || details[0]["param"] != "limit" || !reflect.DeepEqual(details[0]["suggestions"], []string{"page_size"}) {
+		t.Fatalf("unexpected error details: %#v", details)
+	}
+}
+
+func TestMCPValidationExplainsUppercaseCurrency(t *testing.T) {
+	app, _, _ := testApp(t, "")
+	cmd, ok := app.Registry.ByName("payment-intents.create")
+	if !ok {
+		t.Fatal("missing operation")
+	}
+	_, e := mcpValidateInputs(cmd, opindex.Entry{ID: cmd.CanonicalName, Kind: "write"}, map[string]any{
+		"amount_money":    map[string]any{"amount": 250, "currency": "usd"},
+		"payment_options": []any{"card"},
+	}, nil, mcpPolicy{})
+	for _, detail := range mcpValidationDetails(t, e) {
+		if detail["param"] == "amount_money.currency" && strings.Contains(fmt.Sprint(detail["message"]), "uppercase ISO 4217 code such as USD") {
+			return
+		}
+	}
+	t.Fatalf("missing uppercase currency hint: %#v", e.Details)
+}

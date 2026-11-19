@@ -628,6 +628,9 @@ func (a *App) consumeListenStreamWithIdleTimeout(ctx context.Context, body io.Re
 
 func (a *App) consumeListenStream(ctx context.Context, body io.Reader, opts Options, forwardTo string, source listenDeliverySource, state *listenStreamState) *CLIError {
 	err := readListenSSE(body, func(frame listenSSEFrame) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		switch frame.Event {
 		case "ready":
 			var ready struct {
@@ -789,7 +792,7 @@ func (a *App) consumeListenWebhookEvent(ctx context.Context, frame listenSSEFram
 	result := a.forwardListenPayload(ctx, opts.Timeout, forwardTo, source, event)
 	state.forwardEnded.Store(time.Now().UnixNano())
 	state.forwarding.Store(false)
-	if result.err != nil && ctx.Err() != nil {
+	if (result.err != nil || result.signingError != nil) && ctx.Err() != nil {
 		// The listener stopped mid-delivery. Keep the cursor before this event
 		// so a resumed run delivers it again.
 		return nil
