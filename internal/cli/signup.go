@@ -257,7 +257,7 @@ func (a *App) runSignup(opts Options) int {
 	for _, flag := range signupCreationProfileFlags {
 		if values := pending.Inputs[flag]; len(values) > 0 {
 			want := values[len(values)-1]
-			if flag == "business-name" {
+			if flag == "business-name" || flag == "timezone" {
 				want = strings.TrimSpace(want)
 			}
 			if merchant[strings.ReplaceAll(flag, "-", "_")] != want {
@@ -278,6 +278,9 @@ func (a *App) runSignup(opts Options) int {
 		if !opts.Quiet {
 			if name := merchant["business_name"]; name != "" {
 				fmt.Fprintf(a.Stdout, "Business name buyers see: %s\n", name)
+			}
+			if zone := merchant["timezone"]; zone != "" {
+				fmt.Fprintf(a.Stdout, "Business time zone: %s\n", zone)
 			}
 			for _, warning := range warnings {
 				fmt.Fprintln(a.Stdout, warning)

@@ -241,9 +241,9 @@ func (a *App) verifySignupChallenge(reader *bufio.Reader, opts Options, profile 
 }
 
 // Keep only onboarding inputs, never unrelated command flags or credentials.
-var signupCreationProfileFlags = []string{"business-name", "website-url", "support-email", "support-phone", "support-url"}
+var signupCreationProfileFlags = []string{"business-name", "timezone", "website-url", "support-email", "support-phone", "support-url"}
 
-var signupInputFlags = []string{"business-name", "country", "website-url", "support-email", "support-phone", "support-url", "requested-capability"}
+var signupInputFlags = []string{"business-name", "timezone", "country", "website-url", "support-email", "support-phone", "support-url", "requested-capability"}
 
 func signupInputs(opts Options) map[string][]string {
 	inputs := map[string][]string{}
@@ -417,7 +417,7 @@ func signupAccountError(e *CLIError) *CLIError {
 // Persist and publish only merchant profile facts, never verification credentials.
 func signupMerchantSummary(value any) map[string]string {
 	merchant := map[string]string{}
-	for _, field := range []string{"merchant_id", "business_name", "website_url", "support_email", "support_phone", "support_url"} {
+	for _, field := range []string{"merchant_id", "business_name", "timezone", "website_url", "support_email", "support_phone", "support_url"} {
 		if fact, ok := firstStringAt(value, "data.merchant."+field); ok {
 			merchant[field] = fact
 		}
