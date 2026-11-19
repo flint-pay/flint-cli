@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.20.7 (2026-11-19)
+## 0.21.0 (2026-11-19)
 
 - Manage license keys and pools from the CLI or MCP. Import keys from text or CSV with `flint license-key-pools add-keys`. MCP routes license lookup and validation through `flint_read`.
 - MCP tool results redact credentials and point to a private local file when a response contains a secret. Open the file on the machine running Flint and delete it after you move the secret to its destination.
