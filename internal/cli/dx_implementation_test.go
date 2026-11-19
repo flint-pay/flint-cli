@@ -199,6 +199,10 @@ func TestDXParserAndRequestConveniences(t *testing.T) {
 	if param, _ := lookupPath(result, "error.param"); exit != ExitUsage || param != "currency" || !strings.Contains(fmt.Sprint(result), "$.line_items[0].unit_price_money.currency (from --currency)") {
 		t.Fatalf("exit=%d result=%v", exit, result)
 	}
+	exit, result = runJSON(t, app, out, "payment-links", "create", "--name", "test", "--item-name", "item", "--amount", "0", "--currency", "USD", "--dry-run=client")
+	if code, _ := lookupPath(result, "error.code"); exit != ExitUsage || code != "INVALID_REQUEST_BODY" || !strings.Contains(fmt.Sprint(result), "$.line_items[0].unit_price_money.amount (from --amount): must be at least 1.") {
+		t.Fatalf("exit=%d result=%v", exit, result)
+	}
 }
 
 func TestDXTimesAndNullWait(t *testing.T) {

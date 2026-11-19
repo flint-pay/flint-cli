@@ -302,3 +302,33 @@ func TestMCPValidationExplainsUppercaseCurrency(t *testing.T) {
 	}
 	t.Fatalf("missing uppercase currency hint: %#v", e.Details)
 }
+
+func TestMCPValidationRejectsZeroPaymentAmounts(t *testing.T) {
+	app, _, _ := testApp(t, "")
+	zero := map[string]any{"amount": 0, "currency": "USD"}
+	for _, tt := range []struct {
+		name  string
+		args  map[string]any
+		param string
+	}{
+		{"payment-intents.create", map[string]any{"amount_money": zero, "payment_options": []any{"card"}}, "amount_money.amount"},
+		{"checkout-sessions.create", map[string]any{"type": "quick_pay", "quick_pay_item": map[string]any{"name": "Item", "amount_money": zero}}, "quick_pay_item.amount_money.amount"},
+		{"payment-links.create", map[string]any{
+			"name": "Link", "line_items": []any{map[string]any{"type": "custom_fixed", "name": "Item", "unit_price_money": zero}},
+		}, "line_items[0].unit_price_money.amount"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd, ok := app.Registry.ByName(tt.name)
+			if !ok {
+				t.Fatal("missing operation")
+			}
+			_, e := mcpValidateInputs(cmd, opindex.Entry{ID: tt.name, Kind: "write"}, tt.args, nil, mcpPolicy{})
+			for _, detail := range mcpValidationDetails(t, e) {
+				if detail["param"] == tt.param && strings.Contains(fmt.Sprint(detail["message"]), "must be at least 1") {
+					return
+				}
+			}
+			t.Fatalf("missing positive amount feedback: %#v", e.Details)
+		})
+	}
+}
