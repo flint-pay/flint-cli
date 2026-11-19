@@ -1,11 +1,16 @@
 # Changelog
 
-## 0.20.7 (2026-11-17)
+## 0.20.7 (2026-11-19)
 
-- `flint settings get` and `flint settings update` include the `receipts` section, so you can set `receipts.footer_text` (the receipt note) from the CLI. The embedded API snapshot now matches Flint `014ba16b42`, and `flint orders edits cancel` cancels an order edit.
-- `flint help search webhook signature verification` (and similar webhook verification queries) now lists `flint listen` and `flint webhook-endpoints sign-delivery` before buyer email verification commands.
-- `customers create --phone` and `customers update --phone` explain the E.164 format Flint requires and that surrounding whitespace is trimmed.
-- The README no longer says Flint's delivery attempts to the `flint listen` endpoint fail DNS. Flint delivers this endpoint's events only through the listener stream, so it has no deliveries of its own.
+- Manage license keys and pools from the CLI or MCP. Import keys from text or CSV with `flint license-key-pools add-keys`. MCP routes license lookup and validation through `flint_read`.
+- MCP tool results redact credentials and point to a private local file when a response contains a secret. Open the file on the machine running Flint and delete it after you move the secret to its destination.
+- Set the business time zone on the first signup call with `flint signup --timezone` or the MCP `timezone` field. Use an IANA name such as `America/Chicago`.
+- `flint listen` retries webhook signing after throttling and transient failures and retains pending events across transport failures. Help search prioritizes listener and signing commands for webhook verification queries.
+- The CLI and MCP validate positive payment amounts locally, including payment link amounts, payment intent amounts, and explicit capture amounts.
+- Buyer subscription previews use `flint_write` in MCP. The CLI advertises idempotency only for API operations that support it.
+- Help search finds commands for common merchant tasks. Unscheduled invoice drafts avoid the confirmation required to issue or schedule an invoice, and revoking the active API key warns that calls with that key will stop.
+- `flint settings get` and `flint settings update` include the `receipts` section. Set `receipts.footer_text` to change the receipt note. Use `flint orders edits cancel` to cancel an order edit.
+- Customer phone flags explain the required E.164 format and that the CLI trims surrounding whitespace.
 
 ## 0.20.5 (2026-11-17)
 
