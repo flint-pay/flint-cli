@@ -358,10 +358,15 @@ jobs:
             echo "GitHub release already contains the expected verified artifacts"
             exit 0
           fi
+          changelog_line="$(awk -v version="$CLI_VERSION" '$1 == "##" && $2 == version { print NR; exit }' CHANGELOG.md)"
+          changelog_url="https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_SHA/CHANGELOG.md"
+          if [ -n "$changelog_line" ]; then
+            changelog_url+="?plain=1#L${changelog_line}"
+          fi
+          release_notes="See the [Flint CLI changelog]($changelog_url)."
           release_flags=()
           if [ -n "$SANDBOX_WAIVER" ]; then
-            printf 'Known issue: %s\n' "$SANDBOX_WAIVER" > "$RUNNER_TEMP/release-notes.md"
-            release_flags+=(--notes-file "$RUNNER_TEMP/release-notes.md")
+            release_notes="$(printf 'Known issue: %s\n\n%s' "$SANDBOX_WAIVER" "$release_notes")"
           fi
           if [ "$IS_PRERELEASE" = "true" ]; then
             release_flags+=(--prerelease)
@@ -372,6 +377,7 @@ jobs:
             dist/checksums.txt \
             --repo "$GITHUB_REPOSITORY" \
             --title "Flint CLI ${CLI_VERSION}" \
+            --notes "$release_notes" \
             --generate-notes \
             --verify-tag \
             "${release_flags[@]}"
