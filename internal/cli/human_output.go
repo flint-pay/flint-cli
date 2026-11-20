@@ -147,6 +147,10 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 		for _, key := range []string{"country", "state", "status", "registration_number_last4", "start_date", "end_date"} {
 			addFirst(key)
 		}
+	} else if cmd != nil && cmd.OperationID == "listPayoutDestinations" {
+		for _, key := range []string{"bank_name", "last4", "currency", "is_default_for_currency", "status"} {
+			addFirst(key)
+		}
 	} else {
 		addFirst(statuses...)
 		addFirst(money...)
@@ -201,6 +205,14 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 	headers := make([]string, len(columns))
 	for i, key := range columns {
 		headers[i] = humanLabel(key)
+		if cmd != nil && cmd.OperationID == "listPayoutDestinations" {
+			switch key {
+			case "last4":
+				headers[i] = "Last 4"
+			case "is_default_for_currency":
+				headers[i] = "Default"
+			}
+		}
 		if key == "pricing_amounts.total_money" {
 			headers[i] = "Total"
 		}
