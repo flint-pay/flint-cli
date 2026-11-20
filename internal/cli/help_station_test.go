@@ -298,6 +298,8 @@ func TestSupportOpenUsesHelpHostForAPIOrigin(t *testing.T) {
 		{name: "default", wantHost: "help.withflintpay.com"},
 		{name: "staging without a credential", envBaseURL: stagingAPI, wantHost: "help.staging.withflintpay.com"},
 		{name: "staging with API prefix", envBaseURL: stagingAPI + "/v1/", wantHost: "help.staging.withflintpay.com"},
+		{name: "staging with explicit HTTPS port", envBaseURL: stagingAPI + ":443", wantHost: "help.staging.withflintpay.com"},
+		{name: "custom port", envBaseURL: stagingAPI + ":8443", wantHost: "help.withflintpay.com"},
 		{name: "app override wins", envBaseURL: defaultAPIBaseURL, appBaseURL: stagingAPI, wantHost: "help.staging.withflintpay.com"},
 		{name: "saved staging session", sessionURL: stagingAPI, wantHost: "help.staging.withflintpay.com"},
 		{name: "override wins over saved session", envBaseURL: stagingAPI, sessionURL: defaultAPIBaseURL, wantHost: "help.staging.withflintpay.com"},

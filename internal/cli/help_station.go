@@ -196,7 +196,8 @@ func (a *App) localSupportOpen(cmd *Command, opts Options) int {
 	}
 	helpURL := helpStationURL
 	if api, err := url.Parse(strings.TrimSpace(baseURL)); err == nil &&
-		api.Scheme == "https" && strings.EqualFold(api.Hostname(), stagingAPIHost) {
+		api.Scheme == "https" && api.User == nil &&
+		(strings.EqualFold(api.Host, stagingAPIHost) || strings.EqualFold(api.Host, stagingAPIHost+":443")) {
 		helpURL = stagingHelpStationURL
 	}
 	target := buildSupportComposerURL(helpURL, composer)
