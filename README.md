@@ -16,7 +16,7 @@ brew install flint-pay/tap/flint   # macOS and Linux
 
 After installation, `flint upgrade` checks for the latest stable release using GitHub's `releases/latest` web redirect. If that lookup fails, it falls back to the GitHub REST API and uses `GITHUB_TOKEN` when set. Run `flint upgrade --check` to see the current and latest stable versions without changing anything; it exits 0 whether or not an update is available, and `--output json` reports `update_available`. On macOS and Linux it uses npm or Homebrew when they own the installation, or securely replaces a standalone binary after verifying the release checksum. On Windows it prints the exact npm or manual update step to run after closing the CLI. Progress appears on stderr, with an elapsed-time update every 10 seconds during longer steps. Use `--quiet` to hide it, or `--output json --progress json` for structured results and progress on separate streams. Releases from 0.20.1 accept the legacy version check used by 0.14.x upgraders. If `flint upgrade` fails on an older release, update with `npm install -g @flintpay/cli@latest` or `brew upgrade flint`; the [0.15.0 migration notes](docs/migrating-0.15.md#upgrading-from-014x) explain why.
 
-Prebuilt archives for macOS, Linux, and Windows are attached to each `cli/v*` [release](https://github.com/flint-pay/flint-cli/releases) with a `checksums.txt`. [`scripts/install.sh`](scripts/install.sh) downloads and verifies the right one. The release workflow also publishes a container image to `ghcr.io/flint-pay/flint-cli`.
+Prebuilt archives for macOS, Linux, and Windows are attached to each `cli/v*` [release](https://github.com/flint-pay/flint-cli/releases) with a `checksums.txt`. [`scripts/install.sh`](scripts/install.sh) downloads and verifies the right one.
 
 For manual installation on macOS or Linux:
 
@@ -26,6 +26,22 @@ sh /tmp/flint-install.sh
 ```
 
 The installer uses `/usr/local/bin` when you can write to it and `$HOME/.local/bin` otherwise, and tells you if that directory is not on your `PATH`. Set `FLINT_INSTALL_DIR` to choose another directory, or `FLINT_CLI_VERSION=X.Y.Z` to install a specific version. Without `FLINT_CLI_VERSION`, the installer resolves the latest stable release through GitHub's `releases/latest` web redirect, avoiding the REST API's anonymous rate limit. If the redirect lookup fails, it falls back to the REST API; set `GITHUB_TOKEN` to raise the fallback rate limit. The token is sent only with the API request. On Windows, download the ZIP and `checksums.txt` from the same release, verify the ZIP with `Get-FileHash -Algorithm SHA256`, and extract `flint.exe` into a directory on `PATH`.
+
+### Run in a container
+
+Flint CLI images use `vX.Y.Z` tags and a `latest` tag. Run a pinned image to check its CLI and API versions.
+
+```bash
+docker run --rm ghcr.io/flint-pay/flint-cli:v0.21.0 version
+```
+
+Put Flint arguments after the image name. Export your sandbox API key as `FLINT_API_KEY` to make it available in the container.
+
+```bash
+docker run --rm -e FLINT_API_KEY ghcr.io/flint-pay/flint-cli:v0.21.0 whoami
+```
+
+For profiles and forwarding webhooks to the host, see [Run in a container](https://developers.withflintpay.com/docs/guides/cli#run-in-a-container).
 
 ## Sign up and make a test payment
 
