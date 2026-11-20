@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/flint-pay/flint-cli/internal/opindex"
 )
@@ -281,6 +282,46 @@ func TestSupportOpenPrintsTheComposerLinkWithoutOpeningABrowser(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "The CLI does not create the thread.") {
 		t.Errorf("stdout does not say posting happens in the composer: %s", stdout)
+	}
+}
+
+func TestSupportOpenUsesHelpHostForAPIOrigin(t *testing.T) {
+	const stagingAPI = "https://api.staging.withflintpay.com"
+	for _, tc := range []struct {
+		name        string
+		envBaseURL  string
+		appBaseURL  string
+		sessionURL  string
+		accessToken string
+		wantHost    string
+	}{
+		{name: "default", wantHost: "help.withflintpay.com"},
+		{name: "staging without a credential", envBaseURL: stagingAPI, wantHost: "help.staging.withflintpay.com"},
+		{name: "staging with API prefix", envBaseURL: stagingAPI + "/v1/", wantHost: "help.staging.withflintpay.com"},
+		{name: "staging with explicit HTTPS port", envBaseURL: stagingAPI + ":443", wantHost: "help.staging.withflintpay.com"},
+		{name: "custom port", envBaseURL: stagingAPI + ":8443", wantHost: "help.withflintpay.com"},
+		{name: "app override wins", envBaseURL: defaultAPIBaseURL, appBaseURL: stagingAPI, wantHost: "help.staging.withflintpay.com"},
+		{name: "saved staging session", sessionURL: stagingAPI, wantHost: "help.staging.withflintpay.com"},
+		{name: "override wins over saved session", envBaseURL: stagingAPI, sessionURL: defaultAPIBaseURL, wantHost: "help.staging.withflintpay.com"},
+		{name: "access token overrides saved session", sessionURL: stagingAPI, accessToken: "synthetic-access-token", wantHost: "help.withflintpay.com"},
+		{name: "custom host", envBaseURL: stagingAPI + ".example", wantHost: "help.withflintpay.com"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app, out, _ := testApp(t, tc.envBaseURL)
+			app.BaseURL = tc.appBaseURL
+			t.Setenv("FLINT_API_KEY", "")
+			t.Setenv("FLINT_ACCESS_TOKEN", tc.accessToken)
+			t.Setenv("FLINT_WORKLOAD_IDENTITY_ID", "")
+			if tc.sessionURL != "" {
+				installTestOAuth(t, app, testOAuthCredential(t, tc.sessionURL, app.Now().Add(time.Hour)))
+			}
+			exit, result := runJSON(t, app, out, "support", "open", "--no-open")
+			target, _ := valueAt(result, "data.url").(string)
+			parsed, err := url.Parse(target)
+			if exit != ExitOK || err != nil || parsed.Host != tc.wantHost || parsed.Path != "/new" {
+				t.Fatalf("exit=%d url=%q, want https://%s/new", exit, target, tc.wantHost)
+			}
+		})
 	}
 }
 

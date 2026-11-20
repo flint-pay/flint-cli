@@ -76,6 +76,7 @@ type apiResponse struct {
 }
 
 const defaultAPIBaseURL = "https://api.withflintpay.com"
+const stagingAPIHost = "api.staging.withflintpay.com"
 
 // App copies (including concurrent MCP tools) share the connection pool. Idle
 // connections expire even in a long-running process with no further requests.
@@ -95,13 +96,17 @@ func (a *App) baseURLForCredential(key string) (string, error) {
 	if _, err := credentialEnvironment(key); err != nil {
 		return "", err
 	}
-	if a.BaseURL != "" {
-		return validateBaseURL(a.BaseURL)
-	}
-	if value := strings.TrimSpace(os.Getenv("FLINT_BASE_URL")); value != "" {
+	if value := a.configuredAPIBaseURL(); value != "" {
 		return validateBaseURL(value)
 	}
 	return defaultAPIBaseURL, nil
+}
+
+func (a *App) configuredAPIBaseURL() string {
+	if a.BaseURL != "" {
+		return a.BaseURL
+	}
+	return strings.TrimSpace(os.Getenv("FLINT_BASE_URL"))
 }
 
 func validateBaseURL(value string) (string, error) {
