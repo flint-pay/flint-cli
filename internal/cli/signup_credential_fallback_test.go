@@ -101,3 +101,34 @@ func TestSignupExplicitKeyringFailureSuggestsSignupRetry(t *testing.T) {
 		t.Fatalf("signup retry is missing: %s", out)
 	}
 }
+
+func TestSignupFallbackPreservesExistingFileCredential(t *testing.T) {
+	revoked := false
+	server := signupCompensationTestServer(t, &revoked)
+	defer server.Close()
+	app, out, stderr := testApp(t, server.URL)
+	t.Setenv("FLINT_API_KEY", "")
+	t.Setenv("FLINT_CREDENTIAL_STORE", "")
+	// A profile can retain a file credential after switching to the keyring
+	// and then logging out. Its keyring entry may be empty.
+	previous := "synthetic-file-credential"
+	if _, err := app.fileCredential("default", &previous); err != nil {
+		t.Fatal(err)
+	}
+	app.StoreCredential = func(string, string) error {
+		return dbus.Error{Name: "org.freedesktop.DBus.Error.ServiceUnknown"}
+	}
+	args := append(append([]string{}, signupFlowStartArgs...), "--verification-code", "123456", "--no-input")
+	exit, result := runJSON(t, app, out, args...)
+	if exit != ExitAuth || !revoked || stderr.Len() != 0 || valueAt(result, "error.code") != "KEYCHAIN_WRITE_FAILED" {
+		t.Fatalf("exit=%d revoked=%t stdout=%s stderr=%s", exit, revoked, out, stderr)
+	}
+	if !strings.Contains(out.String(), "this profile already has a credential in the file store") ||
+		!strings.Contains(out.String(), "flint signup --verification-code") {
+		t.Fatalf("signup retry is missing: %s", out)
+	}
+	value, err := app.fileCredential("default", nil)
+	if err != nil || value != previous {
+		t.Fatalf("existing file credential was changed, error = %v", err)
+	}
+}

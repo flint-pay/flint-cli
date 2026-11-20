@@ -216,9 +216,14 @@ func (a *App) runSignup(opts Options) int {
 		if keyringUnavailable && a.credentialStore == "" && previousCredential == "" &&
 			(p.CredentialPresent == nil || !*p.CredentialPresent) {
 			persistence.credentialStore = "file"
-			previousCredential, storeErr = persistence.rawSavedCredential(profile, p)
-			if storeErr != nil {
-				persistenceErr = a.signupCredentialError("CREDENTIAL_LOOKUP_FAILED", "The fallback credential file could not be read before signup.", storeErr, profile, baseURL, "file")
+			fileCredential, fileErr := persistence.rawSavedCredential(profile, p)
+			if fileErr != nil {
+				persistenceErr = a.signupCredentialError("CREDENTIAL_LOOKUP_FAILED", "The fallback credential file could not be read before signup.", fileErr, profile, baseURL, "file")
+				return fileErr
+			}
+			if fileCredential != "" {
+				persistenceErr = configError("KEYCHAIN_WRITE_FAILED", "The OS keyring is unavailable and this profile already has a credential in the file store. To replace it, retry with --credential-store file.", storeErr)
+				persistenceErr.Details = a.signupFileRetry(profile, baseURL)
 				return storeErr
 			}
 			storeErr = persistence.storeSavedCredential(profile, secret)
@@ -635,6 +640,12 @@ func (a *App) signupCredentialError(code, message string, err error, profile, ba
 	if store == "file" {
 		return configError(code, message, err)
 	}
+	result := configError(code, message+" To use the private credential file, retry with --credential-store file.", err)
+	result.Details = a.signupFileRetry(profile, baseURL)
+	return result
+}
+
+func (a *App) signupFileRetry(profile, baseURL string) map[string]any {
 	retry := *a
 	retry.credentialStore = "file"
 	command := "flint signup"
@@ -644,11 +655,9 @@ func (a *App) signupCredentialError(code, message string, err error, profile, ba
 		baseURL = defaultAPIBaseURL
 	}
 	command = retry.signupCommand(command, profile, baseURL)
-	result := configError(code, message+" To use the private credential file, retry with --credential-store file.", err)
-	result.Details = map[string]any{"remediation": map[string]any{"next_actions": []any{
+	return map[string]any{"remediation": map[string]any{"next_actions": []any{
 		map[string]any{"command": command},
 	}}}
-	return result
 }
 
 func (a *App) doSignupRequest(baseURL, token, method, path string, body []byte, idempotencyKey string, opts Options) (*apiResponse, *CLIError) {
