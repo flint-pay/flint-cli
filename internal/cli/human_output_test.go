@@ -99,6 +99,29 @@ func TestHumanOrdersShowNumberPaymentTotalAndBuyer(t *testing.T) {
 	}
 }
 
+func TestHumanPayoutDestinationsIdentifyBankAndDefaultForCurrency(t *testing.T) {
+	cmd, ok := NewRegistry().ByName("payout-destinations.list")
+	if !ok {
+		t.Fatal("payout destinations list is unavailable")
+	}
+	now := time.Date(2026, 10, 31, 12, 0, 0, 0, time.UTC)
+	rows := []any{
+		map[string]any{"payout_destination_id": "pdst_a", "bank_name": "Example Bank", "last4": "0089", "currency": "USD", "is_default_for_currency": true, "status": "active", "created_at": now.Add(-time.Hour).Format(time.RFC3339)},
+		map[string]any{"payout_destination_id": "pdst_b", "currency": "USD", "is_default_for_currency": false, "status": "active"},
+	}
+	var out bytes.Buffer
+	if err := renderHuman(&out, map[string]any{"data": rows}, cmd, now); err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 3 ||
+		strings.Join(strings.Fields(lines[0]), " ") != "Payout destination ID Bank name Last 4 Currency Default Status Created at" ||
+		strings.Join(strings.Fields(lines[1]), " ") != "pdst_a Example Bank 0089 USD true active 1h ago" ||
+		strings.Join(strings.Fields(lines[2]), " ") != "pdst_b - - USD false active -" {
+		t.Fatalf("unexpected payout destination table: %s", &out)
+	}
+}
+
 func TestHumanTaxRegistrationsIdentifyJurisdictionAndDates(t *testing.T) {
 	rows := []any{
 		map[string]any{"tax_registration_id": "trg_us", "country": "US", "state": "NY", "status": "active", "registration_number_last4": "1234", "start_date": "2026-01-01", "end_date": "2026-12-31"},
