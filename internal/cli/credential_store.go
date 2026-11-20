@@ -4,8 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strings"
+
+	"github.com/godbus/dbus/v5"
+	"github.com/zalando/go-keyring"
 )
 
 func profileWithoutCredential() Profile {
@@ -15,6 +22,39 @@ func profileWithoutCredential() Profile {
 
 func missingCredentialMessage(profile string) string {
 	return fmt.Sprintf("No Flint credential is configured for profile '%s'. Run flint login, run flint signup to create an account, or set FLINT_API_KEY.", profile)
+}
+
+// These errors occur before the keyring can store a secret. A write timeout
+// is ambiguous because the underlying library cannot cancel the operation.
+func keyringUnavailableBeforeWrite(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, keyring.ErrUnsupportedPlatform) || errors.Is(err, exec.ErrNotFound) {
+		return true
+	}
+	var launchErr *exec.ExitError
+	var connectionErr *net.OpError
+	// On Linux an exit error comes from dbus-launch during connection setup.
+	// On macOS the security command can exit after attempting the write.
+	if (runtime.GOOS == "linux" && errors.As(err, &launchErr)) ||
+		(errors.As(err, &connectionErr) && connectionErr.Op == "dial") {
+		return true
+	}
+	var busErr dbus.Error
+	if errors.As(err, &busErr) {
+		switch busErr.Name {
+		case "org.freedesktop.DBus.Error.ServiceUnknown",
+			"org.freedesktop.DBus.Error.NameHasNoOwner",
+			"org.freedesktop.DBus.Error.Spawn.ServiceNotFound",
+			"org.freedesktop.DBus.Error.UnknownObject",
+			"org.freedesktop.Secret.Error.IsLocked",
+			"org.freedesktop.Secret.Error.NoSuchObject":
+			return true
+		}
+	}
+	return err.Error() == "dbus: couldn't determine address of session bus" ||
+		strings.HasPrefix(err.Error(), "failed to unlock correct collection '")
 }
 
 func (a *App) selectedCredentialStore(_ string, p Profile) string {

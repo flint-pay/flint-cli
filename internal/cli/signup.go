@@ -105,15 +105,20 @@ func (a *App) runSignup(opts Options) int {
 	}
 	previousStore := a.credentialStore
 	defer func() { a.credentialStore = previousStore }()
-	if pending := cfg.Profiles[resolved.ProfileName].PendingSignup; lastSignupOption(opts, "verification-code") != "" && pending != nil {
-		if pending.CredentialStore != "" && pending.CredentialStore != "keyring" && pending.CredentialStore != "file" {
+	savedSignup := cfg.Profiles[resolved.ProfileName].PendingSignup
+	retryBaseURL := ""
+	if lastSignupOption(opts, "verification-code") != "" && savedSignup != nil {
+		retryBaseURL = savedSignup.BaseURL
+		if savedSignup.CredentialStore != "" && savedSignup.CredentialStore != "keyring" && savedSignup.CredentialStore != "file" {
 			return a.fail(configError("CONFIG_INVALID", "The pending signup credential_store must be keyring or file.", nil), opts)
 		}
 		if a.credentialStore == "" {
-			a.credentialStore = pending.CredentialStore
+			a.credentialStore = savedSignup.CredentialStore
 		}
 	}
-	a.credentialStore = a.selectedCredentialStore(resolved.ProfileName, cfg.Profiles[resolved.ProfileName])
+	if a.credentialStore == "" && cfg.Profiles[resolved.ProfileName].CredentialStore == "file" {
+		a.credentialStore = "file"
+	}
 	project, _, err := a.findProjectConfig()
 	if err != nil {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
@@ -123,10 +128,10 @@ func (a *App) runSignup(opts Options) int {
 	}
 	_, previousErr := a.loadSavedCredential(resolved.ProfileName)
 	if previousErr != nil {
-		return a.fail(credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before signup.", previousErr), opts)
+		return a.fail(a.signupCredentialError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before signup.", previousErr, resolved.ProfileName, retryBaseURL, a.credentialStore), opts)
 	}
 	reader := bufio.NewReader(&contextInputReader{ctx: a.commandContext(), reader: a.Stdin})
-	pending, e := a.signupChallenge(reader, opts, resolved.ProfileName, cfg.Profiles[resolved.ProfileName].PendingSignup)
+	pending, e := a.signupChallenge(reader, opts, resolved.ProfileName, savedSignup)
 	if e != nil {
 		return a.fail(e, opts)
 	}
@@ -197,24 +202,40 @@ func (a *App) runSignup(opts Options) int {
 			persistenceErr = configError("CONFIG_INVALID", loadErr.Error(), loadErr)
 			return loadErr
 		}
+		profile := resolved.ProfileName
+		p := cfg.Profiles[profile]
 		persistence := *a
-		persistence.credentialStore = a.selectedCredentialStore(resolved.ProfileName, cfg.Profiles[resolved.ProfileName])
-		previousCredential, credentialErr := a.loadSavedCredentialUnlocked(resolved.ProfileName)
+		persistence.credentialStore = a.selectedCredentialStore(profile, p)
+		previousCredential, credentialErr := a.loadSavedCredentialUnlocked(profile)
 		if credentialErr != nil {
-			persistenceErr = credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before signup.", credentialErr)
+			persistenceErr = a.signupCredentialError("CREDENTIAL_LOOKUP_FAILED", "The existing profile credential could not be read before signup.", credentialErr, profile, baseURL, persistence.credentialStore)
 			return credentialErr
 		}
-		if storeErr := persistence.storeSavedCredential(resolved.ProfileName, secret); storeErr != nil {
-			persistenceErr = credentialStoreError("KEYCHAIN_WRITE_FAILED", "The new credential could not be stored in the selected credential store.", storeErr)
-			if restoreErr := persistence.restoreCredential(resolved.ProfileName, previousCredential); restoreErr != nil {
-				persistenceErr.Message += "; credential rollback also failed: " + restoreErr.Error()
+		storeErr := persistence.storeSavedCredential(profile, secret)
+		keyringUnavailable := persistence.credentialStore == "keyring" && keyringUnavailableBeforeWrite(storeErr)
+		if keyringUnavailable && a.credentialStore == "" && previousCredential == "" &&
+			(p.CredentialPresent == nil || !*p.CredentialPresent) {
+			persistence.credentialStore = "file"
+			previousCredential, storeErr = persistence.rawSavedCredential(profile, p)
+			if storeErr != nil {
+				persistenceErr = a.signupCredentialError("CREDENTIAL_LOOKUP_FAILED", "The fallback credential file could not be read before signup.", storeErr, profile, baseURL, "file")
+				return storeErr
+			}
+			storeErr = persistence.storeSavedCredential(profile, secret)
+			keyringUnavailable = false
+		}
+		if storeErr != nil {
+			persistenceErr = a.signupCredentialError("KEYCHAIN_WRITE_FAILED", "The new credential could not be stored.", storeErr, profile, baseURL, persistence.credentialStore)
+			if !keyringUnavailable {
+				if restoreErr := persistence.restoreCredential(profile, previousCredential); restoreErr != nil {
+					persistenceErr.Message += " The previous local credential could not be restored: " + terminalSafe(restoreErr.Error()) + "."
+				}
 			}
 			return storeErr
 		}
 		if cfg.Profiles == nil {
 			cfg.Profiles = map[string]Profile{}
 		}
-		p := cfg.Profiles[resolved.ProfileName]
 		p.ContextID = ""
 		p.MerchantGuard = ""
 		if sameSignupChallenge(p.PendingSignup, pending) {
@@ -227,14 +248,15 @@ func (a *App) runSignup(opts Options) int {
 		if merchant, ok := firstStringAt(created.Value, "data.merchant_id"); ok {
 			p.MerchantID = merchant
 		}
-		cfg.Profiles[resolved.ProfileName] = a.profileWithCredential(resolved.ProfileName, p, true)
+		cfg.Profiles[profile] = persistence.profileWithCredential(profile, p, true)
 		if saveErr := a.saveConfigUnlocked(cfg); saveErr != nil {
 			persistenceErr = configError("CONFIG_WRITE_FAILED", saveErr.Error(), saveErr)
-			if restoreErr := persistence.restoreCredential(resolved.ProfileName, previousCredential); restoreErr != nil {
-				persistenceErr.Message += "; credential rollback also failed: " + restoreErr.Error()
+			if restoreErr := persistence.restoreCredential(profile, previousCredential); restoreErr != nil {
+				persistenceErr.Message += " The previous local credential could not be restored: " + terminalSafe(restoreErr.Error()) + "."
 			}
 			return saveErr
 		}
+		a.credentialStore = persistence.credentialStore
 		return nil
 	})
 	if lockErr != nil {
@@ -606,6 +628,27 @@ func withSignupKeyCleanupResult(primary, cleanupErr *CLIError, apiKeyID string) 
 		}},
 	}
 	return primary
+}
+
+func (a *App) signupCredentialError(code, message string, err error, profile, baseURL, store string) *CLIError {
+	message = strings.TrimSuffix(message, ".") + ": " + terminalSafe(err.Error()) + "."
+	if store == "file" {
+		return configError(code, message, err)
+	}
+	retry := *a
+	retry.credentialStore = "file"
+	command := "flint signup"
+	if baseURL != "" {
+		command += " --verification-code <code>"
+	} else {
+		baseURL = defaultAPIBaseURL
+	}
+	command = retry.signupCommand(command, profile, baseURL)
+	result := configError(code, message+" To use the private credential file, retry with --credential-store file.", err)
+	result.Details = map[string]any{"remediation": map[string]any{"next_actions": []any{
+		map[string]any{"command": command},
+	}}}
+	return result
 }
 
 func (a *App) doSignupRequest(baseURL, token, method, path string, body []byte, idempotencyKey string, opts Options) (*apiResponse, *CLIError) {
