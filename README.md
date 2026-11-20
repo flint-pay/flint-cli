@@ -35,7 +35,13 @@ Flint CLI images use `vX.Y.Z` tags and a `latest` tag. Run a pinned image to che
 docker run --rm ghcr.io/flint-pay/flint-cli:v0.21.0 version
 ```
 
-Put Flint arguments after the image name. To authenticate, set `FLINT_API_KEY` in your shell and add `-e FLINT_API_KEY` before the image name. For profiles and forwarding webhooks to the host, see [Run in a container](https://developers.withflintpay.com/docs/guides/cli#run-in-a-container).
+Put Flint arguments after the image name. Export your sandbox API key as `FLINT_API_KEY` to make it available in the container.
+
+```bash
+docker run --rm -e FLINT_API_KEY ghcr.io/flint-pay/flint-cli:v0.21.0 whoami
+```
+
+For profiles and forwarding webhooks to the host, see [Run in a container](https://developers.withflintpay.com/docs/guides/cli#run-in-a-container).
 
 ## Sign up and make a test payment
 
