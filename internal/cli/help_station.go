@@ -13,6 +13,7 @@ import (
 
 // Support only builds a composer link; search uses the local operation index.
 const helpStationURL = "https://help.withflintpay.com"
+const stagingHelpStationURL = "https://help.staging.withflintpay.com"
 const helpSearchLimit = 8
 
 // Product areas the composer accepts, mirroring HELP_PRODUCT_AREAS in
@@ -182,6 +183,7 @@ func (a *App) localSupportOpen(cmd *Command, opts Options) int {
 		}
 		return values[len(values)-1]
 	}
+	baseURL, environment := a.supportLinkContext(opts)
 	composer := supportComposerContext{
 		Title:       textOption("title"),
 		Body:        textOption("body"),
@@ -190,9 +192,14 @@ func (a *App) localSupportOpen(cmd *Command, opts Options) int {
 		Private:     booleanRawOption(opts, "private"),
 		RequestID:   lastRawOption(opts, "request-id"),
 		Resource:    lastRawOption(opts, "resource"),
-		Environment: a.supportEnvironmentHint(opts),
+		Environment: environment,
 	}
-	target := buildSupportComposerURL(helpStationURL, composer)
+	helpURL := helpStationURL
+	if api, err := url.Parse(strings.TrimSpace(baseURL)); err == nil &&
+		api.Scheme == "https" && strings.EqualFold(api.Hostname(), stagingAPIHost) {
+		helpURL = stagingHelpStationURL
+	}
+	target := buildSupportComposerURL(helpURL, composer)
 	opened := false
 	// A browser is only useful for a human at a terminal. Machine modes and
 	// --no-open print the link so the caller can hand it on.
@@ -220,30 +227,27 @@ func (a *App) localSupportOpen(cmd *Command, opts Options) int {
 	}}, cmd, opts)
 }
 
-// supportEnvironmentHint labels the composer with the environment the caller is
-// working in. It is a hint, not an assertion: a profile without a readable
-// credential still gets a working composer link, just without the label.
-func (a *App) supportEnvironmentHint(opts Options) string {
+// Support can open a composer without a credential. A saved OAuth session
+// supplies the API origin when there is no configured override.
+func (a *App) supportLinkContext(opts Options) (baseURL, environment string) {
+	baseURL = a.configuredAPIBaseURL()
 	resolved, _, err := a.resolveConfig(opts)
 	if err != nil {
-		return ""
+		return baseURL, ""
 	}
-	key, _, err := a.resolveCredential(resolved.ProfileName)
-	if err != nil || key == "" {
-		return ""
+	key, source, err := a.resolveCheckCredential(resolved.ProfileName)
+	if err != nil || key == "" || source == "environment_access_token" {
+		return baseURL, ""
 	}
 	if isOAuthCredential(key) {
 		c, e := decodeOAuthCredential(key)
-		if e != nil {
-			return ""
+		if e != nil || a.oauthBaseURL(c) != nil {
+			return baseURL, ""
 		}
-		return c.Auth.Environment
+		return c.BaseURL, c.Auth.Environment
 	}
-	environment, err := credentialEnvironment(key)
-	if err != nil {
-		return ""
-	}
-	return environment
+	environment, _ = credentialEnvironment(key)
+	return baseURL, environment
 }
 
 func supportVisibility(private bool) string {

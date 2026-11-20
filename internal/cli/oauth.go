@@ -83,11 +83,7 @@ func validOAuthContext(auth AuthContext) bool {
 }
 
 func (a *App) oauthBaseURL(c oauthCredential) *CLIError {
-	override := a.BaseURL
-	if override == "" {
-		override = strings.TrimSpace(os.Getenv("FLINT_BASE_URL"))
-	}
-	if override != "" {
+	if override := a.configuredAPIBaseURL(); override != "" {
 		normalized, err := validateBaseURL(override)
 		if err != nil || normalized != c.BaseURL {
 			return configError("OAUTH_SERVER_MISMATCH", "This OAuth session belongs to a different Flint server. Unset FLINT_BASE_URL or sign in to that server using a separate profile.", nil)

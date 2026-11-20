@@ -26,10 +26,7 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 	}
 	previousStore := a.credentialStore
 	defer func() { a.credentialStore = previousStore }()
-	baseURL := a.BaseURL
-	if baseURL == "" {
-		baseURL = strings.TrimSpace(os.Getenv("FLINT_BASE_URL"))
-	}
+	baseURL := a.configuredAPIBaseURL()
 	if baseURL == "" {
 		baseURL = defaultAPIBaseURL
 	}
@@ -541,7 +538,7 @@ func loginVerificationURL(raw, complete, baseURL, code string) (string, bool) {
 		if _, err := validateBaseURL(origin.String()); err != nil {
 			return false
 		}
-		return (u.Scheme == "https" && (u.Host == "app.withflintpay.com" || (base.Scheme == "https" && base.Host == "api.staging.withflintpay.com" && u.Host == "app.staging.withflintpay.com"))) || (u.Scheme == base.Scheme && u.Host == base.Host)
+		return (u.Scheme == "https" && (u.Host == "app.withflintpay.com" || (base.Scheme == "https" && base.Host == stagingAPIHost && u.Host == "app.staging.withflintpay.com"))) || (u.Scheme == base.Scheme && u.Host == base.Host)
 	}
 	if !validate(raw) {
 		return "", false
