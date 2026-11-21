@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.22.0 (2026-11-21)
+
+- Add the card fingerprint, email, and IP address from a failed or blocked payment attempt to the default block lists with `flint payment-intents attempts block-signals <payment_intent_id> <payment_attempt_id>`. Existing entries are kept, and MCP routes the operation through `flint_write`. The embedded API snapshot now matches Flint `cfe039b718`.
+- Payment intent attempt arguments expect `pia_` IDs, and order payment attempt arguments expect `opat_` IDs. MCP keeps `checkout_session_id` in selected results from `checkout-sessions.create` and `me.checkout-sessions.create`.
+- `flint payout-destinations list` shows each destination's bank name, last four digits, currency, and whether it is the default for that currency.
+- `flint support open` opens the staging Help site when the CLI uses the staging API, including through a saved staging login.
+- On Linux, `flint signup` saves a new profile's credential in the private credential file when the default keyring is unavailable and prints the file's path. An explicit `--credential-store keyring` still requires a working keyring.
+- The README shows how to run the published container image.
+
 ## 0.21.0 (2026-11-19)
 
 - Manage license keys and pools from the CLI or MCP. Import keys from text or CSV with `flint license-key-pools add-keys`. MCP routes license lookup and validation through `flint_read`.

@@ -3425,6 +3425,13 @@
     "audience": "merchant"
   },
   {
+    "name": "payment-intents.attempts.block-signals",
+    "operation_id": "blockPaymentIntentAttemptSignals",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "payment-intents.cancel",
     "operation_id": "cancelPaymentIntent",
     "kind": "action",

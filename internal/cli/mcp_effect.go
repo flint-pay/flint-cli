@@ -250,9 +250,9 @@ func mcpOwnIDField(cmd *Command) string {
 }
 
 func mcpSchemaIDField(name string) string {
-	// Buyer views share the merchant resource's identifier. These two resource
-	// names also differ from their published ID names.
-	name = strings.TrimPrefix(name, "Buyer")
+	// Buyer views and checkout launch results share the resource's identifier.
+	// These two resource names also differ from their published ID names.
+	name = strings.TrimSuffix(strings.TrimPrefix(name, "Buyer"), "Launch")
 	switch name {
 	case "ProductVariant":
 		name = "Variant"
