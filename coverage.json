@@ -4348,6 +4348,15 @@
   },
   {
     "method": "POST",
+    "path": "/v1/payment-intents/{payment_intent_id}/attempts/{payment_attempt_id}/block-signals",
+    "operation_id": "blockPaymentIntentAttemptSignals",
+    "classification": "resource",
+    "commands": [
+      "payment-intents.attempts.block-signals"
+    ]
+  },
+  {
+    "method": "POST",
     "path": "/v1/payment-intents/{payment_intent_id}/cancel",
     "operation_id": "cancelPaymentIntent",
     "classification": "resource",

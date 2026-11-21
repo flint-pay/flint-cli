@@ -117,6 +117,7 @@ func TestMCPSelectedWriteIdentityThroughResponseVariants(t *testing.T) {
 		{"me.update", "customer_id", "name"},
 		{"refunds.create", "refund_id", "reason"},
 		{"checkout-sessions.create", "checkout_session_id", "url"},
+		{"me.checkout-sessions.create", "checkout_session_id", "url"},
 		{"api-keys.create", "api_key_id", "name"},
 		{"payment-intents.create", "payment_intent_id", "capture_method"},
 	} {

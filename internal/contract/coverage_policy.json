@@ -3511,6 +3511,12 @@
     "classification": "resource"
   },
   {
+    "method": "POST",
+    "path": "/v1/payment-intents/{payment_intent_id}/attempts/{payment_attempt_id}/block-signals",
+    "operation_id": "blockPaymentIntentAttemptSignals",
+    "classification": "resource"
+  },
+  {
     "method": "GET",
     "path": "/v1/api-request-logs",
     "operation_id": "listAPIRequestLogs",

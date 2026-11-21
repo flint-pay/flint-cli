@@ -439,6 +439,7 @@ Merchant resources:
   flint packages update <package_id>                                Update package
   flint packages void <package_id>                                  Void package
   flint payment-intents activities list <payment_intent_id>         List payment intent activities
+  flint payment-intents attempts block-signals <payment_intent_id> <payment_attempt_id> Block signals from a failed payment attempt
   flint payment-intents cancel <payment_intent_id>                  Cancel payment intent
   flint payment-intents capture <payment_intent_id>                 Capture payment intent
   flint payment-intents confirm <payment_intent_id>                 Confirm payment intent
