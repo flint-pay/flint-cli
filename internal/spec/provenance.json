@@ -1,9 +1,9 @@
 {
   "source_repository": "flint-pay/flint",
-  "source_commit": "cfe039b718f875a039e518f8e1a1193f9d582195",
+  "source_commit": "a99c1d7b204cfc2931e623b04a341ea296e897dd",
   "source_path": "web/apps/developers/src/generated/openapi.json",
-  "sha256": "7e6b0fd16d6a61a4cedf17efd076ee5c3fe68bd35cf0139b26d188a72c834763",
-  "operation_set_sha256": "1bc8bfcf8cbfec6fd878f905930185ff715a716d56bc58b4002ce65b69f608d1",
-  "operation_count": 746,
+  "sha256": "11673564273bea6a5bb292b50b8c7d92117dd279ada77d0ec82edd5eeb1b367c",
+  "operation_set_sha256": "4a7420976fba98117975a51ec30a8372638ff9c2656f220bf52cc8a92408dd3b",
+  "operation_count": 755,
   "freshness_policy": "Intentionally pinned to this reviewed export for offline, reproducible CLI builds. Changes after source_commit are not included until the next reviewed snapshot refresh. No production freshness requests are made."
 }

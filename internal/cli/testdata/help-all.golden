@@ -609,6 +609,15 @@ Merchant resources:
   flint shipments list                                              List shipments
   flint shipments update <shipment_id>                              Update shipment
   flint shipments void <shipment_id>                                Void shipment
+  flint shops create                                                Create shop
+  flint shops delete <shop_id>                                      Archive shop
+  flint shops get <shop_id>                                         Get shop
+  flint shops list                                                  List shops
+  flint shops listings list <shop_id>                               List shop listings
+  flint shops listings public get <shop_id> <shop_listing_id>       Get public shop listing
+  flint shops public get <shop_id>                                  Get public shop
+  flint shops resolve <shop_id>                                     Resolve shop
+  flint shops update <shop_id>                                      Update shop
   flint subscription-delivery-migrations create                     Move subscribers to another delivery method
   flint subscription-delivery-migrations failures list <subscription_delivery_migration_id> List subscriptions that could not be moved
   flint subscription-delivery-migrations get <subscription_delivery_migration_id> Get subscription delivery migration
