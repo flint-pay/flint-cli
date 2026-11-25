@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.23.0 (2026-11-25)
+
+- Create, list, get, update, and archive shops with `flint shops create`, `list`, `get`, `update`, and `delete`. List a shop's listings with `flint shops listings list`.
+- Use `flint shops public get` and `flint shops listings public get` to read public shops and listings. Use `flint shops resolve` to create a checkout session for a shop cart. Keep and reuse the same resolution context and idempotency key when retrying a resolve.
+- The embedded API snapshot now matches Flint `a99c1d7b20`. See the [SDK migration notes](https://github.com/flint-pay/flint-sdks/blob/v8.0.0-beta.12/MIGRATION.md#changes-in-800-beta12) for changes to shared payment-link models and the API fields used in request bodies and JSON output.
+
 ## 0.22.0 (2026-11-21)
 
 - Add the card fingerprint, email, and IP address from a failed or blocked payment attempt to the default block lists with `flint payment-intents attempts block-signals <payment_intent_id> <payment_attempt_id>`. Existing entries are kept, and MCP routes the operation through `flint_write`. The embedded API snapshot now matches Flint `cfe039b718`.
