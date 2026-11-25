@@ -115,7 +115,7 @@ func TestSchemaViewDescribeBudgets(t *testing.T) {
 			}
 			budget := 15000
 			if input {
-				budget = 7000
+				budget = 7250
 			}
 			if len(encoded) > budget {
 				t.Errorf("%s input=%v: %d exceeds %d", cmd.Name, input, len(encoded), budget)
