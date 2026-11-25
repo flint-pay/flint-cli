@@ -78,11 +78,11 @@ Merchant resources:
   return-reasons                      return-receipts                     return-resolutions
   returns                             risk-lists                          risk-previews
   risk-rules                          settings                            shipments
-  subscription-delivery-migrations    subscription-offers                 subscription-plans
-  subscription-previews               subscriptions                       tax-calculation-callbacks
-  tax-connection                      tickets                             webhook-deliveries
-  webhook-endpoints                   webhook-event-types                 webhook-events
-  workload-identities
+  shops                               subscription-delivery-migrations    subscription-offers
+  subscription-plans                  subscription-previews               subscriptions
+  tax-calculation-callbacks           tax-connection                      tickets
+  webhook-deliveries                  webhook-endpoints                   webhook-event-types
+  webhook-events                      workload-identities
 
 Buyer session:
   Set FLINT_ACCESS_TOKEN to the session credential named in command help: a customer session secret (flint_cses_...) or checkout session token (ckat_v1.).

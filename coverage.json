@@ -5914,6 +5914,87 @@
   },
   {
     "method": "GET",
+    "path": "/v1/shops",
+    "operation_id": "listShops",
+    "classification": "resource",
+    "commands": [
+      "shops.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/shops",
+    "operation_id": "createShop",
+    "classification": "resource",
+    "commands": [
+      "shops.create"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/shops/{shop_id}",
+    "operation_id": "deleteShop",
+    "classification": "resource",
+    "commands": [
+      "shops.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/shops/{shop_id}",
+    "operation_id": "getShop",
+    "classification": "resource",
+    "commands": [
+      "shops.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/shops/{shop_id}",
+    "operation_id": "updateShop",
+    "classification": "resource",
+    "commands": [
+      "shops.update"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/shops/{shop_id}/listings",
+    "operation_id": "listShopListings",
+    "classification": "resource",
+    "commands": [
+      "shops.listings.list"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/shops/{shop_id}/listings/{shop_listing_id}/public",
+    "operation_id": "getShopListingPublic",
+    "classification": "resource",
+    "commands": [
+      "shops.listings.public.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/shops/{shop_id}/public",
+    "operation_id": "getShopPublic",
+    "classification": "resource",
+    "commands": [
+      "shops.public.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/shops/{shop_id}/resolve",
+    "operation_id": "resolveShop",
+    "classification": "resource",
+    "commands": [
+      "shops.resolve"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/subscription-delivery-migrations",
     "operation_id": "listSubscriptionDeliveryMigrations",
     "classification": "resource",

@@ -2667,6 +2667,60 @@
   },
   {
     "method": "GET",
+    "path": "/v1/shops",
+    "operation_id": "listShops",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/shops",
+    "operation_id": "createShop",
+    "classification": "resource"
+  },
+  {
+    "method": "DELETE",
+    "path": "/v1/shops/{shop_id}",
+    "operation_id": "deleteShop",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/shops/{shop_id}",
+    "operation_id": "getShop",
+    "classification": "resource"
+  },
+  {
+    "method": "PATCH",
+    "path": "/v1/shops/{shop_id}",
+    "operation_id": "updateShop",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/shops/{shop_id}/listings",
+    "operation_id": "listShopListings",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/shops/{shop_id}/listings/{shop_listing_id}/public",
+    "operation_id": "getShopListingPublic",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/shops/{shop_id}/public",
+    "operation_id": "getShopPublic",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/shops/{shop_id}/resolve",
+    "operation_id": "resolveShop",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
     "path": "/v1/subscription-plans",
     "operation_id": "listSubscriptionPlans",
     "classification": "resource"

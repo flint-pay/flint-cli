@@ -4707,6 +4707,69 @@
     "audience": "merchant"
   },
   {
+    "name": "shops.create",
+    "operation_id": "createShop",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "shops.delete",
+    "operation_id": "deleteShop",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "shops.get",
+    "operation_id": "getShop",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "shops.list",
+    "operation_id": "listShops",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "shops.listings.list",
+    "operation_id": "listShopListings",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "shops.listings.public.get",
+    "operation_id": "getShopListingPublic",
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "keyless"
+  },
+  {
+    "name": "shops.public.get",
+    "operation_id": "getShopPublic",
+    "kind": "singleton",
+    "section": "merchant_resources",
+    "audience": "keyless"
+  },
+  {
+    "name": "shops.resolve",
+    "operation_id": "resolveShop",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "keyless"
+  },
+  {
+    "name": "shops.update",
+    "operation_id": "updateShop",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "signup",
     "kind": "cli",
     "section": "developer_tools",
