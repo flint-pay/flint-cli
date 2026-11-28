@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "tag": "cli/v0.23.0",
+  "commit": "5ae72ce51f4386fc429aa54e0a19d1864a1c035f",
+  "build_date": "2026-11-25T05:54:21-05:00",
+  "schema_hash": "11673564273bea6a5bb292b50b8c7d92117dd279ada77d0ec82edd5eeb1b367c",
+  "files": {
+    "flint_0.23.0_darwin_amd64.tar.gz": "2d5e7ba556ca7cad5e55e81be4a0ecb41a4cd301d0c58520611c614b6cec16a9",
+    "flint_0.23.0_darwin_arm64.tar.gz": "c690f7015fcb06eb3970ab151a4c0e79d111303567b86e2937b9422d0bad63a6",
+    "flint_0.23.0_linux_amd64.tar.gz": "7b3c1a3d32f992b31ee66ccdf0d66da59da6946aa9dfbfb99ebd18876d8c3e5b",
+    "flint_0.23.0_linux_arm64.tar.gz": "2546152079aaebe9588e2ae19c36616d04263196878dbc37eda8d93d1bf88092",
+    "flint_0.23.0_windows_amd64.zip": "6e2e5d5577d38372c58d818d49b0c1b3fddd1fb5f76b34bfe3bcbcdd16450902",
+    "checksums.txt": "5ba0bd4cfedd7fa024f5ceef7dcf826b4094fdff3f914c2bd77bf53bb467adc6",
+    "npm-packages/flintpay-cli-darwin-arm64-0.23.0.tgz": "7b41b982852dbffa69fa6ee61c67baaf54aa8bd24740feb5323ff1e4dfca3682",
+    "npm-packages/flintpay-cli-darwin-amd64-0.23.0.tgz": "abb252be994e6e9d27f074c7ba0983ed6031787727a5b92b92231929c0b0c9fb",
+    "npm-packages/flintpay-cli-linux-arm64-0.23.0.tgz": "a3e9bf808466eb540f12d21ec4d4fa1a8dff09638c690e65c909bad6ff4e74e6",
+    "npm-packages/flintpay-cli-linux-amd64-0.23.0.tgz": "ba073dba682c7e2803d90f1f966d7bd344ee7bbfa460e8187f8e9155552d84b5",
+    "npm-packages/flintpay-cli-windows-amd64-0.23.0.tgz": "cd77aeceb9775005c6a17aa91f3723a07f2766b0bff6c99fa9c433671a0d8175",
+    "npm-packages/flintpay-cli-0.23.0.tgz": "bab64548f99e39e81857443f7c5d238fee77c6da759a354caa7bee78432f5e47",
+    "flint.rb": "96f05ccccfbff50c12b82dc65fc2bc61477a20c7b2f827f6f5116077030c55c9",
+    "container.oci.tar": "4a1eb9f942b252f1940c04f94bbfd54fe11fea8e36cd9578faed3e909cf3394c",
+    "container-digest.txt": "b77225d6c2bdabd8a9957034b2214058ba6f843ac13df6f4fc44c1108a291776"
+  },
+  "npm": [
+    {
+      "name": "@flintpay/cli-darwin-arm64",
+      "filename": "npm-packages/flintpay-cli-darwin-arm64-0.23.0.tgz",
+      "integrity": "sha512-vG4QJqGC22+tPObI6XSBrWKxt49l0BaaFk1Xo6prKjXYUyxr/jU7k/q3tszm5ivpSEUp38h4uenCr/OQRo8eYA=="
+    },
+    {
+      "name": "@flintpay/cli-darwin-amd64",
+      "filename": "npm-packages/flintpay-cli-darwin-amd64-0.23.0.tgz",
+      "integrity": "sha512-shN8vNuj113Df0mH90jhqQBa+hPO5IbuegBnM7pPZuqtu5Ksi6t5pCKSO4mtlBIitTyUxvnoX2lrDbo28nr6ZQ=="
+    },
+    {
+      "name": "@flintpay/cli-linux-arm64",
+      "filename": "npm-packages/flintpay-cli-linux-arm64-0.23.0.tgz",
+      "integrity": "sha512-SNUbXtDz8Av2szCKIjEZfZ6pGkcKlJMNm/tNE2sdyvXcROLMpw0zrGHa5TtrADF3E152V5GXZFZB3T+W68MNTg=="
+    },
+    {
+      "name": "@flintpay/cli-linux-amd64",
+      "filename": "npm-packages/flintpay-cli-linux-amd64-0.23.0.tgz",
+      "integrity": "sha512-0lOH+TJskIvQazfkhjtcRMS19ofrlo8yXGZjCpbu8j4joCMKLE2Utawgj0Ok1je63u+cTxXQClV4UuBukgjCEg=="
+    },
+    {
+      "name": "@flintpay/cli-windows-amd64",
+      "filename": "npm-packages/flintpay-cli-windows-amd64-0.23.0.tgz",
+      "integrity": "sha512-9SV+Uw+PiwGDvO+sOuDRNqHL3LQxlL6T+optDY40x/sMFsctI+0GjhEYyPA4sKioFD9lIfen4fDbXDfaG1iIDg=="
+    },
+    {
+      "name": "@flintpay/cli",
+      "filename": "npm-packages/flintpay-cli-0.23.0.tgz",
+      "integrity": "sha512-FVp26/u+sj67JYN/W++hZuhXy9I1MUanw8Rpxye2M77Cwl4h2qymETxsPJvhRrkZGCZfw68EDa5WzRNwrZAjww=="
+    }
+  ],
+  "container": {
+    "image": "ghcr.io/flint-pay/flint-cli",
+    "digest": "sha256:d869befe4baa3fe923f636d14dfb808ef33f7edcfeddeddcdc80125ecdc89114"
+  }
+}
