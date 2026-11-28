@@ -230,6 +230,9 @@ func (a *App) executeListen(ctx context.Context, _ *Command, opts Options, req p
 				continue
 			}
 			if !retryable {
+				if openErr.Param == "event_type" && len(source.selected) > 0 {
+					openErr.Message += " Requested event types: " + strings.Join(source.selected, ", ") + ". See flint schema events."
+				}
 				return returnWithCheckpoint(openErr)
 			}
 			if e := reconnect(openErr); e != nil {

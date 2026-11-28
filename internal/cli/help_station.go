@@ -228,8 +228,7 @@ func (a *App) localSupportOpen(cmd *Command, opts Options) int {
 	}}, cmd, opts)
 }
 
-// Support can open a composer without a credential. A saved OAuth session
-// supplies the API origin when there is no configured override.
+// Support can open a composer without a credential. Saved credentials can supply the API origin.
 func (a *App) supportLinkContext(opts Options) (baseURL, environment string) {
 	baseURL = a.configuredAPIBaseURL()
 	resolved, _, err := a.resolveConfig(opts)
@@ -246,6 +245,9 @@ func (a *App) supportLinkContext(opts Options) (baseURL, environment string) {
 			return baseURL, ""
 		}
 		return c.BaseURL, c.Auth.Environment
+	}
+	if bound, e := a.apiKeyBaseURL(resolved.ProfileName, key); e == nil {
+		baseURL = bound
 	}
 	environment, _ = credentialEnvironment(key)
 	return baseURL, environment

@@ -99,6 +99,11 @@ func (a *App) localConfigGet(cmd *Command, opts Options) int {
 	if source == "" {
 		source = "none"
 	}
+	if source == "file" || source == "keychain" {
+		if _, err := credentialEnvironment(raw); err == nil {
+			baseURL, _ = a.apiKeyBaseURL(resolved.ProfileName, raw)
+		}
+	}
 	if isOAuthCredential(raw) {
 		if credential, e := decodeOAuthCredential(raw); e == nil {
 			source = "oauth_session"
@@ -327,16 +332,22 @@ func (a *App) localAuthImport(cmd *Command, opts Options) int {
 	if intentErr := validateResolvedCredentialIntent(authContext, opts, resolved, ""); intentErr != nil {
 		return a.fail(intentErr, opts)
 	}
-	if e := a.saveAuthenticatedCredential(resolved.ProfileName, key, authContext); e != nil {
+	if e := a.saveAuthenticatedCredential(resolved.ProfileName, key, authContext, baseURL); e != nil {
 		return a.fail(e, opts)
 	}
 	return a.outputLocal(map[string]any{"data": authContext}, cmd, opts)
 }
 
-func (a *App) saveAuthenticatedCredential(profile, key string, auth AuthContext) *CLIError {
+func (a *App) saveAuthenticatedCredential(profile, key string, auth AuthContext, apiBaseURL ...string) *CLIError {
 	var result *CLIError
 	err := a.withConfigLock(func() error {
-		result = a.saveAuthenticatedCredentialUnlocked(profile, key, auth)
+		result = a.saveCredentialProfileUnlocked(profile, key, func(p Profile) Profile {
+			p.APIBaseURL = ""
+			if len(apiBaseURL) > 0 {
+				p.APIBaseURL = apiBaseURL[0]
+			}
+			return profileWithAuth(p, auth)
+		})
 		if result != nil {
 			return result
 		}
@@ -355,10 +366,6 @@ func profileWithAuth(p Profile, auth AuthContext) Profile {
 	p.MerchantID = auth.MerchantID
 	p.SandboxID = auth.SandboxID
 	return p
-}
-
-func (a *App) saveAuthenticatedCredentialUnlocked(profile, key string, auth AuthContext) *CLIError {
-	return a.saveCredentialProfileUnlocked(profile, key, func(p Profile) Profile { return profileWithAuth(p, auth) })
 }
 
 func (a *App) saveReauthorizedCredentialUnlocked(resolved ResolvedConfig, key string, auth AuthContext) *CLIError {
@@ -735,7 +742,7 @@ func (a *App) localInit(cmd *Command, opts Options) int {
 		return a.fail(credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the credential.", err), opts)
 	}
 	if key == "" {
-		return a.outputLocal(map[string]any{"data": map[string]any{"authenticated": false, "recommended_auth": "flint login", "existing_account": "flint login", "manual_api_key": "flint auth import", "headless_api_key": "Set FLINT_API_KEY", "new_account": "flint signup", "dashboard_api_keys_url": dashboardAPIKeysURL}}, cmd, opts)
+		return a.outputLocal(map[string]any{"data": map[string]any{"authenticated": false, "recommended_auth": "flint login", "existing_account": "flint login", "manual_api_key": "flint auth import", "headless_api_key": "Set FLINT_API_KEY", "new_account": "flint signup", "dashboard_api_keys_url": dashboardURL(a.configuredAPIBaseURL(), "/developers/api-keys")}}, cmd, opts)
 	}
 	ctx := withOAuthContext(a.commandContext(), resolved.ContextID)
 	_, _, envelope, authErr := a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, key, opts.Debug)
@@ -846,7 +853,7 @@ func (a *App) doctorChecks(opts Options) (checks []map[string]any, exit int, inf
 	}
 	if e != nil {
 		switch e.Code {
-		case "CREDENTIAL_FORMAT_INVALID", "INVALID_CREDENTIAL", "INVALID_OAUTH_CREDENTIAL", "OAUTH_SERVER_MISMATCH", "CREDENTIAL_LOOKUP_FAILED", "KEYCHAIN_WRITE_FAILED", "OAUTH_REFRESH_FAILED", "OAUTH_SESSION_CHANGED":
+		case "API_KEY_SERVER_MISMATCH", "API_KEY_SERVER_REQUIRED", "API_KEY_PROFILE_CHANGED", "CREDENTIAL_FORMAT_INVALID", "INVALID_CREDENTIAL", "INVALID_OAUTH_CREDENTIAL", "OAUTH_SERVER_MISMATCH", "CREDENTIAL_LOOKUP_FAILED", "KEYCHAIN_WRITE_FAILED", "OAUTH_REFRESH_FAILED", "OAUTH_SESSION_CHANGED":
 			checks = append(checks, map[string]any{"name": "authentication", "status": "fail", "fix": e.Message})
 			return checks, e.ExitCode, info
 		}

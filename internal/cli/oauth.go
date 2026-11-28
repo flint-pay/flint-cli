@@ -413,9 +413,9 @@ func (a *App) fetchCredentialContext(ctx context.Context, timeout time.Duration,
 		return raw, base, envelope, e
 	}
 	if !isOAuthCredential(raw) {
-		base, err := a.baseURLForCredential(raw)
-		if err != nil {
-			return "", "", authContextEnvelope{}, invalidCredentialError(raw, err)
+		base, baseErr := a.apiKeyBaseURL(profile, raw)
+		if baseErr != nil {
+			return "", "", authContextEnvelope{}, baseErr
 		}
 		auth, e := fetch(base, raw, debug)
 		return raw, base, auth, e

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"runtime"
 	"strings"
@@ -15,6 +16,14 @@ import (
 )
 
 const dashboardAPIKeysURL = "https://app.withflintpay.com/developers/api-keys"
+
+func dashboardURL(apiBaseURL, path string) string {
+	parsed, err := url.Parse(apiBaseURL)
+	if err == nil && parsed.Hostname() == stagingAPIHost {
+		return "https://app.staging.withflintpay.com" + path
+	}
+	return "https://app.withflintpay.com" + path
+}
 
 func (a *App) commandContext() context.Context {
 	if a.Context != nil {
@@ -123,6 +132,7 @@ func (a *App) Run(argv []string) int {
 		}
 	}
 	authContext := authEnvelope.Data
+	authContext.apiBaseURL = baseURL
 	a.observeCachedAuthContext(authContext)
 	if a.mcpAuth != nil && !opts.DryRunClient() && authContext.AuthType != "" && authContext.AuthType != "none" && authContext.AuthType != "session" {
 		a.mcpAuth.store(authContext)

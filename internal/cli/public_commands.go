@@ -40,6 +40,9 @@ func publicAPICommands() []*Command {
 			destructive := operation.FlintDestructive
 			command := apiCommand(name, strings.TrimSpace(operation.Summary), upper, path, operation.OperationID, requestSchemaName(operation.RequestBody), responseSchemaName(operation.Responses), arguments, opindex.RouteMutates(upper, operation.OperationID, operation.FlintRouteClass), false, destructive, upper == "GET" && kind != "collection")
 			command.Follow = overlay.Follow
+			if operation.OperationID == "listSandboxes" {
+				command.Description = "List sandboxes (requires a live credential)"
+			}
 			if command.Follow {
 				command.Arguments = append(command.Arguments, flag("follow", followBooleanType, "", "", "Follow recorded requests every 2 seconds. Self-read scopes show only this key's requests. With --created-after, backfill before following.", false))
 			}

@@ -57,6 +57,16 @@ func TestScopeKeyModesGeneratedCommands(t *testing.T) {
 				t.Run(name+"/"+authType+"/"+environment, func(t *testing.T) {
 					auth := AuthContext{AuthType: authType, Environment: environment, OAuthSessionID: "session_test", ContextID: "ctx_test", Scopes: []string{"customers.read"}}
 					e := commandPermissionError(cmd, auth, "default")
+					if name == "sandboxes.list" && normalizeEnvironment(environment) == "sandbox" {
+						if e == nil || e.Code != "LIVE_MODE_REQUIRED" || e.ExitCode != ExitAuth {
+							t.Fatalf("sandbox listing permission error = %#v", e)
+						}
+						auth.Scopes = allTestScopes()
+						if e := commandPermissionError(cmd, auth, "default"); e == nil || e.Code != "LIVE_MODE_REQUIRED" {
+							t.Fatalf("sandbox scope grant should still require live mode: %#v", e)
+						}
+						return
+					}
 					if e == nil || e.Code != "INSUFFICIENT_SCOPE" || e.ExitCode != ExitAuth {
 						t.Fatalf("permission error = %#v", e)
 					}
@@ -171,14 +181,22 @@ func TestScopeKeyModesStopGeneratedRequests(t *testing.T) {
 				}
 				var result struct {
 					Error struct {
-						Code    string           `json:"code"`
-						Details []map[string]any `json:"details"`
+						Code    string          `json:"code"`
+						Details json.RawMessage `json:"details"`
 					} `json:"error"`
 				}
 				if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 					t.Fatal(err)
 				}
-				if result.Error.Code != "INSUFFICIENT_SCOPE" || (result.Error.Details[0]["allowed_key_modes"] != nil) != (environment == "sandbox" && args[0] == "partner-apps") || targetRequests != 0 {
+				if environment == "sandbox" && args[0] == "sandboxes" {
+					var detail map[string]any
+					if err := json.Unmarshal(result.Error.Details, &detail); err != nil || result.Error.Code != "LIVE_MODE_REQUIRED" || detail["reason"] != "live_mode_required" || targetRequests != 0 {
+						t.Fatalf("incorrect live mode result: %s", stdout)
+					}
+					return
+				}
+				var details []map[string]any
+				if err := json.Unmarshal(result.Error.Details, &details); err != nil || len(details) != 1 || result.Error.Code != "INSUFFICIENT_SCOPE" || (details[0]["allowed_key_modes"] != nil) != (environment == "sandbox" && args[0] == "partner-apps") || targetRequests != 0 {
 					t.Fatalf("incorrect permission result: %s", stdout)
 				}
 			})
@@ -236,6 +254,12 @@ func TestScopeKeyModesSandboxReadAlternative(t *testing.T) {
 			e := commandPermissionError(cmd, AuthContext{AuthType: authType, Environment: environment, OAuthSessionID: "session_test", ContextID: "ctx_test"}, "default")
 			if e == nil {
 				t.Fatal("missing permission error")
+			}
+			if environment == "sandbox" {
+				if e.Code != "LIVE_MODE_REQUIRED" || strings.Contains(e.Message, "reauth") {
+					t.Fatalf("sandbox listing should explain its live credential requirement: %#v", e)
+				}
+				continue
 			}
 			details := scopeErrorDetail(t, e)
 			if details["reason"] != "scope_not_granted" || details["allowed_key_modes"] != nil {

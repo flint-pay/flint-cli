@@ -116,7 +116,11 @@ func buildBodyArguments(operation openAPIOperation, existing []Arg) []Arg {
 			arg.Description += " Accepts RFC3339, calendar dates in the reporting timezone, now, +30d or -2h; relative body times require a sign."
 		}
 		if arg.Nullable {
-			arg.Description += " Use null to clear."
+			if strings.HasPrefix(operation.OperationID, "createShop") {
+				arg.Description = strings.ReplaceAll(arg.Description, " Send null to clear it.", "")
+			} else if !strings.Contains(strings.ToLower(arg.Description), "null to clear") {
+				arg.Description += " Use null to clear."
+			}
 		}
 		if resolved.Variants != nil {
 			arg.Variants = resolved.Membership[name]

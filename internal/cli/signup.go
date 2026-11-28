@@ -250,6 +250,7 @@ func (a *App) runSignup(opts Options) int {
 		p.Environment = "sandbox"
 		p.SandboxID = sandboxID
 		p.APIKeyID = apiKeyID
+		p.APIBaseURL = baseURL
 		if merchant, ok := firstStringAt(created.Value, "data.merchant_id"); ok {
 			p.MerchantID = merchant
 		}

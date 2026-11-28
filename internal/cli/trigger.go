@@ -12,7 +12,7 @@ import (
 )
 
 func triggerCommand() *Command {
-	return &Command{Name: "trigger", Path: pathWithFlint("trigger"), Local: true, AuthRequired: true, Mutation: true, MCPHidden: true, Description: "Create sandbox resources that produce a webhook event; no automatic cleanup (reset the sandbox when done)", Arguments: []Arg{{Name: "event_type", Type: "string", Positional: 1, Description: "Primary event to produce"}, {Name: "list", Flag: "--list", Type: "boolean", Description: "List supported events offline"}}, Examples: ex("flint trigger --list", "flint trigger order.paid", "flint trigger dispute.won --for 2m", "flint trigger test_clock.ready --for 5m")}
+	return &Command{Name: "trigger", Path: pathWithFlint("trigger"), Local: true, AuthRequired: true, Mutation: true, MCPHidden: true, Description: "Create sandbox resources that produce a webhook event; no automatic cleanup (reset the sandbox when done)", Arguments: []Arg{{Name: "event_type", Type: "string", Positional: 1, Description: "Primary event to produce"}, {Name: "list", Flag: "--list", Type: "boolean", Description: "List supported events offline"}, {Name: "for", Flag: "--for", Type: "duration", Description: "Maximum time to wait for the event recipe"}}, Examples: ex("flint trigger --list", "flint trigger order.paid", "flint trigger dispute.won --for 2m", "flint trigger test_clock.ready --for 5m")}
 }
 
 func (a *App) localTrigger(cmd *Command, opts Options) int {

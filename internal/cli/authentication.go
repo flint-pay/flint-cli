@@ -273,7 +273,7 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 			return "", baseURL, envelope, nil
 		}
 		e := configError("API_KEY_REQUIRED", missingCredentialMessage(resolved.ProfileName), nil)
-		e.Details = map[string]any{"remediation": map[string]any{"next_actions": []any{map[string]any{"command": "flint auth login"}, map[string]any{"command": "flint auth import", "url": dashboardAPIKeysURL}, map[string]any{"command": "flint signup"}}}}
+		e.Details = map[string]any{"remediation": map[string]any{"next_actions": []any{map[string]any{"command": "flint auth login"}, map[string]any{"command": "flint auth import", "url": dashboardURL(a.configuredAPIBaseURL(), "/developers/api-keys")}, map[string]any{"command": "flint signup"}}}}
 		return "", "", envelope, e
 	}
 	if key == workloadCredential {
@@ -331,9 +331,9 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 	if resolved.ContextID != "" {
 		return "", "", envelope, contextSessionRequired()
 	}
-	baseURL, err := a.baseURLForCredential(key)
-	if err != nil {
-		return "", "", envelope, invalidCredentialError(key, err)
+	baseURL, baseErr := a.apiKeyBaseURL(resolved.ProfileName, key)
+	if baseErr != nil {
+		return "", "", envelope, baseErr
 	}
 	if opts.DryRun == "client" {
 		mode, err := credentialEnvironment(key)

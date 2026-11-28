@@ -208,7 +208,7 @@ func printArgumentHelp(w io.Writer, cmd *Command, arg Arg) {
 	}
 	if len(arg.Enum) > 12 {
 		if arg.Name == "event_type" || arg.BodyPath == "enabled_events" {
-			fmt.Fprintf(w, "    %d values: see flint help events.\n", len(arg.Enum))
+			fmt.Fprintln(w, "    See flint schema events for webhook event types.")
 		} else {
 			fmt.Fprintf(w, "    %d values: flint schema command %s --output json\n", len(arg.Enum), cmd.CanonicalName)
 		}

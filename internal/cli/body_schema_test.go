@@ -499,3 +499,23 @@ func TestPromotionRuleAttributeValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestRefreshedCheckoutSchemaAcceptsCustomFields(t *testing.T) {
+	command, ok := NewRegistry().ByName("checkout-sessions.create")
+	if !ok {
+		t.Fatal("missing checkout-sessions.create")
+	}
+	body := map[string]any{
+		"type": "quick_pay",
+		"quick_pay_item": map[string]any{
+			"name":         "Consulting",
+			"amount_money": map[string]any{"amount": json.Number("2500"), "currency": "USD"},
+		},
+		"custom_fields": []any{map[string]any{
+			"custom_field_type": "text", "key": "po_number", "label": "PO", "required": true,
+		}},
+	}
+	if _, e := validateRequestBody(command, "input", body); e != nil {
+		t.Fatalf("a current checkout field was rejected: %v", e)
+	}
+}

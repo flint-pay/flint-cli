@@ -56,6 +56,7 @@ func operationOverlays() map[string]operationOverlay {
 		"listShops":                            {Examples: ex("flint shops list --page-size 25")},
 		"updateShop":                           {Examples: ex("flint shops update shop_123 --status inactive", "flint shops update shop_123 --input shop-listings.json --expected-version 3")},
 		"deleteShop":                           {Examples: ex("flint shops delete shop_123 --confirm")},
+		"resolveShop":                          {Examples: ex("flint shops resolve shop_00000000000000000000000001 --input cart.json")},
 		"listShopListings":                     {Examples: ex("flint shops listings list shop_123")},
 		"createPayout":                         {Arguments: []Arg{flag("amount", "integer", "amount_money.amount", "", "Payout amount in the smallest currency unit", false), flag("currency", "string", "amount_money.currency", "", "Uppercase ISO 4217 currency code, such as USD", false)}, Examples: ex("flint payouts create --amount 500 --currency USD --idempotency-key payout-1 --confirm")},
 		"createProduct":                        {Arguments: []Arg{flag("price", "integer", "default_variant.unit_price_money.amount", "", "Default variant price in the smallest currency unit for a simple product", false), flag("currency", "string", "default_variant.unit_price_money.currency", "", "Uppercase ISO 4217 currency code, such as USD", false)}, Examples: ex("flint products create --name Consultation --product-type service --variant-mode simple --price 5000 --currency USD", "flint products create --input product.json")},

@@ -23,6 +23,7 @@ type Config struct {
 }
 
 type Profile struct {
+	APIBaseURL        string           `json:"api_base_url,omitempty"`
 	CredentialStore   string           `json:"credential_store,omitempty"`
 	CredentialPresent *bool            `json:"credential_present,omitempty"`
 	PendingSignup     *SignupChallenge `json:"pending_signup,omitempty"`

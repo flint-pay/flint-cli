@@ -23,6 +23,7 @@ import (
 )
 
 type AuthContext struct {
+	apiBaseURL         string
 	SelectedContext    bool     `json:"-"`
 	OAuthSessionID     string   `json:"oauth_session_id,omitempty"`
 	ContextID          string   `json:"context_id,omitempty"`
@@ -100,6 +101,66 @@ func (a *App) baseURLForCredential(key string) (string, error) {
 		return validateBaseURL(value)
 	}
 	return defaultAPIBaseURL, nil
+}
+
+// apiKeyBaseURL reads the saved key and its destination under the same lock.
+func (a *App) apiKeyBaseURL(profile, key string) (string, *CLIError) {
+	if _, err := credentialEnvironment(key); err != nil {
+		return "", invalidCredentialError(key, err)
+	}
+	if key == credentialFromEnvironment() {
+		base, err := a.baseURLForCredential(key)
+		if err != nil {
+			return "", invalidCredentialError(key, err)
+		}
+		return base, nil
+	}
+	var base string
+	var bindingErr *CLIError
+	if err := a.withConfigLock(func() error {
+		current, err := a.loadSavedCredentialUnlocked(profile)
+		if err != nil {
+			return err
+		}
+		if current != key {
+			bindingErr = configError("API_KEY_PROFILE_CHANGED", "The saved API key changed during this command. Run the command again.", nil)
+			return nil
+		}
+		cfg, err := a.loadConfig()
+		if err == nil {
+			base = cfg.Profiles[profile].APIBaseURL
+			if a.mcpContext != nil && a.mcpContext.saved && base != a.mcpContext.apiKeyBaseURL {
+				bindingErr = mcpContextChanged()
+			}
+		}
+		return err
+	}); err != nil {
+		return "", credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the saved API key's server.", err)
+	}
+	if bindingErr != nil {
+		return "", bindingErr
+	}
+	override := a.configuredAPIBaseURL()
+	if override != "" {
+		overrideURL, err := validateBaseURL(override)
+		if err != nil {
+			return "", invalidCredentialError(key, err)
+		}
+		if base == "" {
+			return overrideURL, nil
+		}
+		if base != overrideURL {
+			return "", configError("API_KEY_SERVER_MISMATCH", "The saved API key belongs to "+terminalSafe(base)+". Unset FLINT_BASE_URL or select a profile for the intended server.", nil)
+		}
+	}
+	if base == "" {
+		return "", configError("API_KEY_SERVER_REQUIRED", "This profile's API key has no saved server. Set FLINT_BASE_URL to the intended API and run flint auth import again.", nil)
+	}
+	validated, err := validateBaseURL(base)
+	if err != nil {
+		return "", configError("INVALID_BASE_URL", err.Error(), err)
+	}
+	return validated, nil
 }
 
 func (a *App) configuredAPIBaseURL() string {
