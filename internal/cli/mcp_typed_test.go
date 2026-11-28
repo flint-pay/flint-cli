@@ -10,11 +10,11 @@ import (
 
 func TestMCPTypedBudgetsAndContract(t *testing.T) {
 	app := discoveryFixture(t)
-	// The full catalog includes license and shop operations. Keep scoped and per-tool limits fixed.
+	// The full catalog includes import and pricing operations. Keep scoped and per-tool limits fixed.
 	for _, scope := range []struct {
 		name   string
 		budget int
-	}{{"all", 905000}, {"orders", 60000}} {
+	}{{"all", 920000}, {"orders", 60000}} {
 		policy := app.mcpPolicy(mcpServeOptions(t, "--tools", scope.name))
 		tools, e := app.mcpAdvertisedTools(policy, latestMCPProtocolVersion)
 		if e != nil {

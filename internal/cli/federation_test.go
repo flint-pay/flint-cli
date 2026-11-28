@@ -310,7 +310,7 @@ func TestFederationPrecedenceAndContexts(t *testing.T) {
 	}
 	t.Setenv("FLINT_WORKLOAD_IDENTITY_ID", "")
 	app.LoadCredential = func(string) (string, error) { return "flint_test_saved", nil }
-	if key, source, err := app.resolveCheckCredential("default"); err != nil || key != "flint_test_saved" || source != "keychain" {
+	if selection, err := app.resolveCheckCredential("default"); err != nil || selection.value != "flint_test_saved" || selection.source != "keychain" {
 		t.Fatal("saved credential fallback failed", err)
 	}
 	resolved, _, err = app.resolveConfig(defaultOptions())

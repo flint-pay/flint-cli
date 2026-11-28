@@ -295,3 +295,95 @@ func TestCredentialStoreLogoutRejectsDifferentBackend(t *testing.T) {
 		})
 	}
 }
+
+func TestSavedAPIKeyKeepsItsServerAfterImport(t *testing.T) {
+	var requests, publicProbes atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/openapi.json" {
+			if r.Header.Get("Authorization") != "" {
+				t.Error("doctor sent credentials to the public version endpoint")
+			}
+			publicProbes.Add(1)
+			w.Header().Set("Flint-Version", "2026-02-01")
+			return
+		}
+		if r.URL.Path != "/v1/auth-context" {
+			t.Errorf("unexpected request: %s", r.URL.Path)
+		}
+		requests.Add(1)
+		fmt.Fprint(w, authContextJSON("sandbox"))
+	}))
+	defer server.Close()
+	app, stdout, stderr := testApp(t, server.URL)
+	t.Setenv("FLINT_API_KEY", "")
+	t.Setenv("FLINT_BASE_URL", server.URL)
+	app.BaseURL = ""
+	const key = "flint_test_fixture_server_binding"
+	app.Stdin = strings.NewReader(key + "\n")
+	if exit := app.Run([]string{"auth", "import", "--credential-store", "file", "--stdin", "--output", "json"}); exit != ExitOK {
+		t.Fatalf("import: exit=%d stderr=%s", exit, stderr)
+	}
+	app.invalidateAuthContext(server.URL, key)
+	t.Setenv("FLINT_BASE_URL", "")
+	stdout.Reset()
+	if exit := app.Run([]string{"whoami", "--output", "json"}); exit != ExitOK {
+		t.Fatalf("whoami: exit=%d stdout=%s", exit, stdout)
+	}
+	t.Setenv("FLINT_BASE_URL", "http://127.0.0.1:9")
+	stdout.Reset()
+	if exit := app.Run([]string{"whoami", "--output", "json"}); exit != ExitAuth || !strings.Contains(stdout.String(), "API_KEY_SERVER_MISMATCH") {
+		t.Fatalf("conflicting server: exit=%d stdout=%s", exit, stdout)
+	}
+	if requests.Load() != 2 {
+		t.Fatalf("expected only the import and whoami requests, got %d", requests.Load())
+	}
+	stdout.Reset()
+	if exit := app.Run([]string{"doctor", "--output", "json"}); exit != ExitAuth ||
+		!strings.Contains(stdout.String(), `"api_base_url":"`+server.URL+`"`) ||
+		publicProbes.Load() != 1 || requests.Load() != 2 {
+		t.Fatalf("doctor with conflicting server: exit=%d probes=%d requests=%d stdout=%s", exit, publicProbes.Load(), requests.Load(), stdout)
+	}
+}
+
+func TestSavedAPIKeyServersStayWithCredentialStores(t *testing.T) {
+	const fileKey = "flint_test_file_profile"
+	const keyringKey = "flint_test_keyring_profile"
+	start := func(expectedKey string) *httptest.Server {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") != "Bearer "+expectedKey {
+				t.Error("server received a key from another credential store")
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			fmt.Fprint(w, authContextJSON("sandbox"))
+		}))
+		t.Cleanup(server.Close)
+		return server
+	}
+	fileServer := start(fileKey)
+	keyringServer := start(keyringKey)
+	app, out, stderr := testApp(t, fileServer.URL)
+	var stored string
+	app.LoadCredential = func(string) (string, error) { return stored, nil }
+	app.StoreCredential = func(_, key string) error { stored = key; return nil }
+	t.Setenv("FLINT_API_KEY", "")
+	for _, tc := range []struct{ store, key, base string }{
+		{"file", fileKey, fileServer.URL},
+		{"keyring", keyringKey, keyringServer.URL},
+	} {
+		t.Setenv("FLINT_BASE_URL", tc.base)
+		app.Stdin = strings.NewReader(tc.key + "\n")
+		if exit := app.Run([]string{"auth", "import", "--credential-store", tc.store, "--stdin", "--output", "json"}); exit != ExitOK {
+			t.Fatalf("import with %s store: exit=%d stderr=%s", tc.store, exit, stderr)
+		}
+	}
+	t.Setenv("FLINT_BASE_URL", "")
+	app.invalidateAuthContext(fileServer.URL, fileKey)
+	out.Reset()
+	if exit := app.Run([]string{"whoami", "--credential-store", "file", "--output", "json"}); exit != ExitOK {
+		t.Fatalf("file store override: exit=%d output=%s", exit, out)
+	}
+	if !strings.Contains(out.String(), fileServer.URL) {
+		t.Fatalf("the selected key's server is missing from whoami: %s", out)
+	}
+}

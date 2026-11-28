@@ -7,11 +7,17 @@ import (
 func configSource(key, source, projectPath string) string {
 	switch source {
 	case "flag":
+		if key == "sandbox_guard" {
+			return "--sandbox"
+		}
 		if key == "merchant_guard" {
 			return "--merchant"
 		}
 		return "--" + key
 	case "environment":
+		if key == "sandbox_guard" {
+			return "FLINT_SANDBOX"
+		}
 		if key == "merchant_guard" {
 			return "FLINT_MERCHANT"
 		}

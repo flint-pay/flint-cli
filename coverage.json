@@ -1531,6 +1531,15 @@
   },
   {
     "method": "GET",
+    "path": "/v1/gift-card-import-allowances",
+    "operation_id": "listGiftCardImportAllowances",
+    "classification": "resource",
+    "commands": [
+      "gift-card-import-allowances.list"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/gift-card-loads",
     "operation_id": "listGiftCardLoads",
     "classification": "resource",
@@ -1743,6 +1752,69 @@
     "classification": "resource",
     "commands": [
       "gift-cards.unfreeze"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/imports",
+    "operation_id": "listImports",
+    "classification": "resource",
+    "commands": [
+      "imports.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/imports",
+    "operation_id": "createImport",
+    "classification": "resource",
+    "commands": [
+      "imports.create"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/imports/{import_id}",
+    "operation_id": "getImport",
+    "classification": "resource",
+    "commands": [
+      "imports.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/imports/{import_id}/cancel",
+    "operation_id": "cancelImport",
+    "classification": "resource",
+    "commands": [
+      "imports.cancel"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/imports/{import_id}/entries",
+    "operation_id": "listImportEntries",
+    "classification": "resource",
+    "commands": [
+      "imports.entries.list"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/imports/{import_id}/entries",
+    "operation_id": "createImportEntries",
+    "classification": "resource",
+    "commands": [
+      "imports.entries.create"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/imports/{import_id}/start",
+    "operation_id": "startImport",
+    "classification": "resource",
+    "commands": [
+      "imports.start"
     ]
   },
   {
@@ -3089,6 +3161,15 @@
     "classification": "resource",
     "commands": [
       "me.payment-methods.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/price-previews",
+    "operation_id": "createMePricePreview",
+    "classification": "resource",
+    "commands": [
+      "me.price-previews.create"
     ]
   },
   {
@@ -4812,6 +4893,15 @@
     "classification": "resource",
     "commands": [
       "price-lists.prices.update"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/price-previews",
+    "operation_id": "createPricePreview",
+    "classification": "resource",
+    "commands": [
+      "price-previews.create"
     ]
   },
   {

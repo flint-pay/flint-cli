@@ -1274,6 +1274,13 @@
     "audience": "merchant"
   },
   {
+    "name": "gift-card-import-allowances.list",
+    "operation_id": "listGiftCardImportAllowances",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
     "name": "gift-card-loads.create",
     "operation_id": "createGiftCardLoad",
     "kind": "collection",
@@ -1458,6 +1465,55 @@
     "kind": "cli",
     "section": "developer_tools",
     "audience": "local"
+  },
+  {
+    "name": "imports.cancel",
+    "operation_id": "cancelImport",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "imports.create",
+    "operation_id": "createImport",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "imports.entries.create",
+    "operation_id": "createImportEntries",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "imports.entries.list",
+    "operation_id": "listImportEntries",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "imports.get",
+    "operation_id": "getImport",
+    "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "imports.list",
+    "operation_id": "listImports",
+    "kind": "collection",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "imports.start",
+    "operation_id": "startImport",
+    "kind": "action",
+    "section": "merchant_resources",
+    "audience": "merchant"
   },
   {
     "name": "init",
@@ -2503,6 +2559,13 @@
   {
     "name": "me.payment-methods.list",
     "operation_id": "listMePaymentMethods",
+    "kind": "collection",
+    "section": "buyer_session",
+    "audience": "buyer"
+  },
+  {
+    "name": "me.price-previews.create",
+    "operation_id": "createMePricePreview",
     "kind": "collection",
     "section": "buyer_session",
     "audience": "buyer"
@@ -3813,6 +3876,13 @@
     "name": "price-lists.update",
     "operation_id": "updatePriceList",
     "kind": "item",
+    "section": "merchant_resources",
+    "audience": "merchant"
+  },
+  {
+    "name": "price-previews.create",
+    "operation_id": "createPricePreview",
+    "kind": "collection",
     "section": "merchant_resources",
     "audience": "merchant"
   },

@@ -10,13 +10,14 @@ import (
 // refresh tokens may rotate, but the browser session and requested context stay
 // fixed. API keys must continue to match the exact startup credential.
 type mcpContextPin struct {
-	opts       Options
-	resolved   ResolvedConfig
-	selection  mcpContextSelection
-	credential [32]byte
-	oauth      *oauthIdentity
-	saved      bool
-	err        error
+	opts          Options
+	resolved      ResolvedConfig
+	selection     mcpContextSelection
+	credential    [32]byte
+	apiKeyBaseURL string
+	oauth         *oauthIdentity
+	saved         bool
+	err           error
 }
 
 type mcpContextSelection struct {
@@ -51,6 +52,8 @@ func (a *App) pinMCPContext(opts Options) *mcpContextPin {
 			return err
 		}
 		pin.credential = sha256.Sum256([]byte(raw))
+		p := cfg.Profiles[resolved.ProfileName]
+		pin.apiKeyBaseURL = p.apiKeyServer(a.selectedCredentialStore(resolved.ProfileName, p), raw)
 		if c, e := decodeOAuthCredential(raw); e == nil {
 			pin.oauth = &oauthIdentity{Version: c.Version, BaseURL: c.BaseURL, SessionID: c.SessionID, GrantID: c.Auth.OAuthGrantID}
 			if pin.resolved.ContextID == "" && c.Version == 2 {
@@ -95,7 +98,7 @@ func (a *App) checkMCPContext() *CLIError {
 		}
 		if pin.saved {
 			raw, err := probe.loadSavedCredentialUnlocked(resolved.ProfileName)
-			if err != nil || !pin.acceptsCredential(resolved.ProfileName, raw) {
+			if err != nil || !pin.acceptsCredential(resolved.ProfileName, raw) || (pin.oauth == nil && cfg.Profiles[resolved.ProfileName].apiKeyServer(store, raw) != pin.apiKeyBaseURL) {
 				return mcpContextChanged()
 			}
 		}

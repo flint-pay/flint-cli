@@ -2,8 +2,6 @@ package cli
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -86,8 +84,8 @@ func (a *App) reportingTimezone(ctx context.Context, opts Options, resolved Reso
 	fallback := "Merchant timezone unavailable; using UTC. Calendar filters need access to the merchant profile or a cached timezone for offline dry runs."
 	cachePath := ""
 	if dir, err := a.configDirectory(); err == nil && key != "" {
-		digest := sha256.Sum256([]byte(baseURL + "\x00" + key + "\x00" + resolved.ContextID + "\x00" + resolved.MerchantID + "\x00" + resolved.SandboxID))
-		cachePath = filepath.Join(dir, "reporting-timezone-"+hex.EncodeToString(digest[:])+".json")
+		digest := credentialCacheKey(key, "reporting-timezone", baseURL, resolved.ContextID, resolved.MerchantID, resolved.SandboxID)
+		cachePath = filepath.Join(dir, "reporting-timezone-"+digest+".json")
 		var entry reportingTimezoneCache
 		if raw, err := os.ReadFile(cachePath); err == nil && json.Unmarshal(raw, &entry) == nil {
 			age := a.Now().Sub(entry.StoredAt)

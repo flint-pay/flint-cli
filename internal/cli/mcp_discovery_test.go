@@ -273,7 +273,7 @@ func TestMCPDiscoverySearchAndHelp(t *testing.T) {
 	for _, tc := range []struct {
 		topic  string
 		budget int
-	}{{"", 3000}, {"events", 5500}} {
+	}{{"", 3000}, {"events", 5700}} {
 		value := discoveryData(t, app, policy, "flint_help", map[string]any{"topic": tc.topic})
 		raw, _ := json.Marshal(value)
 		if len(raw) > tc.budget {

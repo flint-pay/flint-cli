@@ -51,6 +51,7 @@ Commands:
   payment-methods delete <payment_method_id>   Delete one of the current buyer's payment methods (customer session secret) DELETE /v1/me/payment-methods/{payment_method_id}
   payment-methods get <payment_method_id>      Get one of the current buyer's payment methods (customer session secret) GET /v1/me/payment-methods/{payment_method_id}
   payment-methods list                         List the current buyer's payment methods (customer session secret) GET /v1/me/payment-methods
+  price-previews create                        Preview catalog prices for the current buyer (customer session secret) POST /v1/me/price-previews
   refunds get <refund_id>                      Get one of the current buyer's refunds (customer session secret) GET /v1/me/refunds/{refund_id}
   refunds list                                 List the current buyer's refunds (customer session secret) GET /v1/me/refunds
   remembered-buyers list                       List the current buyer's remembered buyers (customer session secret) GET /v1/me/remembered-buyers

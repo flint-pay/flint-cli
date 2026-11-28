@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.24.0 (2026-11-28)
+
+- The CLI and local MCP use the current public API schema, including checkout custom fields, platform fee rules, customer marketing consent, and shop buyer fields.
+- Saved API-key profiles use the server where the key was imported or created. Re-import older saved keys with the intended `FLINT_BASE_URL` to bind them.
+- Staging credential guidance links to the staging Dashboard. Sandbox listing explains its live credential requirement up front. Shop listing summaries show the listing ID, name, and price range.
+
 ## 0.23.0 (2026-11-25)
 
 - Create, list, get, update, and archive shops with `flint shops create`, `list`, `get`, `update`, and `delete`. List a shop's listings with `flint shops listings list`.

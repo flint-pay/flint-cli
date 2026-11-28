@@ -92,6 +92,9 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 	if cmd != nil && cmd.OperationID == "listCustomerTaxExemptions" {
 		addFirst("customer_tax_exemption_id")
 	}
+	if cmd != nil && cmd.OperationID == "listShopListings" {
+		addFirst("shop_listing_id")
+	}
 	if cmd != nil && len(columns) == 0 {
 		parts := strings.Split(cmd.CanonicalName, ".")
 		group := parts[0]
@@ -143,6 +146,11 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 		for _, key := range []string{"reason", "coverage", "certificate_number", "start_date", "end_date", "status"} {
 			addFirst(key)
 		}
+	} else if cmd != nil && cmd.OperationID == "listShopListings" {
+		addFirst("resolved_name")
+		addFirst("resolved_price_range")
+		addFirst("product_id")
+		addFirst("bundle_id")
 	} else if cmd != nil && cmd.OperationID == "listTaxRegistrations" {
 		for _, key := range []string{"country", "state", "status", "registration_number_last4", "start_date", "end_date"} {
 			addFirst(key)
@@ -180,6 +188,14 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 					}
 					line[i] = strings.Join(values, ", ")
 				}
+			} else if key == "resolved_price_range" && v != nil {
+				priceRange, _ := v.(map[string]any)
+				minimum, _ := humanMoney(priceRange["min_unit_price_money"])
+				maximum, _ := humanMoney(priceRange["max_unit_price_money"])
+				line[i] = minimum
+				if maximum != "" && maximum != minimum {
+					line[i] = strings.TrimSpace(minimum + " to " + maximum)
+				}
 			} else if text, ok := humanMoney(v); ok {
 				line[i] = text
 			} else if key == "created_at" {
@@ -212,6 +228,12 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 			case "is_default_for_currency":
 				headers[i] = "Default"
 			}
+		}
+		if key == "resolved_price_range" {
+			headers[i] = "Price"
+		}
+		if key == "resolved_name" {
+			headers[i] = "Name"
 		}
 		if key == "pricing_amounts.total_money" {
 			headers[i] = "Total"

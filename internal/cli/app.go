@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"runtime"
 	"strings"
@@ -15,6 +16,14 @@ import (
 )
 
 const dashboardAPIKeysURL = "https://app.withflintpay.com/developers/api-keys"
+
+func dashboardURL(apiBaseURL, path string) string {
+	parsed, err := url.Parse(apiBaseURL)
+	if err == nil && parsed.Hostname() == stagingAPIHost {
+		return "https://app.staging.withflintpay.com" + path
+	}
+	return "https://app.withflintpay.com" + path
+}
 
 func (a *App) commandContext() context.Context {
 	if a.Context != nil {
@@ -123,6 +132,7 @@ func (a *App) Run(argv []string) int {
 		}
 	}
 	authContext := authEnvelope.Data
+	authContext.apiBaseURL = baseURL
 	a.observeCachedAuthContext(authContext)
 	if a.mcpAuth != nil && !opts.DryRunClient() && authContext.AuthType != "" && authContext.AuthType != "none" && authContext.AuthType != "session" {
 		a.mcpAuth.store(authContext)
@@ -399,6 +409,8 @@ func (a *App) printCommandHelp(cmd *Command) {
 		fmt.Fprintln(a.Stdout, "Credential: an API key is optional. Without a credential, supply the license key and product IDs. The first product ID selects the environment.")
 	}
 	switch cmd.OperationID {
+	case "listSandboxes":
+		fmt.Fprintln(a.Stdout, "Use a live credential and pass --live to list sandboxes.")
 	case "revealLicenseKey", "rotateLicenseKeyKey":
 		fmt.Fprintln(a.Stdout, "The response prints a full license key. Keep the output private.")
 	}
@@ -484,6 +496,9 @@ func (a *App) printCommandHelp(cmd *Command) {
 	}
 	if cmd.Stream || cmd.Follow {
 		capabilities = append(capabilities, "--max-events N", "--for DURATION")
+	}
+	if cmd.CanonicalName == "trigger" {
+		capabilities = append(capabilities, "--for DURATION (maximum recipe wait)")
 	}
 	if cmd.Supports.Open {
 		capabilities = append(capabilities, "--open (open the checkout URL in an interactive terminal with human output)")

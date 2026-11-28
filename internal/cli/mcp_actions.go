@@ -174,6 +174,14 @@ func (a *App) mcpCredentialAction(cmd *Command, e *CLIError, opts Options, envir
 	if value, _ := raw["code"].(string); value != "" {
 		code = value
 	}
+	baseURL := a.configuredAPIBaseURL()
+	if a.mcpContext != nil {
+		if a.mcpContext.oauth != nil {
+			baseURL = a.mcpContext.oauth.BaseURL
+		} else if a.mcpContext.apiKeyBaseURL != "" {
+			baseURL = a.mcpContext.apiKeyBaseURL
+		}
+	}
 	switch code {
 	case "MCP_CONTEXT_CHANGED":
 		return mcpUserAction("restart flint mcp serve after checking the intended context and credential. This server cannot follow saved context changes.")
@@ -183,7 +191,7 @@ func (a *App) mcpCredentialAction(cmd *Command, e *CLIError, opts Options, envir
 		return mcpUserAction("set FLINT_API_KEY or FLINT_PROFILE in this server's MCP configuration, or unlock its credential store, then restart the server.")
 	case "IDENTITY_VERIFICATION_REQUIRED":
 		action := mcpUserAction("verify their identity in the Dashboard, then ask the agent to try again.")
-		action["url"] = dashboardAPIKeysURL
+		action["url"] = dashboardURL(baseURL, "/developers/api-keys")
 		return action
 	case "INSUFFICIENT_SCOPE", "INVALID_CREDENTIAL":
 	default:
@@ -218,7 +226,7 @@ func (a *App) mcpCredentialAction(cmd *Command, e *CLIError, opts Options, envir
 		}
 		text += ". Use a live API key, or run flint login --live --new-session, approve live access, and select the returned live context. Configure that credential or context for this MCP server and restart with --allow-live. To update the shared business profile, you can also use the Dashboard."
 		action := mcpUserAction(text)
-		action["url"] = dashboardAPIKeysURL
+		action["url"] = dashboardURL(baseURL, "/developers/api-keys")
 		return action
 	}
 	if mode == "any" && len(eligible) > 0 {
@@ -232,7 +240,7 @@ func (a *App) mcpCredentialAction(cmd *Command, e *CLIError, opts Options, envir
 			return action
 		case "key":
 			action := mcpUserAction("replace FLINT_API_KEY in this server's MCP configuration with a valid key, then restart the server.")
-			action["url"] = dashboardAPIKeysURL
+			action["url"] = dashboardURL(baseURL, "/developers/api-keys")
 			return action
 		default:
 			return mcpUserAction("replace the access token or workload credential this server uses, then restart the server.")
@@ -253,7 +261,7 @@ func (a *App) mcpCredentialAction(cmd *Command, e *CLIError, opts Options, envir
 		return action
 	case "key":
 		action := mcpUserAction("create a restricted API key with scopes " + names + ", set it as FLINT_API_KEY in this server's MCP configuration, then restart the server.")
-		action["url"] = dashboardAPIKeysURL
+		action["url"] = dashboardURL(baseURL, "/developers/api-keys")
 		return action
 	default:
 		return mcpUserAction("grant scopes " + names + " to this workload identity or use an access token with those scopes, then restart the server.")

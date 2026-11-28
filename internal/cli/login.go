@@ -96,7 +96,7 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 			}
 			baseURL = previous.BaseURL
 			if !reauthorize && !booleanRawOption(opts, "new-session") && saved == nil {
-				_, _, envelope, e := a.fetchCredentialContext(withOAuthContext(ctx, resolved.ContextID), opts.Timeout, resolved.ProfileName, previousRaw, false)
+				_, _, envelope, e := a.fetchCredentialContext(withOAuthContext(ctx, resolved.ContextID), opts.Timeout, resolved.ProfileName, credentialSelection{value: previousRaw}, false)
 				expired := e != nil && e.Code == "OAUTH_SESSION_EXPIRED"
 				// A legacy grant has only one context. An authoritative rejection
 				// of its cached token needs a new login, even before local expiry.
@@ -371,7 +371,6 @@ func (a *App) finishBrowserLogin(ctx context.Context, cmd *Command, opts Options
 		if err := a.storeSavedCredential(resolved.ProfileName, string(encoded)); err != nil {
 			return a.fail(a.cleanupOAuth(credential, credentialStoreError("KEYCHAIN_WRITE_FAILED", "Could not save the reauthorized session.", err)), opts)
 		}
-		a.credentialSavedNotice(resolved.ProfileName)
 	}
 	auth, e := a.fetchAuthContext(ctx, baseURL, credential.AccessToken, false)
 	if e != nil {
@@ -418,7 +417,7 @@ func (a *App) finishBrowserLogin(ctx context.Context, cmd *Command, opts Options
 		cleanupErr := a.revokeOAuth(cleanupCtx, previous)
 		cancel()
 		if cleanupErr != nil {
-			fmt.Fprintln(a.Stderr, "Signed in, but the previous session could not be revoked. Revoke it at https://app.withflintpay.com/developers/cli.")
+			fmt.Fprintln(a.Stderr, "Signed in, but the previous session could not be revoked. Revoke it at "+dashboardURL(previous.BaseURL, "/developers/cli")+".")
 		}
 	}
 	next := "flint context list"

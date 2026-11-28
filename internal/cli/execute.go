@@ -234,6 +234,11 @@ func permissionPreview(cmd *Command, authContext AuthContext) map[string]any {
 }
 
 func commandPermissionError(cmd *Command, authContext AuthContext, profile string) *CLIError {
+	if cmd.OperationID == "listSandboxes" && normalizeEnvironment(authContext.Environment) == "sandbox" && authContext.AuthType != "session" {
+		err := cliError(ExitAuth, errorTypeAuthorization, "LIVE_MODE_REQUIRED", "Listing sandboxes requires a live credential. Switch to a live context or use a live API key, then run flint sandboxes list --live.")
+		err.Details = map[string]any{"reason": "live_mode_required"}
+		return err
+	}
 	check := permissionPreview(cmd, authContext)
 	if check["status"] != "fail" {
 		return nil
@@ -286,7 +291,7 @@ func scopeRemediation(auth AuthContext, profile string, required *opindex.ScopeR
 		importCommand += " --live"
 	}
 	if liveRequired {
-		return append(actions, map[string]any{"reason_message": "Use a live key with the required scopes. These scopes cannot be added to a sandbox key or browser context."}, map[string]any{"command": importCommand, "url": scopeDashboardURL(liveOnly)})
+		return append(actions, map[string]any{"reason_message": "Use a live key with the required scopes. These scopes cannot be added to a sandbox key or browser context."}, map[string]any{"command": importCommand, "url": scopeDashboardURL(auth.apiBaseURL, liveOnly)})
 	}
 	if auth.isCLILogin() && auth.OAuthSessionID != "" && auth.ContextID != "" {
 		command := scopeProfileCommand("flint reauth --context "+quoteRemediationArgument(auth.ContextID), profile)
@@ -305,7 +310,7 @@ func scopeRemediation(auth AuthContext, profile string, required *opindex.ScopeR
 		if required.Mode == "any" {
 			message = "Create an API key with at least one of these scopes: " + strings.Join(loginScopes, ", ") + "."
 		}
-		actions = append(actions, map[string]any{"reason_message": message}, map[string]any{"command": importCommand, "url": scopeDashboardURL(loginScopes)})
+		actions = append(actions, map[string]any{"reason_message": message}, map[string]any{"command": importCommand, "url": scopeDashboardURL(auth.apiBaseURL, loginScopes)})
 	}
 	return append(actions, map[string]any{"command": command})
 }
@@ -327,11 +332,12 @@ func appendScopeArguments(command, mode string, scopes []string) string {
 	return command
 }
 
-func scopeDashboardURL(scopes []string) string {
+func scopeDashboardURL(apiBaseURL string, scopes []string) string {
+	destination := dashboardURL(apiBaseURL, "/developers/api-keys")
 	if len(scopes) > 0 {
-		return dashboardAPIKeysURL + "?create=true&scope=" + url.QueryEscape(scopes[0])
+		return destination + "?create=true&scope=" + url.QueryEscape(scopes[0])
 	}
-	return dashboardAPIKeysURL
+	return destination
 }
 
 func activeScopeCredentialOverride() string {

@@ -4537,5 +4537,65 @@
     "path": "/v1/me/license-keys/{license_key_id}/resend",
     "operation_id": "resendMeLicenseKey",
     "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gift-card-import-allowances",
+    "operation_id": "listGiftCardImportAllowances",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/imports",
+    "operation_id": "listImports",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/imports",
+    "operation_id": "createImport",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/imports/{import_id}",
+    "operation_id": "getImport",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/imports/{import_id}/cancel",
+    "operation_id": "cancelImport",
+    "classification": "resource"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/imports/{import_id}/entries",
+    "operation_id": "listImportEntries",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/imports/{import_id}/entries",
+    "operation_id": "createImportEntries",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/imports/{import_id}/start",
+    "operation_id": "startImport",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/me/price-previews",
+    "operation_id": "createMePricePreview",
+    "classification": "resource"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/price-previews",
+    "operation_id": "createPricePreview",
+    "classification": "resource"
   }
 ]

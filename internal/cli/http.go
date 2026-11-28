@@ -23,6 +23,7 @@ import (
 )
 
 type AuthContext struct {
+	apiBaseURL         string
 	SelectedContext    bool     `json:"-"`
 	OAuthSessionID     string   `json:"oauth_session_id,omitempty"`
 	ContextID          string   `json:"context_id,omitempty"`
@@ -100,6 +101,41 @@ func (a *App) baseURLForCredential(key string) (string, error) {
 		return validateBaseURL(value)
 	}
 	return defaultAPIBaseURL, nil
+}
+
+func (a *App) apiKeyBaseURL(selection credentialSelection) (string, *CLIError) {
+	key, base := selection.value, selection.baseURL
+	if _, err := credentialEnvironment(key); err != nil {
+		return "", invalidCredentialError(key, err)
+	}
+	if selection.source == "environment" {
+		base, err := a.baseURLForCredential(key)
+		if err != nil {
+			return "", invalidCredentialError(key, err)
+		}
+		return base, nil
+	}
+	override := a.configuredAPIBaseURL()
+	if override != "" {
+		overrideURL, err := validateBaseURL(override)
+		if err != nil {
+			return "", invalidCredentialError(key, err)
+		}
+		if base == "" {
+			return overrideURL, nil
+		}
+		if base != overrideURL {
+			return "", configError("API_KEY_SERVER_MISMATCH", "The saved API key belongs to "+terminalSafe(base)+". Unset FLINT_BASE_URL or select a profile for the intended server.", nil)
+		}
+	}
+	if base == "" {
+		return "", configError("API_KEY_SERVER_REQUIRED", "This profile's API key has no saved server. Set FLINT_BASE_URL to the intended API and run flint auth import again.", nil)
+	}
+	validated, err := validateBaseURL(base)
+	if err != nil {
+		return "", configError("INVALID_BASE_URL", err.Error(), err)
+	}
+	return validated, nil
 }
 
 func (a *App) configuredAPIBaseURL() string {

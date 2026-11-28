@@ -1587,7 +1587,5 @@ var mcpCredentialMessages = map[string]string{
 	"CREDENTIAL_LOOKUP_FAILED": "This MCP server could not read its configured Flint credential store.",
 }
 
-const mcpCredentialRemedy = " Do not retry. Tell the user to set FLINT_API_KEY (a sandbox flint_test_ key from " + dashboardAPIKeysURL + ") or FLINT_PROFILE (a profile saved with flint login, using --credential-store file when the OS keyring is unavailable) in this server's env in their MCP client configuration, then restart the server."
-
 // mcpTranslateDetails rewrites CLI flag advice anywhere in error details,
 // leaving commands meant for the human and identifiers unchanged.
