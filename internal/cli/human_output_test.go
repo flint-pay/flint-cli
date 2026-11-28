@@ -86,6 +86,22 @@ func TestHumanListPrefersNestedResourceID(t *testing.T) {
 	}
 }
 
+func TestHumanShopListingsShowProductAndBundleIDs(t *testing.T) {
+	rows := []any{
+		map[string]any{"shop_listing_id": "slist_product", "resolved_name": "Shirt", "product_id": "prod_shirt"},
+		map[string]any{"shop_listing_id": "slist_bundle", "resolved_name": "Kit", "bundle_id": "bndl_kit"},
+	}
+	var out bytes.Buffer
+	if !renderResourceTable(&out, rows, &Command{CanonicalName: "shops.listings.list", OperationID: "listShopListings"}, time.Now()) {
+		t.Fatal("no table")
+	}
+	for _, want := range []string{"Product ID", "Bundle ID", "prod_shirt", "bndl_kit"} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("missing %s: %s", want, &out)
+		}
+	}
+}
+
 func TestHumanOrdersShowNumberPaymentTotalAndBuyer(t *testing.T) {
 	var out bytes.Buffer
 	rows := []any{map[string]any{"order_id": "ord_customer", "customer_id": "cus_fallback"}, map[string]any{"order_id": "ord_expanded", "customer": map[string]any{"email": "expanded@example.test"}}, map[string]any{"order_id": "ord_example", "order_number": "1010", "status": "closed", "payment_status": "paid", "pricing_amounts": map[string]any{"total_money": map[string]any{"amount": 3570, "currency": "USD"}}, "buyer_contact": map[string]any{"email": "buyer@example.test"}}}

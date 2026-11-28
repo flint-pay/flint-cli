@@ -862,6 +862,12 @@ func (a *App) doctorChecks(opts Options) (checks []map[string]any, exit int, inf
 		discoveryBaseURL = baseURL
 	}
 	if e != nil {
+		if e.Code == "API_KEY_SERVER_MISMATCH" {
+			if savedBaseURL, err := validateBaseURL(selection.baseURL); err == nil {
+				info.APIBaseURL = savedBaseURL
+				discoveryBaseURL = savedBaseURL
+			}
+		}
 		switch e.Code {
 		case "API_KEY_SERVER_MISMATCH", "API_KEY_SERVER_REQUIRED", "CREDENTIAL_FORMAT_INVALID", "INVALID_CREDENTIAL", "INVALID_OAUTH_CREDENTIAL", "OAUTH_SERVER_MISMATCH", "CREDENTIAL_LOOKUP_FAILED", "KEYCHAIN_WRITE_FAILED", "OAUTH_REFRESH_FAILED", "OAUTH_SESSION_CHANGED":
 			checks = append(checks, map[string]any{"name": "authentication", "status": "fail", "fix": e.Message})

@@ -297,8 +297,16 @@ func TestCredentialStoreLogoutRejectsDifferentBackend(t *testing.T) {
 }
 
 func TestSavedAPIKeyKeepsItsServerAfterImport(t *testing.T) {
-	var requests atomic.Int32
+	var requests, publicProbes atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/openapi.json" {
+			if r.Header.Get("Authorization") != "" {
+				t.Error("doctor sent credentials to the public version endpoint")
+			}
+			publicProbes.Add(1)
+			w.Header().Set("Flint-Version", "2026-02-01")
+			return
+		}
 		if r.URL.Path != "/v1/auth-context" {
 			t.Errorf("unexpected request: %s", r.URL.Path)
 		}
@@ -328,6 +336,12 @@ func TestSavedAPIKeyKeepsItsServerAfterImport(t *testing.T) {
 	}
 	if requests.Load() != 2 {
 		t.Fatalf("expected only the import and whoami requests, got %d", requests.Load())
+	}
+	stdout.Reset()
+	if exit := app.Run([]string{"doctor", "--output", "json"}); exit != ExitAuth ||
+		!strings.Contains(stdout.String(), `"api_base_url":"`+server.URL+`"`) ||
+		publicProbes.Load() != 1 || requests.Load() != 2 {
+		t.Fatalf("doctor with conflicting server: exit=%d probes=%d requests=%d stdout=%s", exit, publicProbes.Load(), requests.Load(), stdout)
 	}
 }
 

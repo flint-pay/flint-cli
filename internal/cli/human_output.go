@@ -149,7 +149,8 @@ func renderResourceTable(w io.Writer, rows []any, cmd *Command, now time.Time) b
 	} else if cmd != nil && cmd.OperationID == "listShopListings" {
 		addFirst("resolved_name")
 		addFirst("resolved_price_range")
-		addFirst("product_id", "bundle_id")
+		addFirst("product_id")
+		addFirst("bundle_id")
 	} else if cmd != nil && cmd.OperationID == "listTaxRegistrations" {
 		for _, key := range []string{"country", "state", "status", "registration_number_last4", "start_date", "end_date"} {
 			addFirst(key)
