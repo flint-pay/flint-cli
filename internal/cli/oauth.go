@@ -365,15 +365,16 @@ func sameScopeSet(left, right []string) bool {
 
 // Local checks must inspect the credential ordinary API commands would use.
 // FLINT_ACCESS_TOKEN has precedence over both imported keys and saved sessions.
-func (a *App) resolveCheckCredential(profile string) (string, string, error) {
+func (a *App) resolveCheckCredential(profile string) (credentialSelection, error) {
 	if token := strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN")); token != "" {
 		a.warnAmbiguousCredentials()
-		return token, "environment_access_token", nil
+		return credentialSelection{value: token, source: "environment_access_token"}, nil
 	}
-	return a.resolveCredential(profile)
+	return a.selectCredential(profile)
 }
 
-func (a *App) fetchCredentialContext(ctx context.Context, timeout time.Duration, profile, raw string, debug bool) (string, string, authContextEnvelope, *CLIError) {
+func (a *App) fetchCredentialContext(ctx context.Context, timeout time.Duration, profile string, selection credentialSelection, debug bool) (string, string, authContextEnvelope, *CLIError) {
+	raw := selection.value
 	fetch := func(base, token string, debug bool) (authContextEnvelope, *CLIError) {
 		requestCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
@@ -413,7 +414,7 @@ func (a *App) fetchCredentialContext(ctx context.Context, timeout time.Duration,
 		return raw, base, envelope, e
 	}
 	if !isOAuthCredential(raw) {
-		base, baseErr := a.apiKeyBaseURL(profile, raw)
+		base, baseErr := a.apiKeyBaseURL(selection)
 		if baseErr != nil {
 			return "", "", authContextEnvelope{}, baseErr
 		}

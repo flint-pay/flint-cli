@@ -239,6 +239,7 @@ Merchant resources:
   flint gift-card-funding-dispositions create                       Create a gift card funding disposition
   flint gift-card-funding-dispositions get <gift_card_funding_disposition_id> Get a gift card funding disposition
   flint gift-card-funding-dispositions list                         List gift card funding dispositions
+  flint gift-card-import-allowances list                            List gift card import allowances
   flint gift-card-loads create                                      Load a gift card
   flint gift-card-loads get <gift_card_load_id>                     Get a gift card load
   flint gift-card-loads list                                        List gift card loads
@@ -263,6 +264,13 @@ Merchant resources:
   flint gift-cards rotate-code <gift_card_id>                       Replace a gift card code
   flint gift-cards unfreeze <gift_card_id>                          Unfreeze a gift card
   flint gift-cards update <gift_card_id>                            Update a gift card
+  flint imports cancel <import_id>                                  Cancel an import
+  flint imports create                                              Create an import
+  flint imports entries create <import_id>                          Add import entries
+  flint imports entries list <import_id>                            List import entries
+  flint imports get <import_id>                                     Get an import
+  flint imports list                                                List imports
+  flint imports start <import_id>                                   Start an import
   flint inventory-adjustments create                                Create inventory adjustment
   flint inventory-adjustments get <inventory_adjustment_id>         Get inventory adjustment
   flint inventory-adjustments list                                  List inventory adjustments
@@ -495,6 +503,7 @@ Merchant resources:
   flint price-lists prices list <price_list_id>                     List price list prices
   flint price-lists prices update <price_list_id> <price_list_price_id> Update price list price
   flint price-lists update <price_list_id>                          Update price list
+  flint price-previews create                                       Preview catalog prices
   flint products create                                             Create product
   flint products delete <product_id>                                Retire product
   flint products get <product_id>                                   Get product
@@ -749,6 +758,7 @@ Buyer session:
   flint me payment-methods delete <payment_method_id>               Delete one of the current buyer's payment methods
   flint me payment-methods get <payment_method_id>                  Get one of the current buyer's payment methods
   flint me payment-methods list                                     List the current buyer's payment methods
+  flint me price-previews create                                    Preview catalog prices for the current buyer
   flint me refunds get <refund_id>                                  Get one of the current buyer's refunds
   flint me refunds list                                             List the current buyer's refunds
   flint me remembered-buyers list                                   List the current buyer's remembered buyers

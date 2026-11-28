@@ -66,7 +66,7 @@ func TestCommandNamesFollowPathRule(t *testing.T) {
 			}
 		}
 	}
-	if generated != 744 || excluded != 11 || len(registry.Commands) != 776 {
+	if generated != 754 || excluded != 11 || len(registry.Commands) != 786 {
 		t.Fatalf("generated=%d excluded=%d total=%d", generated, excluded, len(registry.Commands))
 	}
 	for _, command := range curatedCommandDefinitions() {

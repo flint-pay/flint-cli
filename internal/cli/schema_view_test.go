@@ -115,7 +115,7 @@ func TestSchemaViewDescribeBudgets(t *testing.T) {
 			}
 			budget := 15000
 			if input {
-				budget = 7250
+				budget = 7500 // Checkout now includes custom fields.
 			}
 			if len(encoded) > budget {
 				t.Errorf("%s input=%v: %d exceeds %d", cmd.Name, input, len(encoded), budget)

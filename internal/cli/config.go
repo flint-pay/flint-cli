@@ -23,16 +23,52 @@ type Config struct {
 }
 
 type Profile struct {
-	APIBaseURL        string           `json:"api_base_url,omitempty"`
-	CredentialStore   string           `json:"credential_store,omitempty"`
-	CredentialPresent *bool            `json:"credential_present,omitempty"`
-	PendingSignup     *SignupChallenge `json:"pending_signup,omitempty"`
-	ContextID         string           `json:"context,omitempty"`
-	MerchantGuard     string           `json:"merchant_guard,omitempty"`
-	Environment       string           `json:"environment,omitempty"`
-	APIKeyID          string           `json:"api_key_id,omitempty"`
-	MerchantID        string           `json:"merchant_id,omitempty"`
-	SandboxID         string           `json:"sandbox_id,omitempty"`
+	APIKeyServers     apiKeyServerBindings `json:"api_key_servers,omitzero"`
+	CredentialStore   string               `json:"credential_store,omitempty"`
+	CredentialPresent *bool                `json:"credential_present,omitempty"`
+	PendingSignup     *SignupChallenge     `json:"pending_signup,omitempty"`
+	ContextID         string               `json:"context,omitempty"`
+	MerchantGuard     string               `json:"merchant_guard,omitempty"`
+	Environment       string               `json:"environment,omitempty"`
+	APIKeyID          string               `json:"api_key_id,omitempty"`
+	MerchantID        string               `json:"merchant_id,omitempty"`
+	SandboxID         string               `json:"sandbox_id,omitempty"`
+}
+
+type apiKeyServerBinding struct {
+	BaseURL     string `json:"base_url"`
+	Fingerprint string `json:"fingerprint"`
+}
+
+type apiKeyServerBindings struct {
+	File    apiKeyServerBinding `json:"file,omitzero"`
+	Keyring apiKeyServerBinding `json:"keyring,omitzero"`
+}
+
+func (p *Profile) bindAPIKeyServer(store, key, baseURL string) {
+	binding := apiKeyServerBinding{}
+	if baseURL != "" {
+		binding = apiKeyServerBinding{
+			BaseURL:     baseURL,
+			Fingerprint: credentialCacheKey(key, "saved-key-binding", baseURL),
+		}
+	}
+	if store == "file" {
+		p.APIKeyServers.File = binding
+	} else {
+		p.APIKeyServers.Keyring = binding
+	}
+}
+
+func (p Profile) apiKeyServer(store, key string) string {
+	binding := p.APIKeyServers.Keyring
+	if store == "file" {
+		binding = p.APIKeyServers.File
+	}
+	if binding.BaseURL != "" && binding.Fingerprint == credentialCacheKey(key, "saved-key-binding", binding.BaseURL) {
+		return binding.BaseURL
+	}
+	return ""
 }
 
 // UnmarshalJSON accepts the retired feedback setting so existing profiles keep
@@ -443,25 +479,48 @@ func credentialStoreError(code, message string, err error) *CLIError {
 	return e
 }
 
+type credentialSelection struct {
+	value, source, baseURL string
+}
+
 func (a *App) resolveCredential(profile string) (string, string, error) {
+	selection, err := a.selectCredential(profile)
+	return selection.value, selection.source, err
+}
+
+func (a *App) selectCredential(profile string) (credentialSelection, error) {
 	if key := credentialFromEnvironment(); key != "" {
-		return key, "environment", nil
+		return credentialSelection{value: key, source: "environment"}, nil
 	}
 	if workloadIdentityID() != "" {
-		return workloadCredential, "workload_identity", nil
+		return credentialSelection{value: workloadCredential, source: "workload_identity"}, nil
 	}
-	key, err := a.loadSavedCredential(profile)
-	if err != nil {
-		return "", "", err
-	}
-	if key != "" {
-		cfg, _ := a.loadConfig()
-		if a.selectedCredentialStore(profile, cfg.Profiles[profile]) == "file" {
-			return key, "file", nil
+
+	// Read the key and its server under the same lock used to replace a profile.
+	var selection credentialSelection
+	err := a.withConfigLock(func() error {
+		key, err := a.loadSavedCredentialUnlocked(profile)
+		if err != nil || key == "" {
+			return err
 		}
-		return key, "keychain", nil
-	}
-	return "", "", nil
+		cfg, err := a.loadConfig()
+		if err != nil {
+			return err
+		}
+		p := cfg.Profiles[profile]
+		store := a.selectedCredentialStore(profile, p)
+		baseURL := p.apiKeyServer(store, key)
+		if a.mcpContext != nil && a.mcpContext.saved && a.mcpContext.oauth == nil && baseURL != a.mcpContext.apiKeyBaseURL {
+			return mcpContextChanged()
+		}
+		source := "keychain"
+		if store == "file" {
+			source = "file"
+		}
+		selection = credentialSelection{value: key, source: source, baseURL: baseURL}
+		return nil
+	})
+	return selection, err
 }
 
 func invalidCredentialError(key string, err error) *CLIError {

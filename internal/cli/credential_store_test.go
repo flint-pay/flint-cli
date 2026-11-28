@@ -330,3 +330,46 @@ func TestSavedAPIKeyKeepsItsServerAfterImport(t *testing.T) {
 		t.Fatalf("expected only the import and whoami requests, got %d", requests.Load())
 	}
 }
+
+func TestSavedAPIKeyServersStayWithCredentialStores(t *testing.T) {
+	const fileKey = "flint_test_file_profile"
+	const keyringKey = "flint_test_keyring_profile"
+	start := func(expectedKey string) *httptest.Server {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") != "Bearer "+expectedKey {
+				t.Error("server received a key from another credential store")
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			fmt.Fprint(w, authContextJSON("sandbox"))
+		}))
+		t.Cleanup(server.Close)
+		return server
+	}
+	fileServer := start(fileKey)
+	keyringServer := start(keyringKey)
+	app, out, stderr := testApp(t, fileServer.URL)
+	var stored string
+	app.LoadCredential = func(string) (string, error) { return stored, nil }
+	app.StoreCredential = func(_, key string) error { stored = key; return nil }
+	t.Setenv("FLINT_API_KEY", "")
+	for _, tc := range []struct{ store, key, base string }{
+		{"file", fileKey, fileServer.URL},
+		{"keyring", keyringKey, keyringServer.URL},
+	} {
+		t.Setenv("FLINT_BASE_URL", tc.base)
+		app.Stdin = strings.NewReader(tc.key + "\n")
+		if exit := app.Run([]string{"auth", "import", "--credential-store", tc.store, "--stdin", "--output", "json"}); exit != ExitOK {
+			t.Fatalf("import with %s store: exit=%d stderr=%s", tc.store, exit, stderr)
+		}
+	}
+	t.Setenv("FLINT_BASE_URL", "")
+	app.invalidateAuthContext(fileServer.URL, fileKey)
+	out.Reset()
+	if exit := app.Run([]string{"whoami", "--credential-store", "file", "--output", "json"}); exit != ExitOK {
+		t.Fatalf("file store override: exit=%d output=%s", exit, out)
+	}
+	if !strings.Contains(out.String(), fileServer.URL) {
+		t.Fatalf("the selected key's server is missing from whoami: %s", out)
+	}
+}

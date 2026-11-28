@@ -235,7 +235,8 @@ func (a *App) supportLinkContext(opts Options) (baseURL, environment string) {
 	if err != nil {
 		return baseURL, ""
 	}
-	key, source, err := a.resolveCheckCredential(resolved.ProfileName)
+	selection, err := a.resolveCheckCredential(resolved.ProfileName)
+	key, source := selection.value, selection.source
 	if err != nil || key == "" || source == "environment_access_token" {
 		return baseURL, ""
 	}
@@ -246,7 +247,7 @@ func (a *App) supportLinkContext(opts Options) (baseURL, environment string) {
 		}
 		return c.BaseURL, c.Auth.Environment
 	}
-	if bound, e := a.apiKeyBaseURL(resolved.ProfileName, key); e == nil {
+	if bound, e := a.apiKeyBaseURL(selection); e == nil {
 		baseURL = bound
 	}
 	environment, _ = credentialEnvironment(key)

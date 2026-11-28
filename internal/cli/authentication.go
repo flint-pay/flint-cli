@@ -239,7 +239,8 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 		envelope.Data = AuthContext{Environment: mode, AuthType: "session", CredentialScope: credentialScope}
 		return token, baseURL, envelope, nil
 	}
-	key, _, err := a.resolveCredential(resolved.ProfileName)
+	selection, err := a.selectCredential(resolved.ProfileName)
+	key := selection.value
 	if err != nil {
 		return "", "", envelope, credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The credential could not be read from the selected credential store.", err)
 	}
@@ -292,7 +293,7 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 			envelope.Data = AuthContext{AuthType: "workload_identity", WorkloadIdentityID: workloadIdentityID(), Environment: mode, MerchantID: resolved.MerchantGuard, SandboxID: resolved.SandboxGuard}
 			return key, baseURL, envelope, nil
 		}
-		return a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, key, opts.Debug)
+		return a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, selection, opts.Debug)
 	}
 	if isOAuthCredential(key) {
 		if opts.DryRun == "client" {
@@ -323,7 +324,7 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 			}
 		}
 
-		return a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, key, opts.Debug)
+		return a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, selection, opts.Debug)
 	}
 	if listenForwarding(command, opts) && strings.HasPrefix(key, "flint_live_") {
 		return "", "", envelope, listenTestModeRequired()
@@ -331,7 +332,7 @@ func (a *App) authenticateCommand(ctx context.Context, command *Command, opts Op
 	if resolved.ContextID != "" {
 		return "", "", envelope, contextSessionRequired()
 	}
-	baseURL, baseErr := a.apiKeyBaseURL(resolved.ProfileName, key)
+	baseURL, baseErr := a.apiKeyBaseURL(selection)
 	if baseErr != nil {
 		return "", "", envelope, baseErr
 	}

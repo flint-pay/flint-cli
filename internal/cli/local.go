@@ -91,8 +91,10 @@ func (a *App) localConfigGet(cmd *Command, opts Options) int {
 	}
 	// Config inspection stays useful if a saved store is unavailable. Resolve
 	// its server when readable, without making an API request.
-	raw, source, credentialErr := a.resolveCheckCredential(resolved.ProfileName)
+	selection, credentialErr := a.resolveCheckCredential(resolved.ProfileName)
+	raw, source := selection.value, selection.source
 	baseURL := ""
+	var bindingErr *CLIError
 	if credentialErr != nil {
 		source = "unavailable"
 	}
@@ -101,7 +103,7 @@ func (a *App) localConfigGet(cmd *Command, opts Options) int {
 	}
 	if source == "file" || source == "keychain" {
 		if _, err := credentialEnvironment(raw); err == nil {
-			baseURL, _ = a.apiKeyBaseURL(resolved.ProfileName, raw)
+			baseURL, bindingErr = a.apiKeyBaseURL(selection)
 		}
 	}
 	if isOAuthCredential(raw) {
@@ -113,6 +115,9 @@ func (a *App) localConfigGet(cmd *Command, opts Options) int {
 		}
 	}
 	info := a.identityInfo(resolved, baseURL, source)
+	if bindingErr != nil {
+		info.APIBaseURL = selection.baseURL
+	}
 	resolved.CLI = &info
 	return a.outputLocal(map[string]any{"data": resolved}, cmd, opts)
 }
@@ -193,13 +198,14 @@ func (a *App) localConfigValidate(cmd *Command, opts Options) int {
 		return a.fail(configError("CONFIG_INVALID", err.Error(), err), opts)
 	}
 	checks := []map[string]any{{"name": "global_config", "status": "pass", "path": resolved.GlobalConfigPath}, {"name": "project_config", "status": "pass", "path": resolved.ProjectConfigPath}, {"name": "profile", "status": "pass", "value": resolved.ProfileName}}
-	key, source, credentialErr := a.resolveCheckCredential(resolved.ProfileName)
+	selection, credentialErr := a.resolveCheckCredential(resolved.ProfileName)
+	key, source := selection.value, selection.source
 	if credentialErr != nil {
 		return a.fail(configError("CREDENTIAL_LOOKUP_FAILED", credentialErr.Error(), credentialErr), opts)
 	}
 	if key != "" {
 		ctx := withOAuthContext(a.commandContext(), resolved.ContextID)
-		_, _, envelope, authErr := a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, key, opts.Debug)
+		_, _, envelope, authErr := a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, selection, opts.Debug)
 		authContext := envelope.Data
 		if authErr != nil {
 			return a.fail(authErr, opts)
@@ -342,12 +348,8 @@ func (a *App) saveAuthenticatedCredential(profile, key string, auth AuthContext,
 	var result *CLIError
 	err := a.withConfigLock(func() error {
 		result = a.saveCredentialProfileUnlocked(profile, key, func(p Profile) Profile {
-			p.APIBaseURL = ""
-			if len(apiBaseURL) > 0 {
-				p.APIBaseURL = apiBaseURL[0]
-			}
 			return profileWithAuth(p, auth)
-		})
+		}, apiBaseURL...)
 		if result != nil {
 			return result
 		}
@@ -380,7 +382,7 @@ func (a *App) saveReauthorizedCredentialUnlocked(resolved ResolvedConfig, key st
 	})
 }
 
-func (a *App) saveCredentialProfileUnlocked(profile, key string, updateProfile func(Profile) Profile) *CLIError {
+func (a *App) saveCredentialProfileUnlocked(profile, key string, updateProfile func(Profile) Profile, apiBaseURL ...string) *CLIError {
 	var persistenceErr *CLIError
 	lockErr := func() error {
 		if err := a.commandContext().Err(); err != nil {
@@ -409,7 +411,13 @@ func (a *App) saveCredentialProfileUnlocked(profile, key string, updateProfile f
 		if cfg.Profiles == nil {
 			cfg.Profiles = map[string]Profile{}
 		}
-		cfg.Profiles[profile] = a.profileWithCredential(profile, updateProfile(cfg.Profiles[profile]), true)
+		p := updateProfile(cfg.Profiles[profile])
+		baseURL := ""
+		if len(apiBaseURL) > 0 {
+			baseURL = apiBaseURL[0]
+		}
+		p.bindAPIKeyServer(persistence.credentialStore, key, baseURL)
+		cfg.Profiles[profile] = a.profileWithCredential(profile, p, true)
 		if saveErr := a.saveConfigUnlocked(cfg); saveErr != nil {
 			if restoreErr := persistence.restoreCredential(profile, previousCredential); restoreErr != nil {
 				persistenceErr = configError("CONFIG_WRITE_FAILED", saveErr.Error()+"; credential rollback also failed: "+restoreErr.Error(), saveErr)
@@ -737,7 +745,8 @@ func (a *App) localInit(cmd *Command, opts Options) int {
 	if opts.DryRunClient() {
 		return a.outputLocal(map[string]any{"data": map[string]any{"dry_run": true, "persistent_side_effects": false, "operation": "init", "project_config_path": target, "force": force, "verification_required": true}}, cmd, opts)
 	}
-	key, _, err := a.resolveCheckCredential(resolved.ProfileName)
+	selection, err := a.resolveCheckCredential(resolved.ProfileName)
+	key := selection.value
 	if err != nil {
 		return a.fail(credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the credential.", err), opts)
 	}
@@ -745,7 +754,7 @@ func (a *App) localInit(cmd *Command, opts Options) int {
 		return a.outputLocal(map[string]any{"data": map[string]any{"authenticated": false, "recommended_auth": "flint login", "existing_account": "flint login", "manual_api_key": "flint auth import", "headless_api_key": "Set FLINT_API_KEY", "new_account": "flint signup", "dashboard_api_keys_url": dashboardURL(a.configuredAPIBaseURL(), "/developers/api-keys")}}, cmd, opts)
 	}
 	ctx := withOAuthContext(a.commandContext(), resolved.ContextID)
-	_, _, envelope, authErr := a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, key, opts.Debug)
+	_, _, envelope, authErr := a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, selection, opts.Debug)
 	if authErr != nil {
 		return a.fail(authErr, opts)
 	}
@@ -820,7 +829,8 @@ func (a *App) doctorChecks(opts Options) (checks []map[string]any, exit int, inf
 	}
 	info = a.identityInfo(resolved, "", a.identityCredentialSource(resolved, AuthContext{}))
 	checks = append(checks, map[string]any{"name": "config", "status": "pass", "profile": resolved.ProfileName})
-	key, source, err := a.resolveCheckCredential(resolved.ProfileName)
+	selection, err := a.resolveCheckCredential(resolved.ProfileName)
+	key, source := selection.value, selection.source
 	if err != nil {
 		info.CredentialSource = "unavailable"
 		checks = append(checks, map[string]any{"name": "credential", "status": "fail", "fix": credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "Could not read the credential.", err).Message})
@@ -846,14 +856,14 @@ func (a *App) doctorChecks(opts Options) (checks []map[string]any, exit int, inf
 	discoveryBaseURL = info.APIBaseURL
 	checks = append(checks, map[string]any{"name": "credential", "status": "pass", "source": source, "note": "Credential found; API validation follows."})
 	ctx := withOAuthContext(a.commandContext(), resolved.ContextID)
-	_, baseURL, authResponse, e := a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, key, opts.Debug)
+	_, baseURL, authResponse, e := a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, selection, opts.Debug)
 	if baseURL != "" {
 		info.APIBaseURL = baseURL
 		discoveryBaseURL = baseURL
 	}
 	if e != nil {
 		switch e.Code {
-		case "API_KEY_SERVER_MISMATCH", "API_KEY_SERVER_REQUIRED", "API_KEY_PROFILE_CHANGED", "CREDENTIAL_FORMAT_INVALID", "INVALID_CREDENTIAL", "INVALID_OAUTH_CREDENTIAL", "OAUTH_SERVER_MISMATCH", "CREDENTIAL_LOOKUP_FAILED", "KEYCHAIN_WRITE_FAILED", "OAUTH_REFRESH_FAILED", "OAUTH_SESSION_CHANGED":
+		case "API_KEY_SERVER_MISMATCH", "API_KEY_SERVER_REQUIRED", "CREDENTIAL_FORMAT_INVALID", "INVALID_CREDENTIAL", "INVALID_OAUTH_CREDENTIAL", "OAUTH_SERVER_MISMATCH", "CREDENTIAL_LOOKUP_FAILED", "KEYCHAIN_WRITE_FAILED", "OAUTH_REFRESH_FAILED", "OAUTH_SESSION_CHANGED":
 			checks = append(checks, map[string]any{"name": "authentication", "status": "fail", "fix": e.Message})
 			return checks, e.ExitCode, info
 		}

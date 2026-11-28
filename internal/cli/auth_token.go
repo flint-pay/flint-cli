@@ -19,7 +19,8 @@ func (a *App) localAuthToken(_ *Command, opts Options) int {
 	}
 	ctx, cancel := context.WithTimeout(withOAuthContext(a.commandContext(), resolved.ContextID), opts.Timeout)
 	defer cancel()
-	raw, _, err := a.resolveCheckCredential(resolved.ProfileName)
+	selection, err := a.resolveCheckCredential(resolved.ProfileName)
+	raw := selection.value
 	if err != nil {
 		return a.fail(credentialStoreError("CREDENTIAL_LOOKUP_FAILED", "The credential could not be read from the selected credential store.", err), opts)
 	}
@@ -29,7 +30,7 @@ func (a *App) localAuthToken(_ *Command, opts Options) int {
 	if strings.HasPrefix(raw, "flint_test_") || strings.HasPrefix(raw, "flint_live_") || (!isOAuthCredential(raw) && raw != workloadCredential && strings.TrimSpace(raw) != strings.TrimSpace(os.Getenv("FLINT_ACCESS_TOKEN"))) {
 		return a.fail(configError("API_KEY_NOT_EXPORTABLE", "API keys cannot be exported. Run flint auth login, or configure workload identity for a short-lived access token.", nil), opts)
 	}
-	token, base, envelope, e := a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, raw, false)
+	token, base, envelope, e := a.fetchCredentialContext(ctx, opts.Timeout, resolved.ProfileName, selection, false)
 	if e != nil {
 		return a.fail(e, opts)
 	}

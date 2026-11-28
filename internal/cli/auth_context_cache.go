@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -40,8 +41,15 @@ func (a *App) authContextCachePath(baseURL, key string) string {
 	if err != nil {
 		return ""
 	}
-	hash := sha256.Sum256([]byte(key + baseURL))
-	return filepath.Join(dir, "auth-context-"+hex.EncodeToString(hash[:])+".json")
+	return filepath.Join(dir, "auth-context-"+credentialCacheKey(key, "auth-context", baseURL)+".json")
+}
+
+// Use the credential as an HMAC key to scope an on-disk cache without
+// writing the credential to disk. The first part namespaces the cache.
+func credentialCacheKey(credential string, parts ...string) string {
+	mac := hmac.New(sha256.New, []byte(credential))
+	_, _ = mac.Write([]byte(strings.Join(parts, "\x00")))
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 func (a *App) cachedAuthContext(baseURL, key string) (authContextEnvelope, bool) {

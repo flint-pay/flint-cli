@@ -96,7 +96,7 @@ func (a *App) localAuthLogin(cmd *Command, opts Options) int {
 			}
 			baseURL = previous.BaseURL
 			if !reauthorize && !booleanRawOption(opts, "new-session") && saved == nil {
-				_, _, envelope, e := a.fetchCredentialContext(withOAuthContext(ctx, resolved.ContextID), opts.Timeout, resolved.ProfileName, previousRaw, false)
+				_, _, envelope, e := a.fetchCredentialContext(withOAuthContext(ctx, resolved.ContextID), opts.Timeout, resolved.ProfileName, credentialSelection{value: previousRaw}, false)
 				expired := e != nil && e.Code == "OAUTH_SESSION_EXPIRED"
 				// A legacy grant has only one context. An authoritative rejection
 				// of its cached token needs a new login, even before local expiry.

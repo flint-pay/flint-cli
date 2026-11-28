@@ -409,6 +409,8 @@ func (a *App) printCommandHelp(cmd *Command) {
 		fmt.Fprintln(a.Stdout, "Credential: an API key is optional. Without a credential, supply the license key and product IDs. The first product ID selects the environment.")
 	}
 	switch cmd.OperationID {
+	case "listSandboxes":
+		fmt.Fprintln(a.Stdout, "Use a live credential and pass --live to list sandboxes.")
 	case "revealLicenseKey", "rotateLicenseKeyKey":
 		fmt.Fprintln(a.Stdout, "The response prints a full license key. Keep the output private.")
 	}
@@ -494,6 +496,9 @@ func (a *App) printCommandHelp(cmd *Command) {
 	}
 	if cmd.Stream || cmd.Follow {
 		capabilities = append(capabilities, "--max-events N", "--for DURATION")
+	}
+	if cmd.CanonicalName == "trigger" {
+		capabilities = append(capabilities, "--for DURATION (maximum recipe wait)")
 	}
 	if cmd.Supports.Open {
 		capabilities = append(capabilities, "--open (open the checkout URL in an interactive terminal with human output)")
